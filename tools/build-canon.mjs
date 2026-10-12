@@ -1,0 +1,133 @@
+// Сборка канона курса «HTML» v1 из эталонных уроков.
+//
+//   node tools/build-canon.mjs
+//
+// Канон собирается строками из двух эталонов (lessons/_reference) плюс части
+// из canon/html/*.part.jsx. Ни одна строка эталона не перепечатывается руками:
+// так канон гарантированно совпадает с источником. Результат —
+// canon/html/canon-v1.jsx; его дословно копирует каждый урок курса.
+
+import { readFileSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const root = fileURLToPath(new URL('..', import.meta.url));
+const read = (p) => readFileSync(root + p, 'utf8').split('\n');
+
+const K0 = read('lessons/_reference/02-kurs0-urok-01.jsx');            // Курс 0, урок 1
+const KB = read('lessons/_reference/01-kiber-m1-l01-priem-v-shtab.jsx'); // Кибербез, урок 1
+const part = (name) => readFileSync(root + 'canon/html/' + name, 'utf8').replace(/\n+$/, '\n').split('\n');
+
+// Строки a..b включительно (нумерация с 1, как в редакторе).
+const take = (src, a, b) => src.slice(a - 1, b);
+
+// Контрольные строки: если эталон поменяли, границы разделов уехали —
+// сборка останавливается, а не собирает канон из обрывков.
+const expect = (src, n, start, label) => {
+  const line = src[n - 1] || '';
+  if (!line.startsWith(start)) {
+    throw new Error(`Граница «${label}» уехала: строка ${n} = ${JSON.stringify(line.slice(0, 60))}`);
+  }
+};
+expect(K0, 40, '// 1. ДИЗАЙН-ТОКЕНЫ', 'К0 токены');
+expect(K0, 76, '};', 'К0 конец T');
+expect(K0, 111, '// СИСТЕМА ДВИЖЕНИЯ', 'К0 система движения');
+expect(K0, 300, '};', 'К0 конец POSES');
+expect(K0, 489, '// 3. ЯЗЫК', 'К0 язык');
+expect(K0, 1155, '// 6. SFX', 'К0 звуки');
+expect(K0, 1210, '// 7. ЖУРНАЛ', 'К0 журнал');
+expect(K0, 1240, 'const safeStorage = (() => {', 'К0 хранилище');
+expect(K0, 1248, '})();', 'К0 конец хранилища');
+expect(K0, 1339, '// 8. РЕЧЬ ПЕРСОНАЖА', 'К0 речь');
+expect(K0, 3313, '}', 'К0 конец корня');
+expect(K0, 3342, '// ========================  К А Н О Н  ·  М Е Х А Н И К И', 'К0 механики');
+expect(K0, 5117, '}', 'К0 конец библиотеки');
+expect(K0, 5818, '// ===============  К А Н О Н  ·  П Р А В К И', 'К0 правки вёрстки');
+expect(K0, 5920, '`;', 'К0 конец CANON_UI_CSS');
+expect(K0, 7361, '// Оформление экранов, которые есть в КАЖДОМ уроке', 'К0 CSS экранов');
+expect(K0, 8115, 'const CANON_SCREEN_CSS =', 'К0 конец CSS экранов');
+expect(KB, 161, '// 4. ВРЕМЯ И ТЕКСТ ДЛЯ ОЗВУЧКИ', 'КБ текст для озвучки');
+expect(KB, 192, '// 5. ОЗВУЧКА', 'КБ озвучка');
+expect(KB, 422, '}', 'КБ конец say()');
+expect(KB, 138, 'const GOLOS', 'КБ теги голосов');
+
+const ROOT_CALL = '  const audio = useAudioEngine(ttsApiBase, lang);';
+const sections8to17 = take(K0, 1338, 3313);
+const callIdx = sections8to17.indexOf(ROOT_CALL);
+if (callIdx < 0) throw new Error('Не найден вызов useAudioEngine в корне Курса 0');
+sections8to17.splice(callIdx, 1,
+  '  // СКЛЕЙКА 4: переходник на @lesson/runtime принимает только язык (адрес',
+  '  // своего сервера озвучки уроку больше не нужен).',
+  '  const audio = useAudioEngine(lang);');
+
+const out = [
+  ...part('header.part.jsx'),
+  "import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';",
+  '// СКЛЕЙКА 1: озвучка и звуки — только от платформы (контракт @lesson/runtime).',
+  "import { useAudio as usePlatformAudio, useSfx as usePlatformSfx } from '@lesson/runtime';",
+  '',
+  ...take(K0, 39, 76),            // 1. токены
+  '',
+  ...part('hero-head.part.jsx'),  // 2. герой: шапка раздела и цвета
+  ...take(K0, 110, 300),          //    система движения Курса 0 — дословно
+  '',
+  '// Голос один — женский детский. Тег голоса уходит вторым аргументом pushOneOff.',
+  "const VOICE = { bot: 'f' };",
+  ...take(KB, 131, 138),          //    теги голосов платформы (Кибербез)
+  ...part('hero-tail.part.jsx'),  //    имя и рисунок Коди
+  ...take(K0, 488, 520),          // 3. язык
+  ...take(KB, 160, 184),          // 4. текст для озвучки (Кибербез)
+  '',
+  ...take(KB, 191, 422),          // 5. озвучка — переходник на @lesson/runtime (Кибербез)
+  '',
+  ...take(K0, 1154, 1207),        // 6. звуки (Курс 0)
+  '',
+  '// СКЛЕЙКА 2: сюда переходник озвучки записывает звуки платформы «верно» и',
+  '// «неверно». Урок их не играет: в курсе нет звука провала, а на верный ответ',
+  '// звучит собственный мягкий тон Курса 0. Объект нужен, чтобы переходник работал.',
+  'const PLATF_SFX = { verno: null, neverno: null };',
+  '',
+  ...take(K0, 1209, 1239),        // 7. журнал и стор …
+  '// СКЛЕЙКА 3: прогресс живёт в памяти до конца урока (бриф, «Контракт с',
+  '// платформой»): localStorage уроку не нужен. Без хранилища все операции',
+  '// useProgress становятся пустыми — так же, как в приватном режиме браузера.',
+  'const safeStorage = null;',
+  ...take(K0, 1249, 1336),        //    … остаток раздела 7
+  ...sections8to17,               // 8–17: речь, рассказ, гейты, похвала, каркас, иконки,
+                                  //       подсказки, лесенка, выбор, коуч-марк, CSS_BASE, корень
+  '',
+  ...take(K0, 3341, 5117),        // механики и библиотека заданий (обе части)
+  '',
+  ...take(K0, 5817, 5920),        // правки вёрстки — CANON_UI_CSS
+  '',
+  ...take(K0, 7361, 8115),        // оформление типовых экранов — CANON_SCREEN_CSS
+  ''
+];
+
+// ЦВЕТ КУРСА (заказчик, 12.10.2026): интерфейс — #FF4F28 вместо голубого
+// Курса 0. Меняются только токены ui / blue и голубые rgba в стилях канона.
+let text = out.join('\n');
+const swap = (from, to) => {
+  if (text.indexOf(from) < 0) throw new Error('Не найдено для замены цвета: ' + from);
+  text = text.split(from).join(to);
+};
+swap("  ui: '#1E88E5',", "  // КУРС HTML: интерфейс — #FF4F28 (заказчик, 12.10.2026), а не голубой.\n  ui: '#FF4F28',");
+swap("  uiSoft: '#E3F2FD',", "  uiSoft: '#FFE8E1',");
+swap("  uiDk: '#1565C0',", "  uiDk: '#B94127',");
+swap("  blue: '#2B7FD4',", "  blue: '#EF6A4A',");
+swap("  blueSoft: '#E4F0FB',", "  blueSoft: '#FFEDE6',");
+swap("  blueDk: '#1F63A8',", "  blueDk: '#B94127',");
+// Свечения: голубые тени Курса 0 рассчитаны на холодный цвет. Тот же
+// оранжевый при той же прозрачности светится вдвое ярче — поэтому прозрачность
+// всех свечений интерфейса умножена на 0.65 (нормализация 12.10.2026).
+if (!/rgba\(30,136,229,/.test(text)) throw new Error('Не найдены голубые свечения');
+text = text.replace(/rgba\(30,136,229,\s*([0-9.]+)\)/g,
+  (m, a) => 'rgba(255,79,40,' + String(+(parseFloat(a) * 0.65).toFixed(2)).replace(/^0\./, '.') + ')');
+// Нормализация (12.10.2026): цвета текста выровнены по светлоте OKLCH (L≈0.52)
+// и насыщенности — ни один не кричит и не проваливается в чёрный; контраст
+// каждого на белом — от 5.2:1. Подсказка остаётся жёлтым каналом,
+// но её подписи на светло-жёлтом фоне у Курса 0 читались с контрастом 2.8.
+swap("  hint: '#C08A12',", "  hint: '#8D5E00',");
+swap('#64B5F6', '#FF8A65');
+
+writeFileSync(root + 'canon/html/canon-v1.jsx', text);
+console.log('canon/html/canon-v1.jsx —', out.length, 'строк');

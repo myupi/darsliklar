@@ -1,0 +1,22 @@
+{
+  "name": "darsliklar",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Просмотрщик интерактивных JSX-уроков (HTML, CSS и др.)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "framer-motion": "^11.11.17",
+    "lucide-react": "^0.460.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.2.0",
+    "vite": "^7.3.7"
+  }
+}
