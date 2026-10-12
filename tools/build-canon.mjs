@@ -129,5 +129,39 @@ text = text.replace(/rgba\(30,136,229,\s*([0-9.]+)\)/g,
 swap("  hint: '#C08A12',", "  hint: '#8D5E00',");
 swap('#64B5F6', '#FF8A65');
 
+// РУБАШКА ЗАКРЫТОЙ КАРТОЧКИ (дизайн-ревью 12.10.2026). У Курса 0 рубашка —
+// полосы «цвет интерфейса + голубой #42A5F5»: на оранжевом курсе это шумная
+// сине-оранжевая карамель. Новая рубашка — тихая: тёплая бумага в точку, белый
+// значок «?» и метка </> в углу. Нейтральная намеренно: оранжевым светится
+// только карточка, о которой герой говорит сейчас, — так видна иерархия
+// «закрыта / читается / открыта».
+swap(`.tour-back { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 16px;
+  background: repeating-linear-gradient(135deg, \${T.ui} 0 14px, #42A5F5 14px 28px); }
+.tour-back i { display: grid; place-items: center; width: clamp(34px, 7dvh, 48px); aspect-ratio: 1;
+  border-radius: 50%; background: rgba(255,255,255,.92); color: \${T.uiDk};
+  font-size: clamp(20px, 4dvh, 28px); font-weight: 900; line-height: 1; font-style: normal; }`,
+`/* Рубашка курса HTML: тёплая бумага в точку (как пиксели экрана Коди), белый
+   значок «?» и метка </> в углу. Оранжевый здесь только в знаке вопроса: цветом
+   светится карточка, которую читают сейчас. Значок дышит — карточка ждёт, а не
+   выключена; у соседних карточек дыхание идёт со сдвигом. */
+.tour-back { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 16px; overflow: hidden;
+  background:
+    radial-gradient(rgba(\${T.shadowBase},.13) 1.3px, transparent 1.9px) 0 0 / 14px 14px,
+    linear-gradient(160deg, #FDFCFA 0%, #F1EEE8 100%);
+  box-shadow: inset 0 0 0 1.5px rgba(\${T.shadowBase},.08); }
+.tour-back::after { content: '</>'; position: absolute; right: 10px; bottom: 8px;
+  font: 800 12px/1 'JetBrains Mono', ui-monospace, monospace; color: \${T.ink3}; }
+.tour-back i { display: grid; place-items: center; width: clamp(38px, 7.5dvh, 52px); aspect-ratio: 1;
+  border-radius: 50%; background: \${T.paper}; color: \${T.uiDk};
+  font-size: clamp(20px, 4dvh, 28px); font-weight: 900; line-height: 1; font-style: normal;
+  box-shadow: 0 2px 0 rgba(\${T.shadowBase},0.06), 0 8px 18px -10px rgba(\${T.shadowBase},.45),
+    inset 0 0 0 2px rgba(255,79,40,.14);
+  animation: backBreath 2.8s ease-in-out infinite; }
+.tour-card:nth-child(2) .tour-back i { animation-delay: .45s; }
+.tour-card:nth-child(3) .tour-back i { animation-delay: .9s; }
+.tour-card:nth-child(4) .tour-back i { animation-delay: 1.35s; }
+@keyframes backBreath { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+@media (prefers-reduced-motion: reduce) { .tour-back i { animation: none; } }`);
+
 writeFileSync(root + 'canon/html/canon-v1.jsx', text);
 console.log('canon/html/canon-v1.jsx —', out.length, 'строк');
