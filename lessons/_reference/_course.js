@@ -13,5 +13,7 @@ export default {
     { n: 3, slug: 'algoritmy-m4-u01-vokrug', title: 'Алгоритмы · М4 · У1 «Алгоритмы вокруг тебя»', topics: ['framer-motion', 'сегменты озвучки'] },
     { n: 4, slug: 'coddy-1-5-smart-coddy', title: 'Coddy 1.5 «Умный Coddy»', topics: ['Coddy SDK', 'Sandbox', 'лимит блоков'] },
     { n: 5, slug: 'coddy-3-4-path-sensors', title: 'Coddy 3.4 «Сенсоры пути»', topics: ['Coddy SDK', 'If / While', 'лабиринты'] },
+    { n: 6, slug: 'sinf1-dars01-sanash', title: '1-класс · Урок 1 «Счёт предметов и числа 1–5»', topics: ['ETALON KIT', 'Ra\'no, Anvar, Bit', 'свой TTS-движок'] },
+    { n: 7, slug: 'kurs0-urok-07-bez-opechatok', title: 'Курс 0 · У7 «Пишем без опечаток»', topics: ['канон Курса 0', 'HintLadder', 'клавиатура'] },
   ],
 };

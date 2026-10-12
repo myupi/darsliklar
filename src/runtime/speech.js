@@ -51,9 +51,11 @@ function pickVoice(lang) {
 
 // Голоса в Chrome подгружаются асинхронно — прогреваем список заранее.
 if (speechAvailable()) {
+  // Ссылка своя: в режиме «Нет» плеер прячет window.speechSynthesis от урока.
+  const synth = window.speechSynthesis;
   try {
-    window.speechSynthesis.getVoices();
-    window.speechSynthesis.addEventListener?.('voiceschanged', () => window.speechSynthesis.getVoices());
+    synth.getVoices();
+    synth.addEventListener?.('voiceschanged', () => synth.getVoices());
   } catch (e) { /* no-op */ }
 }
 

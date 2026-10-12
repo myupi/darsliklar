@@ -60,6 +60,19 @@ const KODI_CSS = `
   88%, 100% { transform: translateX(200px); }
 }
 
+/* ОПОРА НА НОГИ. Система движения канона наклоняет корпус целиком, вокруг
+   нижней точки фигуры: робот Курса 0 парит, и крен в 24° («любопытство»)
+   читается у него как наклон. Коди стоит на ногах — тот же крен валит его
+   набок вместе с ногами, будто он падает. Поэтому у Коди наклон позы
+   (--bodyRot) берёт только верх — свитер, голову и руки — и идёт от пояса,
+   а ноги стоят. Сдвиги и сжатия позы (прыжок, оседание) по-прежнему двигают
+   героя целиком. Крен смягчён: от пояса тот же угол выглядел бы поклоном. */
+.bot.kodi .bot-pose-body {
+  transform: translate(var(--bodyX), var(--bodyY)) scale(var(--bodySX), var(--bodySY)); }
+.bot.kodi .kodi-torso { transform-box: view-box; transform-origin: 210px 300px;
+  transform: rotate(calc(var(--bodyRot) * .55));
+  transition: transform var(--dur) var(--ease); }
+
 .speaker-av .kodi { transition: transform .22s cubic-bezier(.34,1.56,.64,1); }
 .speaker-av:active .kodi { transform: scale(.93, .9); }
 
@@ -235,6 +248,9 @@ function RobotSVG({ pose = 'explain', className, talking }) {
             <ellipse cx="177" cy="363" rx="7" ry="4" fill="#fff" opacity=".45" />
             <ellipse cx="229" cy="363" rx="7" ry="4" fill="#fff" opacity=".45" />
 
+            {/* Всё, что выше ног, наклоняется от пояса (см. «ОПОРА НА НОГИ» в KODI_CSS). */}
+            <g className="kodi-torso">
+
             {/* свитер */}
             <path d="M150 206 C150 199 160 194 172 194 H248 C260 194 270 199 270 206 L278 288
                      C279 299 271 306 260 306 H160 C149 306 141 299 142 288 Z" fill={u('w')} />
@@ -339,6 +355,7 @@ function RobotSVG({ pose = 'explain', className, talking }) {
             <g className="bot-pose-arm-l"><g className="bot-beat-arm-l"><Arm side="l" /></g></g>
             <g className="bot-pose-arm-r"><g className="bot-beat-arm-r"><Arm side="r" /></g></g>
 
+            </g>
           </g>
         </g>
       </g>

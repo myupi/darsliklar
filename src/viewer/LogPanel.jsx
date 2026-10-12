@@ -11,7 +11,7 @@ const GROUPS = {
   errors: { label: 'Ошибки', test: (e) => e.type === 'error' || e.type === 'warn' },
 };
 
-const KIND = { segment: 'сегмент', oneOff: 'реплика', replay: 'повтор', line: 'реплика' };
+const KIND = { segment: 'сегмент', oneOff: 'реплика', replay: 'повтор', line: 'реплика', service: 'реплика · ttsApiBase' };
 
 const clock = (t) => {
   const d = new Date(t);

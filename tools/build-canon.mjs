@@ -2,7 +2,7 @@
 //
 //   node tools/build-canon.mjs
 //
-// Канон собирается строками из двух эталонов (lessons/_reference) плюс части
+// Канон собирается строками из эталона Курса 0 (lessons/_reference) плюс части
 // из canon/html/*.part.jsx. Ни одна строка эталона не перепечатывается руками:
 // так канон гарантированно совпадает с источником. Результат —
 // canon/html/canon-v1.jsx; его дословно копирует каждый урок курса.
@@ -14,7 +14,6 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (p) => readFileSync(root + p, 'utf8').split('\n');
 
 const K0 = read('lessons/_reference/02-kurs0-urok-01.jsx');            // Курс 0, урок 1
-const KB = read('lessons/_reference/01-kiber-m1-l01-priem-v-shtab.jsx'); // Кибербез, урок 1
 const part = (name) => readFileSync(root + 'canon/html/' + name, 'utf8').replace(/\n+$/, '\n').split('\n');
 
 // Строки a..b включительно (нумерация с 1, как в редакторе).
@@ -32,7 +31,12 @@ expect(K0, 40, '// 1. ДИЗАЙН-ТОКЕНЫ', 'К0 токены');
 expect(K0, 76, '};', 'К0 конец T');
 expect(K0, 111, '// СИСТЕМА ДВИЖЕНИЯ', 'К0 система движения');
 expect(K0, 300, '};', 'К0 конец POSES');
+expect(K0, 302, '// Голос один', 'К0 голос');
+expect(K0, 307, 'const VOICE = ', 'К0 конец голоса');
 expect(K0, 489, '// 3. ЯЗЫК', 'К0 язык');
+expect(K0, 522, '// 4. ВРЕМЯ И ТЕКСТ ДЛЯ ОЗВУЧКИ', 'К0 текст для озвучки');
+expect(K0, 678, 'function useAudioEngine(ttsApiBase, lang) {', 'К0 озвучка');
+expect(K0, 1152, '}', 'К0 конец spokenOf');
 expect(K0, 1155, '// 6. SFX', 'К0 звуки');
 expect(K0, 1210, '// 7. ЖУРНАЛ', 'К0 журнал');
 expect(K0, 1240, 'const safeStorage = (() => {', 'К0 хранилище');
@@ -45,49 +49,30 @@ expect(K0, 5818, '// ===============  К А Н О Н  ·  П Р А В К И', '�
 expect(K0, 5920, '`;', 'К0 конец CANON_UI_CSS');
 expect(K0, 7361, '// Оформление экранов, которые есть в КАЖДОМ уроке', 'К0 CSS экранов');
 expect(K0, 8115, 'const CANON_SCREEN_CSS =', 'К0 конец CSS экранов');
-expect(KB, 161, '// 4. ВРЕМЯ И ТЕКСТ ДЛЯ ОЗВУЧКИ', 'КБ текст для озвучки');
-expect(KB, 192, '// 5. ОЗВУЧКА', 'КБ озвучка');
-expect(KB, 422, '}', 'КБ конец say()');
-expect(KB, 138, 'const GOLOS', 'КБ теги голосов');
 
-const ROOT_CALL = '  const audio = useAudioEngine(ttsApiBase, lang);';
 const sections8to17 = take(K0, 1338, 3313);
-const callIdx = sections8to17.indexOf(ROOT_CALL);
-if (callIdx < 0) throw new Error('Не найден вызов useAudioEngine в корне Курса 0');
-sections8to17.splice(callIdx, 1,
-  '  // СКЛЕЙКА 4: переходник на @lesson/runtime принимает только язык (адрес',
-  '  // своего сервера озвучки уроку больше не нужен).',
-  '  const audio = useAudioEngine(lang);');
+if (sections8to17.indexOf('  const audio = useAudioEngine(ttsApiBase, lang);') < 0) {
+  throw new Error('Не найден вызов useAudioEngine(ttsApiBase, lang) в корне Курса 0');
+}
 
 const out = [
   ...part('header.part.jsx'),
   "import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';",
-  '// СКЛЕЙКА 1: озвучка и звуки — только от платформы (контракт @lesson/runtime).',
-  "import { useAudio as usePlatformAudio, useSfx as usePlatformSfx } from '@lesson/runtime';",
   '',
   ...take(K0, 39, 76),            // 1. токены
   '',
   ...part('hero-head.part.jsx'),  // 2. герой: шапка раздела и цвета
   ...take(K0, 110, 300),          //    система движения Курса 0 — дословно
   '',
-  '// Голос один — женский детский. Тег голоса уходит вторым аргументом pushOneOff.',
-  "const VOICE = { bot: 'f' };",
-  ...take(KB, 131, 138),          //    теги голосов платформы (Кибербез)
+  ...take(K0, 302, 307),          //    голос героя (Курс 0)
   ...part('hero-tail.part.jsx'),  //    имя и рисунок Коди
   ...take(K0, 488, 520),          // 3. язык
-  ...take(KB, 160, 184),          // 4. текст для озвучки (Кибербез)
-  '',
-  ...take(KB, 191, 422),          // 5. озвучка — переходник на @lesson/runtime (Кибербез)
-  '',
+  ...take(K0, 521, 1153),         // 4–5. текст для озвучки и движок озвучки
+                                  //      с ttsApiBase (Курс 0) — дословно
   ...take(K0, 1154, 1207),        // 6. звуки (Курс 0)
   '',
-  '// СКЛЕЙКА 2: сюда переходник озвучки записывает звуки платформы «верно» и',
-  '// «неверно». Урок их не играет: в курсе нет звука провала, а на верный ответ',
-  '// звучит собственный мягкий тон Курса 0. Объект нужен, чтобы переходник работал.',
-  'const PLATF_SFX = { verno: null, neverno: null };',
-  '',
   ...take(K0, 1209, 1239),        // 7. журнал и стор …
-  '// СКЛЕЙКА 3: прогресс живёт в памяти до конца урока (бриф, «Контракт с',
+  '// СКЛЕЙКА: прогресс живёт в памяти до конца урока (бриф, «Контракт с',
   '// платформой»): localStorage уроку не нужен. Без хранилища все операции',
   '// useProgress становятся пустыми — так же, как в приватном режиме браузера.',
   'const safeStorage = null;',

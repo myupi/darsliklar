@@ -1,6 +1,8 @@
 // Плеер одного урока. Открывается просмотрщиком в iframe:
 //   /player.html?file=html/01-struktura-dokumenta&lang=uz&name=Ali&voice=browser&start=3
-// Урок получает ровно те пропсы, что и на платформе: { studentName, lang, onFinished }.
+// Урок получает те же пропсы, что и на платформе: { studentName, lang, ttsApiBase, onFinished }.
+// ttsApiBase ведёт на эмуляцию сервиса озвучки (tools/vite-tts-service.mjs);
+// уроки на @lesson/runtime его просто не читают.
 // Если задан start — дополнительно дев-пропсы startAt / startScreen (на проде их нет).
 
 import React from 'react';
@@ -8,6 +10,7 @@ import { createRoot } from 'react-dom/client';
 import ErrorBoundary from './ErrorBoundary.jsx';
 import { reportError } from './report.js';
 import { configureRuntime, emit } from '../runtime/bridge.js';
+import { parseLine } from '../runtime/speech.js';
 import { LESSON_LOADERS, buildCatalog, findByFile, lessonFilePath } from '../shared/catalog.js';
 
 const q = new URLSearchParams(window.location.search);
@@ -20,6 +23,31 @@ const start = startRaw !== null && startRaw !== '' && Number.isFinite(Number(sta
 
 const found = findByFile(buildCatalog(), file);
 configureRuntime({ voice, lang, assets: (found && found.lesson.assets) || {} });
+
+// СЕРВИС ОЗВУЧКИ. Адрес свой у каждого запуска плеера: реплики в журнал
+// приходят только этому плееру, даже если открыто несколько уроков.
+// «Нет» — сервиса нет и голоса браузера тоже: урок обязан печатать реплики.
+// В собранном просмотрщике (npm run build) сервиса нет — урок говорит сам.
+const sid = Math.random().toString(36).slice(2, 10);
+const ttsApiBase = import.meta.env.DEV && voice !== 'off'
+  ? window.location.origin + '/__tts/' + sid + '/' + (voice === 'fast' || voice === 'browser' ? voice : 'simulate')
+  : '';
+if (voice === 'off') {
+  try {
+    Object.defineProperty(window, 'speechSynthesis', { value: undefined, configurable: true });
+    Object.defineProperty(window, 'SpeechSynthesisUtterance', { value: undefined, configurable: true });
+  } catch (e) { /* no-op */ }
+}
+if (import.meta.hot) {
+  import.meta.hot.on('darsliklar:tts', (d) => {
+    if (!d || d.sid !== sid) return;
+    const line = parseLine(d.text);
+    emit('tts', {
+      text: d.text, spoken: line.spoken, lang: line.lang, marker: line.marker,
+      voice: d.g ? 'g=' + d.g : null, kind: 'service', id: null, muted: false, mode: d.mode,
+    });
+  });
+}
 
 // Модуль может выполниться повторно (горячая перезагрузка, когда файлы уроков
 // добавили или удалили) — слушатели и корень React создаём один раз.
@@ -79,7 +107,7 @@ async function boot() {
     emit('error', { message: 'В файле урока нет export default-компонента' });
     return;
   }
-  const props = { studentName: name, lang, onFinished };
+  const props = { studentName: name, lang, ttsApiBase, onFinished };
   if (start !== null) { props.startAt = start; props.startScreen = start; }
   emit('loaded', { file, ms: Math.round(performance.now() - t0), component: Lesson.name || 'Lesson', props: Object.keys(props) });
   root.render(

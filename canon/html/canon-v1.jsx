@@ -8,11 +8,14 @@
 //
 // ИЗ ЧЕГО СОБРАН (по «Брифу для ИИ: структура, дизайн и функции детского урока»):
 //   · основа — канон Курса 0 «Компьютерная грамотность»: токены, система
-//     движения героя, язык, речь героя, гейты, похвала, каркас экрана, иконки,
+//     движения героя, язык, озвучка, гейты, похвала, каркас экрана, иконки,
 //     подсказки, лесенка подсказок, коуч-марк, базовый CSS, корень урока,
 //     библиотека механик и типовые экраны;
-//   · озвучка — переходник на @lesson/runtime из канона «Кибербеза» (разделы 4
-//     и 5 целиком): своего движка и speechSynthesis в уроке нет;
+//   · озвучка — родной движок Курса 0 (разделы 4 и 5 целиком): сервис озвучки
+//     по адресу ttsApiBase, как в уроках Курса 0 и 1-го класса (заказчик,
+//     12.10.2026; раньше здесь стоял переходник на @lesson/runtime из
+//     «Кибербеза»). Без ttsApiBase урок говорит голосом браузера, а если нет
+//     и его — печатает реплики текстом;
 //   · герой — Коди, робот Junior IT Akademiya (раздел 2). Система движения —
 //     дословно Курса 0;
 //   · цвет интерфейса — #FF4F28 (заказчик, 12.10.2026) вместо голубого Курса 0.
@@ -20,29 +23,25 @@
 //     тёмные оттенки (uiDk, blueDk, hint) доведены до контраста 4.5:1;
 //     всё остальное в стилях — дословно.
 //
-// СКЛЕЙКА. Канон Курса 0 и переходник Кибербеза писались отдельно. Чтобы они
-// заработали вместе, изменено ровно четыре места, каждое помечено «СКЛЕЙКА»:
-//   1) импорт @lesson/runtime (как в Кибербезе);
-//   2) PLATF_SFX — переходник записывает туда звуки платформы; звуки урока
-//      остаются мягкими тонами Курса 0 (звука провала в курсе нет);
-//   3) прогресс живёт в памяти до конца урока: localStorage не используется
-//      (бриф, «Контракт с платформой»);
-//   4) корень зовёт переходник с одним аргументом — языком.
+// СКЛЕЙКА. Относительно Курса 0 изменено ровно одно место, оно помечено
+// «СКЛЕЙКА»: прогресс живёт в памяти до конца урока, localStorage не
+// используется (бриф, «Контракт с платформой»).
 // Не перенесено из Курса 0: кино «карты модуля» (рисунок Курса 0) и пустой
 // заголовок «песочницы-редактора» без кода.
 //
 // КОНТРАКТ УРОКА
-//   props: { studentName, lang, onFinished } — других в проде нет
-//   · дев-пропс startAt (открыть урок на экране N) платформа не передаёт
+//   props: { studentName, lang, ttsApiBase, onFinished }
+//   · ttsApiBase — база сервиса озвучки: GET {ttsApiBase}/api/tts?text=…&g=f
+//     отдаёт звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев)
+//   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
+//     на витрине) платформа не передаёт
 //   · все тексты — объекты { uz, ru, en }, переводятся внутри компонентов
-//   · озвучка только через useAudio().pushOneOff с маркером языка
+//   · каждая реплика уходит в сервис с маркером языка в начале строки
 //   · имя ученика — только в видимом тексте, в озвучку не попадает
 //   · onFinished(payload) — РОВНО один раз; после финиша урок рисует только фон
 // =============================================================================
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext, useLayoutEffect } from 'react';
-// СКЛЕЙКА 1: озвучка и звуки — только от платформы (контракт @lesson/runtime).
-import { useAudio as usePlatformAudio, useSfx as usePlatformSfx } from '@lesson/runtime';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ДИЗАЙН-ТОКЕНЫ
@@ -320,16 +319,12 @@ const POSES = {
   bye:       'bye'         // уходит и машет
 };
 
-// Голос один — женский детский. Тег голоса уходит вторым аргументом pushOneOff.
+// Голос один — женский. Причин две, обе практические:
+//   · в системах для русского почти всегда стоит ровно один голос, и он женский
+//     (macOS — Милена). Просить мужской означает взять её же и «понизить»
+//     питчем, а это слышно как искажение, а не как другой голос;
+//   · ребёнку 8–10 лет женский голос разборчивее на длинной дистанции.
 const VOICE = { bot: 'f' };
-// ДВА ДЕТСКИХ ГОЛОСА (заказчик, 22.09.2026): Симка говорит kids-f, Нолик kids-m.
-// Теги согласованы с заказчиком и заводятся на платформе под этими именами:
-// kids-f — женский детский голос, kids-m — мужской детский.
-// ⚠ Пол уходит вторым аргументом pushOneOff. Контракт @lesson/runtime сегодня
-// объявляет только pushOneOff(text) и выбирает голос сам, поэтому два голоса
-// зазвучат ровно тогда, когда раннер начнёт этот аргумент читать; урок со своей
-// стороны передаёт его на каждой реплике.
-const GOLOS = { f: 'kids-f', m: 'kids-m' };
 // Героя зовут Коди (заказчик, 12.10.2026). Имя звучит в первом уроке курса,
 // на экране оно не подписывается.
 const BOT_NAME = { uz: 'Kodi', ru: 'Коди', en: 'Kodi' };
@@ -391,6 +386,19 @@ const KODI_CSS = `
   0%, 68% { transform: translateX(-80px); }
   88%, 100% { transform: translateX(200px); }
 }
+
+/* ОПОРА НА НОГИ. Система движения канона наклоняет корпус целиком, вокруг
+   нижней точки фигуры: робот Курса 0 парит, и крен в 24° («любопытство»)
+   читается у него как наклон. Коди стоит на ногах — тот же крен валит его
+   набок вместе с ногами, будто он падает. Поэтому у Коди наклон позы
+   (--bodyRot) берёт только верх — свитер, голову и руки — и идёт от пояса,
+   а ноги стоят. Сдвиги и сжатия позы (прыжок, оседание) по-прежнему двигают
+   героя целиком. Крен смягчён: от пояса тот же угол выглядел бы поклоном. */
+.bot.kodi .bot-pose-body {
+  transform: translate(var(--bodyX), var(--bodyY)) scale(var(--bodySX), var(--bodySY)); }
+.bot.kodi .kodi-torso { transform-box: view-box; transform-origin: 210px 300px;
+  transform: rotate(calc(var(--bodyRot) * .55));
+  transition: transform var(--dur) var(--ease); }
 
 .speaker-av .kodi { transition: transform .22s cubic-bezier(.34,1.56,.64,1); }
 .speaker-av:active .kodi { transform: scale(.93, .9); }
@@ -567,6 +575,9 @@ function RobotSVG({ pose = 'explain', className, talking }) {
             <ellipse cx="177" cy="363" rx="7" ry="4" fill="#fff" opacity=".45" />
             <ellipse cx="229" cy="363" rx="7" ry="4" fill="#fff" opacity=".45" />
 
+            {/* Всё, что выше ног, наклоняется от пояса (см. «ОПОРА НА НОГИ» в KODI_CSS). */}
+            <g className="kodi-torso">
+
             {/* свитер */}
             <path d="M150 206 C150 199 160 194 172 194 H248 C260 194 270 199 270 206 L278 288
                      C279 299 271 306 260 306 H160 C149 306 141 299 142 288 Z" fill={u('w')} />
@@ -671,6 +682,7 @@ function RobotSVG({ pose = 'explain', className, talking }) {
             <g className="bot-pose-arm-l"><g className="bot-beat-arm-l"><Arm side="l" /></g></g>
             <g className="bot-pose-arm-r"><g className="bot-beat-arm-r"><Arm side="r" /></g></g>
 
+            </g>
           </g>
         </g>
       </g>
@@ -730,244 +742,618 @@ const sanitizeForTts = (text) =>
     .trim();
 
 // Сервер выбирает язык по маркеру в начале строки.
+const LANG_MARK = {
+  uz: "[O'zbekcha talaffuz] ",
+  ru: '[Русское произношение] ',
+  en: '[English pronunciation] '
+};
 const markLang = (text, lang) => {
   const s = String(text || '');
   if (!s) return s;
-  const mark = { uz: "[O'zbekcha tallaffuz] ", en: '[English pronunciation] ' }[lang];
-  return (mark || '[Русское произношение] ') + s;
+  return (LANG_MARK[lang] || LANG_MARK.ru) + s;
+};
+
+const buildTtsUrl = (base, text, gender) => {
+  if (!base) return '';
+  const p = new URLSearchParams({ text: String(text).slice(0, 1000), g: gender === 'm' ? 'm' : 'f' });
+  return base.replace(/\/+$/, '') + '/api/tts?' + p.toString();
+};
+
+// ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
+// Канон запрещает speechSynthesis как ОСНОВНУЮ озвучку, и это правильно: тембр
+// пляшет от устройства к устройству и не даёт держать голоса Симки и Нолика.
+// Здесь он работает только как резерв — включается, когда HTTP-TTS не отдал
+// звук. Для audio-led урока тишина хуже машинного голоса.
+const localVoiceOk = () =>
+  typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
+
+// В Windows обычно стоят два русских голоса — Irina и Pavel. Раздаём их Симке и
+// Нолику: разные голоса читаются ребёнком куда лучше, чем один голос, сдвинутый
+// по высоте. API пол не сообщает, поэтому опознаём по имени.
+// Имена голосов система выдаёт на языке интерфейса: в русской macOS это
+// «Милена», а не «Milena». Латинского списка не хватало — голос не опознавался
+// как женский, own становился false, и питч уезжал на 1.25 (писклявость).
+// Поэтому оба алфавита.
+const VOICE_F = /irina|milena|katja|elena|alena|anna|tatyana|zira|hoda|samantha|female|милена|ирина|алёна|алена|анна|татьяна|катя|елена|яна|ялда/i;
+const VOICE_M = /pavel|dmitr|yuri|maxim|david|mark|daniel|male|павел|дмитрий|юрий|максим|артём|артем/i;
+
+const pickLocalVoice = (lang, gender) => {
+  if (!localVoiceOk()) return null;
+  const all = window.speechSynthesis.getVoices() || [];
+  if (!all.length) return null;
+  const norm = (v) => String(v.lang || '').toLowerCase().replace('_', '-');
+  // Узбекского голоса в системах почти никогда нет. Турецкая фонетика к
+  // узбекской латинице ближе всего — читает заметно вернее английской.
+  const order = lang === 'uz' ? ['uz', 'tr', 'az', 'en'] : lang === 'en' ? ['en'] : ['ru'];
+  let pool = [];
+  for (let i = 0; i < order.length && !pool.length; i += 1) {
+    pool = all.filter((v) => norm(v).startsWith(order[i]));
+  }
+  if (!pool.length) pool = all;
+  const want = gender === 'm' ? VOICE_M : VOICE_F;
+  const foreign = gender === 'm' ? VOICE_F : VOICE_M;
+  const named = pool.find((v) => want.test(v.name || ''));
+  if (named) return named;
+  // имя ничего не подсказало — берём любой, кроме заведомо «чужого» голоса
+  return pool.find((v) => !foreign.test(v.name || '')) || pool[0];
+};
+
+// ССЫЛКА НА ТЕКУЩУЮ ФРАЗУ. Держим её ЖИВОЙ намеренно.
+// Давняя ошибка Chrome: если объект SpeechSynthesisUtterance попадает под
+// сборщик мусора раньше, чем договорит, речь обрывается или не начинается
+// вовсе — молча, без события error. Поймано ровно так: один и тот же код то
+// звучал, то нет, и начинал работать стабильно, как только на объект держали
+// ссылку из отладчика. Переменная модульная, а не локальная в функции, именно
+// поэтому: локальная умирает вместе с вызовом.
+let _utter = null;
+let _keepAlive = null;
+
+// «ПИНАЛКА» ДВИЖКА РЕЧИ. Chrome останавливает синтез сам, молча и без события
+// error: speak() принят, onstart приходит, а звук глохнет через доли секунды.
+// Поймано сравнением двух сборок: одна и та же фраза звучала целиком ровно
+// тогда, когда рядом крутился таймер, читавший состояние движка, и молчала без
+// него. Поэтому таймер теперь штатный: пока идёт речь, каждые 250 мс дёргаем
+// resume(). На неприостановленном движке resume() безвреден.
+// Таймер обязан останавливаться сам — иначе он переживёт урок.
+function keepSpeechAlive(synth) {
+  if (_keepAlive) clearInterval(_keepAlive);
+  _keepAlive = setInterval(() => {
+    if (!synth.speaking && !synth.pending) { clearInterval(_keepAlive); _keepAlive = null; return; }
+    try { synth.resume(); } catch (e) { /* no-op */ }
+  }, 250);
+}
+function stopSpeechKeepAlive() {
+  if (_keepAlive) { clearInterval(_keepAlive); _keepAlive = null; }
+}
+
+// Возвращает true, если синтез принял фразу. onDone зовётся по окончании.
+const speakLocal = (text, gender, lang, onDone) => {
+  if (!localVoiceOk()) return false;
+  try {
+    const synth = window.speechSynthesis;
+    // Отменяем, ТОЛЬКО если очередь занята. Безусловный cancel() на пустой
+    // очереди в Chrome иногда гасит фразу, поставленную следом.
+    if (synth.speaking || synth.pending) synth.cancel();
+    // РАЗБУДИТЬ СИНТЕЗ. Chrome умеет оставлять движок в подвешенном состоянии
+    // после загрузки страницы: speak() принимается, событий не приходит, звука
+    // нет. Поймано на первой реплике урока — она молчала, а та же самая фраза
+    // по кнопке «послушать ещё раз» звучала, потому что перед ней шёл cancel().
+    // resume() на неприостановленном движке безвреден.
+    try { synth.resume(); } catch (e) { /* no-op */ }
+    const u = new window.SpeechSynthesisUtterance(text);
+    const v = pickLocalVoice(lang, gender);
+    if (v) u.voice = v;
+    u.lang = v ? v.lang : (lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-US' : 'ru-RU');
+    // Достался голос нужного пола — правим высоту чуть-чуть, только под возраст
+    // героев. Достался один на двоих — разводим их тембром сильнее.
+    // Питч правим ЧУТЬ-ЧУТЬ и только под возраст героя. Прежние 0.75 и 1.25
+    // ставились, чтобы развести двух персонажей одним системным голосом; герой
+    // теперь один, разводить некого, а сильный сдвиг слышен как дефект записи.
+    const own = !!v && (gender === 'm' ? VOICE_M : VOICE_F).test(v.name || '');
+    u.pitch = own ? (gender === 'm' ? 1 : 1.08) : (gender === 'm' ? 0.9 : 1.12);
+    // Медленнее обычного: ребёнок слушает объяснение, а не подкаст.
+    u.rate = 0.94;
+    u.onend = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
+    u.onerror = () => { stopSpeechKeepAlive(); _utter = null; onDone(); };
+    _utter = u;              // см. комментарий выше — без этого речь пропадает
+    synth.speak(u);
+    keepSpeechAlive(synth);
+    return true;
+  } catch (e) { return false; }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5. ОЗВУЧКА — useAudio
-// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звук
-// выключен — ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
+// 5. ОЗВУЧКА — useAudioEngine
+// Один <audio> на урок. speak() всегда резолвится: если TTS упал или звука нет —
+// ждём estimateMs и идём дальше. Урок никогда не встаёт из-за звука.
+//
+// ТУМБЛЕРА ЗВУКА НЕТ — решение модуля: урок audio-led, ребёнок не должен иметь
+// возможности его выключить. Взамен работает флаг failed: если голоса фактически
+// нет, экран обязан показать текст.
 // ─────────────────────────────────────────────────────────────────────────────
 const AudioCtx = createContext(null);
 const useAudio = () => useContext(AudioCtx);
 const AudioProvider = AudioCtx.Provider;
 
+// 0,06 с тишины, 8 кГц, моно, 16 бит. Нужна ровно для разблокировки звука.
+// Пустой data-чанк здесь не годится: часть браузеров считает такой файл битым и
+// play() падает — тогда разблокировка молча не срабатывает.
+const SILENT_WAV = 'data:audio/wav;base64,UklGRuQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
 
-// ─── ПЕРЕХОДНИК НА ОЗВУЧКУ ПЛАТФОРМЫ ───────────────────────────────────────
-// Своего движка у урока больше нет (контракт @lesson/runtime). Но урок внутри
-// построен на обещаниях: реплика — это speak(), который ОБЯЗАН когда-нибудь
-// закрыться, иначе «Дальше» не отопрётся никогда. Платформа такого сигнала не
-// даёт: только pushOneOff(text) и флаг isPlaying. Конец реплики выводим сами:
-//   · isPlaying поднялся и снова упал — реплика отговорила, это норма;
-//   · isPlaying не поднялся за 2,5 с — голоса нет: поднимаем failed (экран
-//     обязан показать текст) и держим паузу по длине реплики;
-//   · что бы ни случилось — закрываем на est + 8000. Урок не имеет права
-//     зависнуть на сером «Дальше».
-//
-// ⚠ Платформа НЕ умеет обрывать реплику: stop() закрывает наше ожидание, но
-// начатую фразу раннер договорит. На смене экрана она может налезть на
-// следующую — у своего движка обрыв был, здесь его нет.
-const PUSTAYA_OCHERED = [];
+function useAudioEngine(ttsApiBase, lang) {
+  // ТУМБЛЕР ЗВУКА (заказчик, 2026-08-20). Раньше его не было намеренно: урок
+  // ведётся голосом, и выключать голос значило ломать урок. Теперь кнопка есть,
+  // но выключение НЕ оставляет ребёнка ни с чем — при выключенном звуке реплики
+  // печатаются текстом (см. failed/muted в PersonaBubble).
+  const [muted, setMuted] = useState(false);
+  const on = !muted;
+  const [playing, setPlaying] = useState(false);
+  // failed=true, когда голоса фактически НЕТ: не задан ttsApiBase, сервер не
+  // ответил или браузер заблокировал автозапуск. Экран, который прячет текст
+  // ради озвучки, обязан по этому флагу текст показать.
+  // failed = «голоса фактически нет», по этому флагу экран показывает текст.
+  // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
+  const [failed, setFailed] = useState(true);   // до первого касания голоса нет
+  // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
+  // до него реплика показывается ТЕКСТОМ, а после — произносится.
+  const [gestured, setGestured] = useState(false);
+  const elRef = useRef(null);
+  const onRef = useRef(true);
+  const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
+  const timers = useRef([]);
+  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
 
-// ─── ОЗВУЧКА ВРЕМЕННО ВЫКЛЮЧЕНА (заказчик, 23.09.2026) ─────────────────────
-// Сначала правим дизайн, озвучку и диалоги — потом. Пока флаг true: раннер
-// платформы не получает ни одной реплики, текст реплик виден на экране
-// (failed = true), кнопка паузы скрыта, «Дальше» не ждёт голоса.
-// ВЕРНУТЬ ОЗВУЧКУ: поставить false во всех 25 файлах урока.
-const OZVUCHKA_VYKL = false;
-const pauzaBezGolosa = (text) => Math.max(600, Math.min(3000, String(text || '').length * 35));
+  useEffect(() => { if (!gestured) setFailed(true); }, [ttsApiBase, gestured]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-function useAudioEngine(lang) {
-  const p = usePlatformAudio(PUSTAYA_OCHERED);
-  const pRef = useRef(p);
-  pRef.current = p;
-  // speak мемоизирован пустыми зависимостями — язык берём через ref, иначе
-  // маркер застрянет на языке первого рендера.
-  const langRef = useRef(lang);
-  langRef.current = lang;
-
-  const zvuki = usePlatformSfx();
-  PLATF_SFX.verno = zvuki && zvuki.playCorrect;
-  PLATF_SFX.neverno = zvuki && zvuki.playWrong;
-
-  const [failed, setFailed] = useState(false);
-  const [replayNonce, setReplayNonce] = useState(0);
-  // Повтор по подсказке считается отдельно: он повторяет одну реплику, а не
-  // пересказывает экран целиком (см. _fix/p4-podskazka.cjs).
-  const [nudgeNonce, setNudgeNonce] = useState(0);
-  const [pauseCount, setPauseCount] = useState(0);
-  const zhdut = useRef([]);
-  const tajm = useRef([]);
-  // ⚠ Защёлка «озвучки нет» встаёт ОДИН раз и больше не падает: одна ложная
-  // тревога — и урок до конца читается текстом вместо голоса. Поэтому failed
-  // поднимаем, только пока голоса не было НИ РАЗУ.
-  const bylZvuk = useRef(false);
-  useEffect(() => () => { tajm.current.forEach(clearTimeout); }, []);
-
-  const TIHO_MS = 6000;     // столько ждём старта дорожки, прежде чем счесть её пропавшей
-  const PROMAHOV = 2;       // и только два промаха подряд значат «озвучки нет»
-
-  // ── ОЧЕРЕДЬ РЕПЛИК ───────────────────────────────────────────────────────
-  // Раннер платформы не умеет обрывать начатую фразу, а pushOneOff поверх
-  // звучащей обрезает её на полуслове (жалоба п.7: «персонаж не договорил, а
-  // урок уехал дальше»). Поэтому очередь держим сами: следующая реплика уходит
-  // в раннер только после того, как предыдущая отговорила.
-  const ochered = useRef(Promise.resolve());
-  // Поколение растёт на stop()/abort(). Реплики, вставшие в очередь ДО обрыва,
-  // просыпаются с чужим поколением и молча выходят — иначе после ответа
-  // ребёнка урок дочитал бы отменённые варианты поверх разбора.
-  const pokolenie = useRef(0);
-  // Счётчик «сейчас говорим». Считаем ВСЮ реплику — от постановки в очередь до
-  // конца звука, а не только время isPlaying: пока раннер грузит дорожку,
-  // isPlaying ещё false, и по нему экран разблокировался бы раньше времени.
-  const zanyatoRef = useRef(0);
-  const [zanyato, setZanyato] = useState(0);
-  const schet = useCallback((d) => {
-    zanyatoRef.current = Math.max(0, zanyatoRef.current + d);
-    setZanyato(zanyatoRef.current);
+  // Список системных голосов приезжает асинхронно: первый getVoices() часто
+  // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
+  useEffect(() => {
+    if (!localVoiceOk()) return undefined;
+    const synth = window.speechSynthesis;
+    const warm = () => { try { synth.getVoices(); } catch (e) { /* no-op */ } };
+    warm();
+    if (synth.addEventListener) {
+      synth.addEventListener('voiceschanged', warm);
+      return () => synth.removeEventListener('voiceschanged', warm);
+    }
+    return undefined;
   }, []);
-  const promahi = useRef(0);
 
-  // fon = фоновая реплика: звучит в общей очереди, но замок содержимого не
-  // поднимает. Так читаются варианты ответа: объяснение уже закончилось,
-  // кнопки живые, и первое нажатие чтение обрывает.
-  const speak = useCallback((text, gender, onStart, fon) => {
+  const el = useCallback(() => {
+    if (typeof window === 'undefined') return null;
+    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; elRef.current = a; }
+    return elRef.current;
+  }, []);
+
+  // ─── РАЗБЛОКИРОВКА ЗВУКА ──────────────────────────────────────────────────
+  // Браузер не даёт проиграть звук до первого жеста: Chrome — когда у домена
+  // низкий Media Engagement Index, iOS Safari — ВСЕГДА. А урок начинает говорить
+  // сам, на экране INTRO. Лечится одним касанием: ВНУТРИ обработчика жеста
+  // проигрываем короткую тишину на ТОМ ЖЕ <audio>, которым потом говорит урок.
+  // Разрешение браузер выдаёт элементу, а не документу, — поэтому играть тишину
+  // на новом Audio() бесполезно, и поэтому же elRef переиспользуется на весь урок.
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
+  // Чем продолжить после «стоп»: функция, переигрывающая текущую фразу.
+  const resumeRef = useRef(null);
+  // ЧЕМ ОЗВУЧИТЬ ПОСЛЕ ВКЛЮЧЕНИЯ ЗВУКА. Держим фразу, которая идёт прямо
+  // сейчас: при выключении звука урок продолжается молча (иначе ребёнок
+  // застрянет — «Дальше» ждёт конца реплики), а при включении её надо
+  // подхватить, а не оставить тишину до следующего экрана.
+  const unmuteRef = useRef(null);
+  // ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ (решение заказчика). Браузер не отдаёт речь до
+  // первого жеста, поэтому реплику нельзя просто «проиграть молча и забыть» —
+  // так первая фраза урока не звучала НИКОГДА, её только показывали текстом.
+  // Здесь лежит обещание произнести её, как только касание случится.
+  const gestureWait = useRef(null);
+  // «Повторить» — переиграть реплику, которая сейчас на экране. Движок не знает
+  // её текста, поэтому просто поднимает счётчик, а переозвучивает тот, кто
+  // репликой владеет (PersonaBubble). Урок при этом НЕ едет вперёд.
+  const [replayNonce, setReplayNonce] = useState(0);
+  const replay = useCallback(() => setReplayNonce((n) => n + 1), []);
+  const toggleMute = useCallback(() => {
+    setMuted((m) => {
+      const next = !m;
+      setSoundOff(next);
+      if (next) {
+        // ВЫКЛЮЧИЛИ. Глушим немедленно — кнопка обязана срабатывать сразу, а
+        // не в конце фразы. Ход урока при этом НЕ останавливается: реплика
+        // «проживается» молча и экран идёт дальше, иначе выключенный звук
+        // запирал бы ребёнка на странице.
+        try { if (localVoiceOk()) { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } } catch (e) { /* no-op */ }
+        try { if (elRef.current) elRef.current.pause(); } catch (e) { /* no-op */ }
+      } else {
+        // ВКЛЮЧИЛИ. Подхватываем фразу, которая идёт прямо сейчас, — иначе
+        // после включения звук возвращался только со следующего экрана, и
+        // ребёнок оставался в тишине. Это и был баг «включил, а голоса нет».
+        // Дорожка сервиса просто продолжается с того места, где её приглушили.
+        // Проверяем readyState, а не наличие src: пустой src браузер разрешает
+        // в адрес самой страницы, и play() на нём падает NotSupportedError.
+        const a = elRef.current;
+        if (a && a.readyState > 0 && a.paused && !a.ended) {
+          try { const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* no-op */ }
+        }
+        const fn = unmuteRef.current;
+        if (fn) { try { fn(); } catch (e) { /* no-op */ } }
+      }
+      return next;
+    });
+  }, []);
+  const toggle = useCallback(() => {
+    const next = !pausedRef.current;
+    pausedRef.current = next;
+    setPaused(next);
+    const a = elRef.current;
+    try {
+      if (next) { if (a) a.pause(); setPlaying(false); }
+      else if (a && a.readyState > 0 && !a.ended) {
+        const p = a.play();
+        if (p && p.then) p.then(() => setPlaying(true)).catch(() => {});
+        else setPlaying(true);
+      }
+    } catch (e) { /* no-op */ }
+    if (localVoiceOk()) {
+      try {
+        if (next) {
+          // СТОП. Обрываем речь целиком, а не ставим на паузу: пауза в Chrome
+          // не гарантирована. Фразу запомнили — при продолжении произнесём
+          // заново (см. runLocal).
+          stopSpeechKeepAlive();
+          window.speechSynthesis.cancel();
+        } else if (resumeRef.current) {
+          const fn = resumeRef.current;
+          resumeRef.current = null;
+          fn();
+        }
+      } catch (e) { /* no-op */ }
+    }
+  }, []);
+
+  const unlocked = useRef(false);
+  const unlock = useCallback(() => {
+    if (unlocked.current) return;
+    unlocked.current = true;
+    resumeSfx();
+    const a = el();
+    // Если дорожка уже занята репликой — не трогаем: подмена src оборвала бы
+    // Симку на полуслове. Сам факт жеста браузеру уже зачтён.
+    if (!a || (a.src && !a.paused)) return;
+    try {
+      a.src = SILENT_WAV;
+      const p = a.play();
+      // Не вышло — снимаем флаг, чтобы следующее касание попробовало снова.
+      if (p && p.catch) p.catch(() => { unlocked.current = false; });
+    } catch (e) { unlocked.current = false; }
+  }, [el]);
+
+  // ПЕРВОЕ КАСАНИЕ ГДЕ УГОДНО разблокирует звук и поднимает флаг: отдельного
+  // входного экрана с кнопкой «включить звук» больше нет (заказчик снял его как
+  // лишний). Пока касания не было, реплика показывается ТЕКСТОМ — ребёнок не
+  // остаётся ни с чем; после касания она произносится.
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const h = () => {
+      setGestured(true);
+      unlock();
+      // Реплика, ждавшая касания, начинает звучать прямо сейчас.
+      const fn = gestureWait.current;
+      if (fn) { try { fn(); } catch (e) { /* no-op */ } }
+    };
+    const opt = { once: true, capture: true };
+    window.addEventListener('pointerdown', h, opt);
+    window.addEventListener('keydown', h, opt);
+    return () => {
+      window.removeEventListener('pointerdown', h, { capture: true });
+      window.removeEventListener('keydown', h, { capture: true });
+    };
+  }, [unlock]);
+
+  const flush = useCallback(() => {
+    const list = resolvers.current;
+    resolvers.current = [];
+    list.forEach((fn) => { try { fn(); } catch (e) { /* no-op */ } });
+  }, []);
+
+  const stop = useCallback(() => {
+    const a = elRef.current;
+    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
+    // резервный голос обрывается вместе с основным, иначе он договаривает
+    // реплику уже на следующем экране
+    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
+    setPlaying(false);
+    flush();
+  }, [flush]);
+
+  // ЖЁСТКИЙ ОБРЫВ для перезапуска экрана. Отличие от stop(): ждущие speak() не
+  // резольвятся, а выбрасываются. stop() их закрывает, и урок думает, что
+  // реплика договорена, — экран уехал бы вперёд вместо перезапуска.
+  const abort = useCallback(() => {
+    const a = elRef.current;
+    if (a) { try { a.onended = null; a.onerror = null; a.pause(); } catch (e) { /* no-op */ } }
+    if (localVoiceOk()) { try { stopSpeechKeepAlive(); window.speechSynthesis.cancel(); } catch (e) { /* no-op */ } }
+    timers.current.forEach(clearTimeout); timers.current = [];
+    resolvers.current = [];
+    pausedRef.current = false; setPaused(false); setPlaying(false);
+  }, []);
+
+  // gestured и muted держим в ref: speak() пересоздавать из-за них нельзя, а
+  // читать из замыкания — значит читать устаревшее значение. Именно поэтому
+  // кнопка «без звука» не работала: speak() создавался один раз и навсегда
+  // запоминал on = true, поэтому продолжал говорить при каждом нажатии.
+  const gesturedRef = useRef(false);
+  gesturedRef.current = gestured;
+  const mutedRef = useRef(false);
+  mutedRef.current = muted;
+
+  const speak = useCallback((text, gender) => {
     const clean = sanitizeForTts(text);
     if (!clean) return Promise.resolve();
-    if (OZVUCHKA_VYKL) {
-      if (onStart) { try { onStart(); } catch (e) { /* no-op */ } }
-      return sleep(pauzaBezGolosa(clean));
-    }
     const est = estimateMs(clean);
-    const moyo = pokolenie.current;
-    if (!fon) schet(1);
-    // СТРАХОВКА СЧЁТЧИКА. Потолок реплики лежит в общем списке таймеров, а
-    // abort() этот список чистит, не закрывая ждущих: очередь остаётся с
-    // незакрытым обещанием, busy не опускается, и экран заперт навсегда.
-    // Этот таймер живёт отдельно от списка и опускает счётчик при любом исходе.
-    let opuschen = false;
-    const opustit = () => { if (!opuschen) { opuschen = true; if (!fon) schet(-1); } };
-    const strahovka = setTimeout(opustit, est + 25000);
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        // НА ПАУЗЕ РЕПЛИКА НЕ ЗАКРЫВАЕТСЯ. Иначе урок уедет вперёд сам: реплику
+        // закрывает не только onended, но и страховочные таймеры, а они тикают
+        // и на паузе. Откладываем до снятия.
+        if (pausedRef.current) { timers.current.push(setTimeout(finish, 300)); return; }
+        done = true;
+        unmuteRef.current = null;
+        resolvers.current = resolvers.current.filter((f) => f !== finish);
+        setPlaying(false);
+        resolve();
+      };
+      resolvers.current.push(finish);
+      const waitThen = (ms) => { timers.current.push(setTimeout(finish, ms)); };
 
-    const shag = () => {
-      // Реплику отменили, пока она стояла в очереди, — не произносим.
-      if (pokolenie.current !== moyo) return Promise.resolve();
-      return new Promise((resolve) => {
-        let gotov = false, zvuchal = false, opros = null, pusk = null;
-        const finish = () => {
-          if (gotov) return;
-          gotov = true;
-          if (opros) { clearInterval(opros); opros = null; }
-          if (pusk) { clearInterval(pusk); pusk = null; }
-          zhdut.current = zhdut.current.filter((f) => f !== finish);
-          resolve();
-        };
-        zhdut.current.push(finish);
+      let localSpoke = false;
+      let localStarted = false;      // одна реплика — один запуск резерва
 
-        // Фразу отдаём раннеру ТОЛЬКО в тишине. Если он ещё договаривает
-        // предыдущую (например ту, которую оборвал stop()), ждём — но не
-        // дольше 2,5 с, чтобы разбор ответа не отставал от нажатия.
-        const nachalo = Date.now();
-        const otdat = () => {
-          // Экран узнаёт о начале реплики отсюда, а не по вызову speak():
-          // между ними стоит очередь, и подсветка иначе уезжает вперёд голоса.
-          if (onStart) { try { onStart(); } catch (e) { /* no-op */ } }
-          // Маркер языка обязателен: без него ElevenLabs v3 читает базовый язык
-          // неверно. Ставим здесь, а не в контенте, — тексты остаются чистыми.
-          // Второй аргумент — голос: kid-f Симке, kid-m Нолику (заказчик,
-          // 22.09.2026). Раннер, который его не читает, просто его не заметит.
-          try { pRef.current.pushOneOff(markLang(clean, langRef.current), GOLOS[gender === 'm' ? 'm' : 'f']); } catch (e) { /* no-op */ }
-          opros = setInterval(() => {
-            if (gotov) return;
-            if (pRef.current && pRef.current.isPlaying) {
-              zvuchal = true;
-              promahi.current = 0;
-              // Звук пошёл — значит озвучка жива. Снимаем защёлку «голоса нет»:
-              // без этого одна медленная дорожка в начале урока оставляла
-              // реплики напечатанными до самого конца (жалоба п.1).
-              if (!bylZvuk.current) { bylZvuk.current = true; setFailed(false); }
-              return;
-            }
-            if (zvuchal) { finish(); return; }
-            if (Date.now() - nachalo > TIHO_MS) {
-              promahi.current += 1;
-              if (!bylZvuk.current && promahi.current >= PROMAHOV) setFailed(true);
-              zvuchal = true;   // больше не ждём старта, досиживаем по длине текста
-              tajm.current.push(setTimeout(finish, Math.max(0, est - (Date.now() - nachalo))));
-            }
-          }, 120);
-        };
-        if (pRef.current && pRef.current.isPlaying) {
-          pusk = setInterval(() => {
-            if (gotov) return;
-            if (!(pRef.current && pRef.current.isPlaying) || Date.now() - nachalo > 2500) {
-              clearInterval(pusk); pusk = null;
-              otdat();
-            }
-          }, 100);
-        } else {
-          otdat();
+      // ПАУЗА ДЛЯ БРАУЗЕРНОГО ГОЛОСА.
+      // Штатный speechSynthesis.pause() в Chrome ненадёжен: он то не
+      // срабатывает, то оставляет движок в состоянии, из которого речь больше
+      // не идёт. Поэтому «стоп» = отменить фразу, а «продолжить» = произнести
+      // её заново с начала. Для ребёнка это ровно то, чего он ждёт: нажал
+      // стоп — стало тихо, нажал продолжить — снова слышно.
+      //
+      // ОБРЫВ КНОПКОЙ — НЕ КОНЕЦ РЕПЛИКИ. Раньше здесь была дыра, из-за которой
+      // «стоп» и «без звука» оба выглядели сломанными:
+      //   · cancel() гасил речь, браузер присылал end,
+      //   · end закрывал реплику как СКАЗАННУЮ,
+      //   · урок ехал дальше, а «продолжить» и «включить звук» возвращали тишину
+      //     до следующего экрана.
+      // Теперь конец речи разбирается по причине. Оборвал ребёнок — реплика
+      // остаётся незакрытой, а способ её вернуть кладётся в resumeRef (стоп) или
+      // unmuteRef (звук). Договорил голос — реплика закрывается как обычно.
+      let stopGuard = null;
+      const runLocal = () => {
+        if (done || localSpoke) return;
+        if (pausedRef.current) { resumeRef.current = runLocal; return; }
+        resumeRef.current = null;
+        if (stopGuard) { clearTimeout(stopGuard); stopGuard = null; }
+        speakLocal(clean, gender, lang, onLocalEnd);
+      };
+      const onLocalEnd = () => {
+        if (done) return;
+        if (mutedRef.current || pausedRef.current) {
+          setPlaying(false);
+          const again = () => { localSpoke = false; setFailed(false); runLocal(); };
+          if (mutedRef.current) {
+            unmuteRef.current = () => { unmuteRef.current = null; again(); };
+            // Со включённым тумблером урок не запирается: если звук так и не
+            // вернули, реплика «проживается» и экран идёт дальше.
+            stopGuard = setTimeout(finish, est);
+            timers.current.push(stopGuard);
+          }
+          // На паузе страховки НЕТ намеренно: пауза обязана держать урок на
+          // месте, пока ребёнок сам не нажмёт «продолжить».
+          if (pausedRef.current) resumeRef.current = () => { resumeRef.current = null; again(); };
+          return;
         }
-        tajm.current.push(setTimeout(finish, est + 10000));
-      });
+        localSpoke = true; setPlaying(false); finish();
+      };
+
+      const tryLocal = () => {
+        if (done) return false;
+        // Резерв уже ведёт эту реплику — это успех, а не отказ.
+        if (localStarted) return true;
+        if (!localVoiceOk()) return false;
+        localStarted = true;
+        runLocal();
+        const ok = true;
+        if (!ok) return false;
+        setPlaying(true);
+        setFailed(false);
+        // Синтез умеет принять фразу и промолчать. Проверяем по факту речи, а
+        // не по возврату speak() — иначе экран замрёт без звука и без текста.
+        timers.current.push(setTimeout(() => {
+          if (done || localSpoke) return;
+          const s = window.speechSynthesis;
+          if (!s.speaking && !s.pending) { setFailed(true); waitThen(est); }
+        }, 900));
+        return true;
+      };
+
+      // АДРЕСА СЕРВИСА НЕТ — ГОВОРИМ ГОЛОСОМ БРАУЗЕРА, а не молчим.
+      // Раньше здесь стоял мгновенный отказ, и урок без ttsApiBase шёл немым:
+      // ребёнку 8 лет приходилось читать все реплики самому, чего этот курс
+      // как раз избегает. Браузерный синтез — не идеал по тембру, но у нас
+      // герой и есть робот, так что машинный голос попадает в образ.
+      // Побочно это закрывает требование мастер-ТЗ (раздел 12) о полной
+      // автономности: озвученный урок перестаёт зависеть от внешнего сервиса.
+      // Если сервис задан, приоритет по-прежнему у него — он звучит лучше.
+      // Звук выключен тумблером — молчим, но реплику всё равно «проживаем»,
+      // чтобы урок шёл дальше. Текст при этом виден, а саму фразу запоминаем:
+      // если ребёнок включит звук посреди неё, мы её тут же озвучим.
+      if (mutedRef.current) {
+        setFailed(true);
+        unmuteRef.current = () => {
+          if (done) return;
+          unmuteRef.current = null;
+          setFailed(false);
+          if (localVoiceOk()) {
+            speakLocal(clean, gender, lang, () => { setPlaying(false); finish(); });
+            setPlaying(true);
+          }
+        };
+        waitThen(est);
+        return;
+      }
+      // Вся настоящая выдача звука. Вынесена в функцию, чтобы её мог позвать
+      // и обычный путь, и отложенный запуск после первого касания.
+      const play = () => {
+        if (!ttsApiBase || !onRef.current) {
+          if (tryLocal()) return;
+          setFailed(true); waitThen(est); return;
+        }
+        const a = el();
+        if (!a) { setFailed(true); waitThen(est); return; }
+        // Сервис озвучки бывает нестабилен и отдаёт 500 на исправный запрос.
+        // Поэтому одна повторная попытка через 400 мс, и только потом сдаёмся.
+        let attempt = 0;
+        let pending = false;
+        const onFail = () => {
+          if (done || pending) return;
+          if (localStarted) return;
+          // Без резерва флаг поднимаем СРАЗУ: экран не должен несколько секунд
+          // стоять пустым, пока мы втихую пробуем ещё раз.
+          if (!localVoiceOk()) setFailed(true);
+          if (attempt < 2) {
+            pending = true;
+            timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
+            return;
+          }
+          if (tryLocal()) return;
+          setFailed(true);
+          waitThen(est);
+        };
+        const tryPlay = () => {
+          // НА ПАУЗЕ НОВАЯ РЕПЛИКА НЕ СТАРТУЕТ. Без этой проверки пауза, нажатая
+          // на стыке реплик, не срабатывает: дорожку останавливает toggle(), а
+          // через мгновение следующая реплика зовёт play() и снова её запускает.
+          if (pausedRef.current) { timers.current.push(setTimeout(tryPlay, 250)); return; }
+          attempt += 1;
+          try {
+            a.onended = null; a.onerror = null; a.pause();
+            // r= обходит кэш неудачного ответа
+            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f');
+            warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
+            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
+            a.onended = finish;
+            a.onerror = onFail;
+            const p = a.play();
+            if (p && p.then) {
+              p.then(() => {
+                setPlaying(true);
+                // play() может «разрешиться», а звука не быть — так ведёт себя
+                // переиспользуемый <audio>, когда сервер отдал не-аудио (500 с
+                // HTML-телом): ни reject, ни события error не приходит. Поэтому
+                // верим не обещанию, а прогрессу дорожки.
+                timers.current.push(setTimeout(() => {
+                  if (done) return;
+                  const silent = !a.duration || Number.isNaN(a.duration) || a.currentTime < 0.05;
+                  if (!silent) { setFailed(false); return; }
+                  try { a.pause(); } catch (e) { /* no-op */ }
+                  if (!tryLocal()) setFailed(true);
+                }, 900));
+                // страховка: если поток умер молча — не висим вечно.
+                // На паузе дорожка ТОЖЕ paused — без проверки страховка приняла
+                // бы паузу за мёртвый поток и закрыла реплику.
+                timers.current.push(setTimeout(() => {
+                  if (pausedRef.current) return;
+                  if (a.paused || !a.duration) finish();
+                }, est + 4000));
+              }).catch(onFail);          // сюда попадает и блокировка автозапуска
+            } else {
+              setPlaying(true);
+              waitThen(est + 4000);
+            }
+          } catch (e) { onFail(); }
+        };
+        tryPlay();
+      };
+      // КАСАНИЯ ЕЩЁ НЕ БЫЛО. Браузер речь не отдаст, поэтому реплику показываем
+      // текстом и ЗАПОМИНАЕМ. Первое же касание — по герою, по заданию, по
+      // любому месту экрана — произносит её с начала. Раньше здесь стояло
+      // простое ожидание, и самая первая фраза урока не звучала вообще:
+      // ребёнок молча смотрел на текст, а голос включался только со второй.
+      // Страховочный таймер остаётся: если касания так и нет, реплика
+      // «проживается» и урок идёт дальше, а не запирается.
+      if (!gesturedRef.current) {
+        setFailed(true);
+        const guard = setTimeout(finish, est);
+        timers.current.push(guard);
+        gestureWait.current = () => {
+          gestureWait.current = null;
+          if (done) return;
+          clearTimeout(guard);
+          setFailed(false);
+          play();
+        };
+        return;
+      }
+      play();
+    });
+  }, [ttsApiBase, lang, el]);
+
+  // ПРОГРЕВ РЕПЛИК. Сервис озвучки синтезирует фразу при первом запросе и
+  // кладёт в кэш: новая фраза отвечает за 2–6 с, уже синтезированная — за
+  // ~0,3 с (замер 24.09.2026). Заказчик слышал паузу между нажатием карточки и
+  // голосом ровно на тех карточках, чьи фразы ещё ни разу не звучали. Поэтому
+  // экран при открытии заранее просит сервис синтезировать свои реплики, и к
+  // нажатию ребёнка звук уже готов.
+  // Запрос HEAD: сервер синтезирует и кэширует фразу (проверено: после HEAD
+  // GET отвечает за 0,3 с), а тело со звуком не качается — телефон ребёнка не
+  // платит трафиком за фразы, которые так и не прозвучат. no-cors: ответ читать
+  // не нужно, а заголовков CORS у сервиса нет. Не больше двух запросов разом,
+  // чтобы не забить канал реплике, которая звучит сейчас. Новый экран
+  // вытесняет недосланный хвост прошлого — если те фразы всё же понадобятся,
+  // их закажет сам speak(). Без ttsApiBase говорит браузер, греть нечего.
+  // warmed объявлен выше, рядом с timers: его пополняет и сам speak().
+  const warmQ = useRef([]);
+  const warmBusy = useRef(0);
+  const warm = useCallback((texts) => {
+    if (!ttsApiBase || typeof fetch !== 'function') return;
+    warmQ.current.forEach((u) => warmed.current.delete(u));
+    warmQ.current = [];
+    (texts || []).forEach((t) => {
+      const clean = sanitizeForTts(t);
+      if (!clean) return;
+      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f');
+      if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
+    });
+    const pump = () => {
+      while (warmBusy.current < 2 && warmQ.current.length) {
+        const u = warmQ.current.shift();
+        warmBusy.current += 1;
+        const next = () => { warmBusy.current -= 1; pump(); };
+        const fail = () => { warmed.current.delete(u); next(); };
+        try { fetch(u, { method: 'HEAD', mode: 'no-cors' }).then(next, fail); } catch (e) { fail(); }
+      }
     };
+    pump();
+  }, [ttsApiBase, lang]);
 
-    const zakryt = () => { clearTimeout(strahovka); opustit(); };
-    const p = ochered.current.then(shag, shag).then(zakryt, zakryt);
-    ochered.current = p.catch(() => {});
-    return p;
-  }, []);
-
-  // stop — «реплика закончена, идём дальше»: ждущие закрываются.
-  const stop = useCallback(() => {
-    pokolenie.current += 1;          // очередь отменяем, звучащую фразу раннер договорит сам
-    const spisok = zhdut.current;
-    zhdut.current = [];
-    tajm.current.forEach(clearTimeout); tajm.current = [];
-    spisok.forEach((f) => { try { f(); } catch (e) { /* no-op */ } });
-  }, []);
-
-  // abort — «этого не было»: ждущие выбрасываются НЕ закрываясь, иначе урок
-  // сочтёт реплику договорённой и уедет вперёд вместо перезапуска экрана.
-  const abort = useCallback(() => {
-    pokolenie.current += 1;
-    // Ждущих ВЫБРАСЫВАЕМ не закрывая — иначе урок сочтёт реплику договорённой
-    // и уедет вперёд вместо перезапуска экрана. Но очередь при этом обязана
-    // рассосаться: за это отвечает страховка счётчика внутри speak().
-    zhdut.current = [];
-    tajm.current.forEach(clearTimeout); tajm.current = [];
-    ochered.current = Promise.resolve();
-  }, []);
-
-  const unlock = useCallback(() => { resumeSfx(); }, []);
-  const toggle = useCallback(() => {
-    try { pRef.current.toggleMute(); } catch (e) { /* no-op */ }
-    setPauseCount((n) => n + 1);
-  }, []);
-  // tiho = повтор пришёл от подсказки при бездействии, а не от ребёнка.
-  //
-  // РЕПЛИКА ПОВТОРЯЕТСЯ ОДИН РАЗ, А НЕ ДВА (заказчик, 22.09.2026: «персонаж
-  // повторяет одну и ту же фразу по нескольку раз»). Здесь было ДВА канала
-  // разом: replay() раннера переигрывал последнюю дорожку, а счётчик поднимал
-  // PersonaBubble, который произносил ту же строку ЗАНОВО через speak(). Замер
-  // на экране «Интернет»: два speak() с разницей 5 мс, и так на каждом круге.
-  // Оставлен счётчик: он всегда повторяет реплику ТЕКУЩЕГО экрана и идёт через
-  // очередь урока, поэтому наложиться сам на себя не может. replay() раннера
-  // переигрывает «последнюю дорожку», а это не обязательно нужная строка.
-  const replay = useCallback((tiho) => {
-    if (tiho) { setNudgeNonce((n) => n + 1); return; }
-    setReplayNonce((n) => n + 1);
-  }, []);
-
-  return {
-    speak, stop, abort, unlock, toggle, replay,
-    paused: !!p.muted, pauseCount, replayNonce, nudgeNonce,
-    on: true, playing: OZVUCHKA_VYKL ? false : !!p.isPlaying, failed: OZVUCHKA_VYKL || failed,
-    // busy — «реплика в работе»: от постановки в очередь до конца звука.
-    // Экраны запирают кнопки по нему, а не по playing (см. п.2 заказчика).
-    busy: !OZVUCHKA_VYKL && zanyato > 0,
-  };
+  useEffect(() => () => stop(), [stop]);
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
 }
 
-// Проговорить и дождаться — даже если звука нет (тогда просто пауза по длине).
-async function say(audio, text, gender) {
-  const est = estimateMs(text);
-  if (!audio) { await sleep(est); return; }
-  await Promise.race([audio.speak(text, gender), sleep(est + 5000)]);
+// Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
+// экрана под ключами say / why / done / hint / hints / lines на любой глубине.
+// Подписи (text, ask, eyebrow) только печатаются — их не греем.
+const SPOKEN_KEYS = { say: 1, why: 1, done: 1, hint: 1, hints: 1, lines: 1 };
+function spokenOf(node, lang, out, spoken) {
+  const acc = out || [];
+  if (!node || typeof node !== 'object' || React.isValidElement(node)) return acc;
+  if (Array.isArray(node)) { node.forEach((x) => spokenOf(x, lang, acc, spoken)); return acc; }
+  if (spoken && (node.uz !== undefined || node.ru !== undefined)) {
+    const s = node[lang] !== undefined ? node[lang] : node.ru;
+    if (typeof s === 'string') acc.push(s);
+    return acc;
+  }
+  Object.keys(node).forEach((k) => spokenOf(node[k], lang, acc, spoken || !!SPOKEN_KEYS[k]));
+  return acc;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1025,11 +1411,6 @@ function sfx(kind, enabled) {
   } catch (e) { /* no-op */ }
 }
 
-// СКЛЕЙКА 2: сюда переходник озвучки записывает звуки платформы «верно» и
-// «неверно». Урок их не играет: в курсе нет звука провала, а на верный ответ
-// звучит собственный мягкий тон Курса 0. Объект нужен, чтобы переходник работал.
-const PLATF_SFX = { verno: null, neverno: null };
-
 // ─────────────────────────────────────────────────────────────────────────────
 // 7. ЖУРНАЛ ОТВЕТОВ, ПАМЯТЬ ЭКРАНОВ И СОХРАНЁННЫЙ ПРОГРЕСС
 //
@@ -1061,7 +1442,7 @@ const StoreProvider = StoreCtx.Provider;
 // урок работает как раньше, просто без сохранения. Проверяем записью, а не
 // наличием объекта: в Safari в приватном режиме localStorage существует, но
 // setItem кидает QuotaExceededError.
-// СКЛЕЙКА 3: прогресс живёт в памяти до конца урока (бриф, «Контракт с
+// СКЛЕЙКА: прогресс живёт в памяти до конца урока (бриф, «Контракт с
 // платформой»): localStorage уроку не нужен. Без хранилища все операции
 // useProgress становятся пустыми — так же, как в приватном режиме браузера.
 const safeStorage = null;
@@ -2989,9 +3370,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     return Math.max(0, Math.min(total - 1, from || 0));
   });
   const [done, setDone] = useState(false);
-  // СКЛЕЙКА 4: переходник на @lesson/runtime принимает только язык (адрес
-  // своего сервера озвучки уроку больше не нужен).
-  const audio = useAudioEngine(lang);
+  const audio = useAudioEngine(ttsApiBase, lang);
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
