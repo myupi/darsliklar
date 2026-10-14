@@ -20,8 +20,9 @@
 ## Правила для файла урока
 
 - Один файл = один урок, `export default` корневой компонент.
-- Пропсы: `{ studentName, lang, ttsApiBase, onFinished }`; `onFinished(payload)` — ровно один раз. Дев-пропсы `startAt`, `onExit` платформа не передаёт.
-- Импорты: только `react`. Озвучка — движок канона: `GET {ttsApiBase}/api/tts?text=<маркер языка + реплика>&g=f`, без `ttsApiBase` — голос браузера, без него — текст.
+- Пропсы: `{ studentName, lang, ttsApiBase, voiceGender, onFinished }`; `onFinished(payload)` — ровно один раз. Дев-пропсы `startAt`, `onExit` платформа не передаёт.
+- Импорты: только `react`. Озвучка — движок канона: `GET {ttsApiBase}/api/tts?text=<маркер языка + реплика>&g=f&lesson_id=…&lesson_name=…` (id и название — из `META` урока), без `ttsApiBase` — голос браузера, без него — текст.
+- Правила текста озвучки (сервис ElevenLabs): маркер `[O'zbekcha tallaffuz]` / `[Русское произношение]` / `[English pronunciation]` ставит движок; имени ученика в репликах нет; символов `% / ² + = ×` в репликах нет — только слова; реплика — полные предложения, до ~25 с (60–80 слов).
 - Эталоны Кибербеза и «Алгоритмов» говорят через `@lesson/runtime` — его эмуляция в `src/runtime` остаётся для них.
 - API эмуляции описан в шапке `src/runtime/index.js` (`@lesson/runtime`) и `tools/vite-tts-service.mjs` (сервис озвучки по `ttsApiBase`). Если урок не работает в просмотрщике, чинится урок, а не эмуляция. В эмуляцию добавляется только то, что реально умеет платформа.
 

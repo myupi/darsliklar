@@ -30,9 +30,15 @@
 // заголовок «песочницы-редактора» без кода.
 //
 // КОНТРАКТ УРОКА
-//   props: { studentName, lang, ttsApiBase, onFinished }
-//   · ttsApiBase — база сервиса озвучки: GET {ttsApiBase}/api/tts?text=…&g=f
-//     отдаёт звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев)
+//   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
+//   · ttsApiBase — база сервиса озвучки:
+//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
+//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
+//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
+//     lesson_id и lesson_name берутся из META урока (название — на языке
+//     ученика); student_uuid LMS уроку не передаёт
+//   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
+//     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
 //     на витрине) платформа не передаёт
 //   · все тексты — объекты { uz, ru, en }, переводятся внутри компонентов

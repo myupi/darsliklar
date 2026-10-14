@@ -95,6 +95,16 @@ const swap = (from, to) => {
   if (text.indexOf(from) < 0) throw new Error('Не найдено для замены цвета: ' + from);
   text = text.split(from).join(to);
 };
+
+// ОЗВУЧКА ПО ПРАВИЛАМ СЕРВИСА (заказчик, 14.10.2026; TTS quality rules).
+// 1) Маркер узбекского языка — ровно «[O'zbekcha tallaffuz]», как в правилах
+//    сервиса и в эталоне 1-класса: по этой строке сервис выбирает язык.
+// 2) В каждый запрос — lesson_id и lesson_name (на языке ученика): сервер
+//    держит кэш озвучки и аналитику по урокам. student_uuid не шлём — LMS не
+//    передаёт его уроку. Данные урока берутся из META урока.
+swapTts();
+swapAutoplay();
+
 swap("  ui: '#1E88E5',", "  // КУРС HTML: интерфейс — #FF4F28 (заказчик, 12.10.2026), а не голубой.\n  ui: '#FF4F28',");
 swap("  uiSoft: '#E3F2FD',", "  uiSoft: '#FFE8E1',");
 swap("  uiDk: '#1565C0',", "  uiDk: '#B94127',");
@@ -150,3 +160,117 @@ swap(`.tour-back { position: absolute; inset: 0; display: grid; place-items: cen
 
 writeFileSync(root + 'canon/html/canon-v1.jsx', text);
 console.log('canon/html/canon-v1.jsx —', out.length, 'строк');
+
+function swapTts() {
+  swap(`  uz: "[O'zbekcha talaffuz] ",`, `  uz: "[O'zbekcha tallaffuz] ",   // КУРС HTML: так, как требует сервис озвучки`);
+  // АДРЕС ЗАПРОСА — КАК У ЭТАЛОНА МАТЕМАТИКИ (Dars01), который озвучивается в LMS.
+  // URLSearchParams кодировал пробелы знаком «+»: сервис, раскодирующий текст
+  // как эталон, получал «[Русское+произношение]+Привет!» — маркер не узнавался.
+  // Теперь пробел — %20, квадратные скобки маркера — как есть, затем g, затем
+  // lesson_id и lesson_name (META урока, название на языке ученика).
+  // Пол голоса: если LMS передала voiceGender, он главнее голоса реплики.
+  swap(`const buildTtsUrl = (base, text, gender) => {
+  if (!base) return '';
+  const p = new URLSearchParams({ text: String(text).slice(0, 1000), g: gender === 'm' ? 'm' : 'f' });
+  return base.replace(/\\/+$/, '') + '/api/tts?' + p.toString();
+};`, `// КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
+let LMS_VOICE = null;
+const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
+// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
+// маркера — как есть) + lesson_id и lesson_name из META урока.
+const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
+const buildTtsUrl = (base, text, gender, lang) => {
+  if (!base) return '';
+  const g = (LMS_VOICE || gender) === 'm' ? 'm' : 'f';
+  let url = base.replace(/\\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
+  const meta = typeof META !== 'undefined' && META ? META : null;
+  if (meta && meta.lessonId) {
+    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
+    const t = meta.lessonTitle || {};
+    const name = t[lang] || t.ru || '';
+    if (name) url += '&lesson_name=' + encodeURIComponent(name);
+  }
+  return url;
+};`);
+  swap(`buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f')`, `buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang)`);
+  swap(`buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f')`, `buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang)`);
+  // Аудиоэлемент — как у эталона: crossOrigin = 'anonymous'.
+  swap(`    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; elRef.current = a; }`,
+    `    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }`);
+  // ПРОВЕРКА «ТИШИНЫ» НЕ ГЛУШИТ МЕДЛЕННЫЙ СЕРВИС. Раньше через 0,9 с после
+  // старта звук, который сервис ещё не успел прислать, обрывался и заменялся
+  // голосом браузера. Эталон математики так не делает. Теперь замена — только
+  // при настоящей ошибке загрузки; от вечного ожидания страхует таймер ниже.
+  swap(`                  const silent = !a.duration || Number.isNaN(a.duration) || a.currentTime < 0.05;`,
+    `                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка`);
+}
+
+// КАК ЭТАЛОН МАТЕМАТИКИ (Dars01): звук пробуется СРАЗУ, без ожидания касания.
+// Урок открывают нажатием в LMS, iframe получает allow="autoplay", и браузер
+// обычно разрешает звук с первой фразы. Канон Курса 0 до первого касания звук
+// даже не пробовал — первые реплики шли текстом, и урок «молчал» на старте.
+// Теперь: тихая проба на общей дорожке; разрешил — говорим сразу и считаем,
+// что касание было; не разрешил — прежний путь (текст, касание, фраза заново).
+function swapAutoplay() {
+  swap(`      if (!gesturedRef.current) {
+        setFailed(true);
+        const guard = setTimeout(finish, est);
+        timers.current.push(guard);
+        gestureWait.current = () => {
+          gestureWait.current = null;
+          if (done) return;
+          clearTimeout(guard);
+          setFailed(false);
+          play();
+        };
+        return;
+      }
+      play();`, `      const waitGesture = () => {
+        setFailed(true);
+        const guard = setTimeout(finish, est);
+        timers.current.push(guard);
+        gestureWait.current = () => {
+          gestureWait.current = null;
+          if (done) return;
+          clearTimeout(guard);
+          setFailed(false);
+          play();
+        };
+      };
+      if (!gesturedRef.current) {
+        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
+        // Проба — на отдельном элементе: общую дорожку экран при открытии
+        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
+        // только отказ браузера (NotAllowedError), а не обрыв.
+        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
+        if (!a0) { waitGesture(); return; }
+        let settled = false;
+        const allowed = () => {
+          if (settled) return;
+          settled = true;
+          gesturedRef.current = true;
+          unlocked.current = true;
+          setGestured(true);
+          setFailed(false);
+          if (!done) play();
+        };
+        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
+        try {
+          a0.src = SILENT_WAV;
+          const pr = a0.play();
+          if (pr && pr.then) {
+            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
+            timers.current.push(setTimeout(blocked, 1500));
+          } else allowed();
+        } catch (e) { blocked(); }
+        return;
+      }
+      play();`);
+  // Голос не помечается «недоступным» заранее: с сервисом озвучки урок сначала
+  // пробует звук и только при отказе показывает реплику текстом. Иначе первая
+  // фраза печаталась в облаке, даже когда уже звучала.
+  swap(`  const [failed, setFailed] = useState(true);   // до первого касания голоса нет`,
+    `  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука`);
+  swap(`  useEffect(() => { if (!gestured) setFailed(true); }, [ttsApiBase, gestured]);`,
+    `  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);`);
+}

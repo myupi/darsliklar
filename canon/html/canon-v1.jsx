@@ -30,9 +30,15 @@
 // заголовок «песочницы-редактора» без кода.
 //
 // КОНТРАКТ УРОКА
-//   props: { studentName, lang, ttsApiBase, onFinished }
-//   · ttsApiBase — база сервиса озвучки: GET {ttsApiBase}/api/tts?text=…&g=f
-//     отдаёт звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев)
+//   props: { studentName, lang, ttsApiBase, voiceGender, onFinished }
+//   · ttsApiBase — база сервиса озвучки:
+//     GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=… отдаёт
+//     (кодирование — как у эталона математики: пробел %20, скобки маркера как есть)
+//     звук, HEAD по тому же адресу заранее синтезирует фразу (прогрев).
+//     lesson_id и lesson_name берутся из META урока (название — на языке
+//     ученика); student_uuid LMS уроку не передаёт
+//   · маркер языка в начале реплики: [O'zbekcha tallaffuz] /
+//     [Русское произношение] / [English pronunciation]
 //   · дев-пропсы startAt (открыть урок на экране N) и onExit (кнопка выхода
 //     на витрине) платформа не передаёт
 //   · все тексты — объекты { uz, ru, en }, переводятся внутри компонентов
@@ -743,7 +749,7 @@ const sanitizeForTts = (text) =>
 
 // Сервер выбирает язык по маркеру в начале строки.
 const LANG_MARK = {
-  uz: "[O'zbekcha talaffuz] ",
+  uz: "[O'zbekcha tallaffuz] ",   // КУРС HTML: так, как требует сервис озвучки
   ru: '[Русское произношение] ',
   en: '[English pronunciation] '
 };
@@ -753,10 +759,24 @@ const markLang = (text, lang) => {
   return (LANG_MARK[lang] || LANG_MARK.ru) + s;
 };
 
-const buildTtsUrl = (base, text, gender) => {
+// КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
+let LMS_VOICE = null;
+const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
+// КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
+// маркера — как есть) + lesson_id и lesson_name из META урока.
+const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
+const buildTtsUrl = (base, text, gender, lang) => {
   if (!base) return '';
-  const p = new URLSearchParams({ text: String(text).slice(0, 1000), g: gender === 'm' ? 'm' : 'f' });
-  return base.replace(/\/+$/, '') + '/api/tts?' + p.toString();
+  const g = (LMS_VOICE || gender) === 'm' ? 'm' : 'f';
+  let url = base.replace(/\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
+  const meta = typeof META !== 'undefined' && META ? META : null;
+  if (meta && meta.lessonId) {
+    url += '&lesson_id=' + encodeURIComponent(meta.lessonId);
+    const t = meta.lessonTitle || {};
+    const name = t[lang] || t.ru || '';
+    if (name) url += '&lesson_name=' + encodeURIComponent(name);
+  }
+  return url;
 };
 
 // ── РЕЗЕРВНЫЙ ГОЛОС БРАУЗЕРА ────────────────────────────────────────────────
@@ -893,7 +913,7 @@ function useAudioEngine(ttsApiBase, lang) {
   // ради озвучки, обязан по этому флагу текст показать.
   // failed = «голоса фактически нет», по этому флагу экран показывает текст.
   // Пустой ttsApiBase больше НЕ означает немой урок: есть резерв в браузере.
-  const [failed, setFailed] = useState(true);   // до первого касания голоса нет
+  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука
   // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
   // до него реплика показывается ТЕКСТОМ, а после — произносится.
   const [gestured, setGestured] = useState(false);
@@ -903,7 +923,7 @@ function useAudioEngine(ttsApiBase, lang) {
   const timers = useRef([]);
   const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
 
-  useEffect(() => { if (!gestured) setFailed(true); }, [ttsApiBase, gestured]);
+  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
   // Список системных голосов приезжает асинхронно: первый getVoices() часто
@@ -922,7 +942,7 @@ function useAudioEngine(ttsApiBase, lang) {
 
   const el = useCallback(() => {
     if (typeof window === 'undefined') return null;
-    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; elRef.current = a; }
+    if (!elRef.current) { const a = new Audio(); a.preload = 'auto'; a.crossOrigin = 'anonymous'; elRef.current = a; }
     return elRef.current;
   }, []);
 
@@ -1237,7 +1257,7 @@ function useAudioEngine(ttsApiBase, lang) {
           try {
             a.onended = null; a.onerror = null; a.pause();
             // r= обходит кэш неудачного ответа
-            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f');
+            const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
             warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
             a.src = url + (attempt > 1 ? '&r=' + attempt : '');
             a.onended = finish;
@@ -1252,7 +1272,7 @@ function useAudioEngine(ttsApiBase, lang) {
                 // верим не обещанию, а прогрессу дорожки.
                 timers.current.push(setTimeout(() => {
                   if (done) return;
-                  const silent = !a.duration || Number.isNaN(a.duration) || a.currentTime < 0.05;
+                  const silent = !!a.error || a.networkState === 3;   // КУРС HTML: только настоящая ошибка
                   if (!silent) { setFailed(false); return; }
                   try { a.pause(); } catch (e) { /* no-op */ }
                   if (!tryLocal()) setFailed(true);
@@ -1280,7 +1300,7 @@ function useAudioEngine(ttsApiBase, lang) {
       // ребёнок молча смотрел на текст, а голос включался только со второй.
       // Страховочный таймер остаётся: если касания так и нет, реплика
       // «проживается» и урок идёт дальше, а не запирается.
-      if (!gesturedRef.current) {
+      const waitGesture = () => {
         setFailed(true);
         const guard = setTimeout(finish, est);
         timers.current.push(guard);
@@ -1291,6 +1311,33 @@ function useAudioEngine(ttsApiBase, lang) {
           setFailed(false);
           play();
         };
+      };
+      if (!gesturedRef.current) {
+        // КУРС HTML: сначала тихая проба автозапуска — как в эталоне математики.
+        // Проба — на отдельном элементе: общую дорожку экран при открытии
+        // останавливает (stop), и пауза оборвала бы пробу. Запретом считается
+        // только отказ браузера (NotAllowedError), а не обрыв.
+        const a0 = ttsApiBase && onRef.current && typeof Audio !== 'undefined' ? new Audio() : null;
+        if (!a0) { waitGesture(); return; }
+        let settled = false;
+        const allowed = () => {
+          if (settled) return;
+          settled = true;
+          gesturedRef.current = true;
+          unlocked.current = true;
+          setGestured(true);
+          setFailed(false);
+          if (!done) play();
+        };
+        const blocked = () => { if (settled) return; settled = true; if (!done) waitGesture(); };
+        try {
+          a0.src = SILENT_WAV;
+          const pr = a0.play();
+          if (pr && pr.then) {
+            pr.then(allowed, (err) => (err && err.name === 'NotAllowedError' ? blocked() : allowed()));
+            timers.current.push(setTimeout(blocked, 1500));
+          } else allowed();
+        } catch (e) { blocked(); }
         return;
       }
       play();
@@ -1320,7 +1367,7 @@ function useAudioEngine(ttsApiBase, lang) {
     (texts || []).forEach((t) => {
       const clean = sanitizeForTts(t);
       if (!clean) return;
-      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f');
+      const u = buildTtsUrl(ttsApiBase, markLang(clean, lang), 'f', lang);
       if (u && !warmed.current.has(u)) { warmed.current.add(u); warmQ.current.push(u); }
     });
     const pump = () => {
