@@ -84,7 +84,7 @@ export default function Toolbar({ sel, prefs, set, canRun, openHref, onRestart, 
           <span className="course-chip" style={{ '--chip': course.color }}>{course.short}</span>
           <h1>
             {lesson.n != null ? <span className="tb-n">{pad2(lesson.n)}</span> : null}
-            {lesson.title}
+            {lesson.kind === 'practice' && lesson.lessonTitle ? `Практика · ${lesson.practiceTitle || lesson.lessonTitle}` : lesson.title}
           </h1>
           <span className={'pill is-' + lesson.status}>
             {lesson.status === 'ready' ? 'готов' : lesson.status === 'extra' ? 'вне плана' : 'не создан'}

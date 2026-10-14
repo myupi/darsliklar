@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronDown, Search, X } from 'lucide-react';
+import { ChevronDown, PencilRuler, Search, X } from 'lucide-react';
 import { pad2 } from '../shared/catalog.js';
 
 const STATUS_LABEL = { ready: 'готов', planned: 'в плане', extra: 'вне плана' };
 
 const match = (l, q) =>
-  !q || [l.title, l.slug, l.file, ...(l.topics || []), l.n != null ? pad2(l.n) : '']
+  !q || [l.title, l.lessonTitle, l.practiceTitle, l.slug, l.file, ...(l.topics || []), l.n != null ? pad2(l.n) : '']
     .some((s) => String(s || '').toLowerCase().includes(q));
 
 export default function Sidebar({ catalog, selectedKey, onPick }) {
@@ -67,14 +67,19 @@ export default function Sidebar({ catalog, selectedKey, onPick }) {
                     <li key={l.key}>
                       <button
                         type="button"
-                        className={'lesson-row is-' + l.status + (selectedKey === l.key ? ' is-active' : '')}
+                        className={'lesson-row is-' + l.status + (l.kind === 'practice' ? ' is-practice' : '') + (selectedKey === l.key ? ' is-active' : '')}
                         onClick={() => onPick(l.key)}
                         title={l.file ? `lessons/${l.file}.jsx` : `Ожидается: ${l.expected}`}
                       >
-                        <span className="lesson-n">{l.n != null ? pad2(l.n) : '··'}</span>
+                        {l.kind === 'practice' ? (
+                          <span className="lesson-n" aria-hidden="true"><PencilRuler size={13} /></span>
+                        ) : (
+                          <span className="lesson-n">{l.n != null ? pad2(l.n) : '··'}</span>
+                        )}
                         <span className="lesson-body">
                           <span className="lesson-title">{l.title}</span>
-                          {l.topics.length ? <span className="lesson-topics">{l.topics.join(' · ')}</span> : null}
+                          {l.kind !== 'practice' && l.topics.length ? <span className="lesson-topics">{l.topics.join(' · ')}</span> : null}
+                          {l.kind === 'practice' && l.practiceTitle ? <span className="lesson-topics">практика</span> : null}
                         </span>
                         <span className={'status-dot is-' + l.status} aria-label={STATUS_LABEL[l.status]} title={STATUS_LABEL[l.status]} />
                       </button>

@@ -2,14 +2,19 @@
 // Файл урока: lessons/html/<NN>-<slug>.jsx, где NN — номер урока (01, 02 …).
 // Урок находится по номеру: как только файл появится, он станет «готов» в каталоге.
 
+// Практика к уроку: lessons/<курс>/<NN>p-<slug>.jsx — в списке сразу после урока (practice: true).
+// Своё название практики — practiceTitle в строке урока; без него — «Практика».
+
 export default {
   title: 'HTML',
   subtitle: 'Основы разметки',
   short: 'HTML',
   color: '#E34F26',
   order: 1,
+  practice: true,   // после каждого урока — практика (<NN>p-<slug>.jsx)
   lessons: [
-    { n: 1, slug: 'struktura-dokumenta', title: 'Структура HTML-документа', topics: ['html', 'head', 'body', 'title'] },
+    { n: 1, slug: 'struktura-dokumenta', title: 'Структура HTML-документа', topics: ['html', 'head', 'body', 'title'],
+      practiceTitle: 'Операция: оживить базу Коди' },
     { n: 2, slug: 'zagolovki-i-tekst', title: 'Заголовки и текст', topics: ['h1–h6', 'p', 'b', 'i'] },
     { n: 3, slug: 'spiski', title: 'Списки', topics: ['ul', 'ol', 'li'] },
     { n: 4, slug: 'ssylki-i-atributy', title: 'Ссылки и атрибуты', topics: ['a', 'href'] },

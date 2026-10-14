@@ -2,12 +2,15 @@
 // Файл урока: lessons/css/<NN>-<slug>.jsx, где NN — номер урока (01, 02 …).
 // Урок находится по номеру: как только файл появится, он станет «готов» в каталоге.
 
+// Практика к уроку: lessons/<курс>/<NN>p-<slug>.jsx — в списке сразу после урока (practice: true).
+
 export default {
   title: 'CSS',
   subtitle: 'Оформление сайтов',
   short: 'CSS',
   color: '#1572B6',
   order: 2,
+  practice: true,   // после каждого урока — практика (<NN>p-<slug>.jsx)
   lessons: [
     { n: 1, slug: 'chto-takoe-css', title: 'Что такое CSS и как он меняет сайт', topics: ['подключение CSS', 'property: value', 'первый стиль'] },
     { n: 2, slug: 'selektory', title: 'Как выбрать элемент для стилизации', topics: ['селектор по тегу', '.class', '#id'] },

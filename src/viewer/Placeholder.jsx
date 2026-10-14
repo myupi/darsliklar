@@ -11,7 +11,7 @@ export function Placeholder({ sel }) {
     <div className="placeholder">
       <div className="ph-card">
         <div className="ph-num" style={{ '--chip': course.color }}>{pad2(lesson.n)}</div>
-        <h2>{lesson.title}</h2>
+        <h2>{lesson.kind === 'practice' ? `Практика к уроку «${lesson.lessonTitle || pad2(lesson.n)}»` : lesson.title}</h2>
         {lesson.topics.length ? (
           <div className="topics">
             {lesson.topics.map((t) => <code key={t} className="topic">{t}</code>)}
@@ -19,13 +19,17 @@ export function Placeholder({ sel }) {
         ) : null}
         <p className="ph-note">
           <FilePlus2 size={16} aria-hidden="true" />
-          Урок ещё не создан. Положите файл сюда — он появится в списке сам, перезапуск не нужен:
+          {lesson.kind === 'practice' ? 'Практика ещё не создана.' : 'Урок ещё не создан.'} Положите файл сюда — он появится в списке сам, перезапуск не нужен:
         </p>
         <div className="ph-path">
           <code>{lesson.expected}</code>
           <CopyButton text={lesson.expected} label="Скопировать путь" />
         </div>
-        <p className="ph-hint">Урок находится по номеру <b>{pad2(lesson.n)}-</b> в начале имени файла; остальную часть имени можно менять.</p>
+        <p className="ph-hint">
+          {lesson.kind === 'practice'
+            ? <>Практика находится по номеру урока с буквой p: <b>{pad2(lesson.n)}p-</b> в начале имени файла; остальную часть имени можно менять.</>
+            : <>Урок находится по номеру <b>{pad2(lesson.n)}-</b> в начале имени файла; остальную часть имени можно менять.</>}
+        </p>
       </div>
     </div>
   );
@@ -62,6 +66,7 @@ export function Welcome({ catalog, onPick, onMenu }) {
           <ul>
             <li><code>lessons/&lt;курс&gt;/_course.js</code> — план курса: темы, номера, цвет.</li>
             <li><code>lessons/&lt;курс&gt;/&lt;NN&gt;-&lt;slug&gt;.jsx</code> — файл урока. Номер NN связывает его с планом.</li>
+            <li><code>lessons/&lt;курс&gt;/&lt;NN&gt;p-&lt;slug&gt;.jsx</code> — практика к уроку NN, в списке стоит сразу после урока.</li>
             <li>Новый курс — новая папка в <code>lessons/</code> со своим <code>_course.js</code>.</li>
             <li><code>lessons/_reference/</code> — эталонные уроки для сравнения.</li>
           </ul>

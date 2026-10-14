@@ -343,3 +343,11 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
   .tb-actions .btn { width: 32px; padding: 0; justify-content: center; font-size: 0; gap: 0; }
   .ctl-label { display: none; }
 }
+
+/* Практика — строка под своим уроком: с отступом, иконкой вместо номера,
+   чуть мельче. */
+.lesson-row.is-practice { padding-left: 26px; }
+.lesson-row.is-practice .lesson-n { display: inline-grid; place-items: center; height: 20px; color: var(--ink-3); }
+.lesson-row.is-practice .lesson-title { font-size: 12.5px; color: var(--ink-2); }
+.lesson-row.is-practice.is-ready .lesson-title { color: var(--ink); }
+.lesson-row.is-practice.is-active .lesson-n { color: var(--accent); }
