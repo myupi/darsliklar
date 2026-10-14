@@ -104,6 +104,7 @@ const swap = (from, to) => {
 //    передаёт его уроку. Данные урока берутся из META урока.
 swapTts();
 swapAutoplay();
+swapTtsDiag();
 
 swap("  ui: '#1E88E5',", "  // КУРС HTML: интерфейс — #FF4F28 (заказчик, 12.10.2026), а не голубой.\n  ui: '#FF4F28',");
 swap("  uiSoft: '#E3F2FD',", "  uiSoft: '#FFE8E1',");
@@ -273,4 +274,36 @@ function swapAutoplay() {
     `  const [failed, setFailed] = useState(!ttsApiBase);   // КУРС HTML: с сервисом — сначала проба звука`);
   swap(`  useEffect(() => { if (!gestured) setFailed(true); }, [ttsApiBase, gestured]);`,
     `  useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);`);
+}
+
+// ДИАГНОСТИКА ОЗВУЧКИ В КОНСОЛИ (14.10.2026). По внешнему виду урока не понять,
+// почему звучит голос браузера: LMS не передала ttsApiBase или сервис не
+// ответил звуком. Три строки в консоли с префиксом [TTS] отвечают на это сразу.
+function swapTtsDiag() {
+  swap(`  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
+`, `  const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
+  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
+  useEffect(() => {
+    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
+  }, [ttsApiBase]);
+`);
+  swap(`          if (tryLocal()) return;
+          setFailed(true);
+          waitThen(est);
+        };
+        const tryPlay = () => {`, `          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
+          try {
+            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
+              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
+          } catch (e) { /* no-op */ }
+          if (tryLocal()) return;
+          setFailed(true);
+          waitThen(est);
+        };
+        const tryPlay = () => {`);
+  swap(`            a.src = url + (attempt > 1 ? '&r=' + attempt : '');`, `            a.src = url + (attempt > 1 ? '&r=' + attempt : '');
+            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
+            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }`);
+  swap(`let LMS_VOICE = null;`, `let LMS_VOICE = null;
+let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль`);
 }

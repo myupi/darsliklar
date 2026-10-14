@@ -778,6 +778,7 @@ const markLang = (text, lang) => {
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
 let LMS_VOICE = null;
+let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль
 const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
 // КУРС HTML: адрес — ровно как у эталона математики (пробел — %20, скобки
 // маркера — как есть) + lesson_id и lesson_name из META урока.
@@ -939,6 +940,10 @@ function useAudioEngine(ttsApiBase, lang) {
   const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
   const timers = useRef([]);
   const warmed = useRef(new Set());   // адреса фраз, уже заказанных сервису (см. warm)
+  // КУРС HTML: диагностика — пришёл ли адрес сервиса озвучки.
+  useEffect(() => {
+    try { console.info('[TTS] ttsApiBase: ' + (ttsApiBase ? ttsApiBase : '(не передан — урок говорит голосом браузера)')); } catch (e) { /* no-op */ }
+  }, [ttsApiBase]);
 
   useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
@@ -1261,6 +1266,11 @@ function useAudioEngine(ttsApiBase, lang) {
             timers.current.push(setTimeout(() => { pending = false; tryPlay(); }, 400));
             return;
           }
+          // КУРС HTML: диагностика — сервис не отдал звук, переходим на резерв.
+          try {
+            console.warn('[TTS] сервис не отдал звук (ошибка ' + (a.error ? a.error.code : '—') + '): ' + a.src
+              + ' — ' + (localVoiceOk() ? 'включаю голос браузера' : 'показываю текст'));
+          } catch (e) { /* no-op */ }
           if (tryLocal()) return;
           setFailed(true);
           waitThen(est);
@@ -1277,6 +1287,8 @@ function useAudioEngine(ttsApiBase, lang) {
             const url = buildTtsUrl(ttsApiBase, markLang(clean, lang), gender || 'f', lang);
             warmed.current.add(url);   // прогреву эту фразу заказывать уже не нужно
             a.src = url + (attempt > 1 ? '&r=' + attempt : '');
+            // КУРС HTML: диагностика — первый запрос к сервису виден в консоли.
+            if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }
             a.onended = finish;
             a.onerror = onFail;
             const p = a.play();
