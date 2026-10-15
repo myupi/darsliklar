@@ -2057,7 +2057,7 @@ const Stage = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroFi
   // КУРС HTML: подсказка при бездействии — см. useIdleCoach.
   const idle = useIdleCoach(!!nav, speaking);
   return (
-    <div className={'stage' + (heroFixed ? ' stage-hero-fixed' : '') + (hideSpeaker || voiceTop ? ' stage-bare' : '')
+    <div className={'stage' + (heroFixed ? ' stage-hero-fixed' : '') + (hideSpeaker ? ' stage-bare' : '') + (voiceTop ? ' stage-voicetop' : '')
       + (speaking ? ' is-speaking' : '') + (idle ? ' is-idle is-idle-' + idle : '')}>
       <div className="stage-header">
         <div className="limit">
@@ -5591,8 +5591,25 @@ const CANON_UI_CSS = `
   .stage.is-idle .ctl-hint, .stage.is-idle .stage-nav .btn-ready,
   .stage.is-idle-2 .ctl-hint::after, .stage.is-idle-2 .stage-nav .btn-ready::before { animation: none; } }
 
-/* КУРС HTML: кружок голоса в шапке (voiceTop) — пока звучит голос, вокруг
-   него мягко расходится кольцо. */
+/* КУРС HTML: голос в шапке вместо героя (Stage voiceTop) — только на телефоне:
+   узкий экран или телефон лёжа. На ноутбуке Коди на месте, кружка нет.
+   Герой прячется, но не размонтируется: пузырь ведёт озвучку. */
+.stage-voicetop .ctl-voice { display: none; }
+@media (max-width: 719px), (orientation: landscape) and (max-height: 500px) {
+  .stage-voicetop .ctl-voice { display: grid; }
+  .stage-voicetop .speaker-wrap { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .stage-voicetop .stage-content { grid-column: 1 / -1; }
+}
+/* КУРС HTML: невысокий ноутбук (окно 700–860 px). Крупный ярус ставит герою
+   до 20dvh — на окне 720 px робот выходит ~200 px, выше реплики, и тесные
+   экраны вылезают за низ. Здесь робот плавно уменьшается вместе с высотой
+   окна (на 860 px размер тот же, что у крупного яруса, на 720 — ~97 px),
+   а не прячется: на ноутбуке Коди всегда на месте. */
+@media (min-width: 760px) and (min-height: 700px) and (max-height: 860px) {
+  .lesson-root { --av: clamp(90px, min(29vw, calc(52.9dvh - 284px)), 275px); }
+}
+/* Пока звучит голос, вокруг кружка мягко расходится кольцо. */
 .ctl-voice.is-on { animation: ctlVoiceRing 1.6s ease-out infinite; }
 @keyframes ctlVoiceRing { 0% { box-shadow: 0 0 0 0 rgba(255,79,40,.32); } 100% { box-shadow: 0 0 0 10px rgba(255,79,40,0); } }
 @media (prefers-reduced-motion: reduce) { .ctl-voice.is-on { animation: none; } }
@@ -10415,6 +10432,13 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 /* ══ 14. ИТОГ ═══════════════════════════════════════════════════ */
 .recap { display: flex; flex-direction: column; align-items: center; gap: clamp(10px, 1.6dvh, 16px); width: 100%; }
 .recap-tree { width: min(100%, 300px); }
+/* Широкий экран: схема страницы и список умений — рядом, карточка следующего
+   урока под ними. В столбик итог не влезал в невысокий ноутбук (1280×720). */
+@media (min-width: 900px) {
+  .recap { flex-flow: row wrap; justify-content: center; column-gap: clamp(16px, 2.4vw, 32px); }
+  .recap .skills { flex: 0 1 480px; }
+  .recap .bye-next { flex-basis: 100%; }
+}
 .rt { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 22px 8px 8px; border-radius: 12px;
   background: color-mix(in srgb, var(--c) 8%, #fff); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--c) 50%, #fff); }
 .rt-title, .rt-body { padding: 0; min-height: 26px; }

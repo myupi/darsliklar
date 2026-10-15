@@ -404,13 +404,14 @@ function useIdleCoach(active, speaking) {
 
 // ГОЛОС В ШАПКЕ ВМЕСТО ГЕРОЯ (заказчик, 15.10.2026): на экранах, где Коди
 // отнимает место и контент не помещается, урок ставит Stage проп voiceTop.
-// Герой скрыт (как stage-bare: пузырь жив и ведёт озвучку), а в шапке, рядом
-// с подсказкой, — кружок с полосками, как в практике: он оживает, пока голос
-// звучит.
+// ТОЛЬКО НА ТЕЛЕФОНЕ (уточнение заказчика): на узком экране и на телефоне лёжа
+// герой скрыт (как stage-bare: пузырь жив и ведёт озвучку), а в шапке, рядом
+// с подсказкой, — кружок с полосками, как в практике. На ноутбуке места
+// хватает — Коди стоит как обычно, кружка нет.
 function swapVoiceTop() {
   swap(`const Stage = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroFixed, done, hideSpeaker, hint }) => {`,
     `const Stage = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroFixed, done, hideSpeaker, hint, voiceTop }) => {`);
-  swap(`(hideSpeaker ? ' stage-bare' : '')`, `(hideSpeaker || voiceTop ? ' stage-bare' : '')`);
+  swap(`(hideSpeaker ? ' stage-bare' : '')`, `(hideSpeaker ? ' stage-bare' : '') + (voiceTop ? ' stage-voicetop' : '')`);
   swap(`              <ExitBtn />
 `, `              <ExitBtn />
               {voiceTop ? <VoiceDot /> : null}
@@ -427,8 +428,25 @@ const VoiceDot = () => {
 };
 
 const PauseBtn = ({ done }) => {`);
-  swap(`/* UI-09: служебные кнопки`, `/* КУРС HTML: кружок голоса в шапке (voiceTop) — пока звучит голос, вокруг
-   него мягко расходится кольцо. */
+  swap(`/* UI-09: служебные кнопки`, `/* КУРС HTML: голос в шапке вместо героя (Stage voiceTop) — только на телефоне:
+   узкий экран или телефон лёжа. На ноутбуке Коди на месте, кружка нет.
+   Герой прячется, но не размонтируется: пузырь ведёт озвучку. */
+.stage-voicetop .ctl-voice { display: none; }
+@media (max-width: 719px), (orientation: landscape) and (max-height: 500px) {
+  .stage-voicetop .ctl-voice { display: grid; }
+  .stage-voicetop .speaker-wrap { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .stage-voicetop .stage-content { grid-column: 1 / -1; }
+}
+/* КУРС HTML: невысокий ноутбук (окно 700–860 px). Крупный ярус ставит герою
+   до 20dvh — на окне 720 px робот выходит ~200 px, выше реплики, и тесные
+   экраны вылезают за низ. Здесь робот плавно уменьшается вместе с высотой
+   окна (на 860 px размер тот же, что у крупного яруса, на 720 — ~97 px),
+   а не прячется: на ноутбуке Коди всегда на месте. */
+@media (min-width: 760px) and (min-height: 700px) and (max-height: 860px) {
+  .lesson-root { --av: clamp(90px, min(29vw, calc(52.9dvh - 284px)), 275px); }
+}
+/* Пока звучит голос, вокруг кружка мягко расходится кольцо. */
 .ctl-voice.is-on { animation: ctlVoiceRing 1.6s ease-out infinite; }
 @keyframes ctlVoiceRing { 0% { box-shadow: 0 0 0 0 rgba(255,79,40,.32); } 100% { box-shadow: 0 0 0 10px rgba(255,79,40,0); } }
 @media (prefers-reduced-motion: reduce) { .ctl-voice.is-on { animation: none; } }
