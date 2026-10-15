@@ -6,7 +6,8 @@
 //   · ошибки JavaScript.
 // С slack: true ещё и считает запас высоты: сколько пикселей свободно, когда
 // контент стоит в естественном размере. Запас меньше ~60 px на 360×640 —
-// повод поставить экрану Stage voiceTop (голос в шапке вместо героя).
+// повод поставить экрану Stage voiceTop (голос в шапке вместо героя — только
+// на телефоне; на ноутбуке Коди виден, поэтому 1280×720 проверяется отдельно).
 //
 // Запуск — в браузерной панели (javascript_tool) на любой странице dev-сервера:
 //   const m = await import('/tools/layout-sweep.js');
@@ -16,7 +17,7 @@
 // Проверяется НАЧАЛЬНОЕ состояние экранов; состояния по ходу задания
 // (подсказка, шаги, готовая страница, клавиатура) проверяются отдельно.
 
-const SIZES = [[360, 640], [375, 740], [1440, 900]];
+const SIZES = [[360, 640], [375, 740], [1280, 720], [1440, 900]];
 const LANGS = ['uz', 'ru', 'en'];
 
 async function probe(file, lang, w, h, s, wait, slack) {
@@ -43,7 +44,7 @@ async function probe(file, lang, w, h, s, wait, slack) {
       const nat = kids.reduce((a, k) => a + Math.max(k.scrollHeight, k.getBoundingClientRect().height), 0)
         + gap * Math.max(0, kids.length - 1);
       row.slack = Math.round(c.clientHeight - nat);
-      row.voiceTop = d.querySelector('.stage').classList.contains('stage-bare');
+      row.voiceTop = d.querySelector('.stage').classList.contains('stage-voicetop');
     }
   }
   f.remove();
