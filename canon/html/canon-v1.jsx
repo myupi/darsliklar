@@ -98,17 +98,18 @@ const T = {
 // Тёмно-синий вязаный свитер с надписью JUNIOR IT · AKADEMIYA, кремовые
 // руки-варежки и короткие ноги.
 //
-// РИСУНОК v2 (15.10.2026). Пропорции мультяшного талисмана: голова — половина
-// роста, компактный свитер, короткие ноги в кедах. Что добавлено к листу и
-// почему:
-//   · уши — медные вставки в боках шлема, вровень с силуэтом: без дужки и
-//     без чашек, чтобы Коди не выглядел роботом в наушниках (15.10.2026);
-//   · короткая шея — голова перестала сидеть прямо на плечах;
-//   · плечевой шарнир и рукав-труба — руки крутятся в позах на ±150°, и
-//     суженный рукав превращался в флажок, оторванный от плеча;
-//   · варежки с большим пальцем — крупнее, с видимым швом;
-//   · тёмно-синие кеды с кремовой подошвой — кремовые стопы сливались с
-//     ногами, и фигура стояла на «трубках». Цвет кед — цвет свитера.
+// РИСУНОК v3 (15.10.2026) — по референсам заказчика (модельный лист, 13 поз,
+// лист лица, «разобранный» Коди); размеры сняты с картинок по пикселям.
+//   · шлем широкий и приземистый, медная рамка экрана почти во весь шлем;
+//   · глаза — круглые светящиеся точки, рот — тонкая дуга; в радости рот-
+//     полукруг, в восторге — пятиконечные звёзды;
+//   · уши — медные вставки в боках шлема вровень с силуэтом (на референсе они
+//     торчат — там же это отмечено как ошибка; заказчик просил без выпирания);
+//   · шеи нет: голова стоит прямо на вороте свитера (заказчик, 15.10.2026);
+//     свитер с округлыми плечами — рукав растёт из плеча; крупные варежки;
+//   · ноги-столбики с зазором и массивные тёмно-синие кеды с кремовой подошвой.
+// Углы рук в «rule» и «wonder» шире общей системы поз (KODI_POSE) — как на
+// референсе.
 //
 // РИСУЕТСЯ КОДОМ, как робот Курса 0: урок автономен, поза меняется параметром,
 // цвета лежат здесь. Система движения (позы, такты, тайминги) — та же, что у
@@ -132,12 +133,11 @@ const BOT = {
   headMid:   '#E7E1D4',
   headDk:    '#CBC2AF',   // теневая сторона
   edge:      '#B9AE99',
-  rim:       '#C47A47',   // медь: рамка экрана и уши
-  rimLt:     '#F0B98A',
-  rimDk:     '#8F4C27',
+  rim:       '#C8742F',   // медь: рамка экрана и уши
+  rimLt:     '#F4B57C',
+  rimDk:     '#8C4A1E',
   visor:     '#0A0F12',   // стекло экрана по краям
   visorMid:  '#18242B',   // стекло экрана в центре
-  neck:      '#2B3446',   // шея — тёмный графит между шлемом и воротом
   sweater:   '#24324F',   // тёмно-синий свитер
   sweaterLt: '#33466D',
   sweaterDk: '#182238',
@@ -355,7 +355,7 @@ const BOT_NAME = { uz: 'Kodi', ru: 'Коди', en: 'Kodi' };
 // (BOT_CALM, BOT_GLAD …); у Коди экран светится по-своему, поэтому акцент
 // состояния переводится в цвет его дисплея.
 const KODI_GLOW = {
-  [BOT_CALM]: '#3FE0CF',   // спокойно — бирюзовый, как на листе заказчика
+  [BOT_CALM]: '#58F4F2',   // спокойно — яркая бирюза, как на листе лица заказчика
   [BOT_GLAD]: '#FFD24A',   // радость — жёлтый
   [BOT_WOW]:  '#7FEFFF',   // «ого» — светло-голубой
   [BOT_DIM]:  '#7E8A99'    // грусть, выключен — серый
@@ -418,7 +418,7 @@ const KODI_CSS = `
    героя целиком. Крен смягчён: от пояса тот же угол выглядел бы поклоном. */
 .bot.kodi .bot-pose-body {
   transform: translate(var(--bodyX), var(--bodyY)) scale(var(--bodySX), var(--bodySY)); }
-.bot.kodi .kodi-torso { transform-box: view-box; transform-origin: 210px 300px;
+.bot.kodi .kodi-torso { transform-box: view-box; transform-origin: 210px 288px;
   transform: rotate(calc(var(--bodyRot) * .55));
   transition: transform var(--dur) var(--ease); }
 
@@ -427,8 +427,8 @@ const KODI_CSS = `
    эти проценты не от плеча: в «привет» рука махала вокруг кисти, а плечо
    ездило. Поэтому у Коди точка вращения обеих групп руки — центр плечевого
    шарнира в координатах рисунка. */
-.bot.kodi .bot-pose-arm-l, .bot.kodi .bot-beat-arm-l { transform-box: view-box; transform-origin: 143px 226px; }
-.bot.kodi .bot-pose-arm-r, .bot.kodi .bot-beat-arm-r { transform-box: view-box; transform-origin: 277px 226px; }
+.bot.kodi .bot-pose-arm-l, .bot.kodi .bot-beat-arm-l { transform-box: view-box; transform-origin: 127px 222px; }
+.bot.kodi .bot-pose-arm-r, .bot.kodi .bot-beat-arm-r { transform-box: view-box; transform-origin: 293px 222px; }
 /* Сдвиги рук в позах канона (armLX/armRX до 44 px) подбирались под
    прежнюю точку вращения и уводили плечо на грудь — в «point» рука росла из
    середины свитера. У Коди рука вращается ровно вокруг плеча, поэтому из позы
@@ -459,29 +459,43 @@ let _botUid = 0;
 // Рамка та же, что у робота Курса 0 (viewBox 20 -70 380 520): её поля посчитаны
 // по крайним точкам движения, и Коди укладывается в те же габариты.
 //
-// ПРОПОРЦИИ (v2). Рост от макушки до подошвы 366: голова со шлемом 186 (половина
-// роста), шея 10, свитер 96, ноги с кедами 90. Ширина шлема 212 (уши внутри
-// силуэта), плеч 148.
-// Ось симметрии x = 210; пояс (ось наклона торса) y = 300.
+// ПРОПОРЦИИ (v3, по референсам заказчика 15.10.2026: модельный лист и
+// «разобранный» Коди, размеры сняты с картинок по пикселям). Рост от макушки до
+// подошвы 366: шлем 204 × 153 (~42% роста, широкий и приземистый), шея, свитер
+// 98 (подол y 284), ноги-столбики 51 с зазором 12, кеды 74 × 37. Медная рамка экрана — почти во весь шлем. Уши — вставки вровень
+// с силуэтом (на референсе они торчат, это отмечено там же как ошибка).
+// Ось симметрии x = 210; пояс (ось наклона торса) y = 288; плечевые шарниры
+// (127, 222) и (293, 222) — точки вращения рук в KODI_CSS.
 //
 // Внутри рисунка нет атрибутов transform у групп и фигур с масштабом или
 // отражением: канон ставит узлам героя transform-box: fill-box, и такие
 // трансформации считались бы от края фигуры. Поэтому правая рука и правая нога
 // не зеркалятся атрибутом, а получают отражённые координаты (mirror ниже).
 //
-// РУКА — ТРУБА ОТ ПЛЕЧА. Канон вращает руку вокруг точки 50% 7% её рамки, то
-// есть вокруг верха. Поэтому рука нарисована строго вертикально, плечевой
-// шарнир — круг наверху: при любом повороте (до ±158° в позах) рукав остаётся
-// рукавом, а шарнир — на плече.
+// РУКА — ТРУБА ОТ ПЛЕЧА. Рука нарисована строго вертикально, плечевой шарнир —
+// круг наверху: при любом повороте (до ±158° в позах) рукав остаётся рукавом.
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Углы рук, которые у Коди отличаются от общей системы поз: на референсах
+// «объясняю правило» и «ого!» руки разведены заметно шире.
+const LID_LIFT = 12;
+const KODI_POSE = {
+  rule: { armLR: 46, armRR: -46 },
+  wonder: { armLR: 52, armRR: -52 }
+};
+
 function RobotSVG({ pose = 'explain', className, talking }) {
   const key = POSE_SET[pose] ? pose : 'explain';
   const S = POSE_SET[key];
   const uid = useMemo(() => { _botUid += 1; return 'bot' + _botUid; }, []);
 
+  const P = Object.assign({}, S.pose, KODI_POSE[key] || {});
+  // Веки Коди висят на 12 выше глаз, чтобы их край не срезал свечение глаз в
+  // покое; опущенное веко проходит на те же 12 дальше — выражение не меняется.
+  if (P.lidY > 0) P.lidY += LID_LIFT;
   const vars = { '--dur': S.dur + 'ms', '--ease': S.ease, '--loop': S.loopMs + 'ms',
     '--accent': KODI_GLOW[S.accent] || S.accent };
-  Object.keys(S.pose).forEach((k) => { vars['--' + k] = S.pose[k] + (POSE_UNIT[k] || ''); });
+  Object.keys(P).forEach((k) => { vars['--' + k] = P[k] + (POSE_UNIT[k] || ''); });
 
   const cls = ['bot', 'kodi', 'eyes-' + S.eyes, S.loop];
   if (S.noBlink) cls.push('no-blink');
@@ -511,16 +525,17 @@ function RobotSVG({ pose = 'explain', className, talking }) {
     });
   };
 
-  // Рука: шарнир, рукав-труба с вязаной манжетой, варежка с большим пальцем к телу.
+  // Рука: шарнир, рукав-труба с вязаной манжетой, крупная варежка с большим
+  // пальцем к телу.
   const ARM_L = {
-    cap: [143, 226, 16],
-    sleeve: 'M128 227 C128 219 135 212 143 212 C151 212 158 219 158 227 L158 274 C158 282 151 288 143 288 C135 288 128 282 128 274 Z',
-    shade: 'M153 217 C157 221 158 226 158 232 L158 272 C158 278 155 283 150 286',
-    cuff: { x: 127, y: 270, w: 32, h: 13 },
-    hand: [143, 301, 17, 19],
-    thumb: [157, 294, 7, 9],
-    seam: 'M131 292 Q143 298 155 292',
-    shine: [136, 295, 5, 7]
+    cap: [127, 222, 17],
+    sleeve: 'M110 222 C110 212 118 205 127 205 C136 205 144 212 144 222 L144 274 C144 282 136 287 127 287 C118 287 110 282 110 274 Z',
+    shade: 'M138 210 C142 214 144 218 144 224 L144 272 C144 278 141 283 136 285',
+    cuff: { x: 108, y: 268, w: 38, h: 15 },
+    hand: [127, 298, 21, 23],
+    thumb: [146, 290, 8, 11],
+    seam: 'M111 292 Q125 300 139 293',
+    shine: [118, 291, 6, 8]
   };
   const ARM_R = {
     cap: [mx(ARM_L.cap[0]), ARM_L.cap[1], ARM_L.cap[2]],
@@ -540,74 +555,76 @@ function RobotSVG({ pose = 'explain', className, talking }) {
         <path d={a.sleeve} fill={u('w')} />
         <path d={a.sleeve} fill={u('sl')} />
         <path d={a.shade} fill="none" stroke={BOT.sweaterDk} strokeWidth="3" strokeLinecap="round" opacity=".5" />
-        <rect x={a.cuff.x} y={a.cuff.y} width={a.cuff.w} height={a.cuff.h} rx="6.5" fill={BOT.sweaterDk} />
-        <rect x={a.cuff.x} y={a.cuff.y} width={a.cuff.w} height={a.cuff.h} rx="6.5" fill={u('rib')} />
+        <rect x={a.cuff.x} y={a.cuff.y} width={a.cuff.w} height={a.cuff.h} rx="7" fill={BOT.sweaterDk} />
+        <rect x={a.cuff.x} y={a.cuff.y} width={a.cuff.w} height={a.cuff.h} rx="7" fill={u('rib')} />
         <ellipse cx={a.thumb[0]} cy={a.thumb[1]} rx={a.thumb[2]} ry={a.thumb[3]} fill={u('k')} />
         <ellipse cx={a.hand[0]} cy={a.hand[1]} rx={a.hand[2]} ry={a.hand[3]} fill={u('k')} />
-        <path d={a.seam} fill="none" stroke={BOT.headDk} strokeWidth="2.5" strokeLinecap="round" opacity=".7" />
+        <path d={a.seam} fill="none" stroke={BOT.headDk} strokeWidth="2.5" strokeLinecap="round" opacity=".6" />
         <ellipse cx={a.shine[0]} cy={a.shine[1]} rx={a.shine[2]} ry={a.shine[3]} fill="#fff" opacity=".55" />
       </>
     );
   };
 
-  // Нога: кремовая голень и кед с кремовой подошвой и бликом на носке.
+  // Нога: толстая кремовая голень-столбик и массивный кед: синий верх,
+  // кремовая подошва, две полоски шнуровки, блик на носке.
   const LEG_L = {
-    shin: { x: 168, y: 298, w: 34, h: 62 },
-    shoe: 'M160 382 L160 372 C160 357 169 350 185 350 C202 350 211 358 211 372 L211 382 Z',
-    sole: { x: 160, y: 378, w: 51, h: 12 },
-    lace: 'M166 364 Q185 357 206 364',
-    toe: [178, 361, 7, 4]
+    shin: { x: 152, y: 276, w: 51, h: 86 },
+    shoe: 'M136 384 C134 366 147 350 169 350 C191 350 207 364 206 384 Z',
+    sole: { x: 133, y: 380, w: 74, h: 11 },
+    lace1: 'M152 361 Q169 356 188 361',
+    lace2: 'M147 369 Q169 363 194 369',
+    toe: [150, 374, 7, 4]
   };
   const LEG_R = {
     shin: { x: mx(LEG_L.shin.x) - LEG_L.shin.w, y: LEG_L.shin.y, w: LEG_L.shin.w, h: LEG_L.shin.h },
     shoe: mirrorPath(LEG_L.shoe),
     sole: { x: mx(LEG_L.sole.x) - LEG_L.sole.w, y: LEG_L.sole.y, w: LEG_L.sole.w, h: LEG_L.sole.h },
-    lace: mirrorPath(LEG_L.lace),
+    lace1: mirrorPath(LEG_L.lace1),
+    lace2: mirrorPath(LEG_L.lace2),
     toe: [mx(LEG_L.toe[0]), LEG_L.toe[1], LEG_L.toe[2], LEG_L.toe[3]]
   };
   const Leg = ({ side }) => {
     const g = side === 'l' ? LEG_L : LEG_R;
     return (
       <>
-        <rect x={g.shin.x} y={g.shin.y} width={g.shin.w} height={g.shin.h} rx="15" fill={u('l')} />
-        <rect x={g.sole.x} y={g.sole.y} width={g.sole.w} height={g.sole.h} rx="6" fill={BOT.sole} />
-        <rect x={g.sole.x} y={g.sole.y} width={g.sole.w} height={g.sole.h} rx="6" fill="none"
+        <rect x={g.shin.x} y={g.shin.y} width={g.shin.w} height={g.shin.h} rx="20" fill={u('l')} />
+        <rect x={g.sole.x} y={g.sole.y} width={g.sole.w} height={g.sole.h} rx="7" fill={BOT.sole} />
+        <rect x={g.sole.x} y={g.sole.y} width={g.sole.w} height={g.sole.h} rx="7" fill="none"
           stroke={BOT.headDk} strokeWidth="1.5" opacity=".6" />
         <path d={g.shoe} fill={u('sh2')} />
-        <path d={g.lace} fill="none" stroke={BOT.sole} strokeWidth="2.5" strokeLinecap="round" opacity=".55" />
-        <ellipse cx={g.toe[0]} cy={g.toe[1]} rx={g.toe[2]} ry={g.toe[3]} fill="#fff" opacity=".28" />
+        <path d={g.lace1} fill="none" stroke={BOT.sole} strokeWidth="3" strokeLinecap="round" />
+        <path d={g.lace2} fill="none" stroke={BOT.sole} strokeWidth="3" strokeLinecap="round" />
+        <ellipse cx={g.toe[0]} cy={g.toe[1]} rx={g.toe[2]} ry={g.toe[3]} fill="#fff" opacity=".22" />
       </>
     );
   };
 
   // Рот: все формы на месте, видна одна — её выбирает KODI_CSS по состоянию.
+  // Формы — по листу лица: тонкая дуга, полукруг радости, «о», ровная черта,
+  // кривая усмешка.
   const MOUTH = (
     <g className="kodi-mouth">
-      <path className="kodi-m kodi-m-smile" d="M191 143 Q210 160 229 143" fill="none"
-        stroke="var(--accent)" strokeWidth="6.5" strokeLinecap="round" />
-      <path className="kodi-m kodi-m-open" d="M189 139 Q210 172 231 139 Q210 147 189 139 Z" fill="var(--accent)" />
-      <ellipse className="kodi-m kodi-m-o" cx="210" cy="150" rx="7.5" ry="9" fill="none"
-        stroke="var(--accent)" strokeWidth="5" />
-      <path className="kodi-m kodi-m-flat" d="M197 152 Q210 147 223 152" fill="none"
+      <path className="kodi-m kodi-m-smile" d="M183 128 Q210 147 237 128" fill="none"
+        stroke="var(--accent)" strokeWidth="5.5" strokeLinecap="round" />
+      <path className="kodi-m kodi-m-open" d="M190 127 L230 127 Q230 151 210 151 Q190 151 190 127 Z" fill="var(--accent)" />
+      <ellipse className="kodi-m kodi-m-o" cx="210" cy="139" rx="6.5" ry="8" fill="none"
+        stroke="var(--accent)" strokeWidth="4.5" />
+      <path className="kodi-m kodi-m-flat" d="M196 139 L224 139" fill="none"
         stroke="var(--accent)" strokeWidth="5" strokeLinecap="round" />
-      <path className="kodi-m kodi-m-side" d="M195 151 Q213 157 226 144" fill="none"
+      <path className="kodi-m kodi-m-side" d="M195 141 Q214 143 227 130" fill="none"
         stroke="var(--accent)" strokeWidth="5" strokeLinecap="round" />
     </g>
   );
 
-  // УХО — медная вставка в боку шлема, а не наушник (заказчик, 15.10.2026:
-  // дужка и круглые чашки делали Коди роботом в наушниках). Вставка лежит в
-  // обтравке шлема, поэтому её внешний край идёт ровно по силуэту и ухо не
-  // выпирает. Внутри — тёмная прорезь и полоска-индикатор речи.
-  // x — левый край вставки; side — с какой стороны свет.
+  // УХО — медная вставка в боку шлема, а не наушник. Вставка лежит в обтравке
+  // шлема: внешний край идёт ровно по силуэту, ухо не выпирает. Внутри — тёмная
+  // прорезь и полоска-индикатор речи.
   const Ear = ({ x, side }) => (
     <>
-      <rect x={x} y="94" width="22" height="60" rx="11" fill={u('c')} />
-      <rect x={x + 6} y="102" width="10" height="44" rx="5" fill={u('cup')} />
-      <rect className="kodi-ear" x={x + 8} y="106" width="6" height="36" rx="3" fill="none"
+      <rect x={x} y="78" width="16" height="62" rx="8" fill={u('c')} />
+      <rect x={x + (side === 'l' ? 7.5 : 3.5)} y="88" width="5" height="42" rx="2.5" fill={u('cup')} />
+      <rect className="kodi-ear" x={x + (side === 'l' ? 8.5 : 4.5)} y="92" width="3" height="34" rx="1.5" fill="none"
         stroke="var(--accent)" strokeWidth="2.5" />
-      <path d={side === 'l' ? `M${x + 16} 99 Q${x + 19} 104 ${x + 19} 112` : `M${x + 6} 99 Q${x + 3} 104 ${x + 3} 112`}
-        fill="none" stroke="#FFE2C6" strokeWidth="2" strokeLinecap="round" opacity=".6" />
     </>
   );
 
@@ -616,17 +633,17 @@ function RobotSVG({ pose = 'explain', className, talking }) {
       aria-hidden="true" focusable="false">
       <style>{KODI_CSS}</style>
       <defs>
-        {/* голова: матовый винил — основа, блик сверху слева, тень снизу справа */}
+        {/* шлем: матовый винил — основа, блик сверху слева, тень снизу справа */}
         <linearGradient id={uid + 'h'} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#FCFAF6" />
           <stop offset="55%" stopColor={BOT.head} />
           <stop offset="100%" stopColor={BOT.headMid} />
         </linearGradient>
-        <radialGradient id={uid + 'hl'} cx="30%" cy="16%" r="46%">
+        <radialGradient id={uid + 'hl'} cx="28%" cy="14%" r="50%">
           <stop offset="0%" stopColor="#fff" stopOpacity=".95" />
           <stop offset="100%" stopColor="#fff" stopOpacity="0" />
         </radialGradient>
-        <radialGradient id={uid + 'hs'} cx="76%" cy="98%" r="72%">
+        <radialGradient id={uid + 'hs'} cx="78%" cy="100%" r="75%">
           <stop offset="0%" stopColor={BOT.headDk} stopOpacity=".95" />
           <stop offset="100%" stopColor={BOT.headDk} stopOpacity="0" />
         </radialGradient>
@@ -638,13 +655,13 @@ function RobotSVG({ pose = 'explain', className, talking }) {
           <stop offset="100%" stopColor={BOT.rim} />
         </linearGradient>
         {/* стекло экрана: светлее в центре, к краям уходит в черноту */}
-        <radialGradient id={uid + 's'} cx="210" cy="118" r="100" gradientUnits="userSpaceOnUse">
+        <radialGradient id={uid + 's'} cx="210" cy="104" r="100" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor={BOT.visorMid} />
           <stop offset="100%" stopColor={BOT.visor} />
         </radialGradient>
-        {/* строки дисплея: тонкие горизонтальные линии */}
+        {/* строки дисплея: тонкие, чтобы не гасить яркость глаз */}
         <pattern id={uid + 'px'} width="3" height="3" patternUnits="userSpaceOnUse">
-          <path d="M0 0.5 H3" stroke="#000" strokeWidth="1" opacity=".42" />
+          <path d="M0 0.5 H3" stroke="#000" strokeWidth=".7" opacity=".2" />
         </pattern>
         {/* свитер: объём сверху вниз, цилиндр рукава слева направо, вязаная резинка */}
         <linearGradient id={uid + 'w'} x1="0" y1="0" x2="0" y2="1">
@@ -681,7 +698,7 @@ function RobotSVG({ pose = 'explain', className, talking }) {
           <stop offset="0%" stopColor={BOT.shoe} />
           <stop offset="100%" stopColor={BOT.shoeDk} />
         </linearGradient>
-        {/* прорезь уха: тёплая тёмная медь с бликом, а не чёрная дыра */}
+        {/* прорезь уха: тёплая тёмная медь, а не чёрная дыра */}
         <radialGradient id={uid + 'cup'} cx="38%" cy="32%" r="70%">
           <stop offset="0%" stopColor="#6B4328" />
           <stop offset="100%" stopColor="#2E1C11" />
@@ -690,12 +707,12 @@ function RobotSVG({ pose = 'explain', className, talking }) {
           <stop offset="0%" stopColor={BOT.shadow} stopOpacity="1" />
           <stop offset="100%" stopColor={BOT.shadow} stopOpacity="0" />
         </radialGradient>
-        <clipPath id={uid + 'v'}><rect x="133" y="70" width="154" height="110" rx="32" /></clipPath>
-        <clipPath id={uid + 'hc'}><rect x="104" y="24" width="212" height="186" rx="80" /></clipPath>
+        <clipPath id={uid + 'v'}><rect x="132" y="53" width="156" height="107" rx="27" /></clipPath>
+        <clipPath id={uid + 'hc'}><rect x="108" y="24" width="204" height="153" rx="62" /></clipPath>
       </defs>
 
       {/* Мягкая контактная тень: размытый край вместо плоского овала. */}
-      <ellipse className="bot-shadow" cx="210" cy="404" rx="94" ry="16" fill={u('sh')} />
+      <ellipse className="bot-shadow" cx="210" cy="403" rx="100" ry="15" fill={u('sh')} />
 
       <g className="bot-float">
         <g className="bot-pose-body">
@@ -708,106 +725,102 @@ function RobotSVG({ pose = 'explain', className, talking }) {
             {/* Всё, что выше ног, наклоняется от пояса (см. «ОПОРА НА НОГИ» в KODI_CSS). */}
             <g className="kodi-torso">
 
-            {/* шея — графитовый цилиндр между шлемом и воротом */}
-            <rect x="190" y="198" width="40" height="28" rx="9" fill={BOT.neck} />
-            <path d="M197 204 L197 220" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity=".16" />
-
-            {/* свитер: мягкие плечи, лёгкое сужение к поясу, вязаный подол и ворот */}
-            <path d="M136 234 C136 222 148 214 162 214 L258 214 C272 214 284 222 284 234 L286 292
-                     C287 303 278 310 266 310 L154 310 C142 310 133 303 134 292 Z" fill={u('w')} />
-            <path d="M136 234 C136 222 148 214 162 214 L258 214 C272 214 284 222 284 234 L286 292
-                     C287 303 278 310 266 310 L154 310 C142 310 133 303 134 292 Z" fill={u('ws')} />
-            <rect x="150" y="296" width="120" height="14" rx="7" fill={BOT.sweaterDk} />
-            <rect x="150" y="296" width="120" height="14" rx="7" fill={u('rib')} />
-            <rect x="174" y="218" width="72" height="16" rx="8" fill={BOT.sweaterDk} />
-            <rect x="174" y="218" width="72" height="16" rx="8" fill={u('rib')} />
-            <text x="210" y="256" textAnchor="middle" fontFamily="Manrope, Arial, sans-serif"
-              fontWeight="800" fontSize="18" fill="#F4F1EA" letterSpacing=".5">JUNIOR IT</text>
-            <rect x="168" y="263" width="84" height="19" rx="4" fill={BOT.label} />
-            <rect x="168" y="263" width="84" height="7" rx="4" fill="#fff" opacity=".14" />
-            <text x="210" y="277" textAnchor="middle" fontFamily="Manrope, Arial, sans-serif"
-              fontWeight="800" fontSize="12.5" fill="#fff" letterSpacing="1">AKADEMIYA</text>
+            {/* свитер: округлые плечи от ворота к рукавам — рукав растёт из плеча, а не
+                торчит сбоку. Шеи нет (заказчик, 15.10.2026): верх свитера и ворот уходят
+                под шлем, голова стоит прямо на вороте и при наклоне не даёт просвета. */}
+            <path d="M112 240 C112 204 158 170 210 170 C262 170 308 204 308 240 C308 250 291 254 284 262 L284 272
+                     C284 280 278 284 269 284 L151 284 C142 284 136 280 136 272 L136 262 C129 254 112 250 112 240 Z" fill={u('w')} />
+            <path d="M112 240 C112 204 158 170 210 170 C262 170 308 204 308 240 C308 250 291 254 284 262 L284 272
+                     C284 280 278 284 269 284 L151 284 C142 284 136 280 136 272 L136 262 C129 254 112 250 112 240 Z" fill={u('ws')} />
+            <rect x="137" y="271" width="146" height="13" rx="6.5" fill={BOT.sweaterDk} />
+            <rect x="137" y="271" width="146" height="13" rx="6.5" fill={u('rib')} />
+            <rect x="176" y="170" width="68" height="16" rx="8" fill={BOT.sweaterDk} />
+            <rect x="176" y="170" width="68" height="16" rx="8" fill={u('rib')} />
+            <text x="210" y="234" textAnchor="middle" fontFamily="Manrope, Arial, sans-serif"
+              fontWeight="800" fontSize="17" fill="#F4F1EA" letterSpacing=".5">JUNIOR IT</text>
+            <rect x="166" y="240" width="88" height="18" rx="3" fill={BOT.label} />
+            <rect x="166" y="240" width="88" height="6" rx="3" fill="#fff" opacity=".14" />
+            <text x="210" y="253.5" textAnchor="middle" fontFamily="Manrope, Arial, sans-serif"
+              fontWeight="800" fontSize="12" fill="#fff" letterSpacing="1">AKADEMIYA</text>
 
             {/* голова */}
             <g className="bot-pose-head">
               <g className="bot-beat-head">
-                {/* шлем */}
-                <rect x="104" y="24" width="212" height="186" rx="80" fill={u('h')} />
+                {/* шлем — широкий и приземистый */}
+                <rect x="108" y="24" width="204" height="153" rx="62" fill={u('h')} />
                 <g clipPath={u('hc')}>
-                  <rect x="104" y="24" width="212" height="186" fill={u('hs')} />
-                  <rect x="104" y="24" width="212" height="186" fill={u('hl')} />
+                  <rect x="108" y="24" width="204" height="153" fill={u('hs')} />
+                  <rect x="108" y="24" width="204" height="153" fill={u('hl')} />
                   {/* уши — вставки в боках шлема, край по силуэту */}
-                  <Ear x={100} side="l" />
-                  <Ear x={298} side="r" />
+                  <Ear x={104} side="l" />
+                  <Ear x={300} side="r" />
                 </g>
-                <rect x="104" y="24" width="212" height="186" rx="80" fill="none"
+                <rect x="108" y="24" width="204" height="153" rx="62" fill="none"
                   stroke={BOT.edge} strokeWidth="1.4" opacity=".55" />
 
-                {/* медная рамка экрана: фаска внутри, блик по верхней кромке */}
-                <rect x="124" y="60" width="172" height="130" rx="42" fill={u('c')} />
-                <rect x="130" y="66" width="160" height="118" rx="37" fill="none"
+                {/* медная рамка экрана — почти во весь шлем; фаска и блик по кромке */}
+                <rect x="123" y="44" width="174" height="125" rx="35" fill={u('c')} />
+                <rect x="127.5" y="48.5" width="165" height="116" rx="31" fill="none"
                   stroke={BOT.rimDk} strokeWidth="2" opacity=".55" />
-                <path d="M148 63 Q210 56 272 63" fill="none" stroke="#FFE2C6" strokeWidth="3"
+                <path d="M150 45 Q210 38 270 45" fill="none" stroke="#FFE2C6" strokeWidth="3"
                   strokeLinecap="round" opacity=".6" />
 
                 {/* экран-лицо */}
-                <rect x="133" y="70" width="154" height="110" rx="32" fill={u('s')} />
+                <rect x="132" y="53" width="156" height="107" rx="27" fill={u('s')} />
                 <g clipPath={u('v')}>
-                  <ellipse className="bot-blush" cx="155" cy="151" rx="14" ry="7" fill={BOT.blush} />
-                  <ellipse className="bot-blush" cx="265" cy="151" rx="14" ry="7" fill={BOT.blush} />
+                  <ellipse className="bot-blush" cx="152" cy="140" rx="12" ry="6" fill={BOT.blush} />
+                  <ellipse className="bot-blush" cx="268" cy="140" rx="12" ry="6" fill={BOT.blush} />
                   <g className="bot-pose-eyes">
                     <g className="kodi-gaze">
                       <g className="kodi-blink">
-                        <rect className="bot-glow" x="162" y="94" width="36" height="36" rx="12" fill="var(--accent)" />
-                        <rect className="bot-glow" x="222" y="94" width="36" height="36" rx="12" fill="var(--accent)" />
-                        {/* пиксельные глаза — скруглённые квадраты с бликом стекла */}
-                        <rect className="pupil" x="166" y="98" width="28" height="28" rx="9" fill="var(--accent)" />
-                        <rect className="pupil" x="226" y="98" width="28" height="28" rx="9" fill="var(--accent)" />
-                        <rect className="pupil" x="170" y="102" width="8" height="8" rx="3" fill="#fff" opacity=".55" />
-                        <rect className="pupil" x="230" y="102" width="8" height="8" rx="3" fill="#fff" opacity=".55" />
+                        <circle className="bot-glow" cx="172" cy="104" r="17" fill="var(--accent)" />
+                        <circle className="bot-glow" cx="248" cy="104" r="17" fill="var(--accent)" />
+                        {/* глаза — круглые светящиеся точки, как на листе лица */}
+                        <circle className="pupil" cx="172" cy="104" r="12.5" fill="var(--accent)" />
+                        <circle className="pupil" cx="248" cy="104" r="12.5" fill="var(--accent)" />
                         {/* кольца — удивление */}
-                        <circle className="ring" cx="180" cy="112" r="12" fill="none"
-                          stroke="var(--accent)" strokeWidth="6" />
-                        <circle className="ring" cx="240" cy="112" r="12" fill="none"
-                          stroke="var(--accent)" strokeWidth="6" />
-                        {/* звёзды — восторг */}
-                        <path className="star" transform="translate(180 112)" fill="var(--accent)"
-                          d="M0 -19 C2.4 -6.4 6.4 -2.4 19 0 C6.4 2.4 2.4 6.4 0 19 C-2.4 6.4 -6.4 2.4 -19 0 C-6.4 -2.4 -2.4 -6.4 0 -19 Z" />
-                        <path className="star" transform="translate(240 112)" fill="var(--accent)"
-                          d="M0 -19 C2.4 -6.4 6.4 -2.4 19 0 C6.4 2.4 2.4 6.4 0 19 C-2.4 6.4 -6.4 2.4 -19 0 C-6.4 -2.4 -2.4 -6.4 0 -19 Z" />
+                        <circle className="ring" cx="172" cy="104" r="11" fill="none"
+                          stroke="var(--accent)" strokeWidth="4.5" />
+                        <circle className="ring" cx="248" cy="104" r="11" fill="none"
+                          stroke="var(--accent)" strokeWidth="4.5" />
+                        {/* звёзды — восторг: пятиконечные, как на листе лица */}
+                        <path className="star" fill="var(--accent)"
+                          strokeLinejoin="round" stroke="var(--accent)" strokeWidth="2" d="M172.0 90.5 L175.6 100.0 L185.8 100.5 L177.9 106.9 L180.5 116.7 L172.0 111.2 L163.5 116.7 L166.1 106.9 L158.2 100.5 L168.4 100.0 Z" />
+                        <path className="star" fill="var(--accent)"
+                          strokeLinejoin="round" stroke="var(--accent)" strokeWidth="2" d="M248.0 90.5 L251.6 100.0 L261.8 100.5 L253.9 106.9 L256.5 116.7 L248.0 111.2 L239.5 116.7 L242.1 106.9 L234.2 100.5 L244.4 100.0 Z" />
                         {/* дуги — улыбка глазами */}
-                        <path className="arc" d="M165 119 Q180 100 195 119" fill="none"
-                          stroke="var(--accent)" strokeWidth="7" strokeLinecap="round" />
-                        <path className="arc" d="M225 119 Q240 100 255 119" fill="none"
-                          stroke="var(--accent)" strokeWidth="7" strokeLinecap="round" />
+                        <path className="arc" d="M160 110 Q172 94 184 110" fill="none"
+                          stroke="var(--accent)" strokeWidth="5.5" strokeLinecap="round" />
+                        <path className="arc" d="M236 110 Q248 94 260 110" fill="none"
+                          stroke="var(--accent)" strokeWidth="5.5" strokeLinecap="round" />
                       </g>
                     </g>
                   </g>
                   {MOUTH}
                   {/* веки — того же стекла, что экран: в покое их не видно */}
-                  <rect className="bot-lid bot-lid-l" x="132" y="2" width="80" height="93" fill={u('s')} />
-                  <rect className="bot-lid bot-lid-r" x="208" y="2" width="80" height="93" fill={u('s')} />
-                  {/* строки дисплея и стекло: отражение сверху, блик, пробегающее сияние */}
-                  <rect x="133" y="70" width="154" height="110" fill={u('px')} />
-                  <path d="M142 80 Q156 72 188 72 L158 124 Q140 114 142 80 Z" fill="#fff" opacity=".07" />
-                  <ellipse cx="210" cy="72" rx="70" ry="9" fill="#fff" opacity=".06" />
-                  <rect x="146" y="78" width="26" height="6" rx="3" fill="#fff" opacity=".22" />
+                  <rect className="bot-lid bot-lid-l" x="132" y="-12" width="80" height="90" fill={u('s')} />
+                  <rect className="bot-lid bot-lid-r" x="208" y="-12" width="80" height="90" fill={u('s')} />
+                  {/* пиксели дисплея и стекло: отражение сверху, блик, пробегающее сияние */}
+                  <rect x="132" y="53" width="156" height="107" fill={u('px')} />
+                  <path d="M140 62 Q154 54 188 54 L156 104 Q138 96 140 62 Z" fill="#fff" opacity=".07" />
+                  <ellipse cx="210" cy="54" rx="66" ry="8" fill="#fff" opacity=".06" />
+                  <rect x="143" y="58" width="26" height="5" rx="2.5" fill="#fff" opacity=".2" />
                   <g className="kodi-glare">
-                    <path d="M150 60 L176 60 L146 200 L120 200 Z" fill="#fff" opacity=".1" />
+                    <path d="M150 40 L176 40 L146 180 L120 180 Z" fill="#fff" opacity=".1" />
                   </g>
                 </g>
-                <rect x="133" y="70" width="154" height="110" rx="32" fill="none"
+                <rect x="132" y="53" width="156" height="107" rx="27" fill="none"
                   stroke="#000" strokeWidth="3" opacity=".35" />
               </g>
             </g>
 
             {/* Искры восторга со сдвигом 140 мс. */}
             <g>
-              <Spark x={84} y={70} s={0.5} />
-              <Spark x={338} y={50} s={0.42} d={140} />
-              <Spark x={110} y={4} s={0.34} d={280} />
-              <Spark x={330} y={196} s={0.3} d={420} />
-              <Spark x={80} y={214} s={0.38} d={560} />
+              <Spark x={84} y={60} s={0.5} />
+              <Spark x={338} y={40} s={0.42} d={140} />
+              <Spark x={112} y={0} s={0.34} d={280} />
+              <Spark x={334} y={186} s={0.3} d={420} />
+              <Spark x={82} y={200} s={0.38} d={560} />
             </g>
 
             {/* Руки отстают от тела на 90 мс — это и читается как живое. */}
