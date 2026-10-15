@@ -1918,9 +1918,11 @@ const Stage = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroFi
   // Держим в модульной переменной, а не в состоянии: кнопка читает его в
   // момент нажатия, и лишние перерисовки экрану ни к чему.
   useEffect(() => { _hintText = hint || null; return () => { _hintText = null; }; }, [hint]);
+  // КУРС HTML: подсказка при бездействии — см. useIdleCoach.
+  const idle = useIdleCoach(!!nav, speaking);
   return (
     <div className={'stage' + (heroFixed ? ' stage-hero-fixed' : '') + (hideSpeaker ? ' stage-bare' : '')
-      + (speaking ? ' is-speaking' : '')}>
+      + (speaking ? ' is-speaking' : '') + (idle ? ' is-idle is-idle-' + idle : '')}>
       <div className="stage-header">
         <div className="limit">
           <div className="progress-track">
@@ -2323,6 +2325,40 @@ function useIdleLed(active, progress, ms) {
 // Рисуется отдельным элементом, а не тенью самой коробки: у коробок разные
 // собственные тени, и подмена тени ломала бы их вид.
 const Led = ({ on }) => (on ? <span className="led" aria-hidden="true"><i /></span> : null);
+
+// КУРС HTML: ПОДСКАЗКА ПРИ БЕЗДЕЙСТВИИ (заказчик, 15.10.2026). Ребёнок молчит
+// и ничего не трогает, пока герой не говорит, — экран показывает, куда нажать.
+// Уровень 1 (8 с): подпрыгивает открытая «Дальше», а если она закрыта —
+// качается лампочка подсказки и загораются светодиоды на месте действия.
+// Уровень 2 (20 с): к той же кнопке приходит рука-указатель.
+// Сброс — по любому касанию, клавише или вводу. Отсчёт идёт без перерисовок:
+// состояние меняется только при смене уровня, иначе каждая буква в редакторе
+// перерисовывала бы весь экран.
+const IDLE_COACH_MS = [8000, 20000];
+function useIdleCoach(active, speaking) {
+  const [lv, setLv] = useState(0);
+  const lvRef = useRef(0);
+  useEffect(() => {
+    const set = (v) => { if (lvRef.current !== v) { lvRef.current = v; setLv(v); } };
+    if (!active || speaking || typeof window === 'undefined') { set(0); return undefined; }
+    let t1 = null;
+    let t2 = null;
+    const arm = () => {
+      clearTimeout(t1); clearTimeout(t2); set(0);
+      t1 = setTimeout(() => {
+        set(1);
+        // «Дальше» закрыта — значит, дело на экране: светодиоды на месте действия.
+        if (!document.querySelector('.stage-nav .btn-ready')) pulseHint();
+      }, IDLE_COACH_MS[0]);
+      t2 = setTimeout(() => set(2), IDLE_COACH_MS[1]);
+    };
+    arm();
+    const evs = ['pointerdown', 'keydown', 'input', 'wheel'];
+    evs.forEach((e) => window.addEventListener(e, arm, true));
+    return () => { clearTimeout(t1); clearTimeout(t2); evs.forEach((e) => window.removeEventListener(e, arm, true)); };
+  }, [active, speaking]);
+  return lv;
+}
 
 const HINT_BTN = { uz: 'Maslahat', ru: 'Подсказка', en: 'Hint' };
 
@@ -5376,6 +5412,37 @@ function Reflection({ options, onPicked, onSay, stored, canAnswer = true }) {
 // Одинаковый во всех уроках; источник — komp-gramotnost/_canon/ui-canon.jsx.
 // =============================================================================
 const CANON_UI_CSS = `
+/* КУРС HTML: ПОДСКАЗКА ПРИ БЕЗДЕЙСТВИИ (useIdleCoach). Зовёт ровно одна
+   кнопка: открытая «Дальше», а если она закрыта — лампочка подсказки. */
+.stage.is-idle:not(:has(.stage-nav .btn-ready)) .ctl-hint { position: relative;
+  animation: idleHint 1.5s ease-in-out infinite; }
+@keyframes idleHint {
+  0%, 100% { transform: none; box-shadow: 0 0 0 0 rgba(192,138,18,.5); }
+  20% { transform: scale(1.14) rotate(-10deg); }
+  40% { transform: scale(1.14) rotate(8deg); }
+  60% { transform: none; box-shadow: 0 0 0 12px rgba(192,138,18,0); } }
+.stage.is-idle .stage-nav .btn-ready { animation: idleNext 1.3s ease-in-out infinite; }
+@keyframes idleNext {
+  0%, 100% { transform: none; box-shadow: 0 3px 0 ${T.uiDk}, 0 0 0 0 rgba(255,79,40,.45); }
+  30% { transform: translateY(-6px); }
+  55% { transform: none; box-shadow: 0 3px 0 ${T.uiDk}, 0 0 0 12px rgba(255,79,40,0); } }
+/* Рука-указатель (уровень 2): под лампочкой пальцем вверх, над «Дальше» —
+   пальцем вниз. Рисунок — иконка pointer (Lucide, ISC). */
+.stage.is-idle-2:not(:has(.stage-nav .btn-ready)) .ctl-hint::after,
+.stage.is-idle-2 .stage-nav .btn-ready::before {
+  content: ''; position: absolute; z-index: 30; width: 38px; height: 38px; pointer-events: none;
+  background: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23fff' stroke='%23292524' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15V4a2 2 0 0 1 4 0v5.5V9a2 2 0 0 1 4 0v1a2 2 0 0 1 4 0z'/%3E%3Cpath d='M11 9.5V13M15 10v3M19 11v2'/%3E%3C/svg%3E");
+  filter: drop-shadow(0 4px 6px rgba(${T.shadowBase},.35)); }
+.stage.is-idle-2:not(:has(.stage-nav .btn-ready)) .ctl-hint::after {
+  top: calc(100% + 2px); left: 50%; margin-left: -12px; animation: idleHandUp .9s ease-in-out infinite; }
+.stage.is-idle-2 .stage-nav .btn-ready::before {
+  bottom: calc(100% + 4px); left: 50%; margin-left: -14px; animation: idleHandDown .9s ease-in-out infinite; }
+@keyframes idleHandUp { 0%, 100% { transform: translateY(6px); } 50% { transform: translateY(0); } }
+@keyframes idleHandDown { 0%, 100% { transform: rotate(180deg) translateY(6px); } 50% { transform: rotate(180deg) translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .stage.is-idle .ctl-hint, .stage.is-idle .stage-nav .btn-ready,
+  .stage.is-idle-2 .ctl-hint::after, .stage.is-idle-2 .stage-nav .btn-ready::before { animation: none; } }
+
 /* UI-09: служебные кнопки не меньше 44 px — меньше палец ребёнка промахивается. */
 .lesson-root { --ctl: clamp(44px, 5.4vw, 48px); }
 
@@ -6585,9 +6652,9 @@ const C = {
     say: L3('Himoya bo‘limi yopilmayapti. Kodda yopuvchi teglar yetishmayapti.',
       'Защитный отсек не закрывается. В коде не хватает закрывающих тегов.',
       'The defense bay will not close. Some closing tags are missing in the code.'),
-    show: L3('Bo‘limlarni ko‘rsatish', 'Показать отсеки', 'Show the bays'),
-    hide: L3('Bo‘limlarni yashirish', 'Скрыть отсеки', 'Hide the bays'),
-    legend: L3('Yaxlit qavs — bo‘lim yopiq. Punktir — yopilmagan.', 'Сплошная скобка — отсек закрыт. Пунктир — не закрыт.', 'Solid bracket: the bay is closed. Dashed: not closed.'),
+    // Легенда отсеков: вместо слов «сплошная скобка / пунктир» — сами скобки.
+    legendClosed: L3('bo‘lim yopiq', 'отсек закрыт', 'the bay is closed'),
+    legendOpen: L3('bo‘lim yopilmagan', 'отсек не закрыт', 'the bay is not closed'),
     hints: [
       L3('head va body qayerda tugashini tekshiring.', 'Проверь, где заканчиваются head и body.', 'Check where head and body end.'),
       L3('Sahifa haqidagi ma’lumot ko‘rinadigan qism boshlanishidan oldin tugashi kerak. Ko‘rinadigan qism — html yopilishidan oldin.',
@@ -6605,13 +6672,13 @@ const C = {
   },
 
   t7: {
-    order: L3('O‘z xonangiz sahifasini yarating. Varaqchada uning nomi bo‘lsin. Sahifada bu yerda nima qilish mumkinligini aytib bering.',
-      'Создай страницу своей комнаты. На вкладке должно быть её название. На странице расскажи, что здесь можно делать.',
-      'Create a page for your room. Its name goes on the tab. On the page, tell what you can do here.'),
+    // Коротко (заказчик, 15.10.2026): на телефоне место нужно редактору.
+    order: L3('Xonangiz sahifasi: title — uning nomi, body — unda nima qilish mumkin.',
+      'Страница твоей комнаты: title — её название, body — что в ней можно делать.',
+      'Your room’s page: title — its name, body — what you can do there.'),
     say: L3('Bazani jonlantirdik! Sizning xonangiz qoldi. Uning sahifasini o‘zingiz yozing — html dan oxirigacha.',
       'Базу мы оживили! Осталась твоя комната. Напиши её страницу сам — от html до конца.',
       'We brought the base back to life! Only your room is left. Write its page yourself, from html to the end.'),
-    plan: L3('Chizma', 'Чертёж', 'Blueprint'),
     planTitle: L3('xona nomi', 'название комнаты', 'room name'),
     planBody: L3('xona haqida hikoya', 'рассказ о комнате', 'about the room'),
     hint1: L3('Katta html konteyneridan boshlang. Uning ichida ikki qism bo‘ladi.', 'Начни с большого контейнера html. Внутри него будут две части.', 'Start with the big html container. It will have two parts inside.'),
@@ -7017,7 +7084,7 @@ function pageOf(src) {
   return { title: titleSeen ? squash(title) : null, text: squash(page.join(' ')) };
 }
 
-// Скобки вложенности для «Показать отсеки»: какой контейнер на каких строках
+// Скобки вложенности для отсеков задания 6: какой контейнер на каких строках
 // и закрыт ли он. Незакрытый тянется до места, где его закрыли бы, или до
 // конца документа. title — строчный, скобка ему не нужна.
 function regionsOf(src) {
@@ -7321,15 +7388,19 @@ const isLit = (store, i) => !!(store.get('t' + (i + 1)) || {}).solved;
 const roomTitle = (store) => { const r = store.get('t7'); return r && r.result ? r.result.title : null; };
 
 // Полоска карты над заданием: семь значков и подпись текущего объекта.
-function BaseStrip({ cur, pop }) {
+// mini — короткая полоса для шапки телефона (заказчик, 15.10.2026): только
+// предыдущий, текущий и следующий объект, без подписи.
+function BaseStrip({ cur, pop, mini }) {
   const pick = usePick();
   const store = useStore();
   const room = roomTitle(store);
   const nameOf = (i) => (i === 6 && room && isLit(store, 6) ? room : pick(STATIONS[i].name));
+  const shown = mini ? STATIONS.map((s, i) => i).filter((i) => Math.abs(i - cur) <= 1) : null;
   return (
-    <div className="bstrip">
+    <div className={'bstrip' + (mini ? ' bstrip-mini' : '')}>
       <div className="bs-track" role="list" aria-label={pick(UI.map)}>
         {STATIONS.map((s, i) => {
+          if (shown && shown.indexOf(i) < 0) return null;
           const lit = isLit(store, i);
           return (
             <span key={s.id} role="listitem"
@@ -7342,10 +7413,12 @@ function BaseStrip({ cur, pop }) {
           );
         })}
       </div>
-      <span className="bs-cap">
-        <b>{pick(fillL(UI.stationOf, { n: cur + 1 }))}</b>
-        <span className="bs-name">{nameOf(cur)}</span>
-      </span>
+      {mini ? null : (
+        <span className="bs-cap">
+          <b>{pick(fillL(UI.stationOf, { n: cur + 1 }))}</b>
+          <span className="bs-name">{nameOf(cur)}</span>
+        </span>
+      )}
     </div>
   );
 }
@@ -7411,13 +7484,16 @@ function Slots3() {
   );
 }
 // Задание 5: как должно быть — подписями, а не вторым браузером.
+// Подписи — имена тегов title и body, а не «вкладка / страница» (заказчик,
+// 15.10.2026): ребёнок сразу видит, в какой тег что писать. Имена тегов —
+// код, поэтому одинаковые на всех языках.
 function TargetCard({ a, b }) {
   const pick = usePick();
   return (
     <div className="target">
       <span className="target-h">{pick(C.t5.target)}</span>
-      <span className="target-r"><span className="target-k">{pick(UI.tab)}</span><b>{pick(a)}</b></span>
-      <span className="target-r"><span className="target-k">{pick(UI.page)}</span><b>{pick(b)}</b></span>
+      <span className="target-r"><code className="target-k target-tag">title</code><b>{pick(a)}</b></span>
+      <span className="target-r"><code className="target-k target-tag">body</code><b>{pick(b)}</b></span>
     </div>
   );
 }
@@ -7441,10 +7517,10 @@ function RobotCard({ text }) {
     </div>
   );
 }
-// Задание 7: сворачиваемый чертёж документа.
-function Blueprint({ open, onToggle }) {
+// Задание 7: чертёж документа. Всегда открыт, без кнопки «Чертёж»
+// (заказчик, 15.10.2026).
+function Blueprint() {
   const pick = usePick();
-  const audio = useAudio();
   const row = (pre, tag, note) => (
     <div className="bp-row">
       <span className="bp-pre" aria-hidden="true">{pre}</span>
@@ -7453,20 +7529,13 @@ function Blueprint({ open, onToggle }) {
     </div>
   );
   return (
-    <div className={'bp' + (open ? ' is-open' : '')}>
-      <button type="button" className="bp-btn" aria-expanded={!!open}
-        onClick={() => { sfx('tap', audio && audio.on); onToggle(); }}>
-        <Icon name="listN" size={15} />{pick(C.t7.plan)}
-        <span className="bp-chev" aria-hidden="true">▾</span>
-      </button>
-      {open ? (
-        <div className="bp-tree mono" translate="no">
-          {row('', 'html')}
-          {row('├── ', 'head')}
-          {row('│   └── ', 'title', C.t7.planTitle)}
-          {row('└── ', 'body', C.t7.planBody)}
-        </div>
-      ) : null}
+    <div className="bp is-open">
+      <div className="bp-tree mono" translate="no">
+        {row('', 'html')}
+        {row('├── ', 'head')}
+        {row('│   └── ', 'title', C.t7.planTitle)}
+        {row('└── ', 'body', C.t7.planBody)}
+      </div>
     </div>
   );
 }
@@ -7491,6 +7560,7 @@ function TaskNote({ note, extra }) {
       <div className="note note-hint note-one" key={'h' + note.n} aria-live="polite">
         <span className="note-lbl"><Icon name="bulb" size={13} />{pick(HINT_STEP[note.level - 1])}
           <span className="note-step mono">{note.level}/3</span></span>
+        {note.fb ? <div className="note-fbline">{pick(note.fb)}</div> : null}
         <div className="note-body">{pick(note.text)}</div>
         {note.level === 3 && extra ? <div className="note-extra">{extra}</div> : null}
       </div>
@@ -7563,6 +7633,9 @@ const taskEyebrow = (n) => {
 // Всё живёт в сторе урока, поэтому «Назад» и возврат ничего не теряют, а
 // «Повторить» (SCREEN_RESET) стирает только текущее задание.
 // =============================================================================
+// Со скольких неудачных проверок подряд подсказка приходит сама.
+const AUTO_HINT_AFTER = 2;
+
 function useTask(cfg) {
   const store = useStore();
   const log = useLog();
@@ -7601,6 +7674,17 @@ function useTask(cfg) {
     setTyped((k) => k + 1);
   }, [put]);
 
+  // Следующая ступень подсказки: что записать в rec и что показать.
+  const nextHint = (cur) => {
+    const lv = Math.min(3, cur.hint + 1);
+    const h = cfg.hint(lv, cur.st);
+    return { lv, h, patch: { hint: lv, hcat: lv === 3 ? (h.cat || cur.hcat || null) : cur.hcat } };
+  };
+
+  // ПОДСКАЗКА ПОСЛЕ НЕУДАЧ (заказчик, 15.10.2026). Каждая неудачная проверка
+  // сначала называет, что не так. Начиная со второй неудачи подряд к этому
+  // сразу добавляется следующая ступень подсказки — ребёнок не должен сам
+  // догадываться нажать лампочку. Одна реплика: «что не так» + подсказка.
   const check = () => {
     const cur = ref.current;
     const r = cfg.check(cur.st);
@@ -7608,7 +7692,16 @@ function useTask(cfg) {
     const n = cur.n + 1;
     if (!r.ok) {
       sfx('soft', true);
-      const v = put({ checks, n, lastOk: false, note: { kind: 'fb', text: r.msg, n, sub: cfg.kind === 'doc' } });
+      const fails = (cur.fails || 0) + 1;
+      if (fails >= AUTO_HINT_AFTER && cur.hint < 3) {
+        const { lv, h, patch } = nextHint(cur);
+        const v = put(Object.assign({ checks, n, fails, lastOk: false,
+          note: { kind: 'hint', level: lv, text: h.text, fb: r.msg, n } }, patch));
+        row(v);
+        sayNow(joinL(r.msg, h.text), 'think');
+        return;
+      }
+      const v = put({ checks, n, fails, lastOk: false, note: { kind: 'fb', text: r.msg, n, sub: cfg.kind === 'doc' } });
       row(v);
       sayNow(r.msg, 'think');
       return;
@@ -7624,7 +7717,7 @@ function useTask(cfg) {
       drill = { cat: cur.hcat || null, st: d.init(), checks: 0, done: false, note: null };
     }
     const v = put({
-      checks, n, solved: true, lastOk: true, firstTry: was ? cur.firstTry : checks === 1,
+      checks, n, fails: 0, solved: true, lastOk: true, firstTry: was ? cur.firstTry : checks === 1,
       done: !needDrill, result: r.result || null, drill, note: { kind: 'ok', text: say, n }
     });
     if (cfg.onSolved) cfg.onSolved(r);
@@ -7662,11 +7755,9 @@ function useTask(cfg) {
   const openHint = (silent) => {
     const cur = ref.current;
     if (cur.solved) return;
-    const lv = Math.min(3, cur.hint + 1);
-    const h = cfg.hint(lv, cur.st);
+    const { lv, h, patch } = nextHint(cur);
     const n = cur.n + 1;
-    const v = put({ hint: lv, n, hcat: lv === 3 ? (h.cat || cur.hcat || null) : cur.hcat,
-      note: { kind: 'hint', level: lv, text: h.text, n } });
+    const v = put(Object.assign({ n, note: { kind: 'hint', level: lv, text: h.text, n } }, patch));
     row(v);
     if (!silent) { sfx('hint', true); sayNow(h.text, 'point'); }
   };
@@ -7710,7 +7801,7 @@ function Workbench({ spec, st, setSt, inputRef, fx, aids, tools, flash }) {
     );
   }
   return (
-    <div className="op-work">
+    <div className={'op-work' + (spec.big ? ' is-big' : '')}>
       <div className="op-side">
         <MiniBrowser title={title} page={text} hl={f.hl} empty={spec.empty} flash={flash} />
         {aids || null}
@@ -7722,6 +7813,67 @@ function Workbench({ spec, st, setSt, inputRef, fx, aids, tools, flash }) {
     </div>
   );
 }
+
+// =============================================================================
+// КАРКАС ЭКРАНА ПРАКТИКИ — БЕЗ РОБОТА И БЕЗ ТЕКСТА РЕПЛИК
+// =============================================================================
+// Заказчик (14.10.2026): в практике Коди не рисуется и его слова не
+// печатаются — на телефоне это перегружало экран. Голос остаётся; о том, что
+// он звучит, говорит один кружок с полосками в ряду служебных кнопок.
+// Канонный Stage так не умеет, а канон внутри урока не правится, поэтому
+// каркас свой — разметка та же, что у Stage.
+// Пузырь героя по-прежнему смонтирован (спрятан, как в stage-bare): он ведёт
+// озвучку и зовёт onSpoken, без него экран не узнал бы, что реплика договорена.
+// Текста реплик нет и без голоса (заказчик, 15.10.2026): задание экрана и
+// так напечатано строкой задания, а плашка в шапке ломала раскладку.
+// top — то, что на телефоне встаёт в шапку слева от кнопок (короткая карта базы).
+const PStage = ({ children, eyebrow, screen, total, nav, speaker, done, hint, top }) => {
+  const pick = usePick();
+  const audio = useAudio();
+  const speaking = useSayBusy();
+  useEffect(() => { _hintText = hint || null; return () => { _hintText = null; }; }, [hint]);
+  const line = speaker ? pick(speaker.text) : '';
+  // Подсказка при бездействии — та же, что у канонного Stage (useIdleCoach).
+  const idle = useIdleCoach(!!nav, speaking);
+  // Кружок голоса и лампочка: на компьютере — в ряду кнопок справа, на
+  // телефоне — слева в шапке (заказчик, 15.10.2026).
+  const voiceDot = (
+    <span className={'speaker-voice p-voice' + (audio && audio.playing ? ' is-on' : '')} aria-hidden="true">
+      <span className="sv-bars"><i /><i /><i /><i /><i /></span>
+    </span>
+  );
+  return (
+    <div className={'stage p-stage' + (speaking ? ' is-speaking' : '') + (idle ? ' is-idle is-idle-' + idle : '')}>
+      <div className="stage-header">
+        <div className="limit">
+          <div className="progress-track">
+            <div className="progress-bar" style={{ width: ((screen + 1) / total) * 100 + '%' }} />
+          </div>
+          <div className="chrome">
+            <div className="eyebrow"><span className="dot" />{pick(eyebrow)}</div>
+            {/* Телефон: голос и подсказка слева, карта по центру, пауза и счётчик справа. */}
+            <span className="p-voice-l">{line ? voiceDot : null}{nav && <HintChromeBtn />}</span>
+            {top ? <div className="p-top">{top}</div> : null}
+            <div className="chrome-side">
+              <ExitBtn />
+              {line ? <span className="p-voice-r">{voiceDot}</span> : null}
+              {nav && <span className="p-voice-r"><HintChromeBtn /></span>}
+              {nav && <PauseBtn done={done} />}
+              <div className="mono counter">{String(screen + 1).padStart(2, '0')}/{String(total).padStart(2, '0')}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {speaker && (
+        <div className="speaker-wrap p-hidden-hero"><div className="limit"><PersonaBubble {...speaker} /></div></div>
+      )}
+      <div className="stage-content">
+        <div className="limit stack stagger">{children}</div>
+      </div>
+      {nav && <div className="stage-nav"><div className="limit navrow">{nav}</div></div>}
+    </div>
+  );
+};
 
 function TaskScreen({ p, make }) {
   const pick = usePick();
@@ -7736,8 +7888,6 @@ function TaskScreen({ p, make }) {
   const dcfg = drilling ? cfg.drill.make(rec.drill.cat) : null;
   const spec = drilling ? dcfg.spec : cfg.spec;
   const typing = spec.kind !== 'fields';
-  // Бездействие только подсвечивает кнопку подсказки — ступень не открывается.
-  const ledHint = useIdleLed(!rec.solved, t.typed + rec.n * 1000, 20000);
   const stageHint = drilling ? dcfg.order : rec.solved ? cfg.C.done : cfg.hint(Math.min(3, rec.hint + 1), rec.st).text;
   // Подсказка и проверка не забирают фокус у поля: курсор остаётся на месте,
   // а на телефоне не закрывается клавиатура.
@@ -7745,15 +7895,9 @@ function TaskScreen({ p, make }) {
   const tools = (
     <div className="op-tools">
       {typing ? <SymKeys inputRef={drilling ? drillRef : mainRef} /> : null}
-      {!rec.solved ? (
-        <button type="button" className={'key-b hint-btn' + (rec.hint >= 3 ? ' is-max' : '')}
-          onMouseDown={keep} onClick={() => t.openHint(false)} aria-label={pick(UI.hint) + ' ' + rec.hint + '/3'}>
-          <Icon name="bulb" size={17} />
-          <span className="hint-l">{pick(UI.hint)}</span>
-          <span className="hint-n mono">{rec.hint}/3</span>
-          <Led on={ledHint} />
-        </button>
-      ) : null}
+      {/* Своей кнопки подсказки у задания нет: ту же ступень открывает
+          лампочка в шапке (заказчик, 14.10.2026 — две одинаковые кнопки на
+          телефоне путали). */}
       <button type="button" className="key-b key-go is-ready" onMouseDown={keep} onClick={drilling ? t.checkDrill : t.check}>
         <Icon name="check" size={17} />{pick(UI.check)}
       </button>
@@ -7761,7 +7905,8 @@ function TaskScreen({ p, make }) {
   );
   const note = drilling ? (rec.drill.note || rec.note) : rec.note;
   return (
-    <Stage eyebrow={taskEyebrow(cfg.n)} screen={p.screen} total={p.total} speaker={t.speaker} done={t.canGo}
+    <PStage eyebrow={taskEyebrow(cfg.n)} screen={p.screen} total={p.total} speaker={t.speaker} done={t.canGo}
+      top={<BaseStrip mini cur={cfg.n - 1} pop={t.fresh} />}
       hint={stageHint}
       nav={<><BackBtn onPrev={p.prev} /><NextBtn disabled={!t.canGo} onClick={p.next} /></>}>
       <BaseStrip cur={cfg.n - 1} pop={t.fresh} />
@@ -7778,7 +7923,7 @@ function TaskScreen({ p, make }) {
           fx={cfg.fx ? cfg.fx(rec) : null} aids={cfg.aids ? cfg.aids(rec, t) : null} tools={tools} flash={t.flash} />
       )}
       <TaskNote note={note} extra={!drilling && cfg.h3 ? cfg.h3(rec) : null} />
-    </Stage>
+    </PStage>
   );
 }
 
@@ -7948,8 +8093,8 @@ function cfgT6(pick) {
     init: () => ({ code: doc }),
     check: (st) => checkDoc(st.code),
     hint: (lv) => ({ text: C.t6.hints[lv - 1] }),
-    fx: (rec) => ({ bays: !!rec.bays, marks: !rec.solved && rec.hint >= 3 ? gapMarks(rec.st.code) : null }),
-    orderExtra: (rec, t) => <Bays on={!!rec.bays} onToggle={() => t.put({ bays: !rec.bays })} />,
+    fx: (rec) => ({ bays: true, marks: !rec.solved && rec.hint >= 3 ? gapMarks(rec.st.code) : null }),
+    orderExtra: () => <Bays />,
     drill: { make: () => ({
       order: C.t6.drill, spec: { kind: 'doc' },
       init: () => ({ code: drillDoc }), check: (st) => checkDoc(st.code)
@@ -7958,12 +8103,12 @@ function cfgT6(pick) {
 }
 
 function cfgT7(pick, store, lang) {
-  const wide = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(min-width: 720px)').matches;
   const fragCat = (cat) => (cat === 'html' || cat === 'head' || cat === 'body' ? cat : cat === 'tag' ? 'body' : 'head');
   return {
     id: 't7', n: 7, kind: 'doc', C: C.t7,
-    spec: { kind: 'doc' },
-    init: () => ({ code: DOCTYPE + '\n', plan: wide }),
+    // big — документ пишется с нуля: редактор занимает всё свободное место.
+    spec: { kind: 'doc', big: true },
+    init: () => ({ code: DOCTYPE + '\n' }),
     check: (st) => checkDoc(st.code),
     onSolved: () => {},
     hint: (lv, st) => {
@@ -7976,17 +8121,9 @@ function cfgT7(pick, store, lang) {
     },
     fx: () => null,
     // Чертёж: на телефоне — под заданием, на компьютере — под браузером, где
-    // в левой колонке есть место. Состояние «раскрыт» у обоих общее.
-    orderExtra: (rec, t) => (
-      <div className="bp-narrow">
-        <Blueprint open={rec.st.plan !== false} onToggle={() => t.setSt(Object.assign({}, rec.st, { plan: rec.st.plan === false }))} />
-      </div>
-    ),
-    aids: (rec, t) => (
-      <div className="bp-wide">
-        <Blueprint open={rec.st.plan !== false} onToggle={() => t.setSt(Object.assign({}, rec.st, { plan: rec.st.plan === false }))} />
-      </div>
-    ),
+    // в левой колонке есть место.
+    orderExtra: () => <div className="bp-narrow"><Blueprint /></div>,
+    aids: () => <div className="bp-wide"><Blueprint /></div>,
     h3: (rec) => (rec.hcat ? <CodeSample code={FRAG[rec.hcat](pick)} /> : null),
     drill: { make: (cat) => {
       if (cat === 'html') {
@@ -8015,22 +8152,19 @@ function cfgT7(pick, store, lang) {
   };
 }
 
-// Задание 6: «Показать отсеки» — скобки вложенности; незакрытые — пунктиром.
-function Bays({ on, onToggle }) {
+// Задание 6: отсеки — скобки вложенности; незакрытые — пунктиром. Видны
+// сразу, без кнопки «Показать отсеки» (заказчик, 15.10.2026); над кодом
+// остаётся только легенда.
+function Bays() {
   const pick = usePick();
-  const audio = useAudio();
   return (
     <div className="bays">
-      <button type="button" className={'bays-btn' + (on ? ' is-on' : '')} aria-pressed={on}
-        onClick={() => { sfx('tap', audio && audio.on); onToggle(); }}>
-        <Icon name="eye" size={16} />{pick(on ? C.t6.hide : C.t6.show)}
-      </button>
-      {on ? (
-        <span className="bays-legend">
-          <span className="bl-solid" aria-hidden="true" /><span className="bl-dash" aria-hidden="true" />
-          {pick(C.t6.legend)}
-        </span>
-      ) : null}
+      <span className="bays-legend">
+        <span className="bl-solid" aria-hidden="true" />— {pick(C.t6.legendClosed)}
+      </span>
+      <span className="bays-legend">
+        <span className="bl-dash" aria-hidden="true" />— {pick(C.t6.legendOpen)}
+      </span>
     </div>
   );
 }
@@ -8054,11 +8188,11 @@ function SIntro({ p }) {
   const canGo = useAdvanceGate(true, spoken);
   const lit = STATIONS.map((s, i) => isLit(store, i));
   return (
-    <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.cast[2].text}
+    <PStage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.cast[2].text}
       nav={<><BackBtn onPrev={p.prev} /><NextBtn disabled={!canGo} onClick={p.next} label={UI.start} /></>}>
       <p className="ask hook-ask intro-ask">{pick(c.order)}</p>
       <BaseMap lit={lit} room={roomTitle(store)} />
-    </Stage>
+    </PStage>
   );
 }
 
@@ -8072,7 +8206,7 @@ function SFin({ p }) {
   const res = (store.get('t7') || {}).result;
   const lit = STATIONS.map((s, i) => isLit(store, i));
   return (
-    <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.say}
+    <PStage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.say}
       nav={<><BackBtn onPrev={p.prev} /><NextBtn disabled={!canGo} onClick={p.finish} label={UI.finish} /></>}>
       <div className="fin-map-wide"><BaseMap lit={lit} room={roomTitle(store)} glow /></div>
       <div className="fin-map-narrow"><BaseStrip cur={6} /></div>
@@ -8099,7 +8233,7 @@ function SFin({ p }) {
           </div>
         </div>
       ) : null}
-    </Stage>
+    </PStage>
   );
 }
 
@@ -8244,7 +8378,7 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
   font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0;
   white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; }
 .ed-ta::selection { background: rgba(255,79,40,.28); }
-/* Скобки вложенности («Показать отсеки»): сплошная — отсек закрыт,
+/* Скобки вложенности (отсеки задания 6): сплошная — отсек закрыт,
    пунктир — не закрыт. Цвет повторяет цвет тега, но смысл несёт форма. */
 .ed-bar { position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--c); opacity: .8;
   left: calc(30px + var(--lv) * 6px); }
@@ -8306,6 +8440,16 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .op-side { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; min-width: 0; }
 .op-main { display: flex; flex-direction: column; gap: 8px; flex: 0 1 auto; min-height: 0; min-width: 0; }
 .op-main > .ed, .op-main > .cv { flex: 0 1 auto; min-height: 64px; overflow: auto; }
+/* Большой редактор (задание 7, документ с нуля): рабочая область забирает
+   свободную высоту экрана, поле ввода растягивается на всю рамку редактора —
+   нажать можно в любом месте. */
+.stage:has(.op-work.is-big) .stack { flex: 1 1 auto; }
+.stack > .op-work.is-big { flex: 1 1 auto; }
+.op-work.is-big .op-main { flex: 1 1 auto; }
+.op-work.is-big .op-main > .ed { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 8.5em; }
+.op-work.is-big .ed-edit { flex: 1 1 auto; }
+.stage:has(.op-work.is-big) .stage-content::before,
+.stage:has(.op-work.is-big) .stage-content::after { flex: 0 0 4px; }
 @media (min-width: 720px) {
   .op-work { flex-direction: row; align-items: stretch; gap: 20px; }
   .op-side { flex: .82 1 0; min-height: 0; overflow: auto; }
@@ -8322,13 +8466,7 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .sym-b { min-width: 40px; padding: 0 6px; }
 .key-go { font: 800 15px/1 'Manrope', sans-serif; padding: 0 16px; color: ${T.uiDk}; flex: 1 1 auto; max-width: 240px; margin-left: auto; }
 .key-go.is-ready { background: ${T.ui}; color: #fff; box-shadow: 0 3px 0 ${T.uiDk}; }
-.hint-btn { font: 800 14px/1 'Manrope', sans-serif; color: ${T.hint}; background: ${T.hintSoft};
-  box-shadow: inset 0 0 0 2px rgba(141,94,0,.2); padding: 0 12px; }
-.hint-btn .hint-n { font-size: 12px; opacity: .85; }
-.hint-btn .led > i { top: 4px; right: 4px; width: 8px; height: 8px; background: ${T.hint}; }
 @media (max-width: 479px) {
-  .hint-btn .hint-l { display: none; }
-  .hint-btn { padding: 0 9px; gap: 4px; }
   .sym-b { min-width: 36px; }
   .key-go { padding: 0 10px; min-width: 96px; }
   .key-go .ic { display: none; }
@@ -8345,6 +8483,12 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .stack > .target { flex-shrink: 0; }
 .note-fb { background: ${T.paper}; box-shadow: inset 3px 0 0 ${T.ui}, inset 0 0 0 1.5px rgba(255,79,40,.2); }
 .note-fb .note-lbl { color: ${T.uiDk}; }
+/* Подсказка после неудач: сверху — что не так, ниже — ступень подсказки. */
+.note-fbline { margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px dashed rgba(141,94,0,.3);
+  font-size: clamp(13.5px, 1.7vw, 15.5px); line-height: 1.35; font-weight: 600; color: ${T.uiDk}; }
+.is-kbd .note-fbline { display: none; }
+/* Низкий экран, третья ступень: важнее образец, «что не так» уже прозвучало. */
+@media (max-height: 760px) { .note-hint:has(.note-extra) .note-fbline { display: none; } }
 .note-sub { margin-left: 6px; padding: 2px 8px; border-radius: 99px; background: ${T.uiSoft}; color: ${T.uiDk};
   font-size: 11px; letter-spacing: .02em; text-transform: none; }
 
@@ -8365,6 +8509,24 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .bs-cap b { color: ${T.uiDk}; font-weight: 800; }
 .bs-name { overflow: hidden; text-overflow: ellipsis; font-weight: 700; color: ${T.ink}; }
 @media (max-width: 600px) { .bs-cap { display: none; } .bstrip { justify-content: center; } }
+/* Телефон: карта базы уходит в шапку — три объекта (предыдущий, текущий,
+   следующий) слева от кнопок; полная полоса над заданием прячется. */
+.p-top, .p-voice-l { display: none; }
+.p-voice-r { display: contents; }
+@media (max-width: 719px) {
+  /* Шапка телефона — три колонки: голос | карта | кнопки. */
+  .p-stage .chrome { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+  .p-stage .p-voice-l { display: flex; align-items: center; gap: clamp(4px, 1.2vw, 9px); grid-column: 1; justify-self: start; }
+  .p-stage .p-voice-r { display: none; }
+  .p-stage .p-top { display: flex; grid-column: 2; justify-self: center; min-width: 0; }
+  .p-stage .chrome-side { grid-column: 3; justify-self: end; }
+  .p-stage .chrome > .eyebrow { display: none; }
+  .p-stage .stage-content .bstrip { display: none; }
+  .bstrip-mini { padding-top: 0; }
+  .bstrip-mini .bs-track { gap: 8px; }
+  .bstrip-mini .bs-st { width: 34px; height: 34px; }
+  .bstrip-mini .bs-st svg { width: 17px; height: 17px; }
+}
 
 .bmap { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; max-width: 780px; align-self: center; }
 @media (min-width: 720px) {
@@ -8405,6 +8567,7 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .target-h { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: ${T.success}; }
 .target-r { display: flex; align-items: baseline; gap: 8px; font-size: 15px; line-height: 1.3; }
 .target-k { flex: 0 0 auto; min-width: 72px; font-size: 13px; font-weight: 700; color: ${T.ink2}; }
+.target-tag { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13.5px; color: ${T.uiDk}; }
 .rcard { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 14px; background: ${T.paper};
   box-shadow: inset 0 0 0 1.5px rgba(31,122,77,.35), 0 10px 22px -16px rgba(${T.shadowBase},.6); animation: noteIn .35s ease-out both; }
 .rcard-bot { flex: 0 0 auto; }
@@ -8421,33 +8584,24 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .fin-c .sample { background: ${T.paper}; box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.1); }
 .fin-c .sample-code { max-height: 34dvh; overflow: auto; }
 .bp { display: flex; flex-direction: column; gap: 6px; }
-.bp.is-open { flex-direction: row; align-items: flex-start; flex-wrap: wrap; }
+/* Чертёж всегда открыт и тянется на всю ширину колонки (заказчик, 15.10.2026). */
+.bp.is-open { flex-direction: column; align-items: stretch; width: 100%; }
+.bp-tree { width: 100%; box-sizing: border-box; }
 /* Раскрытый чертёж на низком экране прокручивается внутри себя. */
 .stack > .bp-narrow:has(.bp.is-open) { flex: 0 1 auto; min-height: 40px; overflow: auto; }
 .bp-wide .bp.is-open { flex-direction: column; }
 @media (min-width: 720px) { .bp-narrow { display: none; } }
 @media (max-width: 719px) { .bp-wide { display: none; } }
-.bp-btn { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px;
-  border: none; border-radius: 99px; cursor: pointer; background: ${T.paper}; color: ${T.ink};
-  font: 800 14px/1 'Manrope', sans-serif; box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.16); }
-.bp-btn:focus-visible { outline: 3px solid ${T.ui}; outline-offset: 2px; }
-.bp-chev { transition: transform .2s; }
-.bp.is-open .bp-chev { transform: rotate(180deg); }
 .bp-tree { padding: 6px 12px; border-radius: 12px; background: ${T.paper}; box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.1);
   font-size: 13.5px; line-height: 1.4; }
 .bp-row { display: flex; align-items: baseline; white-space: pre; }
 .bp-pre { color: ${T.ink3}; }
 .bp-tag { font-weight: 800; }
 .bp-note { margin-left: 6px; color: ${T.ink2}; font-family: 'Manrope', sans-serif; font-weight: 600; white-space: normal; }
-.bays { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
-.bays-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border: none; border-radius: 99px;
-  cursor: pointer; background: ${T.paper}; color: ${T.ink}; font: 800 14px/1 'Manrope', sans-serif;
-  box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.16); }
-.bays-btn.is-on { background: ${T.uiSoft}; color: ${T.uiDk}; box-shadow: inset 0 0 0 2px ${T.ui}; }
-.bays-btn:focus-visible { outline: 3px solid ${T.ui}; outline-offset: 2px; }
+.bays { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; }
 .bays-legend { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: ${T.ink2}; }
 .bl-solid, .bl-dash { display: inline-block; width: 0; height: 18px; border-left: 3px solid #586A83; }
-.bl-dash { border-left-style: dashed; margin-right: 2px; }
+.bl-dash { border-left-style: dashed; }
 
 /* ══ ФИНАЛ ════════════════════════════════════════════════════════ */
 .fin { display: flex; flex-direction: column; gap: 10px; width: 100%; }
@@ -8523,7 +8677,6 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
   .lesson-root .bm-st { padding: 5px 8px; gap: 8px; }
   .lesson-root .bm-ic { width: 30px; height: 30px; }
   .lesson-root .schema { padding: 4px 8px; }
-  .lesson-root .bp-btn, .lesson-root .bays-btn { min-height: 36px; }
   .lesson-root .bp-tree { font-size: 12.5px; line-height: 1.35; padding: 4px 10px; }
   .lesson-root .target { padding: 5px 10px; gap: 1px; }
   .lesson-root .target-h { display: none; }
@@ -8537,6 +8690,18 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .is-kbd .speaker-wrap, .is-kbd .stage-nav, .is-kbd .bstrip, .is-kbd .op-order,
 .is-kbd .schema, .is-kbd .target, .is-kbd .bp-narrow, .is-kbd .bays, .is-kbd .rcard, .is-kbd .slots { display: none; }
 .is-kbd .stage-content::before, .is-kbd .stage-content::after { max-height: 4px; }
+
+/* ══ ШАПКА ПРАКТИКИ (PStage) ══════════════════════════════════════
+   Робота и его слов нет: о голосе говорит кружок с полосками в ряду кнопок.
+   Пока голос звучит, вокруг кружка мягко расходится кольцо. */
+.p-voice.is-on { animation: pVoiceRing 1.6s ease-out infinite; }
+@keyframes pVoiceRing {
+  0% { box-shadow: 0 0 0 0 rgba(255,79,40,.32); }
+  100% { box-shadow: 0 0 0 10px rgba(255,79,40,0); }
+}
+@media (prefers-reduced-motion: reduce) { .p-voice.is-on { animation: none; } }
+.p-hidden-hero { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .is-kbd .mb-top { height: 24px; }
 .is-kbd .op-side .mb-page { min-height: 24px; padding: 3px 8px; }
 .is-kbd .op-side .mb-doc { font-size: 15px; max-height: 2.5em; }
@@ -8552,6 +8717,5 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 @media (prefers-reduced-motion: reduce) {
   .bs-st.is-pop, .bmap.is-glow .bm-st, .ed-edit.is-led-in, .tk-input.is-led-in,
   .mb-tab.is-flash, .mb-page.is-flash, .rcard { animation: none !important; }
-  .bp-chev { transition: none; }
 }
 `;
