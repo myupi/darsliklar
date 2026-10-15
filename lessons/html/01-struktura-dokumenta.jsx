@@ -1915,9 +1915,11 @@ const Stage = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroFi
   // Держим в модульной переменной, а не в состоянии: кнопка читает его в
   // момент нажатия, и лишние перерисовки экрану ни к чему.
   useEffect(() => { _hintText = hint || null; return () => { _hintText = null; }; }, [hint]);
+  // КУРС HTML: подсказка при бездействии — см. useIdleCoach.
+  const idle = useIdleCoach(!!nav, speaking);
   return (
     <div className={'stage' + (heroFixed ? ' stage-hero-fixed' : '') + (hideSpeaker ? ' stage-bare' : '')
-      + (speaking ? ' is-speaking' : '')}>
+      + (speaking ? ' is-speaking' : '') + (idle ? ' is-idle is-idle-' + idle : '')}>
       <div className="stage-header">
         <div className="limit">
           <div className="progress-track">
@@ -2320,6 +2322,40 @@ function useIdleLed(active, progress, ms) {
 // Рисуется отдельным элементом, а не тенью самой коробки: у коробок разные
 // собственные тени, и подмена тени ломала бы их вид.
 const Led = ({ on }) => (on ? <span className="led" aria-hidden="true"><i /></span> : null);
+
+// КУРС HTML: ПОДСКАЗКА ПРИ БЕЗДЕЙСТВИИ (заказчик, 15.10.2026). Ребёнок молчит
+// и ничего не трогает, пока герой не говорит, — экран показывает, куда нажать.
+// Уровень 1 (8 с): подпрыгивает открытая «Дальше», а если она закрыта —
+// качается лампочка подсказки и загораются светодиоды на месте действия.
+// Уровень 2 (20 с): к той же кнопке приходит рука-указатель.
+// Сброс — по любому касанию, клавише или вводу. Отсчёт идёт без перерисовок:
+// состояние меняется только при смене уровня, иначе каждая буква в редакторе
+// перерисовывала бы весь экран.
+const IDLE_COACH_MS = [8000, 20000];
+function useIdleCoach(active, speaking) {
+  const [lv, setLv] = useState(0);
+  const lvRef = useRef(0);
+  useEffect(() => {
+    const set = (v) => { if (lvRef.current !== v) { lvRef.current = v; setLv(v); } };
+    if (!active || speaking || typeof window === 'undefined') { set(0); return undefined; }
+    let t1 = null;
+    let t2 = null;
+    const arm = () => {
+      clearTimeout(t1); clearTimeout(t2); set(0);
+      t1 = setTimeout(() => {
+        set(1);
+        // «Дальше» закрыта — значит, дело на экране: светодиоды на месте действия.
+        if (!document.querySelector('.stage-nav .btn-ready')) pulseHint();
+      }, IDLE_COACH_MS[0]);
+      t2 = setTimeout(() => set(2), IDLE_COACH_MS[1]);
+    };
+    arm();
+    const evs = ['pointerdown', 'keydown', 'input', 'wheel'];
+    evs.forEach((e) => window.addEventListener(e, arm, true));
+    return () => { clearTimeout(t1); clearTimeout(t2); evs.forEach((e) => window.removeEventListener(e, arm, true)); };
+  }, [active, speaking]);
+  return lv;
+}
 
 const HINT_BTN = { uz: 'Maslahat', ru: 'Подсказка', en: 'Hint' };
 
@@ -5373,6 +5409,37 @@ function Reflection({ options, onPicked, onSay, stored, canAnswer = true }) {
 // Одинаковый во всех уроках; источник — komp-gramotnost/_canon/ui-canon.jsx.
 // =============================================================================
 const CANON_UI_CSS = `
+/* КУРС HTML: ПОДСКАЗКА ПРИ БЕЗДЕЙСТВИИ (useIdleCoach). Зовёт ровно одна
+   кнопка: открытая «Дальше», а если она закрыта — лампочка подсказки. */
+.stage.is-idle:not(:has(.stage-nav .btn-ready)) .ctl-hint { position: relative;
+  animation: idleHint 1.5s ease-in-out infinite; }
+@keyframes idleHint {
+  0%, 100% { transform: none; box-shadow: 0 0 0 0 rgba(192,138,18,.5); }
+  20% { transform: scale(1.14) rotate(-10deg); }
+  40% { transform: scale(1.14) rotate(8deg); }
+  60% { transform: none; box-shadow: 0 0 0 12px rgba(192,138,18,0); } }
+.stage.is-idle .stage-nav .btn-ready { animation: idleNext 1.3s ease-in-out infinite; }
+@keyframes idleNext {
+  0%, 100% { transform: none; box-shadow: 0 3px 0 ${T.uiDk}, 0 0 0 0 rgba(255,79,40,.45); }
+  30% { transform: translateY(-6px); }
+  55% { transform: none; box-shadow: 0 3px 0 ${T.uiDk}, 0 0 0 12px rgba(255,79,40,0); } }
+/* Рука-указатель (уровень 2): под лампочкой пальцем вверх, над «Дальше» —
+   пальцем вниз. Рисунок — иконка pointer (Lucide, ISC). */
+.stage.is-idle-2:not(:has(.stage-nav .btn-ready)) .ctl-hint::after,
+.stage.is-idle-2 .stage-nav .btn-ready::before {
+  content: ''; position: absolute; z-index: 30; width: 38px; height: 38px; pointer-events: none;
+  background: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23fff' stroke='%23292524' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15V4a2 2 0 0 1 4 0v5.5V9a2 2 0 0 1 4 0v1a2 2 0 0 1 4 0z'/%3E%3Cpath d='M11 9.5V13M15 10v3M19 11v2'/%3E%3C/svg%3E");
+  filter: drop-shadow(0 4px 6px rgba(${T.shadowBase},.35)); }
+.stage.is-idle-2:not(:has(.stage-nav .btn-ready)) .ctl-hint::after {
+  top: calc(100% + 2px); left: 50%; margin-left: -12px; animation: idleHandUp .9s ease-in-out infinite; }
+.stage.is-idle-2 .stage-nav .btn-ready::before {
+  bottom: calc(100% + 4px); left: 50%; margin-left: -14px; animation: idleHandDown .9s ease-in-out infinite; }
+@keyframes idleHandUp { 0%, 100% { transform: translateY(6px); } 50% { transform: translateY(0); } }
+@keyframes idleHandDown { 0%, 100% { transform: rotate(180deg) translateY(6px); } 50% { transform: rotate(180deg) translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .stage.is-idle .ctl-hint, .stage.is-idle .stage-nav .btn-ready,
+  .stage.is-idle-2 .ctl-hint::after, .stage.is-idle-2 .stage-nav .btn-ready::before { animation: none; } }
+
 /* UI-09: служебные кнопки не меньше 44 px — меньше палец ребёнка промахивается. */
 .lesson-root { --ctl: clamp(44px, 5.4vw, 48px); }
 

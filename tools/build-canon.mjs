@@ -105,6 +105,7 @@ const swap = (from, to) => {
 swapTts();
 swapAutoplay();
 swapTtsDiag();
+swapIdleCoach();
 
 swap("  ui: '#1E88E5',", "  // КУРС HTML: интерфейс — #FF4F28 (заказчик, 12.10.2026), а не голубой.\n  ui: '#FF4F28',");
 swap("  uiSoft: '#E3F2FD',", "  uiSoft: '#FFE8E1',");
@@ -306,4 +307,96 @@ function swapTtsDiag() {
             if (!_ttsFirstLogged) { _ttsFirstLogged = true; try { console.info('[TTS] запрос к сервису: ' + a.src); } catch (e) { /* no-op */ } }`);
   swap(`let LMS_VOICE = null;`, `let LMS_VOICE = null;
 let _ttsFirstLogged = false;   // диагностика: первый запрос к сервису — в консоль`);
+}
+
+// ПОДСКАЗКА ПРИ БЕЗДЕЙСТВИИ (заказчик, 15.10.2026): «ученик не должен сидеть
+// и не понимать, что делать». Каркас экрана сам замечает, что ребёнок ничего
+// не делает, пока герой молчит, и показывает, куда нажать, — без голоса.
+//   8 с  — если «Дальше» открыта, она подпрыгивает; иначе качается лампочка
+//          подсказки в шапке и сразу загораются светодиоды на месте действия
+//          (там, где экран их ставит, — useIdleLed);
+//   20 с — к той же кнопке приходит рука-указатель.
+// Любое касание, клавиша или ввод сбрасывают отсчёт; пока герой говорит,
+// отсчёт стоит. Работает на каждом экране с навигацией — во всех уроках курса.
+function swapIdleCoach() {
+  swap(`const Led = ({ on }) => (on ? <span className="led" aria-hidden="true"><i /></span> : null);
+`, `const Led = ({ on }) => (on ? <span className="led" aria-hidden="true"><i /></span> : null);
+
+// КУРС HTML: ПОДСКАЗКА ПРИ БЕЗДЕЙСТВИИ (заказчик, 15.10.2026). Ребёнок молчит
+// и ничего не трогает, пока герой не говорит, — экран показывает, куда нажать.
+// Уровень 1 (8 с): подпрыгивает открытая «Дальше», а если она закрыта —
+// качается лампочка подсказки и загораются светодиоды на месте действия.
+// Уровень 2 (20 с): к той же кнопке приходит рука-указатель.
+// Сброс — по любому касанию, клавише или вводу. Отсчёт идёт без перерисовок:
+// состояние меняется только при смене уровня, иначе каждая буква в редакторе
+// перерисовывала бы весь экран.
+const IDLE_COACH_MS = [8000, 20000];
+function useIdleCoach(active, speaking) {
+  const [lv, setLv] = useState(0);
+  const lvRef = useRef(0);
+  useEffect(() => {
+    const set = (v) => { if (lvRef.current !== v) { lvRef.current = v; setLv(v); } };
+    if (!active || speaking || typeof window === 'undefined') { set(0); return undefined; }
+    let t1 = null;
+    let t2 = null;
+    const arm = () => {
+      clearTimeout(t1); clearTimeout(t2); set(0);
+      t1 = setTimeout(() => {
+        set(1);
+        // «Дальше» закрыта — значит, дело на экране: светодиоды на месте действия.
+        if (!document.querySelector('.stage-nav .btn-ready')) pulseHint();
+      }, IDLE_COACH_MS[0]);
+      t2 = setTimeout(() => set(2), IDLE_COACH_MS[1]);
+    };
+    arm();
+    const evs = ['pointerdown', 'keydown', 'input', 'wheel'];
+    evs.forEach((e) => window.addEventListener(e, arm, true));
+    return () => { clearTimeout(t1); clearTimeout(t2); evs.forEach((e) => window.removeEventListener(e, arm, true)); };
+  }, [active, speaking]);
+  return lv;
+}
+`);
+  swap(`  useEffect(() => { _hintText = hint || null; return () => { _hintText = null; }; }, [hint]);
+  return (
+    <div className={'stage' + (heroFixed ? ' stage-hero-fixed' : '') + (hideSpeaker ? ' stage-bare' : '')
+      + (speaking ? ' is-speaking' : '')}>`, `  useEffect(() => { _hintText = hint || null; return () => { _hintText = null; }; }, [hint]);
+  // КУРС HTML: подсказка при бездействии — см. useIdleCoach.
+  const idle = useIdleCoach(!!nav, speaking);
+  return (
+    <div className={'stage' + (heroFixed ? ' stage-hero-fixed' : '') + (hideSpeaker ? ' stage-bare' : '')
+      + (speaking ? ' is-speaking' : '') + (idle ? ' is-idle is-idle-' + idle : '')}>`);
+  swap(`const CANON_UI_CSS = \`
+`, `const CANON_UI_CSS = \`
+/* КУРС HTML: ПОДСКАЗКА ПРИ БЕЗДЕЙСТВИИ (useIdleCoach). Зовёт ровно одна
+   кнопка: открытая «Дальше», а если она закрыта — лампочка подсказки. */
+.stage.is-idle:not(:has(.stage-nav .btn-ready)) .ctl-hint { position: relative;
+  animation: idleHint 1.5s ease-in-out infinite; }
+@keyframes idleHint {
+  0%, 100% { transform: none; box-shadow: 0 0 0 0 rgba(192,138,18,.5); }
+  20% { transform: scale(1.14) rotate(-10deg); }
+  40% { transform: scale(1.14) rotate(8deg); }
+  60% { transform: none; box-shadow: 0 0 0 12px rgba(192,138,18,0); } }
+.stage.is-idle .stage-nav .btn-ready { animation: idleNext 1.3s ease-in-out infinite; }
+@keyframes idleNext {
+  0%, 100% { transform: none; box-shadow: 0 3px 0 \${T.uiDk}, 0 0 0 0 rgba(255,79,40,.45); }
+  30% { transform: translateY(-6px); }
+  55% { transform: none; box-shadow: 0 3px 0 \${T.uiDk}, 0 0 0 12px rgba(255,79,40,0); } }
+/* Рука-указатель (уровень 2): под лампочкой пальцем вверх, над «Дальше» —
+   пальцем вниз. Рисунок — иконка pointer (Lucide, ISC). */
+.stage.is-idle-2:not(:has(.stage-nav .btn-ready)) .ctl-hint::after,
+.stage.is-idle-2 .stage-nav .btn-ready::before {
+  content: ''; position: absolute; z-index: 30; width: 38px; height: 38px; pointer-events: none;
+  background: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23fff' stroke='%23292524' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15V4a2 2 0 0 1 4 0v5.5V9a2 2 0 0 1 4 0v1a2 2 0 0 1 4 0z'/%3E%3Cpath d='M11 9.5V13M15 10v3M19 11v2'/%3E%3C/svg%3E");
+  filter: drop-shadow(0 4px 6px rgba(\${T.shadowBase},.35)); }
+.stage.is-idle-2:not(:has(.stage-nav .btn-ready)) .ctl-hint::after {
+  top: calc(100% + 2px); left: 50%; margin-left: -12px; animation: idleHandUp .9s ease-in-out infinite; }
+.stage.is-idle-2 .stage-nav .btn-ready::before {
+  bottom: calc(100% + 4px); left: 50%; margin-left: -14px; animation: idleHandDown .9s ease-in-out infinite; }
+@keyframes idleHandUp { 0%, 100% { transform: translateY(6px); } 50% { transform: translateY(0); } }
+@keyframes idleHandDown { 0%, 100% { transform: rotate(180deg) translateY(6px); } 50% { transform: rotate(180deg) translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .stage.is-idle .ctl-hint, .stage.is-idle .stage-nav .btn-ready,
+  .stage.is-idle-2 .ctl-hint::after, .stage.is-idle-2 .stage-nav .btn-ready::before { animation: none; } }
+
+`);
 }
