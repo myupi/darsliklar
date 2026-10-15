@@ -111,14 +111,15 @@ const T = {
 //
 // Образ по листу заказчика (вид спереди, сзади, сбоку): кремовая округлая
 // голова-шлем из матового винила, тёмный стеклянный экран-лицо в медной рамке,
-// на экране светятся пиксельные глаза и рот, по бокам медные «наушники».
+// на экране светятся пиксельные глаза и рот, по бокам медные уши-вставки.
 // Тёмно-синий вязаный свитер с надписью JUNIOR IT · AKADEMIYA, кремовые
 // руки-варежки и короткие ноги.
 //
 // РИСУНОК v2 (15.10.2026). Пропорции мультяшного талисмана: голова — половина
 // роста, компактный свитер, короткие ноги в кедах. Что добавлено к листу и
 // почему:
-//   · дужка наушников над шлемом — без неё медные чашки читались как ушки;
+//   · уши — медные вставки в боках шлема, вровень с силуэтом: без дужки и
+//     без чашек, чтобы Коди не выглядел роботом в наушниках (15.10.2026);
 //   · короткая шея — голова перестала сидеть прямо на плечах;
 //   · плечевой шарнир и рукав-труба — руки крутятся в позах на ±150°, и
 //     суженный рукав превращался в флажок, оторванный от плеча;
@@ -136,7 +137,7 @@ const T = {
 //   · моргание — глаза сжимаются по вертикали, как пиксели дисплея;
 //   · рот меняет форму вместе с состоянием: улыбка, радость, «о», ровный рот
 //     в грусти, кривая усмешка, когда Коди думает;
-//   · речь — рот «говорит», кольца в «наушниках» пульсируют;
+//   · речь — рот «говорит», полоски в ушах пульсируют;
 //   · стекло — по экрану изредка пробегает блик.
 // Слой подчиняется паузе урока и настройке «меньше движения».
 //
@@ -148,7 +149,7 @@ const BOT = {
   headMid:   '#E7E1D4',
   headDk:    '#CBC2AF',   // теневая сторона
   edge:      '#B9AE99',
-  rim:       '#C47A47',   // медь: рамка экрана, «наушники» и дужка
+  rim:       '#C47A47',   // медь: рамка экрана и уши
   rimLt:     '#F0B98A',
   rimDk:     '#8F4C27',
   visor:     '#0A0F12',   // стекло экрана по краям
@@ -476,7 +477,8 @@ let _botUid = 0;
 // по крайним точкам движения, и Коди укладывается в те же габариты.
 //
 // ПРОПОРЦИИ (v2). Рост от макушки до подошвы 366: голова со шлемом 186 (половина
-// роста), шея 10, свитер 96, ноги с кедами 90. Ширина шлема 212, плеч 148.
+// роста), шея 10, свитер 96, ноги с кедами 90. Ширина шлема 212 (уши внутри
+// силуэта), плеч 148.
 // Ось симметрии x = 210; пояс (ось наклона торса) y = 300.
 //
 // Внутри рисунка нет атрибутов transform у групп и фигур с масштабом или
@@ -610,15 +612,19 @@ function RobotSVG({ pose = 'explain', className, talking }) {
     </g>
   );
 
-  // Наушник: медная чашка, тёмная середина, кольцо-индикатор речи, блик.
-  const Cup = ({ cx }) => (
+  // УХО — медная вставка в боку шлема, а не наушник (заказчик, 15.10.2026:
+  // дужка и круглые чашки делали Коди роботом в наушниках). Вставка лежит в
+  // обтравке шлема, поэтому её внешний край идёт ровно по силуэту и ухо не
+  // выпирает. Внутри — тёмная прорезь и полоска-индикатор речи.
+  // x — левый край вставки; side — с какой стороны свет.
+  const Ear = ({ x, side }) => (
     <>
-      <circle cx={cx} cy="124" r="27" fill={u('c')} />
-      <circle cx={cx} cy="124" r="19" fill={BOT.rimDk} opacity=".8" />
-      <circle cx={cx} cy="124" r="14" fill={u('cup')} />
-      <circle className="kodi-ear" cx={cx} cy="124" r="9.5" fill="none" stroke="var(--accent)" strokeWidth="3.5" />
-      <path d={`M${cx - 15} 112 Q${cx - 10} 101 ${cx} 99`} fill="none" stroke="#fff" strokeWidth="3"
-        strokeLinecap="round" opacity=".5" />
+      <rect x={x} y="94" width="22" height="60" rx="11" fill={u('c')} />
+      <rect x={x + 6} y="102" width="10" height="44" rx="5" fill={u('cup')} />
+      <rect className="kodi-ear" x={x + 8} y="106" width="6" height="36" rx="3" fill="none"
+        stroke="var(--accent)" strokeWidth="2.5" />
+      <path d={side === 'l' ? `M${x + 16} 99 Q${x + 19} 104 ${x + 19} 112` : `M${x + 6} 99 Q${x + 3} 104 ${x + 3} 112`}
+        fill="none" stroke="#FFE2C6" strokeWidth="2" strokeLinecap="round" opacity=".6" />
     </>
   );
 
@@ -692,7 +698,7 @@ function RobotSVG({ pose = 'explain', className, talking }) {
           <stop offset="0%" stopColor={BOT.shoe} />
           <stop offset="100%" stopColor={BOT.shoeDk} />
         </linearGradient>
-        {/* динамик наушника: тёплая тёмная медь с бликом, а не чёрная дыра */}
+        {/* прорезь уха: тёплая тёмная медь с бликом, а не чёрная дыра */}
         <radialGradient id={uid + 'cup'} cx="38%" cy="32%" r="70%">
           <stop offset="0%" stopColor="#6B4328" />
           <stop offset="100%" stopColor="#2E1C11" />
@@ -701,7 +707,7 @@ function RobotSVG({ pose = 'explain', className, talking }) {
           <stop offset="0%" stopColor={BOT.shadow} stopOpacity="1" />
           <stop offset="100%" stopColor={BOT.shadow} stopOpacity="0" />
         </radialGradient>
-        <clipPath id={uid + 'v'}><rect x="127" y="70" width="166" height="110" rx="34" /></clipPath>
+        <clipPath id={uid + 'v'}><rect x="133" y="70" width="154" height="110" rx="32" /></clipPath>
         <clipPath id={uid + 'hc'}><rect x="104" y="24" width="212" height="186" rx="80" /></clipPath>
       </defs>
 
@@ -742,37 +748,30 @@ function RobotSVG({ pose = 'explain', className, talking }) {
             {/* голова */}
             <g className="bot-pose-head">
               <g className="bot-beat-head">
-                {/* дужка наушников — за шлемом, видна над макушкой и у чашек */}
-                <path d="M97 124 C97 38 148 6 210 6 C272 6 323 38 323 124" fill="none"
-                  stroke={u('c')} strokeWidth="10" strokeLinecap="round" />
-                <path d="M126 52 C150 24 178 12 210 11" fill="none" stroke="#FFE2C6" strokeWidth="2.5"
-                  strokeLinecap="round" opacity=".55" />
-
                 {/* шлем */}
                 <rect x="104" y="24" width="212" height="186" rx="80" fill={u('h')} />
                 <g clipPath={u('hc')}>
                   <rect x="104" y="24" width="212" height="186" fill={u('hs')} />
                   <rect x="104" y="24" width="212" height="186" fill={u('hl')} />
+                  {/* уши — вставки в боках шлема, край по силуэту */}
+                  <Ear x={100} side="l" />
+                  <Ear x={298} side="r" />
                 </g>
                 <rect x="104" y="24" width="212" height="186" rx="80" fill="none"
                   stroke={BOT.edge} strokeWidth="1.4" opacity=".55" />
 
-                {/* наушники поверх шлема */}
-                <Cup cx={98} />
-                <Cup cx={322} />
-
                 {/* медная рамка экрана: фаска внутри, блик по верхней кромке */}
-                <rect x="117" y="60" width="186" height="130" rx="44" fill={u('c')} />
-                <rect x="123" y="66" width="174" height="118" rx="39" fill="none"
+                <rect x="124" y="60" width="172" height="130" rx="42" fill={u('c')} />
+                <rect x="130" y="66" width="160" height="118" rx="37" fill="none"
                   stroke={BOT.rimDk} strokeWidth="2" opacity=".55" />
                 <path d="M148 63 Q210 56 272 63" fill="none" stroke="#FFE2C6" strokeWidth="3"
                   strokeLinecap="round" opacity=".6" />
 
                 {/* экран-лицо */}
-                <rect x="127" y="70" width="166" height="110" rx="34" fill={u('s')} />
+                <rect x="133" y="70" width="154" height="110" rx="32" fill={u('s')} />
                 <g clipPath={u('v')}>
-                  <ellipse className="bot-blush" cx="150" cy="151" rx="15" ry="7" fill={BOT.blush} />
-                  <ellipse className="bot-blush" cx="270" cy="151" rx="15" ry="7" fill={BOT.blush} />
+                  <ellipse className="bot-blush" cx="155" cy="151" rx="14" ry="7" fill={BOT.blush} />
+                  <ellipse className="bot-blush" cx="265" cy="151" rx="14" ry="7" fill={BOT.blush} />
                   <g className="bot-pose-eyes">
                     <g className="kodi-gaze">
                       <g className="kodi-blink">
@@ -803,18 +802,18 @@ function RobotSVG({ pose = 'explain', className, talking }) {
                   </g>
                   {MOUTH}
                   {/* веки — того же стекла, что экран: в покое их не видно */}
-                  <rect className="bot-lid bot-lid-l" x="126" y="2" width="86" height="93" fill={u('s')} />
-                  <rect className="bot-lid bot-lid-r" x="208" y="2" width="86" height="93" fill={u('s')} />
+                  <rect className="bot-lid bot-lid-l" x="132" y="2" width="80" height="93" fill={u('s')} />
+                  <rect className="bot-lid bot-lid-r" x="208" y="2" width="80" height="93" fill={u('s')} />
                   {/* строки дисплея и стекло: отражение сверху, блик, пробегающее сияние */}
-                  <rect x="127" y="70" width="166" height="110" fill={u('px')} />
-                  <path d="M136 80 Q150 72 184 72 L152 124 Q134 114 136 80 Z" fill="#fff" opacity=".07" />
+                  <rect x="133" y="70" width="154" height="110" fill={u('px')} />
+                  <path d="M142 80 Q156 72 188 72 L158 124 Q140 114 142 80 Z" fill="#fff" opacity=".07" />
                   <ellipse cx="210" cy="72" rx="70" ry="9" fill="#fff" opacity=".06" />
-                  <rect x="141" y="78" width="28" height="6" rx="3" fill="#fff" opacity=".22" />
+                  <rect x="146" y="78" width="26" height="6" rx="3" fill="#fff" opacity=".22" />
                   <g className="kodi-glare">
                     <path d="M150 60 L176 60 L146 200 L120 200 Z" fill="#fff" opacity=".1" />
                   </g>
                 </g>
-                <rect x="127" y="70" width="166" height="110" rx="34" fill="none"
+                <rect x="133" y="70" width="154" height="110" rx="32" fill="none"
                   stroke="#000" strokeWidth="3" opacity=".35" />
               </g>
             </g>
@@ -6464,12 +6463,14 @@ const CANON_SCREEN_CSS = CANON_SCREEN_CSS_BASE + CANON_MECH_CSS + CANON_DZ_CSS +
 // делится на абзацы, важные слова получают выделение. Потом то же самое — на
 // своей странице о своём увлечении.
 //
-// ДУГА. Крючок (найти факт в стене текста и на размеченной странице) → план →
+// ДУГА (19 экранов, переделка 15.10.2026 по правилам «Качество урока»).
+// Крючок (найти факт в стене текста и на размеченной странице) → план →
 // title и h1 → первый заголовок (собрать строку, дописать закрывающий тег) →
-// шесть уровней → структура статьи → архитектор уровней → эксперимент
-// «перенос строки ≠ абзац» → раздели мысли → мастерская абзацев → b и i →
-// точный акцент → HTML-детектив → песочница → свой проект → новая задача без
-// образца → моя страница → итог.
+// шесть уровней → лесенка заголовков (показ) → «Какая цифра?» (повторение) →
+// «Расставь сам» → эксперимент «перенос строки ≠ абзац» → разложи по абзацам →
+// закрой абзац → b и i → точный акцент → HTML-детектив → новый раздел
+// (мини-задание по шагам) → свой проект по шагам → новая задача без образца →
+// моя страница → итог. Тесные экраны — Stage voiceTop (голос в шапке).
 //
 // ОСОБЫЕ ПРАВИЛА УРОКА
 //   · ВОЗРАСТ 11–14. Тон живой и уважительный, без сюсюканья. На RU обращение
