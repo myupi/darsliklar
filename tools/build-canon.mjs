@@ -106,6 +106,7 @@ swapTts();
 swapAutoplay();
 swapTtsDiag();
 swapIdleCoach();
+swapVoiceTop();
 
 swap("  ui: '#1E88E5',", "  // КУРС HTML: интерфейс — #FF4F28 (заказчик, 12.10.2026), а не голубой.\n  ui: '#FF4F28',");
 swap("  uiSoft: '#E3F2FD',", "  uiSoft: '#FFE8E1',");
@@ -399,4 +400,38 @@ function useIdleCoach(active, speaking) {
   .stage.is-idle-2 .ctl-hint::after, .stage.is-idle-2 .stage-nav .btn-ready::before { animation: none; } }
 
 `);
+}
+
+// ГОЛОС В ШАПКЕ ВМЕСТО ГЕРОЯ (заказчик, 15.10.2026): на экранах, где Коди
+// отнимает место и контент не помещается, урок ставит Stage проп voiceTop.
+// Герой скрыт (как stage-bare: пузырь жив и ведёт озвучку), а в шапке, рядом
+// с подсказкой, — кружок с полосками, как в практике: он оживает, пока голос
+// звучит.
+function swapVoiceTop() {
+  swap(`const Stage = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroFixed, done, hideSpeaker, hint }) => {`,
+    `const Stage = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroFixed, done, hideSpeaker, hint, voiceTop }) => {`);
+  swap(`(hideSpeaker ? ' stage-bare' : '')`, `(hideSpeaker || voiceTop ? ' stage-bare' : '')`);
+  swap(`              <ExitBtn />
+`, `              <ExitBtn />
+              {voiceTop ? <VoiceDot /> : null}
+`);
+  swap(`const PauseBtn = ({ done }) => {`, `// КУРС HTML: кружок голоса в шапке (Stage voiceTop) — на экранах, где герою
+// не хватает места. Оживает, пока звучит голос.
+const VoiceDot = () => {
+  const audio = useAudio();
+  return (
+    <span className={'speaker-voice ctl-voice' + (audio && audio.playing ? ' is-on' : '')} aria-hidden="true">
+      <span className="sv-bars"><i /><i /><i /><i /><i /></span>
+    </span>
+  );
+};
+
+const PauseBtn = ({ done }) => {`);
+  swap(`/* UI-09: служебные кнопки`, `/* КУРС HTML: кружок голоса в шапке (voiceTop) — пока звучит голос, вокруг
+   него мягко расходится кольцо. */
+.ctl-voice.is-on { animation: ctlVoiceRing 1.6s ease-out infinite; }
+@keyframes ctlVoiceRing { 0% { box-shadow: 0 0 0 0 rgba(255,79,40,.32); } 100% { box-shadow: 0 0 0 10px rgba(255,79,40,0); } }
+@media (prefers-reduced-motion: reduce) { .ctl-voice.is-on { animation: none; } }
+
+/* UI-09: служебные кнопки`);
 }
