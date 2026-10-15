@@ -115,6 +115,17 @@ const T = {
 // Тёмно-синий вязаный свитер с надписью JUNIOR IT · AKADEMIYA, кремовые
 // руки-варежки и короткие ноги.
 //
+// РИСУНОК v2 (15.10.2026). Пропорции мультяшного талисмана: голова — половина
+// роста, компактный свитер, короткие ноги в кедах. Что добавлено к листу и
+// почему:
+//   · дужка наушников над шлемом — без неё медные чашки читались как ушки;
+//   · короткая шея — голова перестала сидеть прямо на плечах;
+//   · плечевой шарнир и рукав-труба — руки крутятся в позах на ±150°, и
+//     суженный рукав превращался в флажок, оторванный от плеча;
+//   · варежки с большим пальцем — крупнее, с видимым швом;
+//   · тёмно-синие кеды с кремовой подошвой — кремовые стопы сливались с
+//     ногами, и фигура стояла на «трубках». Цвет кед — цвет свитера.
+//
 // РИСУЕТСЯ КОДОМ, как робот Курса 0: урок автономен, поза меняется параметром,
 // цвета лежат здесь. Система движения (позы, такты, тайминги) — та же, что у
 // робота Курса 0, дословно: CSS канона двигает героя по классам узлов, а не по
@@ -137,14 +148,18 @@ const BOT = {
   headMid:   '#E7E1D4',
   headDk:    '#CBC2AF',   // теневая сторона
   edge:      '#B9AE99',
-  rim:       '#C47A47',   // медь: рамка экрана и «наушники»
+  rim:       '#C47A47',   // медь: рамка экрана, «наушники» и дужка
   rimLt:     '#F0B98A',
   rimDk:     '#8F4C27',
   visor:     '#0A0F12',   // стекло экрана по краям
   visorMid:  '#18242B',   // стекло экрана в центре
+  neck:      '#2B3446',   // шея — тёмный графит между шлемом и воротом
   sweater:   '#24324F',   // тёмно-синий свитер
   sweaterLt: '#33466D',
   sweaterDk: '#182238',
+  shoe:      '#2C3D62',   // кеды — тот же синий, чуть светлее свитера
+  shoeDk:    '#1A2541',
+  sole:      '#EDE7DB',   // подошва — кремовая, как варежки
   label:     '#FF4F28',   // плашка AKADEMIYA — тот же оранжевый, что интерфейс курса
   blush:     '#FF8FB0',
   shadow:    '#1C2433'
@@ -423,6 +438,21 @@ const KODI_CSS = `
   transform: rotate(calc(var(--bodyRot) * .55));
   transition: transform var(--dur) var(--ease); }
 
+/* ПЛЕЧО — ТОЧКА ВРАЩЕНИЯ РУКИ. Канон задаёт её процентами рамки фигуры
+   (50% 7%). У группы такта, вложенной в уже повёрнутую руку, браузер считает
+   эти проценты не от плеча: в «привет» рука махала вокруг кисти, а плечо
+   ездило. Поэтому у Коди точка вращения обеих групп руки — центр плечевого
+   шарнира в координатах рисунка. */
+.bot.kodi .bot-pose-arm-l, .bot.kodi .bot-beat-arm-l { transform-box: view-box; transform-origin: 143px 226px; }
+.bot.kodi .bot-pose-arm-r, .bot.kodi .bot-beat-arm-r { transform-box: view-box; transform-origin: 277px 226px; }
+/* Сдвиги рук в позах канона (armLX/armRX до 44 px) подбирались под
+   прежнюю точку вращения и уводили плечо на грудь — в «point» рука росла из
+   середины свитера. У Коди рука вращается ровно вокруг плеча, поэтому из позы
+   берётся только поворот: кисти и так приходят куда нужно (к подбородку в
+   «думаю», вместе под лицом в «улыбке», крест-накрест в «смущении»). */
+.bot.kodi .bot-pose-arm-l { transform: rotate(var(--armLR)); }
+.bot.kodi .bot-pose-arm-r { transform: rotate(var(--armRR)); }
+
 .speaker-av .kodi { transition: transform .22s cubic-bezier(.34,1.56,.64,1); }
 .speaker-av:active .kodi { transform: scale(.93, .9); }
 
@@ -445,10 +475,19 @@ let _botUid = 0;
 // Рамка та же, что у робота Курса 0 (viewBox 20 -70 380 520): её поля посчитаны
 // по крайним точкам движения, и Коди укладывается в те же габариты.
 //
+// ПРОПОРЦИИ (v2). Рост от макушки до подошвы 366: голова со шлемом 186 (половина
+// роста), шея 10, свитер 96, ноги с кедами 90. Ширина шлема 212, плеч 148.
+// Ось симметрии x = 210; пояс (ось наклона торса) y = 300.
+//
 // Внутри рисунка нет атрибутов transform у групп и фигур с масштабом или
 // отражением: канон ставит узлам героя transform-box: fill-box, и такие
-// трансформации считались бы от края фигуры. Поэтому правая рука нарисована
-// прямыми координатами, а не зеркалом левой.
+// трансформации считались бы от края фигуры. Поэтому правая рука и правая нога
+// не зеркалятся атрибутом, а получают отражённые координаты (mirror ниже).
+//
+// РУКА — ТРУБА ОТ ПЛЕЧА. Канон вращает руку вокруг точки 50% 7% её рамки, то
+// есть вокруг верха. Поэтому рука нарисована строго вертикально, плечевой
+// шарнир — круг наверху: при любом повороте (до ±158° в позах) рукав остаётся
+// рукавом, а шарнир — на плече.
 // ─────────────────────────────────────────────────────────────────────────────
 function RobotSVG({ pose = 'explain', className, talking }) {
   const key = POSE_SET[pose] ? pose : 'explain';
@@ -473,26 +512,85 @@ function RobotSVG({ pose = 'explain', className, talking }) {
     </g>
   );
 
-  // Рука: рукав с вязаной манжетой и варежка с большим пальцем к телу.
-  const ARM = {
-    l: { sleeve: 'M150 210 C137 211 127 220 122 236 L112 276 C110 285 123 291 129 283 L144 246 Z',
-      shade: 'M150 210 C137 211 127 220 122 236 L114 268',
-      cuff: 'M111 274 L131 282', hand: [117, 295], thumb: [129, 289], shine: [111, 288] },
-    r: { sleeve: 'M270 210 C283 211 293 220 298 236 L308 276 C310 285 297 291 291 283 L276 246 Z',
-      shade: 'M270 210 C283 211 293 220 298 236 L306 268',
-      cuff: 'M309 274 L289 282', hand: [303, 295], thumb: [291, 289], shine: [297, 288] }
+  // Отражение через ось x = 210: правая половина — те же фигуры, что левая.
+  const MX = 420;
+  const mx = (x) => +(MX - x).toFixed(2);
+  const mirrorPath = (d) => {
+    let cmd = '';
+    let i = 0;
+    return d.replace(/[A-Za-z]|-?\d*\.?\d+/g, (t) => {
+      if (/[A-Za-z]/.test(t)) { cmd = t.toUpperCase(); i = 0; return t; }
+      const flip = cmd === 'H' || (cmd !== 'V' && i % 2 === 0);
+      i += 1;
+      return flip ? String(mx(parseFloat(t))) : t;
+    });
+  };
+
+  // Рука: шарнир, рукав-труба с вязаной манжетой, варежка с большим пальцем к телу.
+  const ARM_L = {
+    cap: [143, 226, 16],
+    sleeve: 'M128 227 C128 219 135 212 143 212 C151 212 158 219 158 227 L158 274 C158 282 151 288 143 288 C135 288 128 282 128 274 Z',
+    shade: 'M153 217 C157 221 158 226 158 232 L158 272 C158 278 155 283 150 286',
+    cuff: { x: 127, y: 270, w: 32, h: 13 },
+    hand: [143, 301, 17, 19],
+    thumb: [157, 294, 7, 9],
+    seam: 'M131 292 Q143 298 155 292',
+    shine: [136, 295, 5, 7]
+  };
+  const ARM_R = {
+    cap: [mx(ARM_L.cap[0]), ARM_L.cap[1], ARM_L.cap[2]],
+    sleeve: mirrorPath(ARM_L.sleeve),
+    shade: mirrorPath(ARM_L.shade),
+    cuff: { x: mx(ARM_L.cuff.x) - ARM_L.cuff.w, y: ARM_L.cuff.y, w: ARM_L.cuff.w, h: ARM_L.cuff.h },
+    hand: [mx(ARM_L.hand[0]), ARM_L.hand[1], ARM_L.hand[2], ARM_L.hand[3]],
+    thumb: [mx(ARM_L.thumb[0]), ARM_L.thumb[1], ARM_L.thumb[2], ARM_L.thumb[3]],
+    seam: mirrorPath(ARM_L.seam),
+    shine: [mx(ARM_L.shine[0]), ARM_L.shine[1], ARM_L.shine[2], ARM_L.shine[3]]
   };
   const Arm = ({ side }) => {
-    const a = ARM[side];
+    const a = side === 'l' ? ARM_L : ARM_R;
     return (
       <>
+        <circle cx={a.cap[0]} cy={a.cap[1]} r={a.cap[2]} fill={u('w')} />
         <path d={a.sleeve} fill={u('w')} />
-        <path d={a.shade} fill="none" stroke={BOT.sweaterDk} strokeWidth="3" strokeLinecap="round" opacity=".55" />
-        <path d={a.cuff} fill="none" stroke={BOT.sweaterDk} strokeWidth="10" strokeLinecap="round" />
-        <path d={a.cuff} fill="none" stroke={u('rib')} strokeWidth="10" strokeLinecap="round" />
-        <ellipse cx={a.thumb[0]} cy={a.thumb[1]} rx="5.5" ry="7.5" fill={u('k')} />
-        <ellipse cx={a.hand[0]} cy={a.hand[1]} rx="14" ry="16" fill={u('k')} />
-        <ellipse cx={a.shine[0]} cy={a.shine[1]} rx="4.5" ry="6" fill="#fff" opacity=".6" />
+        <path d={a.sleeve} fill={u('sl')} />
+        <path d={a.shade} fill="none" stroke={BOT.sweaterDk} strokeWidth="3" strokeLinecap="round" opacity=".5" />
+        <rect x={a.cuff.x} y={a.cuff.y} width={a.cuff.w} height={a.cuff.h} rx="6.5" fill={BOT.sweaterDk} />
+        <rect x={a.cuff.x} y={a.cuff.y} width={a.cuff.w} height={a.cuff.h} rx="6.5" fill={u('rib')} />
+        <ellipse cx={a.thumb[0]} cy={a.thumb[1]} rx={a.thumb[2]} ry={a.thumb[3]} fill={u('k')} />
+        <ellipse cx={a.hand[0]} cy={a.hand[1]} rx={a.hand[2]} ry={a.hand[3]} fill={u('k')} />
+        <path d={a.seam} fill="none" stroke={BOT.headDk} strokeWidth="2.5" strokeLinecap="round" opacity=".7" />
+        <ellipse cx={a.shine[0]} cy={a.shine[1]} rx={a.shine[2]} ry={a.shine[3]} fill="#fff" opacity=".55" />
+      </>
+    );
+  };
+
+  // Нога: кремовая голень и кед с кремовой подошвой и бликом на носке.
+  const LEG_L = {
+    shin: { x: 168, y: 298, w: 34, h: 62 },
+    shoe: 'M160 382 L160 372 C160 357 169 350 185 350 C202 350 211 358 211 372 L211 382 Z',
+    sole: { x: 160, y: 378, w: 51, h: 12 },
+    lace: 'M166 364 Q185 357 206 364',
+    toe: [178, 361, 7, 4]
+  };
+  const LEG_R = {
+    shin: { x: mx(LEG_L.shin.x) - LEG_L.shin.w, y: LEG_L.shin.y, w: LEG_L.shin.w, h: LEG_L.shin.h },
+    shoe: mirrorPath(LEG_L.shoe),
+    sole: { x: mx(LEG_L.sole.x) - LEG_L.sole.w, y: LEG_L.sole.y, w: LEG_L.sole.w, h: LEG_L.sole.h },
+    lace: mirrorPath(LEG_L.lace),
+    toe: [mx(LEG_L.toe[0]), LEG_L.toe[1], LEG_L.toe[2], LEG_L.toe[3]]
+  };
+  const Leg = ({ side }) => {
+    const g = side === 'l' ? LEG_L : LEG_R;
+    return (
+      <>
+        <rect x={g.shin.x} y={g.shin.y} width={g.shin.w} height={g.shin.h} rx="15" fill={u('l')} />
+        <rect x={g.sole.x} y={g.sole.y} width={g.sole.w} height={g.sole.h} rx="6" fill={BOT.sole} />
+        <rect x={g.sole.x} y={g.sole.y} width={g.sole.w} height={g.sole.h} rx="6" fill="none"
+          stroke={BOT.headDk} strokeWidth="1.5" opacity=".6" />
+        <path d={g.shoe} fill={u('sh2')} />
+        <path d={g.lace} fill="none" stroke={BOT.sole} strokeWidth="2.5" strokeLinecap="round" opacity=".55" />
+        <ellipse cx={g.toe[0]} cy={g.toe[1]} rx={g.toe[2]} ry={g.toe[3]} fill="#fff" opacity=".28" />
       </>
     );
   };
@@ -500,16 +598,28 @@ function RobotSVG({ pose = 'explain', className, talking }) {
   // Рот: все формы на месте, видна одна — её выбирает KODI_CSS по состоянию.
   const MOUTH = (
     <g className="kodi-mouth">
-      <path className="kodi-m kodi-m-smile" d="M192 144 Q210 158 228 144" fill="none"
-        stroke="var(--accent)" strokeWidth="6" strokeLinecap="round" />
-      <path className="kodi-m kodi-m-open" d="M190 139 Q210 170 230 139 Q210 146 190 139 Z" fill="var(--accent)" />
-      <ellipse className="kodi-m kodi-m-o" cx="210" cy="149" rx="7" ry="8.5" fill="none"
+      <path className="kodi-m kodi-m-smile" d="M191 143 Q210 160 229 143" fill="none"
+        stroke="var(--accent)" strokeWidth="6.5" strokeLinecap="round" />
+      <path className="kodi-m kodi-m-open" d="M189 139 Q210 172 231 139 Q210 147 189 139 Z" fill="var(--accent)" />
+      <ellipse className="kodi-m kodi-m-o" cx="210" cy="150" rx="7.5" ry="9" fill="none"
         stroke="var(--accent)" strokeWidth="5" />
       <path className="kodi-m kodi-m-flat" d="M197 152 Q210 147 223 152" fill="none"
         stroke="var(--accent)" strokeWidth="5" strokeLinecap="round" />
-      <path className="kodi-m kodi-m-side" d="M195 150 Q213 155 226 144" fill="none"
+      <path className="kodi-m kodi-m-side" d="M195 151 Q213 157 226 144" fill="none"
         stroke="var(--accent)" strokeWidth="5" strokeLinecap="round" />
     </g>
+  );
+
+  // Наушник: медная чашка, тёмная середина, кольцо-индикатор речи, блик.
+  const Cup = ({ cx }) => (
+    <>
+      <circle cx={cx} cy="124" r="27" fill={u('c')} />
+      <circle cx={cx} cy="124" r="19" fill={BOT.rimDk} opacity=".8" />
+      <circle cx={cx} cy="124" r="14" fill={u('cup')} />
+      <circle className="kodi-ear" cx={cx} cy="124" r="9.5" fill="none" stroke="var(--accent)" strokeWidth="3.5" />
+      <path d={`M${cx - 15} 112 Q${cx - 10} 101 ${cx} 99`} fill="none" stroke="#fff" strokeWidth="3"
+        strokeLinecap="round" opacity=".5" />
+    </>
   );
 
   return (
@@ -519,15 +629,15 @@ function RobotSVG({ pose = 'explain', className, talking }) {
       <defs>
         {/* голова: матовый винил — основа, блик сверху слева, тень снизу справа */}
         <linearGradient id={uid + 'h'} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#FBF9F4" />
-          <stop offset="50%" stopColor={BOT.head} />
+          <stop offset="0%" stopColor="#FCFAF6" />
+          <stop offset="55%" stopColor={BOT.head} />
           <stop offset="100%" stopColor={BOT.headMid} />
         </linearGradient>
-        <radialGradient id={uid + 'hl'} cx="30%" cy="18%" r="45%">
+        <radialGradient id={uid + 'hl'} cx="30%" cy="16%" r="46%">
           <stop offset="0%" stopColor="#fff" stopOpacity=".95" />
           <stop offset="100%" stopColor="#fff" stopOpacity="0" />
         </radialGradient>
-        <radialGradient id={uid + 'hs'} cx="78%" cy="96%" r="70%">
+        <radialGradient id={uid + 'hs'} cx="76%" cy="98%" r="72%">
           <stop offset="0%" stopColor={BOT.headDk} stopOpacity=".95" />
           <stop offset="100%" stopColor={BOT.headDk} stopOpacity="0" />
         </radialGradient>
@@ -539,128 +649,144 @@ function RobotSVG({ pose = 'explain', className, talking }) {
           <stop offset="100%" stopColor={BOT.rim} />
         </linearGradient>
         {/* стекло экрана: светлее в центре, к краям уходит в черноту */}
-        <radialGradient id={uid + 's'} cx="210" cy="118" r="98" gradientUnits="userSpaceOnUse">
+        <radialGradient id={uid + 's'} cx="210" cy="118" r="100" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor={BOT.visorMid} />
           <stop offset="100%" stopColor={BOT.visor} />
         </radialGradient>
-        <pattern id={uid + 'px'} width="4" height="4" patternUnits="userSpaceOnUse">
-          <path d="M0 0 H4 M0 0 V4" stroke="#000" strokeWidth="1" opacity=".5" />
+        {/* строки дисплея: тонкие горизонтальные линии */}
+        <pattern id={uid + 'px'} width="3" height="3" patternUnits="userSpaceOnUse">
+          <path d="M0 0.5 H3" stroke="#000" strokeWidth="1" opacity=".42" />
         </pattern>
-        {/* свитер: объём от края к центру и вязаная резинка */}
+        {/* свитер: объём сверху вниз, цилиндр рукава слева направо, вязаная резинка */}
         <linearGradient id={uid + 'w'} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={BOT.sweaterLt} />
           <stop offset="100%" stopColor={BOT.sweaterDk} />
         </linearGradient>
         <linearGradient id={uid + 'ws'} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#000" stopOpacity=".28" />
-          <stop offset="22%" stopColor="#000" stopOpacity="0" />
+          <stop offset="0%" stopColor="#000" stopOpacity=".3" />
+          <stop offset="20%" stopColor="#000" stopOpacity="0" />
           <stop offset="78%" stopColor="#000" stopOpacity="0" />
-          <stop offset="100%" stopColor="#000" stopOpacity=".32" />
+          <stop offset="100%" stopColor="#000" stopOpacity=".34" />
+        </linearGradient>
+        <linearGradient id={uid + 'sl'} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#fff" stopOpacity=".14" />
+          <stop offset="45%" stopColor="#fff" stopOpacity="0" />
+          <stop offset="100%" stopColor="#000" stopOpacity=".28" />
         </linearGradient>
         <pattern id={uid + 'rib'} width="6" height="6" patternUnits="userSpaceOnUse">
           <path d="M3 0 V6" stroke={BOT.sweaterLt} strokeWidth="1.6" opacity=".7" />
         </pattern>
-        {/* кремовые руки и ноги: скругление светом слева */}
+        {/* кремовые варежки и голени: скругление светом слева */}
         <linearGradient id={uid + 'k'} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#FBF9F4" />
+          <stop offset="0%" stopColor="#FCFAF6" />
           <stop offset="60%" stopColor={BOT.headMid} />
           <stop offset="100%" stopColor={BOT.headDk} />
         </linearGradient>
         <linearGradient id={uid + 'l'} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#F8F5EE" />
+          <stop offset="0%" stopColor="#F9F6F0" />
           <stop offset="55%" stopColor={BOT.headMid} />
           <stop offset="100%" stopColor={BOT.headDk} />
         </linearGradient>
+        {/* кеды: свет сверху, тень к подошве */}
+        <linearGradient id={uid + 'sh2'} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={BOT.shoe} />
+          <stop offset="100%" stopColor={BOT.shoeDk} />
+        </linearGradient>
+        {/* динамик наушника: тёплая тёмная медь с бликом, а не чёрная дыра */}
+        <radialGradient id={uid + 'cup'} cx="38%" cy="32%" r="70%">
+          <stop offset="0%" stopColor="#6B4328" />
+          <stop offset="100%" stopColor="#2E1C11" />
+        </radialGradient>
         <radialGradient id={uid + 'sh'}>
           <stop offset="0%" stopColor={BOT.shadow} stopOpacity="1" />
           <stop offset="100%" stopColor={BOT.shadow} stopOpacity="0" />
         </radialGradient>
-        <clipPath id={uid + 'v'}><rect x="128" y="71" width="164" height="108" rx="32" /></clipPath>
-        <clipPath id={uid + 'hc'}><rect x="104" y="22" width="212" height="192" rx="76" /></clipPath>
+        <clipPath id={uid + 'v'}><rect x="127" y="70" width="166" height="110" rx="34" /></clipPath>
+        <clipPath id={uid + 'hc'}><rect x="104" y="24" width="212" height="186" rx="80" /></clipPath>
       </defs>
 
       {/* Мягкая контактная тень: размытый край вместо плоского овала. */}
-      <ellipse className="bot-shadow" cx="210" cy="404" rx="96" ry="17" fill={u('sh')} />
+      <ellipse className="bot-shadow" cx="210" cy="404" rx="94" ry="16" fill={u('sh')} />
 
       <g className="bot-float">
         <g className="bot-pose-body">
           <g className="bot-beat-body">
 
-            {/* ноги: стопа — продолжение ноги, чуть шире и с носком вперёд */}
-            <rect x="167" y="286" width="34" height="86" rx="16" fill={u('l')} />
-            <rect x="219" y="286" width="34" height="86" rx="16" fill={u('l')} />
-            <path d="M163 372 C163 360 170 354 184 354 C198 354 206 362 207 372 C207 384 198 390 184 390
-                     C170 390 163 384 163 372 Z" fill={u('l')} />
-            <path d="M213 372 C214 362 222 354 236 354 C250 354 257 360 257 372 C257 384 250 390 236 390
-                     C222 390 213 384 213 372 Z" fill={u('l')} />
-            <path d="M166 382 Q184 392 204 382" fill="none" stroke={BOT.headDk} strokeWidth="3" strokeLinecap="round" />
-            <path d="M216 382 Q236 392 254 382" fill="none" stroke={BOT.headDk} strokeWidth="3" strokeLinecap="round" />
-            <ellipse cx="177" cy="363" rx="7" ry="4" fill="#fff" opacity=".45" />
-            <ellipse cx="229" cy="363" rx="7" ry="4" fill="#fff" opacity=".45" />
+            {/* ноги стоят; наклон позы берёт только торс */}
+            <Leg side="l" />
+            <Leg side="r" />
 
             {/* Всё, что выше ног, наклоняется от пояса (см. «ОПОРА НА НОГИ» в KODI_CSS). */}
             <g className="kodi-torso">
 
-            {/* свитер */}
-            <path d="M150 206 C150 199 160 194 172 194 H248 C260 194 270 199 270 206 L278 288
-                     C279 299 271 306 260 306 H160 C149 306 141 299 142 288 Z" fill={u('w')} />
-            <path d="M150 206 C150 199 160 194 172 194 H248 C260 194 270 199 270 206 L278 288
-                     C279 299 271 306 260 306 H160 C149 306 141 299 142 288 Z" fill={u('ws')} />
-            <rect x="145" y="292" width="130" height="14" rx="6" fill={BOT.sweaterDk} />
-            <rect x="145" y="292" width="130" height="14" rx="6" fill={u('rib')} />
-            <ellipse cx="210" cy="203" rx="56" ry="13" fill="#0B1222" opacity=".45" />
-            <text x="210" y="240" textAnchor="middle" fontFamily="Manrope, Arial, sans-serif"
-              fontWeight="800" fontSize="19" fill="#F4F1EA" letterSpacing=".5">JUNIOR IT</text>
-            <rect x="166" y="248" width="88" height="20" rx="3" fill={BOT.label} />
-            <rect x="166" y="248" width="88" height="7" rx="3" fill="#fff" opacity=".14" />
-            <text x="210" y="263" textAnchor="middle" fontFamily="Manrope, Arial, sans-serif"
-              fontWeight="800" fontSize="13" fill="#fff" letterSpacing="1">AKADEMIYA</text>
+            {/* шея — графитовый цилиндр между шлемом и воротом */}
+            <rect x="190" y="198" width="40" height="28" rx="9" fill={BOT.neck} />
+            <path d="M197 204 L197 220" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity=".16" />
+
+            {/* свитер: мягкие плечи, лёгкое сужение к поясу, вязаный подол и ворот */}
+            <path d="M136 234 C136 222 148 214 162 214 L258 214 C272 214 284 222 284 234 L286 292
+                     C287 303 278 310 266 310 L154 310 C142 310 133 303 134 292 Z" fill={u('w')} />
+            <path d="M136 234 C136 222 148 214 162 214 L258 214 C272 214 284 222 284 234 L286 292
+                     C287 303 278 310 266 310 L154 310 C142 310 133 303 134 292 Z" fill={u('ws')} />
+            <rect x="150" y="296" width="120" height="14" rx="7" fill={BOT.sweaterDk} />
+            <rect x="150" y="296" width="120" height="14" rx="7" fill={u('rib')} />
+            <rect x="174" y="218" width="72" height="16" rx="8" fill={BOT.sweaterDk} />
+            <rect x="174" y="218" width="72" height="16" rx="8" fill={u('rib')} />
+            <text x="210" y="256" textAnchor="middle" fontFamily="Manrope, Arial, sans-serif"
+              fontWeight="800" fontSize="18" fill="#F4F1EA" letterSpacing=".5">JUNIOR IT</text>
+            <rect x="168" y="263" width="84" height="19" rx="4" fill={BOT.label} />
+            <rect x="168" y="263" width="84" height="7" rx="4" fill="#fff" opacity=".14" />
+            <text x="210" y="277" textAnchor="middle" fontFamily="Manrope, Arial, sans-serif"
+              fontWeight="800" fontSize="12.5" fill="#fff" letterSpacing="1">AKADEMIYA</text>
 
             {/* голова */}
             <g className="bot-pose-head">
               <g className="bot-beat-head">
-                {/* «наушники»: медные чашки, внутри кольцо-индикатор речи */}
-                <rect x="84" y="96" width="34" height="64" rx="17" fill={u('c')} />
-                <rect x="90" y="104" width="22" height="48" rx="11" fill={BOT.rimDk} opacity=".55" />
-                <rect className="kodi-ear" x="94" y="108" width="14" height="40" rx="7" fill="none"
-                  stroke="var(--accent)" strokeWidth="3" />
-                <path d="M92 108 Q96 99 104 99" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity=".45" />
-                <rect x="302" y="96" width="34" height="64" rx="17" fill={u('c')} />
-                <rect x="308" y="104" width="22" height="48" rx="11" fill={BOT.rimDk} opacity=".55" />
-                <rect className="kodi-ear" x="312" y="108" width="14" height="40" rx="7" fill="none"
-                  stroke="var(--accent)" strokeWidth="3" />
-                <path d="M310 108 Q314 99 322 99" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity=".45" />
-
-                <rect x="104" y="22" width="212" height="192" rx="76" fill={u('h')} />
-                <g clipPath={u('hc')}>
-                  <rect x="104" y="22" width="212" height="192" fill={u('hs')} />
-                  <rect x="104" y="22" width="212" height="192" fill={u('hl')} />
-                </g>
-                <rect x="104" y="22" width="212" height="192" rx="76" fill="none"
-                  stroke={BOT.edge} strokeWidth="1.4" opacity=".5" />
-
-                {/* медная рамка с бликом по верхней кромке */}
-                <rect x="119" y="62" width="182" height="126" rx="40" fill={u('c')} />
-                <path d="M146 65 Q210 58 274 65" fill="none" stroke="#FFE2C6" strokeWidth="3"
+                {/* дужка наушников — за шлемом, видна над макушкой и у чашек */}
+                <path d="M97 124 C97 38 148 6 210 6 C272 6 323 38 323 124" fill="none"
+                  stroke={u('c')} strokeWidth="10" strokeLinecap="round" />
+                <path d="M126 52 C150 24 178 12 210 11" fill="none" stroke="#FFE2C6" strokeWidth="2.5"
                   strokeLinecap="round" opacity=".55" />
 
+                {/* шлем */}
+                <rect x="104" y="24" width="212" height="186" rx="80" fill={u('h')} />
+                <g clipPath={u('hc')}>
+                  <rect x="104" y="24" width="212" height="186" fill={u('hs')} />
+                  <rect x="104" y="24" width="212" height="186" fill={u('hl')} />
+                </g>
+                <rect x="104" y="24" width="212" height="186" rx="80" fill="none"
+                  stroke={BOT.edge} strokeWidth="1.4" opacity=".55" />
+
+                {/* наушники поверх шлема */}
+                <Cup cx={98} />
+                <Cup cx={322} />
+
+                {/* медная рамка экрана: фаска внутри, блик по верхней кромке */}
+                <rect x="117" y="60" width="186" height="130" rx="44" fill={u('c')} />
+                <rect x="123" y="66" width="174" height="118" rx="39" fill="none"
+                  stroke={BOT.rimDk} strokeWidth="2" opacity=".55" />
+                <path d="M148 63 Q210 56 272 63" fill="none" stroke="#FFE2C6" strokeWidth="3"
+                  strokeLinecap="round" opacity=".6" />
+
                 {/* экран-лицо */}
-                <rect x="128" y="71" width="164" height="108" rx="32" fill={u('s')} />
+                <rect x="127" y="70" width="166" height="110" rx="34" fill={u('s')} />
                 <g clipPath={u('v')}>
-                  <ellipse className="bot-blush" cx="152" cy="152" rx="15" ry="7" fill={BOT.blush} />
-                  <ellipse className="bot-blush" cx="268" cy="152" rx="15" ry="7" fill={BOT.blush} />
+                  <ellipse className="bot-blush" cx="150" cy="151" rx="15" ry="7" fill={BOT.blush} />
+                  <ellipse className="bot-blush" cx="270" cy="151" rx="15" ry="7" fill={BOT.blush} />
                   <g className="bot-pose-eyes">
                     <g className="kodi-gaze">
                       <g className="kodi-blink">
-                        <rect className="bot-glow" x="164" y="96" width="32" height="32" rx="11" fill="var(--accent)" />
-                        <rect className="bot-glow" x="224" y="96" width="32" height="32" rx="11" fill="var(--accent)" />
-                        {/* пиксельные глаза — скруглённые квадраты, как на листе */}
-                        <rect className="pupil" x="167" y="99" width="26" height="26" rx="9" fill="var(--accent)" />
-                        <rect className="pupil" x="227" y="99" width="26" height="26" rx="9" fill="var(--accent)" />
+                        <rect className="bot-glow" x="162" y="94" width="36" height="36" rx="12" fill="var(--accent)" />
+                        <rect className="bot-glow" x="222" y="94" width="36" height="36" rx="12" fill="var(--accent)" />
+                        {/* пиксельные глаза — скруглённые квадраты с бликом стекла */}
+                        <rect className="pupil" x="166" y="98" width="28" height="28" rx="9" fill="var(--accent)" />
+                        <rect className="pupil" x="226" y="98" width="28" height="28" rx="9" fill="var(--accent)" />
+                        <rect className="pupil" x="170" y="102" width="8" height="8" rx="3" fill="#fff" opacity=".55" />
+                        <rect className="pupil" x="230" y="102" width="8" height="8" rx="3" fill="#fff" opacity=".55" />
                         {/* кольца — удивление */}
-                        <circle className="ring" cx="180" cy="112" r="11" fill="none"
+                        <circle className="ring" cx="180" cy="112" r="12" fill="none"
                           stroke="var(--accent)" strokeWidth="6" />
-                        <circle className="ring" cx="240" cy="112" r="11" fill="none"
+                        <circle className="ring" cx="240" cy="112" r="12" fill="none"
                           stroke="var(--accent)" strokeWidth="6" />
                         {/* звёзды — восторг */}
                         <path className="star" transform="translate(180 112)" fill="var(--accent)"
@@ -668,26 +794,27 @@ function RobotSVG({ pose = 'explain', className, talking }) {
                         <path className="star" transform="translate(240 112)" fill="var(--accent)"
                           d="M0 -19 C2.4 -6.4 6.4 -2.4 19 0 C6.4 2.4 2.4 6.4 0 19 C-2.4 6.4 -6.4 2.4 -19 0 C-6.4 -2.4 -2.4 -6.4 0 -19 Z" />
                         {/* дуги — улыбка глазами */}
-                        <path className="arc" d="M166 118 Q180 100 194 118" fill="none"
+                        <path className="arc" d="M165 119 Q180 100 195 119" fill="none"
                           stroke="var(--accent)" strokeWidth="7" strokeLinecap="round" />
-                        <path className="arc" d="M226 118 Q240 100 254 118" fill="none"
+                        <path className="arc" d="M225 119 Q240 100 255 119" fill="none"
                           stroke="var(--accent)" strokeWidth="7" strokeLinecap="round" />
                       </g>
                     </g>
                   </g>
                   {MOUTH}
                   {/* веки — того же стекла, что экран: в покое их не видно */}
-                  <rect className="bot-lid bot-lid-l" x="130" y="3" width="82" height="92" fill={u('s')} />
-                  <rect className="bot-lid bot-lid-r" x="208" y="3" width="82" height="92" fill={u('s')} />
-                  {/* пиксельная сетка дисплея и стекло с бликами */}
-                  <rect x="128" y="71" width="164" height="108" fill={u('px')} />
-                  <path d="M138 80 Q150 74 178 74 L150 120 Q136 112 138 80 Z" fill="#fff" opacity=".07" />
-                  <rect x="142" y="79" width="26" height="6" rx="3" fill="#fff" opacity=".22" />
+                  <rect className="bot-lid bot-lid-l" x="126" y="2" width="86" height="93" fill={u('s')} />
+                  <rect className="bot-lid bot-lid-r" x="208" y="2" width="86" height="93" fill={u('s')} />
+                  {/* строки дисплея и стекло: отражение сверху, блик, пробегающее сияние */}
+                  <rect x="127" y="70" width="166" height="110" fill={u('px')} />
+                  <path d="M136 80 Q150 72 184 72 L152 124 Q134 114 136 80 Z" fill="#fff" opacity=".07" />
+                  <ellipse cx="210" cy="72" rx="70" ry="9" fill="#fff" opacity=".06" />
+                  <rect x="141" y="78" width="28" height="6" rx="3" fill="#fff" opacity=".22" />
                   <g className="kodi-glare">
                     <path d="M150 60 L176 60 L146 200 L120 200 Z" fill="#fff" opacity=".1" />
                   </g>
                 </g>
-                <rect x="128" y="71" width="164" height="108" rx="32" fill="none"
+                <rect x="127" y="70" width="166" height="110" rx="34" fill="none"
                   stroke="#000" strokeWidth="3" opacity=".35" />
               </g>
             </g>
@@ -1900,7 +2027,7 @@ const joinL = (a, b) => {
 // hideSpeaker — герой в шапке НЕ показывается, но реплика всё равно звучит.
 // Нужно финальному экрану: там герой один и крупный по центру, а второй,
 // маленький, сверху только мешал бы прощанию.
-const Stage = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroFixed, done, hideSpeaker, hint }) => {
+const Stage = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroFixed, done, hideSpeaker, hint, voiceTop }) => {
   const pick = usePick();
   // ПОКА ГЕРОЙ ГОВОРИТ, ЭКРАН ЖДЁТ — И ЭТО ВИДНО.
   //
@@ -1918,7 +2045,7 @@ const Stage = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroFi
   // КУРС HTML: подсказка при бездействии — см. useIdleCoach.
   const idle = useIdleCoach(!!nav, speaking);
   return (
-    <div className={'stage' + (heroFixed ? ' stage-hero-fixed' : '') + (hideSpeaker ? ' stage-bare' : '')
+    <div className={'stage' + (heroFixed ? ' stage-hero-fixed' : '') + (hideSpeaker || voiceTop ? ' stage-bare' : '')
       + (speaking ? ' is-speaking' : '') + (idle ? ' is-idle is-idle-' + idle : '')}>
       <div className="stage-header">
         <div className="limit">
@@ -1933,6 +2060,7 @@ const Stage = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroFi
                 номер страницы. Он не меняется нигде. */}
             <div className="chrome-side">
               <ExitBtn />
+              {voiceTop ? <VoiceDot /> : null}
               {nav && <HintChromeBtn />}
               {nav && <PauseBtn done={done} />}
               <div className="mono counter">{String(screen + 1).padStart(2, '0')}/{String(total).padStart(2, '0')}</div>
@@ -1962,6 +2090,17 @@ const Stage = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroFi
 // Признак конца страницы приходит от экрана (done — то же условие, что
 // открывает «Дальше»), а не угадывается по тишине: между репликами пауза
 // дольше секунды, и кнопка успевала бы стать «Повторить» посреди рассказа.
+// КУРС HTML: кружок голоса в шапке (Stage voiceTop) — на экранах, где герою
+// не хватает места. Оживает, пока звучит голос.
+const VoiceDot = () => {
+  const audio = useAudio();
+  return (
+    <span className={'speaker-voice ctl-voice' + (audio && audio.playing ? ' is-on' : '')} aria-hidden="true">
+      <span className="sv-bars"><i /><i /><i /><i /><i /></span>
+    </span>
+  );
+};
+
 const PauseBtn = ({ done }) => {
   const pick = usePick();
   const audio = useAudio();
@@ -5440,6 +5579,12 @@ const CANON_UI_CSS = `
   .stage.is-idle .ctl-hint, .stage.is-idle .stage-nav .btn-ready,
   .stage.is-idle-2 .ctl-hint::after, .stage.is-idle-2 .stage-nav .btn-ready::before { animation: none; } }
 
+/* КУРС HTML: кружок голоса в шапке (voiceTop) — пока звучит голос, вокруг
+   него мягко расходится кольцо. */
+.ctl-voice.is-on { animation: ctlVoiceRing 1.6s ease-out infinite; }
+@keyframes ctlVoiceRing { 0% { box-shadow: 0 0 0 0 rgba(255,79,40,.32); } 100% { box-shadow: 0 0 0 10px rgba(255,79,40,0); } }
+@media (prefers-reduced-motion: reduce) { .ctl-voice.is-on { animation: none; } }
+
 /* UI-09: служебные кнопки не меньше 44 px — меньше палец ребёнка промахивается. */
 .lesson-root { --ctl: clamp(44px, 5.4vw, 48px); }
 
@@ -6377,7 +6522,7 @@ const fillL = (node, vars) => {
 
 // Подписи интерфейса урока.
 const UI = {
-  tab: L3('Varaqcha', 'Вкладка', 'Tab'),
+  tab: L3('title', 'Вкладка', 'Tab'),
   page: L3('Sahifa', 'Страница', 'Page'),
   code: L3('Kod', 'Код', 'Code'),
   result: L3('Natija', 'Результат', 'Result'),
@@ -6393,7 +6538,7 @@ const UI = {
   author: L3('Muallif', 'Автор', 'Author'),
   erase: L3('O‘chirish', 'Стереть', 'Erase'),
   parts: L3('Bo‘laklar', 'Детали', 'Pieces'),
-  tabName: L3('Varaqcha nomi', 'Название вкладки', 'Tab name'),
+  tabName: L3('title', 'Название вкладки', 'Tab name'),
   inspector: L3('Tekshiruv', 'Проверка', 'Check'),
   nextLesson: L3('Keyingi dars', 'Следующий урок', 'Next lesson'),
   place: L3('Nima uchun kerak', 'Для чего нужен', 'What it’s for'),
@@ -6502,32 +6647,32 @@ const C = {
   // ── 3. title И h1 ────────────────────────────────────────────────────────
   s3: {
     eyebrow: L3('title va h1', 'title и h1', 'title and h1'),
-    say: L3('title varaqchaga nom beradi. h1 esa sahifaning o‘zidagi katta sarlavha. Maqsadni o‘qing va kodda kerakli matnni bosing.',
+    say: L3('title sahifaga nom beradi. h1 esa sahifaning o‘zidagi katta sarlavha. Maqsadni o‘qing va kodda kerakli matnni bosing.',
       'title — это имя вкладки. А h1 — большой заголовок на самой странице. Прочитай цель и нажми в коде нужный текст.',
       'title is the name on the tab. h1 is the big heading on the page itself. Read the goal and tap the right text in the code.'),
     ask: L3('Kodda o‘zgartirish kerak bo‘lgan matnni bosing', 'Нажми в коде текст, который надо поменять', 'Tap the text in the code that needs to change'),
     rounds: {
-      tab: { kind: 'title', goal: L3('Varaqchada — «Robo-turnir»', 'На вкладке — «Робо-турнир»', 'The tab says “Robo Cup”'),
+      tab: { kind: 'title', goal: L3('title — «Robo-turnir»', 'На вкладке — «Робо-турнир»', 'The tab says “Robo Cup”'),
         value: L3('Robo-turnir', 'Робо-турнир', 'Robo Cup') },
       page: { kind: 'h1', goal: L3('Sahifada katta — «Robofutbol finali»', 'На странице крупно — «Финал робофутбола»', 'Big on the page: “Robot Football Final”'),
         value: L3('Robofutbol finali', 'Финал робофутбола', 'Robot Football Final') },
-      tab2: { kind: 'title', goal: L3('Varaqchada — «Final»', 'На вкладке — «Финал»', 'The tab says “Final”'),
+      tab2: { kind: 'title', goal: L3('title — «Final»', 'На вкладке — «Финал»', 'The tab says “Final”'),
         value: L3('Final', 'Финал', 'Final') },
       page2: { kind: 'h1', goal: L3('Sahifada — «Bugun final!»', 'На странице — «Сегодня финал!»', 'On the page: “Final today!”'),
         value: L3('Bugun final!', 'Сегодня финал!', 'Final today!') }
     },
     praise: {
-      title: L3('Varaqcha o‘zgardi. Buni title qildi.', 'Вкладка поменялась. Это сделал title.', 'The tab changed. That was title.'),
+      title: L3('Sahifa nomi o‘zgardi. Buni title qildi.', 'Вкладка поменялась. Это сделал title.', 'The tab changed. That was title.'),
       h1: L3('Sahifadagi sarlavha o‘zgardi. Bu h1.', 'Заголовок на странице поменялся. Это h1.', 'The heading on the page changed. That’s h1.')
     },
     wrong: {
-      h1ForTab: L3('Bu h1. U sahifada ko‘rinadi, varaqchada emas.', 'Это h1. Он виден на странице, а не на вкладке.', 'This is h1. It shows on the page, not on the tab.'),
-      titleForPage: L3('Bu title. U faqat varaqchani o‘zgartiradi.', 'Это title. Он меняет только вкладку.', 'This is title. It only changes the tab.'),
+      h1ForTab: L3('Bu h1. U sahifaning o‘zida ko‘rinadi. Sahifa nomi esa title ichida.', 'Это h1. Он виден на странице, а не на вкладке.', 'This is h1. It shows on the page, not on the tab.'),
+      titleForPage: L3('Bu title. U faqat sahifa nomini o‘zgartiradi.', 'Это title. Он меняет только вкладку.', 'This is title. It only changes the tab.'),
       tag: L3('Bu teg. Teglar orasidagi matnni bosing.', 'Это тег. Нажми на текст между тегами.', 'That’s a tag. Tap the text between the tags.')
     },
     hints: {
       title: [
-        L3('Varaqcha nomi qayerda yozilgan?', 'Где записано имя вкладки?', 'Where is the tab name written?'),
+        L3('Sahifa nomi qayerda yozilgan?', 'Где записано имя вкладки?', 'Where is the tab name written?'),
         L3('head ichiga qarang.', 'Посмотри внутрь head.', 'Look inside head.'),
         L3('title orasidagi matnni bosing.', 'Нажми текст между title.', 'Tap the text between the title tags.')
       ],
@@ -6538,7 +6683,7 @@ const C = {
       ]
     },
     more: L3('Yana bittasi — boshqa so‘zlar bilan.', 'Ещё одно такое же — с другими словами.', 'One more, with other words.'),
-    why: L3('title — varaqcha nomi. h1 — sahifadagi asosiy sarlavha.', 'title — имя вкладки. h1 — главный заголовок на странице.', 'title is the tab name. h1 is the main heading on the page.')
+    why: L3('title — sahifa nomi. h1 — sahifadagi asosiy sarlavha.', 'title — имя вкладки. h1 — главный заголовок на странице.', 'title is the tab name. h1 is the main heading on the page.')
   },
 
   // ── 4. ПЕРВЫЙ ЗАГОЛОВОК ──────────────────────────────────────────────────
@@ -6612,89 +6757,119 @@ const C = {
       'The smaller the number, the more important the heading. h1 is the most important. Choose the number by importance, not by size.')
   },
 
-  // ── 6. ПЛАН СТРАНИЦЫ ─────────────────────────────────────────────────────
+  // ── 6. ЛЕСЕНКА ЗАГОЛОВКОВ ────────────────────────────────────────────────
+  // Заказчик (15.10.2026): «часть раздела» — абстракция, ученик не понимал,
+  // что нажимать. Теперь план — лесенка, и каждое задание называет конкретную
+  // вещь на экране.
   s6: {
-    eyebrow: L3('Sahifa rejasi', 'План страницы', 'Page plan'),
+    eyebrow: L3('Sarlavhalar zinapoyasi', 'Лесенка заголовков', 'The heading staircase'),
     cast: [
-      { step: 1, pose: 'point', text: L3('Mana robofutbol sahifasining rejasi. Tepada — asosiy sarlavha, h1.',
-        'Вот план страницы про робофутбол. Сверху — главный заголовок, h1.',
-        'Here’s the plan of the robot football page. At the top is the main heading, h1.') },
-      { step: 2, pose: 'point', text: L3('Pastda — bo‘limlar: «Qoidalar» va «Jadval». Ular h2.',
-        'Ниже — разделы: «Правила» и «Расписание». У них h2.',
-        'Below are the sections: “Rules” and “Schedule”. They are h2.') },
-      { step: 3, pose: 'point', text: L3('«Penalti» — «Qoidalar» bo‘limining bir qismi. Shuning uchun h3.',
-        '«Пенальти» — это часть раздела «Правила». Поэтому у него h3.',
-        '“Penalty” is part of the “Rules” section. So it’s h3.') },
-      { step: 4, pose: 'rule', text: L3('Kodda sarlavhalar shunchaki ketma-ket turadi. Qaysi biri muhimroq — buni faqat raqam ko‘rsatadi.',
-        'В коде заголовки просто идут друг за другом. Какой из них главнее — показывает только цифра.',
-        'In the code, headings just go one after another. Only the number shows which one is more important.') },
-      { step: 5, pose: 'explain', text: L3('Tekshiramiz. Kodda «Qoidalar» bo‘limining qismini bosing.',
-        'Проверим. Нажми в коде заголовок, который — часть раздела «Правила».',
-        'Let’s check. In the code, tap the heading that is part of the “Rules” section.') }
+      { pose: 'point', text: L3('Mana robofutbol sahifasining rejasi. U zinapoyaga o‘xshaydi: har bir sarlavha o‘z pog‘onasida turadi.',
+        'Вот план страницы про робофутбол. Он похож на лесенку: каждый заголовок стоит на своей ступеньке.',
+        'Here’s the plan of the robot football page. It looks like a staircase: every heading stands on its own step.') },
+      { pose: 'explain', text: L3('Pog‘ona qancha past bo‘lsa, tegdagi raqam shuncha katta. Keling, birga tekshiramiz.',
+        'Чем ниже ступенька, тем больше цифра в теге. Давай проверим вместе.',
+        'The lower the step, the bigger the number in the tag. Let’s check together.') }
     ],
-    ask: L3('Kodda «Qoidalar» bo‘limining qismini bosing', 'Нажми в коде часть раздела «Правила»', 'Tap the part of the “Rules” section in the code'),
-    ask2: L3('Endi «Qoidalar» bo‘limining o‘zini bosing', 'Теперь нажми сам раздел «Правила»', 'Now tap the “Rules” section itself'),
-    ok1: L3('To‘g‘ri, «Penalti» — bo‘lim qismi, unda h3. Endi bo‘limning o‘zini toping.',
-      'Верно, «Пенальти» — часть раздела, у него h3. Теперь найди сам раздел.',
-      'Right, “Penalty” is a part, so it has h3. Now find the section itself.'),
-    hints1: [
-      L3('Bo‘lim qismida h3 bo‘ladi.', 'У части раздела стоит h3.', 'A part of a section has h3.'),
-      L3('h3 bor qatorni qidiring.', 'Ищи строку с h3.', 'Look for the line with h3.'),
-      L3('«Penalti» qatorini bosing.', 'Нажми строку «Пенальти».', 'Tap the “Penalty” line.')
+    tasks: [
+      { ask: L3('Butun sahifaning nomini bosing', 'Нажми название всей страницы', 'Tap the name of the whole page'),
+        ok: L3('Bu eng yuqori pog‘ona — asosiy sarlavha. Unda h1. Endi ikkita bo‘limni bosing.',
+          'Это самая верхняя ступенька — главный заголовок. У него h1. Теперь нажми два раздела.',
+          'That’s the top step, the main heading. It gets h1. Now tap the two sections.'),
+        hint: L3('Eng yuqori pog‘onaga qarang. U butun sahifa nima haqida ekanini aytadi.',
+          'Посмотри на самую верхнюю ступеньку. Она говорит, о чём вся страница.',
+          'Look at the very top step. It tells what the whole page is about.') },
+      { ask: L3('Ikkita bo‘limni bosing — ular ikkinchi pog‘onada', 'Нажми два раздела — они на второй ступеньке', 'Tap the two sections. They are on the second step'),
+        okOne: L3('Bittasi topildi. Yana bitta bo‘lim bor.', 'Один есть. Есть ещё один раздел.', 'One found. There’s one more section.'),
+        ok: L3('Ikkala bo‘lim ikkinchi pog‘onada. Ularda h2. Endi «Qoidalar» ichidagi sarlavhani bosing.',
+          'Оба раздела на второй ступеньке. У них h2. Теперь нажми заголовок внутри «Правил».',
+          'Both sections are on the second step. They get h2. Now tap the heading inside “Rules”.'),
+        hint: L3('Ikkinchi pog‘onaga qarang — tepadan bitta pastda.', 'Посмотри на вторую ступеньку — на одну ниже верхней.', 'Look at the second step, one below the top.') },
+      { ask: L3('«Qoidalar» ichidagi sarlavhani bosing', 'Нажми заголовок внутри «Правил»', 'Tap the heading inside “Rules”'),
+        ok: L3('«Penalti» «Qoidalar» ichida, bir pog‘ona pastda. Shuning uchun h3.',
+          '«Пенальти» внутри «Правил», на ступеньку ниже. Поэтому h3.',
+          '“Penalty” is inside “Rules”, one step lower. So it gets h3.'),
+        hint: L3('«Qoidalar» tagida, o‘ngroqda turgan sarlavhani qidiring.', 'Ищи заголовок под «Правилами», чуть правее.', 'Look for the heading under “Rules”, a little to the right.') }
     ],
-    hints2: [
-      L3('Bo‘limda h2 bo‘ladi.', 'У раздела стоит h2.', 'A section has h2.'),
-      L3('«Penalti» dan tepadagi h2 ni qidiring.', 'Ищи h2 над «Пенальти».', 'Look for the h2 above “Penalty”.'),
-      L3('«Qoidalar» qatorini bosing.', 'Нажми строку «Правила».', 'Tap the “Rules” line.')
-    ],
-    why: L3('Asosiy sarlavha — h1. Bo‘limlar — h2. Bo‘lim qismlari — h3.', 'Главный заголовок — h1. Разделы — h2. Части разделов — h3.', 'The main heading is h1. Sections are h2. Parts of sections are h3.')
+    code: L3('Kodda', 'В коде', 'In the code'),
+    why: L3('Zinapoya: asosiy sarlavha — h1, bo‘limlar — h2, bo‘lim ichidagisi — h3.',
+      'Лесенка: главный заголовок — h1, разделы — h2, то, что внутри раздела, — h3.',
+      'The staircase: the main heading is h1, sections are h2, and what’s inside a section is h3.')
   },
 
-  // ── 7. АРХИТЕКТОР ────────────────────────────────────────────────────────
+  // ── 7. КАКАЯ ЦИФРА? ──────────────────────────────────────────────────────
+  // Повторение: три быстрых раунда, у одной строки лесенки цифра спрятана.
   s7: {
-    eyebrow: L3('Sarlavhalarni joylang', 'Расставь заголовки', 'Set the headings'),
-    say: L3('Bu sinfimiz o‘yin serveri haqidagi sahifa. Har bir sarlavhaga raqam qo‘ying: sarlavhani bosing, keyin h1, h2 yoki h3 ni.',
-      'Это страница про игровой сервер нашего класса. Поставь каждому заголовку цифру: нажми заголовок, потом h1, h2 или h3.',
-      'This page is about our class game server. Give each heading a number: tap a heading, then h1, h2 or h3.'),
-    ask: L3('Har bir sarlavhaga raqam qo‘ying va «Tekshirish»ni bosing', 'Поставь цифры и нажми «Проверить»', 'Set the numbers and press “Check”'),
-    pickFirst: L3('Avval sarlavhani bosing.', 'Сначала нажми на заголовок.', 'Tap a heading first.'),
-    sets: {
-      a: [
-        { id: 'a1', lvl: 1, text: L3('Sinfimiz serveri', 'Сервер нашего класса', 'Our Class Server'),
-          para: L3('Darsdan keyin birga o‘ynaymiz.', 'Играем вместе после уроков.', 'We play together after school.') },
-        { id: 'a2', lvl: 2, text: L3('Qanday kirish mumkin', 'Как зайти', 'How to join'),
-          para: L3('Server manzili sinf sardorida.', 'Адрес сервера — у старосты.', 'The class monitor has the address.') },
-        { id: 'a3', lvl: 2, text: L3('Qoidalar', 'Правила', 'Rules'),
-          para: L3('Boshqalarning qurilmalarini buzmang.', 'Не ломай чужие постройки.', 'Don’t break other people’s builds.') },
-        { id: 'a4', lvl: 3, parent: 'a3', text: L3('Nimani buzish mumkin emas', 'Что нельзя ломать', 'What not to break'),
-          para: L3('Maktab va umumiy ko‘prikni.', 'Школу и общий мост.', 'The school and the shared bridge.') }
-      ],
-      b: [
-        { id: 'b1', lvl: 1, text: L3('Mening mushugim Piksel', 'Мой кот Пиксель', 'My Cat Pixel'),
-          para: L3('U sariq va juda qiziquvchan.', 'Он рыжий и очень любопытный.', 'He’s ginger and very curious.') },
-        { id: 'b2', lvl: 2, text: L3('Fe’li', 'Характер', 'Personality'),
-          para: L3('Klaviaturada o‘tirishni yaxshi ko‘radi.', 'Любит сидеть на клавиатуре.', 'Loves sitting on the keyboard.') },
-        { id: 'b3', lvl: 3, parent: 'b2', text: L3('Sevimli o‘yinchog‘i', 'Любимая игрушка', 'Favourite toy'),
-          para: L3('Folgadan yasalgan koptokcha.', 'Мячик из фольги.', 'A ball of foil.') },
-        { id: 'b4', lvl: 2, text: L3('Ovqati', 'Еда', 'Food'),
-          para: L3('Baliq va quruq ozuqa yeydi.', 'Ест рыбу и сухой корм.', 'Eats fish and dry food.') }
-      ]
-    },
-    err: {
-      unassigned: L3('Har bir sarlavhaga raqam qo‘ying.', 'Поставь цифру каждому заголовку.', 'Give every heading a number.'),
-      mainNotH1: L3('«{text}» — butun sahifaning nomi. Unga h1 kerak.', '«{text}» — название всей страницы. Ему нужен h1.', '“{text}” is the name of the whole page. It needs h1.'),
-      twoH1: L3('h1 sahifada faqat bitta bo‘ladi.', 'h1 на странице только один.', 'A page has only one h1.'),
-      subLevel: L3('«{text}» — «{parent}» bo‘limining qismi. Uning raqami bittaga katta.', '«{text}» — часть раздела «{parent}». Значит, цифра у него на один больше.', '“{text}” is part of the “{parent}” section. So its number is one bigger.'),
-      sectionLevel: L3('«{text}» — alohida bo‘lim, xuddi «{peer}» kabi. Ularning raqami bir xil.', '«{text}» — отдельный раздел, как «{peer}». Цифра у них одинаковая.', '“{text}” is its own section, like “{peer}”. They get the same number.')
-    },
-    hints: [
-      L3('Butun sahifa nima haqida? Uning bo‘laklari qaysilar?', 'О чём вся страница? А что — её части?', 'What is the whole page about? What are its parts?'),
-      L3('Rejaga qarang: asosiy sarlavha → bo‘limlar → bo‘lim qismi.', 'Посмотри на план: главный заголовок → разделы → часть раздела.', 'Look at the plan: main heading → sections → part of a section.'),
-      L3('Bitta sarlavha qoldi.', 'Остался один заголовок.', 'One heading left.')
+    eyebrow: L3('Qaysi raqam?', 'Какая цифра?', 'Which number?'),
+    say: L3('Endi o‘zingiz. Zinapoyada bitta sarlavhaning raqami yashiringan. U qaysi pog‘onada turganiga qarang va raqamni tanlang.',
+      'Теперь сам. На лесенке у одного заголовка спрятана цифра. Посмотри, на какой он ступеньке, и выбери цифру.',
+      'Now you. On the staircase, one heading’s number is hidden. See which step it’s on and pick the number.'),
+    ask: L3('Qaysi raqam yashiringan?', 'Какая цифра спрятана?', 'Which number is hidden?'),
+    rounds: [
+      { q: 'c4', items: [
+        { id: 'c1', lvl: 1, text: L3('Mening mushugim Piksel', 'Мой кот Пиксель', 'My Cat Pixel') },
+        { id: 'c2', lvl: 2, text: L3('Fe’li', 'Характер', 'Personality') },
+        { id: 'c3', lvl: 3, text: L3('Sevimli o‘yinchog‘i', 'Любимая игрушка', 'Favourite toy') },
+        { id: 'c4', lvl: 2, text: L3('Ovqati', 'Еда', 'Food') }
+      ] },
+      { q: 'm3', items: [
+        { id: 'm1', lvl: 1, text: L3('Sinfimiz guruhi', 'Группа нашего класса', 'Our Class Band') },
+        { id: 'm2', lvl: 2, text: L3('Qo‘shiqlar', 'Песни', 'Songs') },
+        { id: 'm3', lvl: 3, text: L3('Eng sevimli qo‘shiq', 'Самая любимая песня', 'Our favourite song') },
+        { id: 'm4', lvl: 2, text: L3('Konsertlar', 'Концерты', 'Concerts') }
+      ] },
+      { q: 'v1', items: [
+        { id: 'v1', lvl: 1, text: L3('Mening velosipedim', 'Мой велосипед', 'My Bike') },
+        { id: 'v2', lvl: 2, text: L3('Qanday tuzilgan', 'Как он устроен', 'How it works') },
+        { id: 'v3', lvl: 3, text: L3('G‘ildiraklar', 'Колёса', 'Wheels') },
+        { id: 'v4', lvl: 2, text: L3('Qayerda yuraman', 'Где я катаюсь', 'Where I ride') }
+      ] }
     ],
-    ok: L3('To‘g‘ri: bitta h1, bo‘limlar h2 va bo‘lim qismi h3.', 'Верно: один h1, разделы h2 и часть раздела h3.', 'Right: one h1, sections are h2, and the part is h3.'),
-    more: L3('Yana bitta sahifa — boshqa mavzuda.', 'Ещё одна страница — про другое.', 'One more page, about something else.'),
-    why: L3('Raqam sarlavha qanchalik muhimligini ko‘rsatadi.', 'Цифра показывает, насколько заголовок главный.', 'The number shows how important a heading is.')
+    okLv: {
+      1: L3('Eng yuqori pog‘ona — h1.', 'Самая верхняя ступенька — h1.', 'The top step is h1.'),
+      2: L3('Ikkinchi pog‘ona — h2.', 'Вторая ступенька — h2.', 'The second step is h2.'),
+      3: L3('Uchinchi pog‘ona — h3.', 'Третья ступенька — h3.', 'The third step is h3.')
+    },
+    wrong: L3('Pog‘onalarni tepadan sanang: birinchi — h1, ikkinchi — h2, uchinchi — h3.',
+      'Сосчитай ступеньки сверху: первая — h1, вторая — h2, третья — h3.',
+      'Count the steps from the top: the first is h1, the second is h2, the third is h3.'),
+    done: L3('Zo‘r! Endi zinapoyani o‘qiy olasiz. Keyingi qadam — haqiqiy kod.',
+      'Отлично! Теперь ты умеешь читать лесенку. Дальше — настоящий код.',
+      'Great! Now you can read the staircase. Next comes real code.')
+  },
+
+  // ── 8. РАССТАВЬ САМ ──────────────────────────────────────────────────────
+  // Бывший «Архитектор»: без переключателя «Код / Результат» и без кнопки
+  // «Проверить» — каждый выбор проверяется сразу, образец — план-лесенка.
+  s7b: {
+    eyebrow: L3('Sarlavhalarni joylang', 'Расставь заголовки', 'Set the headings'),
+    say: L3('Endi haqiqiy kod. Kodda sarlavhalar ketma-ket turadi, zinapoya yo‘q. Tepadagi rejaga qarang va har bir sarlavhaga raqam qo‘ying.',
+      'Теперь настоящий код. В коде заголовки идут подряд, лесенки нет. Смотри на план сверху и поставь каждому заголовку цифру.',
+      'Now real code. In code, headings just go in a row, with no staircase. Look at the plan above and give each heading a number.'),
+    ask: L3('Sarlavhani bosing, keyin raqamni', 'Нажми заголовок, потом цифру', 'Tap a heading, then a number'),
+    plan: L3('Reja', 'План', 'Plan'),
+    code: L3('Kod', 'Код', 'Code'),
+    pickFirst: L3('Avval sarlavhani bosing.', 'Сначала нажми на заголовок.', 'Tap a heading first.'),
+    set: [
+      { id: 'a1', lvl: 1, text: L3('Sinfimiz serveri', 'Сервер нашего класса', 'Our Class Server'),
+        para: L3('Darsdan keyin birga o‘ynaymiz.', 'Играем вместе после уроков.', 'We play together after school.') },
+      { id: 'a2', lvl: 2, text: L3('Qanday kirish mumkin', 'Как зайти', 'How to join'),
+        para: L3('Server manzili sinf sardorida.', 'Адрес сервера — у старосты.', 'The class monitor has the address.') },
+      { id: 'a3', lvl: 2, text: L3('Qoidalar', 'Правила', 'Rules'),
+        para: L3('Boshqalarning qurilmalarini buzmang.', 'Не ломай чужие постройки.', 'Don’t break other people’s builds.') },
+      { id: 'a4', lvl: 3, text: L3('Nimani buzish mumkin emas', 'Что нельзя ломать', 'What not to break'),
+        para: L3('Maktab va umumiy ko‘prikni.', 'Школу и общий мост.', 'The school and the shared bridge.') }
+    ],
+    where: {
+      1: L3('eng yuqori pog‘onada', 'на самой верхней ступеньке', 'on the top step'),
+      2: L3('ikkinchi pog‘onada', 'на второй ступеньке', 'on the second step'),
+      3: L3('uchinchi pog‘onada', 'на третьей ступеньке', 'on the third step')
+    },
+    wrongLv: L3('Rejaga qarang: «{text}» {where} turibdi.', 'Посмотри на план: «{text}» стоит {where}.', 'Look at the plan: “{text}” is {where}.'),
+    ok: L3('Hammasi joyida: bitta h1, bo‘limlar h2, bo‘lim ichidagisi h3. Mana tayyor sahifa!',
+      'Всё на месте: один h1, разделы h2, а то, что внутри раздела, — h3. Вот готовая страница!',
+      'All set: one h1, sections are h2, and what’s inside a section is h3. Here’s the finished page!'),
+    why: L3('Raqam sarlavha qaysi pog‘onada turishini ko‘rsatadi.', 'Цифра показывает, на какой ступеньке стоит заголовок.', 'The number shows which step a heading is on.')
   },
 
   // ── 8. ЭКСПЕРИМЕНТ ───────────────────────────────────────────────────────
@@ -6730,61 +6905,45 @@ const C = {
       'p is a paragraph. A new paragraph needs a new p, not a new line.')
   },
 
-  // ── 9. РАЗДЕЛИ МЫСЛИ ─────────────────────────────────────────────────────
+  // ── 9. РАЗЛОЖИ ПО АБЗАЦАМ ────────────────────────────────────────────────
+  // Заказчик (15.10.2026): «режь там, где меняется тема» — ответ на вкус.
+  // Теперь у каждой темы готовый абзац под своим заголовком, а предложение
+  // однозначно про правила или про время.
   s9: {
     eyebrow: L3('Matnni bo‘ling', 'Раздели текст', 'Split the text'),
-    say: L3('Hammasi bitta xatboshida. Mavzu almashgan joyni toping va gaplar orasidagi qaychini bosing.',
-      'Тут всё в одном абзаце. Найди, где начинается другая тема, и нажми ножницы между предложениями.',
-      'Everything is in one paragraph. Find where a new topic starts and tap the scissors between the sentences.'),
-    ask: L3('Yangi mavzu boshlangan joyda kesing va «Tekshirish»ni bosing', 'Режь там, где начинается другая тема, и нажми «Проверить»', 'Cut where a new topic starts and press “Check”'),
-    sets: {
-      a: { cuts: [1, 3], sents: [
-        L3('Robotlar maydonda to‘p quvadi.', 'Роботы гоняют мяч по полю.', 'Robots chase a ball around the field.'),
-        L3('Har bir jamoa robotini o‘zi yig‘adi.', 'Каждая команда сама собирает робота.', 'Each team builds its own robot.'),
-        L3('O‘yin 10 daqiqa davom etadi.', 'Матч длится 10 минут.', 'A match lasts 10 minutes.'),
-        L3('Robotga qo‘l tegizish mumkin emas.', 'Трогать робота руками нельзя.', 'Touching the robot by hand is not allowed.'),
-        L3('Turnir shanba kuni boshlanadi.', 'Турнир начнётся в субботу.', 'The tournament starts on Saturday.')
-      ] },
-      b: { cuts: [1], sents: [
-        L3('Piksel klaviaturada uxlashni yaxshi ko‘radi.', 'Пиксель любит спать на клавиатуре.', 'Pixel loves sleeping on the keyboard.'),
-        L3('Ayniqsa men o‘ynaganimda.', 'Особенно когда я играю.', 'Especially when I’m gaming.'),
-        L3('U kuniga ikki marta ovqatlanadi.', 'Ест он два раза в день.', 'He eats twice a day.'),
-        L3('Eng yaxshi ko‘rgani — baliq.', 'Больше всего любит рыбу.', 'His favourite is fish.')
-      ] }
-    },
-    err: {
-      split: L3('Bu gaplar bitta narsa haqida. Ularni birga qoldiring.', 'Эти предложения про одно и то же. Оставь их вместе.', 'These sentences are about the same thing. Keep them together.'),
-      missing: L3('Bir joyda mavzu almashadi, lekin kesilmagan. O‘sha joyni toping.', 'В одном месте тема меняется, а разреза нет. Найди это место.', 'In one place the topic changes but there’s no cut. Find it.'),
-      none: L3('Hali kesilmagan. Mavzu qayerda almashadi?', 'Разрезов пока нет. Где меняется тема?', 'No cuts yet. Where does the topic change?')
-    },
-    hints: [
-      L3('O‘qing: boshidagi gaplar nima haqida, oxiridagilar-chi?', 'Прочитай: про что первые предложения, а про что последние?', 'Read it: what are the first sentences about, and the last ones?'),
-      L3('Kerakli qaychilarni sariq qilib qo‘ydim.', 'Нужные ножницы я подсветил жёлтым.', 'I lit up the right scissors in yellow.'),
-      L3('Bitta kesish qoldi.', 'Остался один разрез.', 'One cut left.')
+    say: L3('Har bir mavzu o‘z xatboshisida turadi. Gapni bosing, keyin u mos keladigan xatboshini bosing.',
+      'У каждой темы свой абзац. Нажми предложение, потом абзац, куда оно подходит.',
+      'Each topic gets its own paragraph. Tap a sentence, then the paragraph it belongs to.'),
+    ask: L3('Gapni bosing, keyin xatboshini', 'Нажми предложение, потом абзац', 'Tap a sentence, then a paragraph'),
+    groups: [
+      { id: 'rules', head: L3('Qoidalar', 'Правила', 'Rules') },
+      { id: 'sched', head: L3('Jadval', 'Расписание', 'Schedule') }
     ],
+    sents: [
+      { id: 'x1', g: 'rules', text: L3('O‘yin 10 daqiqa davom etadi.', 'Матч длится 10 минут.', 'A match lasts 10 minutes.') },
+      { id: 'x2', g: 'sched', text: L3('Turnir shanba kuni boshlanadi.', 'Турнир начнётся в субботу.', 'The tournament starts on Saturday.') },
+      { id: 'x3', g: 'rules', text: L3('Robotga qo‘l tegizish mumkin emas.', 'Трогать робота руками нельзя.', 'Touching the robot by hand is not allowed.') },
+      { id: 'x4', g: 'sched', text: L3('O‘yinlar ertalab soat o‘nda boshlanadi.', 'Игры начинаются в десять утра.', 'Games start at ten in the morning.') }
+    ],
+    pickFirst: L3('Avval gapni bosing.', 'Сначала нажми предложение.', 'Tap a sentence first.'),
+    wrong: {
+      rules: L3('Bu gap o‘yin qoidasi haqida. Uning joyi «Qoidalar» xatboshisida.', 'Это предложение — правило игры. Его место в абзаце «Правила».', 'This sentence is a game rule. It goes in the “Rules” paragraph.'),
+      sched: L3('Bu gap vaqt haqida. Uning joyi «Jadval» xatboshisida.', 'Это предложение про время. Его место в абзаце «Расписание».', 'This sentence is about time. It goes in the “Schedule” paragraph.')
+    },
     ok: L3('Har bir mavzu — o‘z xatboshisida. O‘qish osonlashdi.', 'Каждая тема — в своём абзаце. Читать стало легче.', 'Each topic has its own paragraph. Easier to read now.'),
-    more: L3('Yana bitta matn — boshqa mavzuda.', 'Ещё один текст — про другое.', 'One more text, about something else.'),
     why: L3('Bitta xatboshi — bitta mavzu. Har bir xatboshi o‘z p tegida.', 'Один абзац — одна тема. У каждого абзаца свой p.', 'One paragraph, one topic. Each paragraph has its own p.')
   },
 
-  // ── 10. МАСТЕРСКАЯ АБЗАЦЕВ ───────────────────────────────────────────────
+  // ── 10. ЗАКРОЙ АБЗАЦ ─────────────────────────────────────────────────────
+  // Заказчик (15.10.2026): одно дело на экране — дописать </p>. Чек-лист из
+  // двух пунктов (его принимали за переключатели) и второй этап убраны.
   s10: {
-    eyebrow: L3('Xatboshi ustaxonasi', 'Мастерская абзацев', 'Paragraph workshop'),
-    say: L3('Birinchi xatboshida yopuvchi teg yo‘q. Uni qator oxiriga yozing.',
-      'У первого абзаца нет закрывающего тега. Допиши его в конце строки.',
-      'The first paragraph has no closing tag. Add it at the end of the line.'),
-    ask: L3('Birinchi xatboshining yopuvchi tegini yozing', 'Допиши закрывающий тег первого абзаца', 'Add the closing tag to the first paragraph'),
-    rule: L3('Hamma xatboshi yopilgan', 'Все абзацы закрыты', 'All paragraphs are closed'),
-    rule2: L3('Uchinchi xatboshi bor', 'Есть третий абзац', 'There’s a third paragraph'),
+    eyebrow: L3('Xatboshini yoping', 'Закрой абзац', 'Close the paragraph'),
+    say: L3('Birinchi xatboshida yopuvchi teg yo‘q, shuning uchun u qayerda tugashi noma’lum. Pastdagi tugmalar bilan yopuvchi tegni yozing.',
+      'У первого абзаца нет закрывающего тега, поэтому непонятно, где он кончается. Набери закрывающий тег кнопками внизу.',
+      'The first paragraph has no closing tag, so it’s unclear where it ends. Type the closing tag with the buttons below.'),
+    ask: L3('Birinchi xatboshini yoping: </p> ni yozing', 'Закрой первый абзац: набери </p>', 'Close the first paragraph: type </p>'),
     fixed: L3('Endi xatboshi qayerda tugashi ko‘rinib turibdi.', 'Теперь видно, где абзац заканчивается.', 'Now you can see where the paragraph ends.'),
-    addSay: L3('Endi uchinchi xatboshini qo‘shing. Masalan, turnir qachon boshlanishini yozing.',
-      'Теперь добавь третий абзац. Например, напиши, когда начнётся турнир.',
-      'Now add a third paragraph. For example, write when the tournament starts.'),
-    ask2: L3('Uchinchi xatboshini yozing va «Tayyor»ni bosing', 'Напиши третий абзац и нажми «Готово»', 'Write the third paragraph and press “Done”'),
-    ex: L3('Masalan: Turnir shanba kuni boshlanadi', 'Например: Турнир начнётся в субботу', 'For example: The tournament starts on Saturday'),
-    empty: L3('Kamida bir-ikki so‘z yozing.', 'Напиши хотя бы пару слов.', 'Write at least a couple of words.'),
-    noTags: L3('Teglar allaqachon bor. Faqat matn yozing.', 'Теги уже стоят. Пиши только текст.', 'The tags are already there. Just type the text.'),
-    added: L3('Tayyor! Yangi xatboshi pastda paydo bo‘ldi.', 'Готово! Новый абзац появился внизу.', 'Done! The new paragraph appeared at the bottom.'),
     typeHints: [
       L3('Xatboshi <p> bilan ochilgan. Uni nima yopadi?', 'Абзац открыт тегом <p>. Чем его закрыть?', 'The paragraph opens with <p>. What closes it?'),
       L3('< dan keyin qiya chiziq qo‘ying.', 'После < поставь косую черту.', 'Put a slash after <.'),
@@ -6866,10 +7025,11 @@ const C = {
   // ── 13. HTML-ДЕТЕКТИВ ────────────────────────────────────────────────────
   s13: {
     eyebrow: L3('HTML-detektiv', 'HTML-детектив', 'HTML detective'),
-    say: L3('Har bir kodda bitta xato bor. Uni toping, bosing va tuzating.',
-      'В каждом коде одна ошибка. Найди её, нажми и исправь.',
-      'Each piece of code has one mistake. Find it, tap it, and fix it.'),
-    ask: L3('Xatoni kodda bosing', 'Нажми на ошибку в коде', 'Tap the mistake in the code'),
+    // Слово «ошибка» ребёнку не говорится (бриф): «тег стоит не так».
+    say: L3('Har bir kodda bitta teg o‘z joyida emas. Uni toping, bosing va tuzating.',
+      'В каждом коде один тег стоит не так. Найди его, нажми и почини.',
+      'In each piece of code, one tag is out of place. Find it, tap it, and fix it.'),
+    ask: L3('O‘z joyida bo‘lmagan tegni bosing', 'Нажми тег, который стоит не так', 'Tap the tag that’s out of place'),
     cases: {
       level: {
         goal: L3('Bu blogning asosiy sarlavhasi', 'Это главный заголовок блога', 'This is the blog’s main heading'),
@@ -6920,37 +7080,53 @@ const C = {
         L3('Gap oxiridagi </b> ni bosing.', 'Нажми </b> в конце предложения.', 'Tap </b> at the end of the sentence.')
       ]
     },
-    wrongSpot: L3('Bu yerda xato yo‘q.', 'Тут ошибки нет.', 'No mistake here.'),
+    wrongSpot: L3('Bu yerda hammasi joyida. Qidirishda davom eting.', 'Здесь всё в порядке. Ищи дальше.', 'All good here. Keep looking.'),
     why: L3('Uchta narsani tekshiring: to‘g‘ri raqam, bir xil teg nomlari va qalin qism chegarasi.',
       'Проверяй три вещи: правильная цифра, одинаковые имена тегов и где кончается жирный текст.',
       'Check three things: the right number, matching tag names, and where the bold text ends.')
   },
 
-  // ── 14. ПЕСОЧНИЦА ────────────────────────────────────────────────────────
+  // ── 14. НОВЫЙ РАЗДЕЛ ─────────────────────────────────────────────────────
+  // Заказчик (15.10.2026): у песочницы не было цели — непонятно, что делать и
+  // когда готово. Теперь это мини-задание из четырёх шагов по одному действию.
   s14: {
-    eyebrow: L3('Tajriba maydoni', 'Песочница', 'Sandbox'),
-    say: L3('Bu yerda hammasini sinab ko‘rish mumkin. Raqamni almashtirish uchun sarlavha tegini bosing. Matnni o‘zgartiring, yangi bloklar qo‘shing.',
-      'Тут можно пробовать всё. Нажми на тег заголовка — поменяется цифра. Меняй текст, добавляй новые блоки.',
-      'You can try anything here. Tap a heading tag to change its number. Change the text, add new blocks.'),
-    ask: L3('Raqamni, matnni o‘zgartiring yoki blok qo‘shing', 'Поменяй цифру, текст или добавь блок', 'Change a number, the text, or add a block'),
-    onLevel: L3('Raqam o‘zgardi — sarlavha o‘lchami ham o‘zgardi.', 'Цифра поменялась — и размер заголовка тоже.', 'The number changed, and so did the heading size.'),
-    onText: L3('Matn sahifada yangilandi.', 'Текст на странице обновился.', 'The text updated on the page.'),
-    onAdd: L3('Yangi blok sahifa oxirida paydo bo‘ldi.', 'Новый блок появился в конце страницы.', 'The new block appeared at the end of the page.'),
-    onReset: L3('Hammasi avvalgidek. Yana sinab ko‘ring!', 'Всё как было. Пробуй ещё!', 'Back to how it was. Try again!'),
-    onBefore: L3('Bu — o‘zgarishdan oldin. «Hozir»ni bosing va solishtiring.', 'Это — до изменений. Нажми «Стало» и сравни.', 'This is before your changes. Press “Now” to compare.'),
-    newH: L3('Yangi bo‘lim', 'Новый раздел', 'New section'),
-    newP: L3('Yangi xatboshi matni.', 'Текст нового абзаца.', 'New paragraph text.'),
-    done: L3('Zo‘r! Kod o‘zgarsa, sahifa ham o‘zgaradi.', 'Отлично! Меняешь код — меняется страница.', 'Great! Change the code, and the page changes.')
+    eyebrow: L3('Yangi bo‘lim', 'Новый раздел', 'New section'),
+    say: L3('Tashkilotchilar sovrinlar o‘ylab topishdi! Sahifaga sovrinlar haqida yangi bo‘lim qo‘shing. Qadamlarni birma-bir bajaring.',
+      'Организаторы придумали призы! Добавь на страницу новый раздел о призах. Делай по шагам, по одному.',
+      'The organizers came up with prizes! Add a new section about prizes to the page. Do the steps one at a time.'),
+    steps: [
+      // text — на экране; hint — то же для голоса лампочки, без знака «+».
+      { text: L3('Bo‘lim sarlavhasini qo‘shing: «+ h2» ni bosing', 'Добавь заголовок раздела: нажми «+ h2»', 'Add a section heading: tap “+ h2”'),
+        hint: L3('Bo‘lim sarlavhasini qo‘shing: h2 tugmasini bosing.', 'Добавь заголовок раздела: нажми кнопку h2.', 'Add a section heading: tap the h2 button.') },
+      { text: L3('Sarlavhaga nom yozing, masalan «Sovrinlar»', 'Напиши название раздела, например «Призы»', 'Type the section name, for example “Prizes”'),
+        hint: L3('Sarlavhaga nom yozing, masalan, Sovrinlar.', 'Напиши название раздела, например, Призы.', 'Type the section name, for example, Prizes.') },
+      { text: L3('Xatboshi qo‘shing: «+ p» ni bosing', 'Добавь абзац: нажми «+ p»', 'Add a paragraph: tap “+ p”'),
+        hint: L3('Xatboshi qo‘shing: p tugmasini bosing.', 'Добавь абзац: нажми кнопку p.', 'Add a paragraph: tap the p button.') },
+      { text: L3('G‘olib nima olishini yozing', 'Напиши, что получит победитель', 'Write what the winner gets'),
+        hint: L3('G‘olib nima olishini yozing.', 'Напиши, что получит победитель.', 'Write what the winner gets.') }
+    ],
+    after: [
+      L3('Yangi sarlavha paydo bo‘ldi. Endi unga nom yozing.', 'Появился новый заголовок. Теперь напиши его название.', 'A new heading appeared. Now type its name.'),
+      L3('Zo‘r nom! Endi xatboshi qo‘shing — p tugmasini bosing.', 'Отличное название! Теперь добавь абзац — кнопка p.', 'Great name! Now add a paragraph with the p button.'),
+      L3('Xatboshi tayyor. G‘olib nima olishini yozing.', 'Абзац готов. Напиши, что получит победитель.', 'The paragraph is ready. Write what the winner gets.')
+    ],
+    phH: L3('Sovrinlar', 'Призы', 'Prizes'),
+    phP: L3('Masalan: g‘olib kubok oladi', 'Например: победитель получит кубок', 'For example: the winner gets a cup'),
+    done: L3('Zo‘r! Sahifada yangi bo‘lim bor: sarlavha va xatboshi. Kodni o‘zgartirsangiz, sahifa ham o‘zgaradi.',
+      'Отлично! На странице новый раздел: заголовок и абзац. Меняешь код — меняется страница.',
+      'Great! The page has a new section: a heading and a paragraph. Change the code, and the page changes.')
   },
 
   // ── 15. СВОЙ ПРОЕКТ ──────────────────────────────────────────────────────
+  // Заказчик (15.10.2026): пять целей-кружков, «Код / Результат», три кнопки
+  // «+» и «Проверить» сразу — перегруз. Теперь страница собирается по шагам,
+  // по одному действию; шаг засчитывается сам, страница рядом живая.
   s15: {
     eyebrow: L3('Mening loyiham', 'Мой проект', 'My project'),
-    say: L3('Endi navbat sizda. Mavzu tanlang va sahifa yasang: asosiy sarlavha, bo‘limlar, xatboshilar, qalin va kursiv so‘zlar.',
-      'Теперь твоя очередь. Выбери тему и сделай страницу: главный заголовок, разделы, абзацы, жирные и курсивные слова.',
-      'Your turn. Pick a topic and make a page: main heading, sections, paragraphs, bold and italic words.'),
+    say: L3('Endi navbat sizda! Mavzu tanlang va o‘z sahifangizni qadamma-qadam yig‘ing.',
+      'Теперь твоя очередь! Выбери тему и собери свою страницу шаг за шагом.',
+      'Your turn! Pick a topic and build your own page step by step.'),
     ask1: L3('Mavzu tanlang', 'Выбери тему', 'Pick a topic'),
-    ask: L3('Sahifani yig‘ing va «Tekshirish»ni bosing', 'Собери страницу и нажми «Проверить»', 'Build the page and press “Check”'),
     topics: [
       { id: 'game', label: L3('O‘yin', 'Игра', 'A game'), title: L3('Sevimli o‘yinim', 'Моя любимая игра', 'My favourite game'),
         ex: L3('Masalan: Nega men shaxmatni yaxshi ko‘raman', 'Например: Почему я люблю шахматы', 'For example: Why I love chess') },
@@ -6961,35 +7137,34 @@ const C = {
       { id: 'own', label: L3('O‘z mavzum', 'Своя тема', 'My own topic'), title: L3('Mening qiziqishim', 'Моё увлечение', 'My hobby'),
         ex: L3('Masalan: Men nimani yaxshi ko‘raman', 'Например: Что я люблю', 'For example: What I love') }
     ],
+    // text — на экране; hint — то же для голоса, без знака «+».
+    steps: [
+      { text: L3('Asosiy sarlavhani yozing (h1)', 'Напиши главный заголовок (h1)', 'Write the main heading (h1)'),
+        hint: L3('Sahifangiz nima haqida? Buni asosiy sarlavhaga yozing.', 'О чём твоя страница? Напиши это в главный заголовок.', 'What is your page about? Write it in the main heading.') },
+      { text: L3('Uning ostiga xatboshi yozing (p)', 'Напиши под ним абзац (p)', 'Write a paragraph under it (p)'),
+        hint: L3('Bir-ikki gap yozing: bu mavzu sizga nega yoqadi?', 'Напиши одно-два предложения: почему тебе нравится эта тема?', 'Write a sentence or two: why do you like this topic?') },
+      { text: L3('Bo‘lim qo‘shing: «+ h2» ni bosing', 'Добавь раздел: нажми «+ h2»', 'Add a section: tap “+ h2”'),
+        hint: L3('h2 tugmasini bosing — yangi bo‘lim sarlavhasi paydo bo‘ladi.', 'Нажми кнопку h2 — появится заголовок нового раздела.', 'Tap the h2 button, and a new section heading appears.') },
+      { text: L3('Bo‘lim nomini yozing', 'Напиши название раздела', 'Type the section name'),
+        hint: L3('Bo‘limga nom bering, masalan: Qanday boshlandi.', 'Дай разделу название, например: Как всё началось.', 'Name the section, for example: How it started.') },
+      { text: L3('Bo‘limga xatboshi qo‘shing: «+ p» ni bosing', 'Добавь абзац в раздел: нажми «+ p»', 'Add a paragraph to the section: tap “+ p”'),
+        hint: L3('p tugmasini bosing — bo‘limda xatboshi paydo bo‘ladi.', 'Нажми кнопку p — в разделе появится абзац.', 'Tap the p button, and a paragraph appears in the section.') },
+      { text: L3('Bo‘lim xatboshisini yozing', 'Напиши абзац раздела', 'Write the section paragraph'),
+        hint: L3('Bo‘lim haqida bir-ikki gap yozing.', 'Напиши про раздел одно-два предложения.', 'Write a sentence or two about the section.') },
+      { text: L3('Bitta so‘zni qalin qiling: so‘zni bosing, keyin «b»', 'Сделай одно слово жирным: нажми слово, потом «b»', 'Make one word bold: tap a word, then “b”'),
+        hint: L3('Eng muhim so‘zni bosing, keyin b tugmasini.', 'Нажми самое важное слово, потом кнопку b.', 'Tap the most important word, then the b button.') },
+      { text: L3('Boshqa so‘zni kursiv qiling: so‘zni bosing, keyin «i»', 'Сделай другое слово курсивом: нажми слово, потом «i»', 'Make another word italic: tap a word, then “i”'),
+        hint: L3('Boshqa so‘zni bosing, keyin i tugmasini.', 'Нажми другое слово, потом кнопку i.', 'Tap another word, then the i button.') }
+    ],
     ph: {
-      h2: L3('Bo‘lim, masalan: Qanday boshlandi', 'Раздел, например: Как всё началось', 'Section, e.g.: How it started'),
-      h3: L3('Bo‘lim qismi', 'Часть раздела', 'Part of a section'),
-      p: L3('Xatboshi matni', 'Текст абзаца', 'Paragraph text')
+      p1: L3('Nega bu sizga yoqadi?', 'Почему тебе это нравится?', 'Why do you like it?'),
+      h2: L3('Masalan: Qanday boshlandi', 'Например: Как всё началось', 'For example: How it started'),
+      p2: L3('Bo‘lim haqida bir-ikki gap', 'Пара предложений о разделе', 'A sentence or two about the section')
     },
-    goals: {
-      h1: L3('Asosiy sarlavha h1', 'Главный заголовок h1', 'Main heading h1'),
-      h2: L3('Bo‘lim h2', 'Раздел h2', 'Section h2'),
-      p: L3('Ikki xatboshi p', 'Два абзаца p', 'Two paragraphs p'),
-      b: L3('Qalin so‘z b', 'Жирное слово b', 'A bold word b'),
-      i: L3('Kursiv so‘z i', 'Курсивное слово i', 'An italic word i')
-    },
-    markAsk: L3('So‘zlarni tanlang, keyin b yoki i', 'Выбери слова, потом b или i', 'Pick words, then b or i'),
-    err: {
-      noTitle: L3('Varaqcha nomini yozing. U title ichida.', 'Напиши имя вкладки. Оно в title.', 'Write the tab name. It goes in title.'),
-      noH1: L3('Asosiy sarlavha h1 kerak.', 'Нужен главный заголовок h1.', 'You need a main heading h1.'),
-      twoH1: L3('h1 bitta bo‘ladi. Ortiqchasini h2 qiling.', 'h1 должен быть один. Лишний сделай h2.', 'There should be one h1. Make the extra one h2.'),
-      h1First: L3('h1 sahifaning eng tepasida turadi.', 'h1 стоит в самом начале страницы.', 'h1 goes at the very top of the page.'),
-      noH2: L3('Kamida bitta bo‘lim h2 qo‘shing.', 'Добавь хотя бы один раздел h2.', 'Add at least one section h2.'),
-      h3NoH2: L3('h3 — bo‘lim qismi. Undan oldin h2 bo‘lishi kerak.', 'h3 — это часть раздела. Перед ним должен быть h2.', 'h3 is part of a section. There must be an h2 before it.'),
-      needP: L3('Kamida ikkita xatboshi p kerak.', 'Нужно хотя бы два абзаца p.', 'You need at least two paragraphs p.'),
-      empty: L3('Belgilangan blok bo‘sh. Matn yozing yoki uni o‘chiring.', 'Отмеченный блок пустой. Напиши текст или убери его.', 'The marked block is empty. Write text or remove it.'),
-      needB: L3('Biror so‘zni qalin qiling: xatboshidagi B I tugmasini bosing.', 'Сделай какое-нибудь слово жирным: нажми кнопку B I у абзаца.', 'Make a word bold: press the B I button on a paragraph.'),
-      needI: L3('Biror so‘zni kursiv qiling.', 'Сделай какое-нибудь слово курсивом.', 'Make a word italic.'),
-      noTags: L3('Maydonlarga teg yozmang — ular allaqachon bor. Faqat matn.', 'В полях не нужны теги — они уже стоят. Пиши только текст.', 'No tags in the fields; they’re already there. Just text.')
-    },
-    look: L3('Belgilangan blokka qarang.', 'Посмотри на отмеченный блок.', 'Look at the marked block.'),
-    almost: L3('Kerakli blokni qo‘shdim. Uni to‘ldiring.', 'Я добавил нужный блок. Заполни его.', 'I added the block you need. Fill it in.'),
-    praise: L3('Sahifa tayyor! Hammasi joyida.', 'Страница готова! Всё на месте.', 'The page is ready! Everything is in place.')
+    noTags: L3('Maydonlarga teg yozmang — ular allaqachon bor. Faqat matn.', 'В полях не нужны теги — они уже стоят. Пиши только текст.', 'No tags in the fields; they’re already there. Just text.'),
+    praise: L3('Sahifa tayyor! Asosiy sarlavha, bo‘lim, xatboshilar, qalin va kursiv so‘z — hammasi joyida.',
+      'Страница готова! Главный заголовок, раздел, абзацы, жирное и курсивное слово — всё на месте.',
+      'The page is ready! Main heading, a section, paragraphs, a bold and an italic word: all in place.')
   },
 
   // ── 16. НОВАЯ ЗАДАЧА ─────────────────────────────────────────────────────
@@ -7092,8 +7267,8 @@ const SPOKEN = { say: 1, cast: 1, found1: 1, found2: 1, say2: 1, other: 1, hints
   done: 1, praise: 1, wrong: 1, more: 1, why: 1, err: 1, built: 1, typeSay: 1, typeMsg: 1, typeHints: 1, tell: 1,
   ok: 1, ok1: 1, rightPred: 1, wrongPred: 1, wrapSay: 1, wrapped: 1, fixed: 1, addSay: 1, added: 1, empty: 1,
   noTags: 1, quizSay: 1, quizWrong: 1, found: 1, fixWrong: 1, onLevel: 1, onText: 1, onAdd: 1, onReset: 1,
-  onBefore: 1, almost: 1, saved: 1, pickFirst: 1, wrongSpot: 1, steps: 1 };
-const NOT_SPOKEN_IN = { steps: { icon: 1, text: 1 }, cast: { pose: 1, step: 1 } };
+  onBefore: 1, almost: 1, saved: 1, pickFirst: 1, wrongSpot: 1, steps: 1, tasks: 1, okLv: 1 };
+const NOT_SPOKEN_IN = { steps: { icon: 1, text: 1 }, cast: { pose: 1, step: 1 }, tasks: { ask: 1 } };
 function heroLines(node, lang, out, on, parent) {
   const acc = out || [];
   if (!node || typeof node !== 'object') return acc;
@@ -7388,12 +7563,15 @@ function MiniBrowser({ title, page, hl, tabRef, pageRef, flashTab, flashPage, pi
   return (
     <div className={'mb' + hlc + (compact ? ' mb-compact' : '') + (cls ? ' ' + cls : '')}>
       <div className="mb-top">
-        <span className="mb-dots" aria-hidden="true"><i /><i /><i /></span>
         <span ref={tabRef} key={'tab' + (flashTab || 0)} className={'mb-tab' + (flashTab ? ' is-flash' : '')}>
           <span className="mb-fav" aria-hidden="true" />
           <span className={'mb-tab-t' + (t ? '' : ' is-file')}>{t ? (typed ? <TypeText text={t} /> : t) : 'index.html'}</span>
+          <span className="mb-x" aria-hidden="true" />
           {pins && pins.tab ? <span className="mb-pin mb-pin-tab">{pick(pins.tab)}</span> : null}
         </span>
+        {/* Окно как Chrome в Windows: «+» новой вкладки и кнопки окна справа. */}
+        <span className="mb-new" aria-hidden="true" />
+        <span className="mb-win" aria-hidden="true"><i className="mb-w-min" /><i className="mb-w-max" /><i className="mb-w-x" /></span>
       </div>
       <div ref={pageRef} key={'pg' + (flashPage || 0)} className={'mb-page' + (flashPage ? ' is-flash' : '')}>
         <div className="mb-doc">{page}</div>
@@ -8123,7 +8301,7 @@ function S4({ p }) {
     pageBlocks = [blk('h', 'h1', title)];
   }
   return (
-    <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo}
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo}
       hint={phase === 'type' ? c.ask2 : c.ask} nav={navOf(p, canGo)}>
       {phase === 'build' || phase === 'type' ? <p className={'ask hook-ask' + (msg ? ' ask-sub' : '')}>{pick(phase === 'type' ? c.ask2 : c.ask)}</p> : null}
       {phase === 'type' || phase === 'done' ? <Inspector rules={[{ id: 'closed', ok: phase === 'done', text: c.rule }]} /> : null}
@@ -8222,24 +8400,42 @@ function S5({ p }) {
   );
 }
 
-// ── 6. СТРУКТУРА СТАТЬИ. Схема «страница → раздел → подраздел» рядом с кодом,
-// где те же заголовки стоят друг за другом внутри body.
-const S6_HL = { 1: ['h1'], 2: ['rules', 'sched'], 3: ['pen'], 4: ['h1', 'rules', 'pen', 'sched'] };
-function Outline({ items, hl, onTap, canTap, led }) {
+// ЛЕСЕНКА — план страницы: каждый заголовок на своей ступеньке, отступ =
+// уровень. Заказчик (15.10.2026): уровень заголовка ученик должен видеть, а
+// не выводить из слов «раздел» и «часть раздела».
+//   open  — id строк, у которых тег уже открыт (без open — открыты все);
+//   q     — строка, у которой цифру спрашивают (на ней «h?» и рамка);
+//   noTag — лесенка без колонки тегов (образец на экране «Расставь сам»);
+//   hl / ok / shake — подсветка, «верно», тряска; onTap — строки-кнопки.
+function Stairs({ items, open, q, noTag, hl, ok, shake, onTap, canTap, led, compact }) {
   return (
-    <div className="ol" translate="no">
-      {items.map((it) => (
-        <div key={it.id} className={'ol-r ol-n' + (it.lvl - 1) + (hl && hl.indexOf(it.id) >= 0 ? ' is-hl' : '')} style={{ '--n': it.lvl - 1 }}>
-          <span className="ol-dot" aria-hidden="true" />
-          <span className="ol-tag mono">h{it.lvl}</span>
-          {onTap ? (
-            <button type="button" className={'ol-t' + (led ? ' is-led' : '')} disabled={!canTap} onClick={() => onTap(it.id)}>{it.text}</button>
-          ) : <span className="ol-t">{it.text}</span>}
-        </div>
-      ))}
+    <div className={'stairs' + (compact ? ' is-compact' : '')} translate="no">
+      {items.map((it) => {
+        const shown = (!open || open.indexOf(it.id) >= 0) && q !== it.id;
+        const cls = 'st-r st-n' + (it.lvl - 1) + (q === it.id ? ' is-q' : '') + (hl && hl.indexOf(it.id) >= 0 ? ' is-hl' : '')
+          + (ok && ok.indexOf(it.id) >= 0 ? ' is-ok' : '') + (shake === it.id ? ' fx-no' : '');
+        const inner = (
+          <>
+            <span className="st-step" aria-hidden="true" />
+            {noTag ? null : <span className={'st-tag mono' + (shown ? '' : ' is-hidden')}>{shown ? 'h' + it.lvl : 'h?'}</span>}
+            <span className="st-t">{it.text}</span>
+          </>
+        );
+        const style = { '--n': it.lvl - 1 };
+        return onTap ? (
+          <button key={it.id} type="button" className={cls + ' st-tap'} style={style} disabled={!canTap} onClick={() => onTap(it.id)}>
+            {inner}<Led on={!!(led && led.indexOf(it.id) >= 0)} />
+          </button>
+        ) : <div key={it.id} className={cls} style={style}>{inner}</div>;
+      })}
     </div>
   );
 }
+
+// ── 6. ЛЕСЕНКА ЗАГОЛОВКОВ (показ с нажатиями). Три задания по очереди, каждое
+// называет конкретную вещь: название страницы → два раздела → то, что внутри
+// «Правил». Нажатая строка открывает свой тег, и та же строка загорается в коде.
+const S6_TASKS = [['h1'], ['rules', 'sched'], ['pen']];
 function S6({ p }) {
   const pick = usePick();
   const log = useLog();
@@ -8248,225 +8444,278 @@ function S6({ p }) {
   const solved = !!(rec && rec.done);
   const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.why, pose: 'rule' }]
     : c.cast.map((l) => ({ text: l.text, pose: l.pose })));
-  const idx = c.cast.findIndex((l) => l.text === speaker.text);
-  const [step, setStep] = useState(solved ? 6 : 0);
-  useEffect(() => { if (idx >= 0) setStep((v) => Math.max(v, c.cast[idx].step)); }, [speaker.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (spoken && step < 5) setStep(5); }, [spoken]); // eslint-disable-line react-hooks/exhaustive-deps
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved, spoken);
-  const [phase, setPhase] = useState(solved ? 'done' : 'sub');   // sub · parent · done
+  const [task, setTask] = useState(solved ? 3 : 0);
+  const [got, setGot] = useState(solved ? ['h1', 'rules', 'sched', 'pen'] : []);
   const [msg, setMsg] = useState(null);
   const [shake, wobble] = useShake();
-  const lad = useLadder();
+  const misses = useRef(0);
   const attempts = useRef(0);
   const clean = useRef(true);
-  const asking = step >= 5 && phase !== 'done';
-  const led = useIdleLed(canTap && asking, lad.level + (phase === 'parent' ? 10 : 0));
+  const asking = !solved && task < 3;
+  // Строка задания появляется после вступления и дальше не пропадает, пока
+  // Коди отвечает: иначе экран прыгал бы на каждой реплике.
+  const [ready, setReady] = useState(solved);
+  useEffect(() => { if (spoken) setReady(true); }, [spoken]);
+  const want = asking ? S6_TASKS[task].filter((id) => got.indexOf(id) < 0) : [];
+  // Светодиоды — на нужных строках: это показ, а не проверка.
+  const led = useIdleLed(canTap && asking, task * 10 + got.length + misses.current * 100);
   const doc = roboDoc(pick);
   const heads = doc.filter((b) => isHead(b.tag)).map((b) => ({ id: b.id, lvl: lvlOf(b.tag), text: plain(b) }));
-  const found = phase === 'parent' ? ['pen'] : phase === 'done' ? ['pen', 'rules'] : [];
-  const hl = step >= 5 || solved ? found : (S6_HL[step] || null);
 
-  const tapLine = (id) => {
-    if (!asking || !canTap) return;
+  const tap = (id) => {
+    if (!asking || !canTap || got.indexOf(id) >= 0) return;
     attempts.current += 1;
-    const want = phase === 'sub' ? 'pen' : 'rules';
-    if (id === want) {
+    if (want.indexOf(id) >= 0) {
       sfx('ok', true);
-      lad.reset();
       setMsg(null);
-      if (phase === 'sub') { setPhase('parent'); sayNow(c.ok1, 'smile'); return; }
-      setPhase('done');
-      put({ done: true });
-      log({ screenId: 's6', type: 'structure', correct: true, firstTry: clean.current, attempts: attempts.current });
-      sayNow(joinL(nextPraiseL(), c.why), 'cheer');
+      misses.current = 0;
+      const ng = got.concat(id);
+      setGot(ng);
+      const t = c.tasks[task];
+      if (S6_TASKS[task].some((x) => ng.indexOf(x) < 0)) { sayNow(t.okOne, 'smile'); return; }
+      const nt = task + 1;
+      setTask(nt);
+      if (nt >= S6_TASKS.length) {
+        put({ done: true });
+        log({ screenId: 's6', type: 'structure', correct: true, firstTry: clean.current, attempts: attempts.current });
+        sayNow(joinL(t.ok, c.why), 'cheer');
+        return;
+      }
+      sayNow(t.ok, 'smile');
       return;
     }
     clean.current = false;
+    misses.current += 1;
     wobble(id);
     sfx('soft', true);
-    const lv = lad.bump();
-    const h = (phase === 'sub' ? c.hints1 : c.hints2)[lv - 1];
+    const h = c.tasks[task].hint;
     setMsg(h);
-    sayNow(joinL(nextEncourageL(), h), 'think');
+    sayNow(h, 'think');
   };
 
-  const lines = srcLines(doc, { frame: 'body', collapse: (b) => b.tag === 'p' });
+  // В коде — только заголовки: абзацы на этом экране лишние и не влезали.
+  const lines = srcLines(doc.filter((b) => isHead(b.tag)), { frame: 'body' });
+  const ask = asking ? c.tasks[task].ask : null;
   return (
     <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo}
-      hint={asking ? (phase === 'parent' ? c.ask2 : c.ask) : null} nav={navOf(p, canGo)}>
-      {asking ? <p className={'ask hook-ask' + (msg ? ' ask-sub' : '')}>{pick(phase === 'parent' ? c.ask2 : c.ask)}</p> : null}
+      hint={ask} nav={navOf(p, canGo)}>
+      {/* Подсказка встаёт на место задания, а не отдельной плашкой: экран не растёт. */}
+      {asking && ready ? <p className={'ask hook-ask' + (msg ? ' ask-hint' : '')}>{pick(msg || ask)}</p> : null}
       <div className="s6">
         <div className="s6-map">
           <span className="lad-h">{pick(UI.scheme)}</span>
-          <Outline items={heads} hl={hl} />
+          <Stairs items={heads} open={got} ok={got} shake={shake} onTap={asking ? tap : null} canTap={canTap}
+            led={led || misses.current >= 2 ? want : null} />
         </div>
-        <Src lines={lines} className={'src-s6' + (step === 4 ? ' is-flat' : '')}
-          lineProps={(ln) => {
+        <div className="s6-code">
+          <span className="lad-h">{pick(c.code)}</span>
+          <Src lines={lines} className="src-s6" lineProps={(ln) => {
             if (!ln.id) return null;
             const isH = isHead(ln.tag);
-            const cls = (hl && hl.indexOf(ln.id) >= 0 ? 'is-hl' : '') + (shake === ln.id ? ' fx-no' : '') + (isH ? '' : ' is-p');
-            if (!asking) return { cls };
-            return { cls, onTap: () => tapLine(ln.id), disabled: !canTap, led: led && isH };
+            return { cls: (got.indexOf(ln.id) >= 0 ? 'is-hl' : '') + (isH ? '' : ' is-p') };
           }} />
+        </div>
       </div>
-      {asking ? <LadderNote level={lad.level} text={msg} /> : null}
     </Stage>
   );
 }
 
-// ── 7. АРХИТЕКТОР СТАТЬИ. Назначить заголовкам h1, h2, h3 по смыслу.
-function s7Check(set, lv) {
-  for (const it of set) if (!lv[it.id]) return { key: 'unassigned', id: it.id };
-  const main = set.find((it) => it.lvl === 1);
-  if (lv[main.id] !== 1) return { key: 'mainNotH1', id: main.id };
-  const h1s = set.filter((it) => lv[it.id] === 1);
-  if (h1s.length > 1) return { key: 'twoH1', id: h1s.find((it) => it.id !== main.id).id };
-  for (const it of set) {
-    if (it.parent && lv[it.id] !== lv[it.parent] + 1) return { key: 'subLevel', id: it.id, parent: it.parent };
-  }
-  const secs = set.filter((it) => it.lvl === 2);
-  for (const it of secs) {
-    if (lv[it.id] !== 2) return { key: 'sectionLevel', id: it.id, peer: secs.find((x) => x.id !== it.id).id };
-  }
-  return null;
-}
+// ── 7. КАКАЯ ЦИФРА? Три быстрых раунда: на лесенке у одной строки цифра
+// спрятана, ученик выбирает h1, h2 или h3 по ступеньке. Неверная кнопка
+// гаснет (выбор сужается), после двух промахов светится верная.
 function S7({ p }) {
   const pick = usePick();
   const log = useLog();
   const c = C.s7;
   const [rec, put] = useRec('s7');
   const solved = !!(rec && rec.done);
-  const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.why, pose: 'rule' }] : [{ text: c.say, pose: 'explain' }]);
+  const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved, spoken);
-  const [setKey, setSetKey] = useState(solved ? rec.set || 'a' : 'a');
-  const set = c.sets[setKey];
-  const [lv, setLv] = useState(() => (solved ? rec.lv : {}));
-  const [sel, setSel] = useState(solved ? null : set[0].id);
-  const [bad, setBad] = useState(null);
+  const [r, setR] = useState(solved ? c.rounds.length - 1 : 0);
+  const [answered, setAnswered] = useState(solved);
+  const [tried, setTried] = useState([]);
   const [msg, setMsg] = useState(null);
-  const [view, setView] = useState('code');
-  const [showMap, setShowMap] = useState(false);
-  const [flash, setFlash] = useState({ id: null, n: 0 });
-  const [shake, wobble] = useShake();
-  const lad = useLadder();
+  const [shake, wobble, alive] = useShake();
   const attempts = useRef(0);
   const clean = useRef(true);
-  const followed = useRef(false);
-  const done = solved;
-  const all = set.every((it) => lv[it.id]);
-  const led = useIdleLed(canTap && !done, Object.keys(lv).length + lad.level * 10);
-  const textOf = (id) => pick(set.find((it) => it.id === id).text);
+  const round = c.rounds[r];
+  const items = round.items.map((it) => ({ id: it.id, lvl: it.lvl, text: pick(it.text) }));
+  const want = round.items.find((it) => it.id === round.q).lvl;
+  const led = useIdleLed(canTap && !answered, r * 10 + tried.length);
 
-  const assign = (n) => {
-    if (!canTap || done) return;
-    if (!sel) { sfx('soft', true); setMsg(c.pickFirst); sayNow(c.pickFirst, 'think'); return; }
-    sfx('pop', true);
-    const nl = Object.assign({}, lv, { [sel]: n });
-    setLv(nl);
-    setBad(null);
-    setFlash((f) => ({ id: sel, n: f.n + 1 }));
-    const nextFree = set.find((it) => !nl[it.id] && it.id !== sel);
-    setSel(nextFree ? nextFree.id : null);
-  };
-  const check = () => {
-    if (!canTap || done) return;
+  const choose = (n) => {
+    if (!canTap || answered || tried.indexOf(n) >= 0) return;
     attempts.current += 1;
-    const err = s7Check(set, lv);
-    if (!err) {
+    if (n === want) {
       sfx('ok', true);
+      setAnswered(true);
       setMsg(null);
-      setBad(null);
-      if (setKey === 'a' && lad.ref.current >= 2 && !followed.current) {
-        followed.current = true;
-        lad.reset();
-        setShowMap(false);
-        setSetKey('b');
-        setLv({});
-        setSel(c.sets.b[0].id);
-        sayNow(joinL(c.ok, c.more), 'smile');
+      if (r === c.rounds.length - 1) {
+        put({ done: true });
+        log({ screenId: 's7', type: 'levels', correct: true, firstTry: clean.current, attempts: attempts.current });
+        sayNow(joinL(c.okLv[want], c.done), 'cheer');
         return;
       }
-      lad.reset();
-      put({ done: true, set: setKey, lv });
-      log({ screenId: 's7', type: 'levels', correct: true, firstTry: clean.current, attempts: attempts.current });
-      setView('result');
-      sayNow(joinL(c.ok, c.why), 'cheer');
+      sayNow(joinL(nextPraiseL(), c.okLv[want]), 'smile');
+      setTimeout(() => {
+        if (!alive.current) return;
+        setR((v) => v + 1);
+        setAnswered(false);
+        setTried([]);
+      }, 1100);
       return;
     }
     clean.current = false;
     sfx('soft', true);
-    wobble(err.id);
-    const lvl = lad.bump();
-    const vars = { text: textOf(err.id) };
-    if (err.parent) vars.parent = textOf(err.parent);
-    if (err.peer) vars.peer = textOf(err.peer);
-    const m = fillL(c.err[err.key], vars);
-    if (lvl >= 2) setShowMap(true);
-    if (lvl >= 3) {
-      const fixedLv = {};
-      set.forEach((it) => { fixedLv[it.id] = it.lvl; });
-      delete fixedLv[err.id];
-      setLv(fixedLv);
-      setSel(err.id);
-      setBad(err.id);
-      setMsg(c.hints[2]);
-      sayNow(joinL(m, c.hints[2]), 'think');
-      return;
-    }
-    setBad(err.id);
-    setSel(err.id);
-    const h = c.hints[lvl - 1];
-    setMsg(joinL(m, h));
-    sayNow(joinL(m, h), 'think');
+    wobble('lv' + n);
+    setTried((t) => t.concat(n));
+    setMsg(c.wrong);
+    sayNow(c.wrong, 'think');
   };
 
-  const blocks = [];
-  set.forEach((it) => {
-    blocks.push(blk(it.id, lv[it.id] ? 'h' + lv[it.id] : null, pick(it.text)));
-    blocks.push(blk(it.id + 'p', 'p', pick(it.para)));
-  });
-  const rows = (
-    <div className="arch" translate="no">
-      {set.map((it) => {
-        const l = lv[it.id];
-        return (
-          <div key={it.id} className="arch-it">
-            <button type="button" className={'arch-r' + (sel === it.id ? ' is-sel' : '') + (bad === it.id ? ' is-bad' : '')
-              + (shake === it.id ? ' fx-no' : '') + (flash.id === it.id ? ' fx-ok' : '')}
-              disabled={!canTap || done} onClick={() => { sfx('tap', true); setSel(it.id); }}>
-              <span className={'arch-tag mono' + (l ? '' : ' is-empty')} style={{ '--c': TAGC.h }}>{l ? '<h' + l + '>' : '<h?>'}</span>
-              <span className="arch-t">{pick(it.text)}</span>
-              <Led on={led && !l} />
-            </button>
-            <span className="arch-p"><span className="mono" style={{ color: TAGC.p }}>{'<p>'}</span>{pick(it.para)}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-  const page = <MiniBrowser compact title={pick(set[0].text)} page={<Page blocks={blocks} flash={flash.id ? flash : null} />} />;
   return (
     <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask}
       nav={navOf(p, canGo)}>
-      {!done ? <p className={'ask hook-ask' + (msg ? ' ask-sub' : '')}>{pick(c.ask)}</p> : null}
-      <div className="only-narrow">
-        <SegToggle value={view} onChange={setView} options={[{ v: 'code', label: UI.code }, { v: 'result', label: UI.result }]} />
+      <p className={'ask hook-ask' + (msg && !answered ? ' ask-hint' : '')}>
+        <span className="s7q-n mono">{(r + 1) + '/' + c.rounds.length}</span>{' '}{pick(msg && !answered ? msg : c.ask)}
+      </p>
+      <div className="s7q" key={r}>
+        <Stairs items={items} q={answered ? null : round.q} ok={answered ? [round.q] : null} />
       </div>
-      <Work view={view} browser={page} code={<>
-        {showMap && !done ? (
-          <div className="s7-map"><Outline items={set.map((it) => ({ id: it.id, lvl: it.lvl, text: pick(it.text) }))} /></div>
-        ) : null}
-        {rows}
-      </>} />
+      <div className="lvl-row s7q-lv" translate="no">
+        {[1, 2, 3].map((n) => {
+          const off = tried.indexOf(n) >= 0;
+          const on = answered && n === want;
+          const tip = !answered && tried.length >= 2 && n === want;
+          return (
+            <button key={n} type="button" disabled={!canTap || answered || off}
+              className={'lvl-b' + (on ? ' is-on' : '') + (off ? ' is-off' : '') + (shake === 'lv' + n ? ' fx-no' : '')}
+              onClick={() => choose(n)}>
+              <span className="mono">h{n}</span>
+              <Led on={!answered && !off && (led || tip) && (tip || tried.length < 2)} />
+            </button>
+          );
+        })}
+      </div>
+    </Stage>
+  );
+}
+
+// ── 8. РАССТАВЬ САМ. В коде заголовки идут подряд, лесенки нет; план-лесенка
+// сверху — образец. Каждый выбор проверяется сразу: верный ставится и
+// зеленеет, неверный не ставится, и Коди говорит, на какой ступеньке строка.
+// Заказчик (15.10.2026): без переключателя «Код / Результат» и без
+// «Проверить» — на телефоне экран уходил за край.
+function S7b({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.s7b;
+  const set = c.set;
+  const [rec, put] = useRec('s7b');
+  const solved = !!(rec && rec.done);
+  const full = {};
+  set.forEach((it) => { full[it.id] = it.lvl; });
+  const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.why, pose: 'rule' }] : [{ text: c.say, pose: 'explain' }]);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(solved, spoken);
+  const [lv, setLv] = useState(() => (solved ? full : {}));
+  const [sel, setSel] = useState(solved ? null : set[0].id);
+  const [msg, setMsg] = useState(null);
+  const [tip, setTip] = useState(null);
+  const [flash, setFlash] = useState({ id: null, n: 0 });
+  const [shake, wobble] = useShake();
+  const miss = useRef({});
+  const attempts = useRef(0);
+  const clean = useRef(true);
+  const done = solved;
+  const led = useIdleLed(canTap && !done, Object.keys(lv).length * 10 + (tip ? 1 : 0));
+
+  const assign = (n) => {
+    if (!canTap || done) return;
+    if (!sel) { sfx('soft', true); setMsg(c.pickFirst); sayNow(c.pickFirst, 'think'); return; }
+    attempts.current += 1;
+    const it = set.find((x) => x.id === sel);
+    if (n === it.lvl) {
+      sfx('pop', true);
+      const nl = Object.assign({}, lv, { [sel]: n });
+      setLv(nl);
+      setMsg(null);
+      setTip(null);
+      setFlash((f) => ({ id: sel, n: f.n + 1 }));
+      const next = set.find((x) => !nl[x.id]);
+      if (!next) {
+        setSel(null);
+        put({ done: true, lv: nl });
+        log({ screenId: 's7b', type: 'levels', correct: true, firstTry: clean.current, attempts: attempts.current });
+        sayNow(joinL(nextPraiseL(), c.ok), 'cheer');
+        return;
+      }
+      setSel(next.id);
+      return;
+    }
+    clean.current = false;
+    sfx('soft', true);
+    wobble(sel);
+    miss.current[sel] = (miss.current[sel] || 0) + 1;
+    const m = fillL(c.wrongLv, { text: pick(it.text), where: c.where[it.lvl] });
+    setMsg(m);
+    sayNow(m, 'think');
+    if (miss.current[sel] >= 2) setTip({ id: sel, lvl: it.lvl });
+  };
+
+  const plan = set.map((it) => ({ id: it.id, lvl: it.lvl, text: pick(it.text) }));
+  const blocks = [];
+  set.forEach((it) => {
+    blocks.push(blk(it.id, 'h' + it.lvl, pick(it.text)));
+    blocks.push(blk(it.id + 'p', 'p', pick(it.para)));
+  });
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask}
+      nav={navOf(p, canGo)}>
+      {!done ? <p className={'ask hook-ask' + (msg ? ' ask-hint' : '')}>{pick(msg || c.ask)}</p> : null}
+      <div className={'s7b' + (done ? ' is-done' : '')}>
+        {done ? (
+          <MiniBrowser compact title={pick(set[0].text)} page={<Page blocks={blocks} flash={flash.id ? flash : null} />} />
+        ) : (
+          <div className="s7b-plan">
+            <span className="lad-h">{pick(c.plan)}</span>
+            <Stairs items={plan} noTag compact hl={sel ? [sel] : null} ok={Object.keys(lv)} />
+          </div>
+        )}
+        <div className="s7b-code">
+          {done ? null : <span className="lad-h">{pick(c.code)}</span>}
+          <div className="arch" translate="no">
+            {set.map((it) => {
+              const l = lv[it.id];
+              return (
+                <button key={it.id} type="button" className={'arch-r' + (sel === it.id ? ' is-sel' : '') + (l ? ' is-ok' : '')
+                  + (shake === it.id ? ' fx-no' : '') + (flash.id === it.id ? ' fx-ok' : '')}
+                  disabled={!canTap || done || !!l} onClick={() => { sfx('tap', true); setSel(it.id); setMsg(null); }}>
+                  <span className={'arch-tag mono' + (l ? '' : ' is-empty')} style={{ '--c': TAGC.h }}>{l ? '<h' + l + '>' : '<h?>'}</span>
+                  <span className="arch-t">{pick(it.text)}</span>
+                  {l ? <span className="arch-ok" aria-hidden="true"><Icon name="check" size={14} /></span> : <Led on={led && sel === it.id} />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
       {!done ? (
-        <div className="s7-tools">
-          <LevelRow levels={[1, 2, 3]} value={sel ? lv[sel] : null} onPick={assign} canTap={canTap} led={led && !!sel} />
-          {all ? <button type="button" className="key-b key-go is-ready" disabled={!canTap} onClick={check}>{pick(UI.check)}</button> : null}
+        <div className="lvl-row s7b-lv" translate="no">
+          {[1, 2, 3].map((n) => {
+            const isTip = tip && tip.id === sel && tip.lvl === n;
+            return (
+              <button key={n} type="button" disabled={!canTap} className={'lvl-b' + (isTip ? ' is-tip' : '')} onClick={() => assign(n)}>
+                <span className="mono">h{n}</span>
+                <Led on={!!isTip} />
+              </button>
+            );
+          })}
         </div>
       ) : null}
-      {!done ? <LadderNote level={lad.level || (msg ? 1 : 0)} text={msg} /> : null}
     </Stage>
   );
 }
@@ -8538,7 +8787,7 @@ function S8({ p }) {
   const page = ran ? <Page blocks={rowsToBlocks(rows, wrapped)} flash={flash} fresh={flash ? [flash.id] : null} />
     : <div className="pg-wait" aria-hidden="true">?</div>;
   return (
-    <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo}
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo}
       hint={phase === 'predict' ? c.ask : c.ask2} nav={navOf(p, canGo)}>
       {phase !== 'done' ? <p className="ask hook-ask">{pick(phase === 'predict' ? c.ask : c.ask2)}</p> : null}
       <Work ref={wrapRef} cls="work-s8"
@@ -8576,148 +8825,114 @@ function S8({ p }) {
   );
 }
 
-// ── 9. РАЗДЕЛИ МЫСЛИ. Ножницы между предложениями: разрез = </p><p>.
-const Scissors = () => (
-  <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
-    <circle cx="6" cy="7" r="3" fill="none" stroke="currentColor" strokeWidth="2" />
-    <circle cx="6" cy="17" r="3" fill="none" stroke="currentColor" strokeWidth="2" />
-    <path d="M8.6 8.6L20 18M8.6 15.4L20 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-  </svg>
-);
-const groupsOf = (n, cuts) => {
-  const g = [[]];
-  for (let i = 0; i < n; i += 1) { g[g.length - 1].push(i); if (i < n - 1 && cuts.indexOf(i) >= 0) g.push([]); }
-  return g;
-};
+// ── 9. РАЗЛОЖИ ПО АБЗАЦАМ. Под двумя заголовками — пустые абзацы, ниже —
+// предложения вперемешку. Нажать предложение, потом абзац; верное встаёт в
+// абзац, неверное трясётся, и Коди говорит, про что это предложение.
 function S9({ p }) {
   const pick = usePick();
   const log = useLog();
   const c = C.s9;
   const [rec, put] = useRec('s9');
   const solved = !!(rec && rec.done);
+  const all = {};
+  c.sents.forEach((x) => { all[x.id] = x.g; });
   const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.why, pose: 'rule' }] : [{ text: c.say, pose: 'explain' }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved, spoken);
-  const [setKey, setSetKey] = useState(solved ? rec.set || 'a' : 'a');
-  const set = c.sets[setKey];
-  const [cuts, setCuts] = useState(() => (solved ? set.cuts.slice() : []));
-  const [tip, setTip] = useState([]);
-  const [badGap, setBadGap] = useState(null);
+  const [placed, setPlaced] = useState(() => (solved ? all : {}));
+  const [sel, setSel] = useState(null);
   const [msg, setMsg] = useState(null);
   const [flash, setFlash] = useState(null);
-  const [touched, setTouched] = useState(solved);
-  const lad = useLadder();
+  const [shake, wobble] = useShake();
   const attempts = useRef(0);
   const clean = useRef(true);
-  const followed = useRef(false);
-  const wrapRef = useRef(null);
-  const gapRefs = useRef({});
   const done = solved;
-  const sents = set.sents.map((s) => pick(s));
-  const led = useIdleLed(canTap && !done, cuts.length + lad.level * 10);
+  const led = useIdleLed(canTap && !done, Object.keys(placed).length * 10 + (sel ? 1 : 0));
+  const left = c.sents.filter((x) => !placed[x.id]);
 
-  const toggle = (k) => {
+  const pickSent = (id) => {
     if (!canTap || done) return;
-    setTouched(true);
-    sfx(cuts.indexOf(k) >= 0 ? 'tap' : 'pop', true);
-    const nc = cuts.indexOf(k) >= 0 ? cuts.filter((x) => x !== k) : cuts.concat([k]).sort((a, b) => a - b);
-    setCuts(nc);
-    setBadGap(null);
+    sfx('tap', true);
+    setSel(id);
     setMsg(null);
-    setFlash({ id: 'g' + k, n: Date.now() });
   };
-  const check = () => {
+  const drop = (g) => {
     if (!canTap || done) return;
+    if (!sel) { sfx('soft', true); setMsg(c.pickFirst); sayNow(c.pickFirst, 'think'); return; }
     attempts.current += 1;
-    const target = set.cuts;
-    const extra = cuts.filter((k) => target.indexOf(k) < 0);
-    const missing = target.filter((k) => cuts.indexOf(k) < 0);
-    if (!extra.length && !missing.length) {
-      sfx('ok', true);
-      setTip([]);
+    const want = all[sel];
+    if (want === g) {
+      sfx('pop', true);
+      const np = Object.assign({}, placed, { [sel]: g });
+      setPlaced(np);
+      setFlash({ id: g, n: Date.now() });
+      setSel(null);
       setMsg(null);
-      if (setKey === 'a' && lad.ref.current >= 2 && !followed.current) {
-        followed.current = true;
-        lad.reset();
-        setSetKey('b');
-        setCuts([]);
-        sayNow(joinL(c.ok, c.more), 'smile');
-        return;
+      if (Object.keys(np).length === c.sents.length) {
+        put({ done: true });
+        log({ screenId: 's9', type: 'split', correct: true, firstTry: clean.current, attempts: attempts.current });
+        sayNow(joinL(c.ok, c.why), 'cheer');
       }
-      lad.reset();
-      put({ done: true, set: setKey });
-      log({ screenId: 's9', type: 'split', correct: true, firstTry: clean.current, attempts: attempts.current });
-      sayNow(joinL(c.ok, c.why), 'cheer');
       return;
     }
     clean.current = false;
     sfx('soft', true);
-    const key = !cuts.length ? 'none' : (extra.length ? 'split' : 'missing');
-    setBadGap(extra.length ? extra[0] : null);
-    const lv = lad.bump();
-    if (lv >= 2) setTip(target);
-    if (lv >= 3) {
-      const keep = target.slice(0, -1);
-      setCuts(keep);
-      setBadGap(null);
-      setMsg(c.hints[2]);
-      sayNow(joinL(c.err[key], c.hints[2]), 'think');
-      return;
-    }
-    const h = c.hints[lv - 1];
-    setMsg(joinL(c.err[key], h));
-    sayNow(joinL(c.err[key], h), 'think');
+    wobble(sel);
+    setMsg(c.wrong[want]);
+    sayNow(c.wrong[want], 'think');
   };
 
-  const groups = groupsOf(sents.length, cuts);
-  const gapBtn = (k, active) => (
-    <button key={'g' + k} type="button" ref={(el) => { gapRefs.current[k] = el; }}
-      className={'cut-b' + (active ? ' is-cut' : '') + (tip.indexOf(k) >= 0 && !active ? ' is-tip' : '') + (badGap === k ? ' is-bad fx-no' : '')
-        + (led && !active ? ' is-led' : '')}
-      disabled={!canTap || done} onClick={() => toggle(k)} aria-label={pick(UI.cut)} aria-pressed={active}>
-      <Scissors />
-    </button>
-  );
-  const lines = [{ key: 'bo', d: 0, toks: [{ k: 'open', tag: 'body' }] }];
-  groups.forEach((g, gi) => {
-    const last = g[g.length - 1];
-    const node = (
-      <span className="split-l">
-        <Tag tag="p" />
-        {g.map((i) => (
-          <React.Fragment key={i}>
-            <span className="tk-tx">{sents[i]}</span>
-            {i !== last ? <> {gapBtn(i, false)} </> : null}
-          </React.Fragment>
-        ))}
-        <Tag tag="p" close />
-        {gi < groups.length - 1 ? gapBtn(last, true) : null}
-      </span>
-    );
-    lines.push({ key: 'g' + gi, id: 'g' + gi, d: 1, tag: 'p', toks: [{ k: 'node', node }] });
+  const textOf = (id) => pick(c.sents.find((x) => x.id === id).text);
+  const inGroup = (g) => c.sents.filter((x) => placed[x.id] === g).map((x) => x.id);
+  const pageBlocks = [];
+  c.groups.forEach((g) => {
+    pageBlocks.push(blk(g.id + 'h', 'h2', pick(g.head)));
+    const ids = inGroup(g.id);
+    if (ids.length) pageBlocks.push(blk(g.id, 'p', ids.map(textOf).join(' ')));
   });
-  lines.push({ key: 'bc', d: 0, toks: [{ k: 'close', tag: 'body' }] });
-  const pageBlocks = groups.map((g, gi) => blk('g' + gi, 'p', g.map((i) => sents[i]).join(' ')));
   return (
-    <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask}
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask}
       nav={navOf(p, canGo)}>
-      {!done ? <p className={'ask hook-ask' + (msg ? ' ask-sub' : '')}>{pick(c.ask)}</p> : null}
-      <Work ref={wrapRef} cls={'work-s9' + (msg && !done ? ' has-note' : '')}
-        browser={<MiniBrowser compact title={pick(ROBO.title)} page={<Page blocks={pageBlocks} />} flashPage={flash ? flash.n : 0} />}
-        code={<Src lines={lines} className="src-s9" key={setKey} />}
-        extra={<DemoHand wrapRef={wrapRef} targets={[() => gapRefs.current[set.cuts[0]] || gapRefs.current[0]]}
-          run={!touched && canTap && !done} />} />
-      {!done ? (
-        <div className="s9-tools">
-          <button type="button" className={'key-b key-go' + (cuts.length ? ' is-ready' : '')} disabled={!canTap} onClick={check}>{pick(UI.check)}</button>
+      {!done ? <p className={'ask hook-ask' + (msg ? ' ask-hint' : '')}>{pick(msg || c.ask)}</p> : null}
+      <div className={'s9b' + (done ? ' is-done' : '')}>
+        <div className="s9b-code" translate="no">
+          {c.groups.map((g) => {
+            const ids = inGroup(g.id);
+            return (
+              <button key={g.id} type="button" className={'pbox' + (sel ? ' is-target' : '') + (flash && flash.id === g.id ? ' fx-ok' : '')}
+                disabled={!canTap || done} onClick={() => drop(g.id)}>
+                <span className="pbox-h"><Tag tag="h2" /><span className="pbox-ht">{pick(g.head)}</span><Tag tag="h2" close /></span>
+                <span className="pbox-p">
+                  <Tag tag="p" />
+                  {ids.map((id) => <span key={id} className="pbox-s">{textOf(id)}</span>)}
+                  {ids.length < 2 ? <span className="pbox-slot" aria-hidden="true">…</span> : null}
+                  <Tag tag="p" close />
+                </span>
+                <Led on={led && !!sel} />
+              </button>
+            );
+          })}
+        </div>
+        <div className="s9b-page">
+          <MiniBrowser compact title={pick(ROBO.title)} page={<Page blocks={pageBlocks} />} flashPage={flash ? flash.n : 0} />
+        </div>
+      </div>
+      {left.length ? (
+        <div className="s9b-chips">
+          {left.map((x) => (
+            <button key={x.id} type="button" className={'s9b-chip' + (sel === x.id ? ' is-sel' : '') + (shake === x.id ? ' fx-no' : '')}
+              disabled={!canTap} onClick={() => pickSent(x.id)}>
+              {pick(x.text)}
+              <Led on={led && !sel} />
+            </button>
+          ))}
         </div>
       ) : null}
-      {!done ? <LadderNote level={lad.level || (msg ? 1 : 0)} text={msg} /> : null}
     </Stage>
   );
 }
 
-// ── 10. МАСТЕРСКАЯ АБЗАЦЕВ: закрыть первый p, потом добавить свой абзац.
+// ── 10. ЗАКРОЙ АБЗАЦ: одно дело — набрать </p> кнопками.
 function S10({ p }) {
   const pick = usePick();
   const log = useLog();
@@ -8727,29 +8942,29 @@ function S10({ p }) {
   const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.why, pose: 'rule' }] : [{ text: c.say, pose: 'explain' }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved, spoken);
-  const [phase, setPhase] = useState(solved ? 'done' : 'fix');   // fix · add · done
-  const [text3, setText3] = useState(() => (solved ? rec.text : ''));
+  const [fixed, setFixed] = useState(solved);
   const [msg, setMsg] = useState(null);
-  const [flash, setFlash] = useState(null);
   const [shake, wobble] = useShake();
   const lad = useLadder();
   const ty = useTagTyping();
   const attempts = useRef(0);
   const clean = useRef(true);
-  const led = useIdleLed(canTap && phase !== 'done', lad.level * 10 + ty.val.length + text3.length);
+  const led = useIdleLed(canTap && !fixed, lad.level * 10 + ty.val.length);
   const t1 = pick(C.s8.rows[0]);
   const t2 = pick(C.s8.rows[1]);
 
   const checkFix = () => {
-    if (!canTap || phase !== 'fix') return;
+    if (!canTap || fixed) return;
     attempts.current += 1;
     const issue = tagTypingIssue(ty.val, 'p', C.s4.typeMsg);
     if (!issue) {
       sfx('ok', true);
       lad.reset();
       setMsg(null);
-      setPhase('add');
-      sayNow(joinL(c.fixed, c.addSay), 'smile');
+      setFixed(true);
+      put({ done: true });
+      log({ screenId: 's10', type: 'fix', correct: true, firstTry: clean.current, attempts: attempts.current });
+      sayNow(joinL(c.fixed, c.why), 'cheer');
       return;
     }
     clean.current = false;
@@ -8758,57 +8973,34 @@ function S10({ p }) {
     const lv = lad.bump();
     if (lv >= 3) ty.prefill('</p');
     const h = c.typeHints[lv - 1];
-    setMsg(h);
+    setMsg(joinL(issue, h));
     sayNow(joinL(issue, h), 'think');
   };
-  const add = () => {
-    if (!canTap || phase !== 'add') return;
-    const v = text3.trim();
-    const bad = hasTags(v) ? c.noTags : (!hasLetters(v) ? c.empty : null);
-    if (bad) { clean.current = false; sfx('soft', true); wobble('add'); setMsg(bad); sayNow(bad, 'think'); return; }
-    sfx('ok', true);
-    setMsg(null);
-    setPhase('done');
-    setFlash({ id: 'p3', n: Date.now() });
-    put({ done: true, text: v });
-    log({ screenId: 's10', type: 'fix', correct: true, firstTry: clean.current, attempts: attempts.current });
-    sayNow(joinL(c.added, c.why), 'cheer');
-  };
 
-  const fixing = phase === 'fix';
+  // Набрано ровно </p> — засчитываем сразу, без «Проверить».
+  const checkRef = useRef(checkFix);
+  checkRef.current = checkFix;
+  useEffect(() => { if (!fixed && normTag(ty.val) === '</p>') checkRef.current(); }, [ty.val]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const lines = [
     { key: 'bo', d: 0, toks: [{ k: 'open', tag: 'body' }] },
     { key: 'p1', id: 'p1', d: 1, tag: 'p', toks: [{ k: 'open', tag: 'p' }, { k: 'text', v: t1 },
-      fixing ? { k: 'node', node: (
+      !fixed ? { k: 'node', node: (
         <InlineInput value={ty.val} onChange={ty.setVal} label={UI.closeTag} max={16} inputRef={ty.inputRef}
           onEnter={checkFix} cls={'tk-input-tag' + (led && !ty.val ? ' is-led-in' : '') + (shake === 'input' ? ' fx-no' : '')} />
       ) } : { k: 'close', tag: 'p' }] },
-    { key: 'p2', id: 'p2', d: 1, tag: 'p', toks: [{ k: 'open', tag: 'p' }, { k: 'text', v: t2 }, { k: 'close', tag: 'p' }] }
+    { key: 'p2', id: 'p2', d: 1, tag: 'p', toks: [{ k: 'open', tag: 'p' }, { k: 'text', v: t2 }, { k: 'close', tag: 'p' }] },
+    { key: 'bc', d: 0, toks: [{ k: 'close', tag: 'body' }] }
   ];
-  if (!fixing) {
-    lines.push({ key: 'p3', id: 'p3', d: 1, tag: 'p', toks: [{ k: 'open', tag: 'p' },
-      phase === 'add' ? { k: 'node', node: (
-        <InlineInput value={text3} onChange={(v) => { setText3(v); setMsg(null); }} placeholder={c.ex} label={UI.pageText}
-          max={90} onEnter={add} cls={(led && !text3 ? 'is-led-in' : '') + (shake === 'add' ? ' fx-no' : '')} />
-      ) } : { k: 'text', v: text3 }, { k: 'close', tag: 'p' }] });
-  }
-  lines.push({ key: 'bc', d: 0, toks: [{ k: 'close', tag: 'body' }] });
-  const pageBlocks = [blk('p1', 'p', t1), blk('p2', 'p', t2)].concat(phase === 'done' ? [blk('p3', 'p', text3)] : []);
+  const pageBlocks = [blk('p1', 'p', t1), blk('p2', 'p', t2)];
   return (
     <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo}
-      hint={fixing ? c.ask : c.ask2} nav={navOf(p, canGo)}>
-      {phase !== 'done' ? <p className={'ask hook-ask' + (msg ? ' ask-sub' : '')}>{pick(fixing ? c.ask : c.ask2)}</p> : null}
-      <Inspector rules={[{ id: 'closed', ok: !fixing, text: c.rule }, { id: 'third', ok: phase === 'done', text: c.rule2 }]} />
-      <Work cls={'work-s10' + (msg && phase !== 'done' ? ' has-note' : '')}
-        browser={<MiniBrowser compact title={pick(ROBO.title)} page={<Page blocks={pageBlocks} flash={flash} fresh={flash ? ['p3'] : null} />} />}
+      hint={c.ask} nav={navOf(p, canGo)}>
+      {!fixed ? <p className={'ask hook-ask' + (msg ? ' ask-hint' : '')}>{pick(msg || c.ask)}</p> : null}
+      <Work cls="work-s10"
+        browser={<MiniBrowser compact title={pick(ROBO.title)} page={<Page blocks={pageBlocks} />} />}
         code={<Src lines={lines} className="src-s10" />} />
-      {fixing ? <KeyRow keys={['<', '/', 'p', '>']} ty={ty} canTap={canTap} onCheck={checkFix} ready={normTag(ty.val).length >= 4} /> : null}
-      {phase === 'add' ? (
-        <div className="keys">
-          <button type="button" className={'key-b key-go' + (text3.trim() ? ' is-ready' : '')} disabled={!canTap} onClick={add}>{pick(UI.ready)}</button>
-        </div>
-      ) : null}
-      {phase !== 'done' ? <LadderNote level={lad.level || (msg ? 1 : 0)} text={msg} /> : null}
+      {!fixed ? <KeyRow keys={['<', '/', 'p', '>']} ty={ty} canTap={canTap} onCheck={checkFix} ready={normTag(ty.val).length >= 4} /> : null}
     </Stage>
   );
 }
@@ -9187,7 +9379,7 @@ function S13({ p }) {
   }
   const pairOpts = ['</' + pv.o + '>', '<' + pv.o + '>', '</' + (pv.o === 'h1' ? 'h2' : 'h1') + '>'];
   return (
-    <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo}
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo}
       hint={done ? c.why : (stage === 'fix' ? K.fixAsk : c.ask)} nav={navOf(p, canGo)}>
       {done ? (
         <GoalCard done doneText={c.why} />
@@ -9228,139 +9420,101 @@ function S13({ p }) {
   );
 }
 
-// ── 14. ПЕСОЧНИЦА: уровни, текст, новые блоки; «Было / Стало», «Как было».
-const S14_MAX = 8;
+// ── 14. НОВЫЙ РАЗДЕЛ: мини-задание из четырёх шагов по одному действию —
+// «+ h2» → название → «+ p» → текст. Шаг с текстом засчитывается сам, когда
+// ученик написал слово и на секунду остановился. Страница рядом живая.
 function S14({ p }) {
   const pick = usePick();
+  const log = useLog();
   const c = C.s14;
   const [rec, put] = useRec('s14');
-  const init = useRef([
-    { id: 'h1', tag: 'h1', text: pick(ROBO.h1) }, { id: 'intro', tag: 'p', text: pick(ROBO.intro) },
-    { id: 'rules', tag: 'h2', text: pick(ROBO.rules) }, { id: 'rulesP', tag: 'p', text: pick(ROBO.rulesP) }
-  ]);
-  const [speaker, say, spoken, sayNow] = useVoice(rec ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
+  const solved = !!(rec && rec.done);
+  const base = [blk('h1', 'h1', pick(ROBO.h1)), blk('intro', 'p', pick(ROBO.intro))];
+  const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
   const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(!!rec, spoken);
-  const [blocks, setBlocks] = useState(() => (rec && rec.blocks ? rec.blocks : init.current));
-  const [kinds, setKinds] = useState(() => (rec ? { level: 1, text: 1 } : {}));
-  const [cmp, setCmp] = useState('after');
-  const [view, setView] = useState('code');
+  const canGo = useAdvanceGate(solved, spoken);
+  const [step, setStepS] = useState(solved ? 4 : 0);
+  const stepRef = useRef(solved ? 4 : 0);
+  const setStep = (v) => { stepRef.current = v; setStepS(v); };
+  const [head, setHead] = useState(solved ? rec.head : '');
+  const headRef = useRef(head);
+  headRef.current = head;
+  const [para, setPara] = useState(solved ? rec.para : '');
   const [flash, setFlash] = useState(null);
-  const [fresh, setFresh] = useState(false);
-  const once = useOnce();
-  const uid = useRef(0);
-  const led = useIdleLed(canTap && Object.keys(kinds).length < 2, Object.keys(kinds).length);
+  const [, , alive] = useShake();
+  const timer = useRef(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const led = useIdleLed(canTap && step < 4, step * 10 + head.length + para.length);
 
-  const touch = (kind, nb, line) => {
-    setBlocks(nb);
-    setCmp('after');
-    setFresh(true);
-    const nk = Object.assign({}, kinds, { [kind]: 1 });
-    setKinds(nk);
-    if (once(kind)) sayNow(line, 'smile');
-    if (Object.keys(nk).length >= 2) {
-      put({ blocks: nb });
-      if (once('done')) say(c.done, 'cheer');
-    } else if (rec) put({ blocks: nb });
-  };
-  const cycle = (id) => {
-    if (!canTap) return;
-    sfx('pop', true);
-    const nb = blocks.map((b) => (b.id === id ? Object.assign({}, b, { tag: 'h' + (lvlOf(b.tag) % 6 + 1) }) : b));
+  // Текст засчитывается после короткой паузы в наборе — Коди не перебивает
+  // ученика посреди слова.
+  const typed = (v, setV, nextStep, line, id) => {
+    setV(v);
     setFlash({ id, n: Date.now() });
-    touch('level', nb, c.onLevel);
-  };
-  const edit = (id, v) => {
-    const nb = blocks.map((b) => (b.id === id ? Object.assign({}, b, { text: v }) : b));
-    setFlash({ id, n: Date.now() });
-    touch('text', nb, c.onText);
+    clearTimeout(timer.current);
+    if (!hasLetters(v)) return;
+    timer.current = setTimeout(() => {
+      if (!alive.current || stepRef.current !== nextStep - 1) return;
+      setStep(nextStep);
+      if (nextStep === 4) {
+        put({ done: true, head: headRef.current, para: v });
+        log({ screenId: 's14', type: 'build', correct: true, firstTry: true, attempts: 1 });
+        sayNow(c.done, 'cheer');
+      } else sayNow(line, 'smile');
+    }, 900);
   };
   const add = (tag) => {
-    if (!canTap || blocks.length >= S14_MAX) return;
-    sfx('pop', true);
-    uid.current += 1;
-    const id = 'n' + uid.current;
-    const nb = blocks.concat([{ id, tag, text: pick(tag === 'p' ? c.newP : c.newH) }]);
-    setFlash({ id, n: Date.now() });
-    touch('add', nb, c.onAdd);
-  };
-  const reset = () => {
     if (!canTap) return;
-    sfx('tap', true);
-    setBlocks(init.current);
-    setCmp('after');
-    setFlash(null);
-    sayNow(c.onReset, 'explain');
+    sfx('pop', true);
+    setFlash({ id: tag === 'h2' ? 'nh' : 'np', n: Date.now() });
+    if (tag === 'h2' && step === 0) { setStep(1); sayNow(c.after[0], 'smile'); }
+    if (tag === 'p' && step === 2) { setStep(3); sayNow(c.after[2], 'smile'); }
   };
-  const setC = (v) => { setCmp(v); if (v === 'before' && once('before')) sayNow(c.onBefore, 'point'); };
-  const shown = cmp === 'before' ? init.current : blocks;
+
+  const blocks = base.concat(step >= 1 ? [blk('nh', 'h2', head || pick(c.phH))] : [])
+    .concat(step >= 3 ? [blk('np', 'p', para || pick(c.phP))] : []);
   const lines = [{ key: 'bo', d: 0, toks: [{ k: 'open', tag: 'body' }] }]
-    .concat(blocks.map((b) => ({ key: b.id, id: b.id, d: 1, tag: b.tag, toks: [
-      { k: 'node', node: isHead(b.tag) ? (
-        <button type="button" className={'tag-cycle' + (led && !kinds.level ? ' is-led' : '')} disabled={!canTap} onClick={() => cycle(b.id)}
-          aria-label={pick(UI.levelOf)}><Tag tag={b.tag} /><Led on={led && !kinds.level} /></button>
-      ) : <Tag tag={b.tag} /> },
-      { k: 'node', node: <InlineInput value={b.text} onChange={(v) => edit(b.id, v)} max={isHead(b.tag) ? 40 : 90}
-        label={isHead(b.tag) ? UI.heading : UI.para} cls={led && !kinds.text ? 'is-led-in' : ''} onFocus={() => setView('code')} /> },
-      { k: 'close', tag: b.tag }
-    ] })))
-    .concat([{ key: 'bc', d: 0, toks: [{ k: 'close', tag: 'body' }] }]);
-  const pageBlocks = shown.map((b) => blk(b.id, b.tag, b.text));
+    .concat(base.map((b) => ({ key: b.id, id: b.id, d: 1, tag: b.tag, toks: [
+      { k: 'open', tag: b.tag }, { k: 'text', v: plain(b), dim: true }, { k: 'close', tag: b.tag }] })));
+  if (step >= 1) {
+    lines.push({ key: 'nh', id: 'nh', d: 1, tag: 'h2', toks: [{ k: 'open', tag: 'h2' },
+      { k: 'node', node: <InlineInput value={head} placeholder={c.phH} label={UI.heading} max={40}
+        onChange={(v) => typed(v, setHead, 2, c.after[1], 'nh')} cls={'is-wide' + (led && step === 1 ? ' is-led-in' : '')} /> },
+      { k: 'close', tag: 'h2' }] });
+  }
+  if (step >= 3) {
+    lines.push({ key: 'np', id: 'np', d: 1, tag: 'p', toks: [{ k: 'open', tag: 'p' },
+      { k: 'node', node: <InlineInput value={para} placeholder={c.phP} label={UI.para} max={90}
+        onChange={(v) => typed(v, setPara, 4, null, 'np')} cls={'is-wide' + (led && step === 3 ? ' is-led-in' : '')} /> },
+      { k: 'close', tag: 'p' }] });
+  }
+  lines.push({ key: 'bc', d: 0, toks: [{ k: 'close', tag: 'body' }] });
   return (
-    <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask}
-      nav={navOf(p, canGo)}>
-      <p className="ask hook-ask">{pick(c.ask)}</p>
-      <div className="only-narrow">
-        <SegToggle value={view} onChange={setView} options={[{ v: 'code', label: UI.code }, { v: 'result', label: UI.result }]} />
-        {fresh && view === 'code' ? <span className="fresh-dot" aria-hidden="true" /> : null}
-      </div>
-      <Work view={view} cls="work-sand"
-        browser={(
-          <div className="sand-b" onClick={() => setFresh(false)}>
-            <MiniBrowser compact title={pick(ROBO.title)} page={<Page blocks={pageBlocks} flash={cmp === 'after' ? flash : null} />} />
-            {cmp === 'before' ? <span className="sand-was">{pick(UI.before)}</span> : null}
-          </div>
-        )}
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo}
+      hint={step < 4 ? c.steps[step].hint : null} nav={navOf(p, canGo)}>
+      {step < 4 ? (
+        <p className="ask hook-ask"><span className="s7q-n mono">{(step + 1) + '/4'}</span>{' '}{pick(c.steps[step].text)}</p>
+      ) : null}
+      <Work cls="work-sand"
+        browser={<MiniBrowser compact title={pick(ROBO.title)} page={<Page blocks={blocks} flash={flash} />} />}
         code={<Src lines={lines} className="src-sand" />} />
-      <div className="sand-tools">
-        <button type="button" className="btn-soft add-b" disabled={!canTap || blocks.length >= S14_MAX} onClick={() => add('h2')}>
-          <span className="mono">+ h2</span></button>
-        <button type="button" className="btn-soft add-b" disabled={!canTap || blocks.length >= S14_MAX} onClick={() => add('p')}>
-          <span className="mono">+ p</span></button>
-        <SegToggle value={cmp} onChange={setC} label={UI.result}
-          options={[{ v: 'before', label: UI.before }, { v: 'after', label: UI.after }]} />
-        <button type="button" className="btn-soft" disabled={!canTap} onClick={reset} aria-label={pick(UI.reset)}>
-          <Icon name="undo" size={17} /><span className="sand-reset-t">{pick(UI.reset)}</span>
-        </button>
-      </div>
+      {step === 0 || step === 2 ? (
+        <div className="sand-tools">
+          <button type="button" className={'btn-soft add-b' + (led ? ' is-led' : '')} disabled={!canTap} onClick={() => add(step === 0 ? 'h2' : 'p')}>
+            <span className="mono">{step === 0 ? '+ h2' : '+ p'}</span><Led on={led} />
+          </button>
+        </div>
+      ) : null}
     </Stage>
   );
 }
 
-// ── 15. СВОЙ ПРОЕКТ: тема, заголовки, абзацы, выделения. Полного ответа нет —
-// цель, основа документа и подсказки по запросу.
-const S15_MAX = 9;
+// ── 15. СВОЙ ПРОЕКТ: тема → восемь шагов по одному действию. Шаги с текстом
+// засчитываются сами после паузы в наборе; «+ h2» и «+ p» — кнопкой; жирное и
+// курсивное слово — касанием слова и одной кнопкой. Страница рядом живая.
 const toBlk = (b) => blk(b.id, b.tag, partsFrom(toTokens(b.text), b.marks));
-function s15Check(title, blocks) {
-  const lettersOk = (b) => hasLetters(b.text);
-  if (!hasLetters(title)) return { key: 'noTitle', id: 'title' };
-  const tagged = blocks.find((b) => hasTags(b.text));
-  if (tagged || hasTags(title)) return { key: 'noTags', id: tagged ? tagged.id : 'title' };
-  const empty = blocks.find((b) => !lettersOk(b));
-  if (empty) return { key: 'empty', id: empty.id };
-  const h1s = blocks.filter((b) => b.tag === 'h1');
-  if (!h1s.length) return { key: 'noH1', fix: 'addH1' };
-  if (h1s.length > 1) return { key: 'twoH1', id: h1s[1].id, fix: 'demote' };
-  if (blocks[0].tag !== 'h1') return { key: 'h1First', id: h1s[0].id, fix: 'moveH1' };
-  if (!blocks.some((b) => b.tag === 'h2')) return { key: 'noH2', fix: 'addH2' };
-  const firstH2 = blocks.findIndex((b) => b.tag === 'h2');
-  const earlyH3 = blocks.findIndex((b, i) => b.tag === 'h3' && i < firstH2);
-  if (earlyH3 >= 0) return { key: 'h3NoH2', id: blocks[earlyH3].id };
-  if (blocks.filter((b) => b.tag === 'p').length < 2) return { key: 'needP', fix: 'addP' };
-  if (!blocks.some((b) => b.marks.some((m) => m.tag === 'b'))) return { key: 'needB', fix: 'mark' };
-  if (!blocks.some((b) => b.marks.some((m) => m.tag === 'i'))) return { key: 'needI', fix: 'mark' };
-  return null;
-}
+// Какой блок правит каждый шаг (1–8): текст или выделение.
+const S15_STEP = { 1: 'k1', 2: 'k2', 4: 'k3', 6: 'k4', 7: 'k4', 8: 'k2' };
 function S15({ p }) {
   const pick = usePick();
   const log = useLog();
@@ -9370,148 +9524,118 @@ function S15({ p }) {
   const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.praise, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved, spoken);
-  const [phase, setPhase] = useState(solved ? 'done' : 'topic');   // topic · build · done
+  const [step, setStepS] = useState(solved ? 9 : 0);   // 0 — тема, 1–8 — шаги, 9 — готово
+  const stepRef = useRef(solved ? 9 : 0);
+  const setStep = (v) => { stepRef.current = v; setStepS(v); };
   const [topic, setTopic] = useState(solved ? rec.topic : null);
   const [title, setTitle] = useState(solved ? rec.title : '');
   const [blocks, setBlocks] = useState(() => (solved ? rec.edit : []));
-  const [markId, setMarkId] = useState(null);
+  const blocksRef = useRef(blocks);
+  blocksRef.current = blocks;
   const [sel, tapWord, setSel] = useWordSel();
-  const [bad, setBad] = useState(null);
   const [msg, setMsg] = useState(null);
-  const [view, setView] = useState('code');
   const [flash, setFlash] = useState(null);
-  const lad = useLadder();
+  const [, , alive] = useShake();
+  const timer = useRef(null);
   const attempts = useRef(0);
-  const clean = useRef(true);
-  const uid = useRef(10);
-  const led = useIdleLed(canTap && phase !== 'done', blocks.length + lad.level * 10 + (markId ? 3 : 0) + title.length);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const led = useIdleLed(canTap && step < 9, step * 100 + blocks.reduce((n, b) => n + b.text.length, 0) + (sel ? 1 : 0));
   const T0 = topic ? c.topics.find((t) => t.id === topic) : null;
 
-  const newId = () => { uid.current += 1; return 'k' + uid.current; };
+  // Новая страница на телефоне длинная — показываем её низ, где идёт работа.
+  const workRef = useRef(null);
+  useEffect(() => {
+    const pg = workRef.current && workRef.current.querySelector('.mb-page');
+    if (pg) pg.scrollTop = pg.scrollHeight;
+  }, [blocks.length, flash]);
+
+  const go = (next) => {
+    setStep(next);
+    setMsg(null);
+    setSel(null);
+    if (next === 9) {
+      const bl = blocksRef.current;
+      put({ done: true, topic, title: title.trim(), blocks: bl.map(toBlk), edit: bl });
+      log({ screenId: 's15', type: 'project', correct: true, firstTry: true, attempts: attempts.current + 1 });
+      sayNow(c.praise, 'cheer');
+      return;
+    }
+    sayNow(c.steps[next - 1].hint, 'smile');
+  };
   const pickTopic = (t) => {
     if (!canTap) return;
     sfx('pop', true);
     setTopic(t.id);
     setTitle(pick(t.title));
     setBlocks([{ id: 'k1', tag: 'h1', text: '', marks: [] }, { id: 'k2', tag: 'p', text: '', marks: [] }]);
-    setPhase('build');
+    go(1);
   };
-  const upd = (nb, id) => { setBlocks(nb); setBad(null); setMsg(null); if (id) setFlash({ id, n: Date.now() }); };
-  const setText = (id, v) => upd(blocks.map((b) => (b.id === id ? Object.assign({}, b, { text: v, marks: [] }) : b)), id);
-  const cycle = (id) => {
+  // Текст: засчитываем после паузы в наборе, если есть буквы и нет тегов.
+  const setText = (id, v) => {
+    const nb = blocksRef.current.map((b) => (b.id === id ? Object.assign({}, b, { text: v, marks: [] }) : b));
+    blocksRef.current = nb;
+    setBlocks(nb);
+    setFlash({ id, n: Date.now() });
+    setMsg(null);
+    clearTimeout(timer.current);
+    const at = stepRef.current;
+    if (S15_STEP[at] !== id) return;
+    if (hasTags(v)) { setMsg(c.noTags); return; }
+    if (!hasLetters(v)) return;
+    timer.current = setTimeout(() => { if (alive.current && stepRef.current === at) go(at + 1); }, 1000);
+  };
+  const add = (tag) => {
     if (!canTap) return;
     sfx('pop', true);
-    upd(blocks.map((b) => (b.id === id ? Object.assign({}, b, { tag: 'h' + (lvlOf(b.tag) % 3 + 1) }) : b)), id);
+    const id = tag === 'h2' ? 'k3' : 'k4';
+    const nb = blocksRef.current.concat([{ id, tag, text: '', marks: [] }]);
+    blocksRef.current = nb;
+    setBlocks(nb);
+    setFlash({ id, n: Date.now() });
+    go(stepRef.current + 1);
   };
-  const addBlock = (tag, after) => {
-    if (blocks.length >= S15_MAX) return null;
-    sfx('pop', true);
-    const nb = { id: newId(), tag, text: '', marks: [] };
-    const arr = blocks.slice();
-    if (after === 'top') arr.unshift(nb); else arr.push(nb);
-    upd(arr, nb.id);
-    return nb.id;
-  };
-  const remove = (id) => {
-    if (!canTap || blocks.length <= 1) return;
-    sfx('tap', true);
-    if (markId === id) setMarkId(null);
-    upd(blocks.filter((b) => b.id !== id));
-  };
-  const openMark = (id) => { if (!canTap) return; sfx('tap', true); setMarkId(id); setSel(null); };
-  const applyMark = (tag) => {
-    if (!canTap || !markId) return;
+  const mark = (tag) => {
+    if (!canTap) return;
+    attempts.current += 1;
     if (!sel) { sfx('soft', true); setMsg(C.s12.err.noSel); sayNow(C.s12.err.noSel, 'think'); return; }
     sfx('pop', true);
-    upd(blocks.map((b) => {
-      if (b.id !== markId) return b;
-      const rest = b.marks.filter((m) => m.b < sel.a || m.a > sel.b);
-      return Object.assign({}, b, { marks: tag ? rest.concat([{ a: sel.a, b: sel.b, tag }]) : rest });
-    }), markId);
-    setSel(null);
-  };
-  const check = () => {
-    if (!canTap || phase !== 'build') return;
-    attempts.current += 1;
-    setMarkId(null);
-    const err = s15Check(title, blocks);
-    if (!err) {
-      sfx('ok', true);
-      setPhase('done');
-      setMsg(null);
-      setBad(null);
-      setView('result');
-      put({ done: true, topic, title: title.trim(), blocks: blocks.map(toBlk), edit: blocks });
-      log({ screenId: 's15', type: 'project', correct: true, firstTry: clean.current, attempts: attempts.current });
-      sayNow(c.praise, 'cheer');
-      return;
-    }
-    clean.current = false;
-    sfx('soft', true);
-    const lv = lad.bump();
-    setBad(err.id || null);
-    let text = c.err[err.key];
-    if (lv >= 3 && err.fix) {
-      if (err.fix === 'addH1') addBlock('h1', 'top');
-      else if (err.fix === 'addH2') addBlock('h2');
-      else if (err.fix === 'addP') addBlock('p');
-      else if (err.fix === 'demote') upd(blocks.map((b) => (b.id === err.id ? Object.assign({}, b, { tag: 'h2' }) : b)), err.id);
-      else if (err.fix === 'moveH1') {
-        const h = blocks.find((b) => b.id === err.id);
-        upd([h].concat(blocks.filter((b) => b.id !== err.id)), err.id);
-      } else if (err.fix === 'mark') {
-        const firstP = blocks.find((b) => b.tag === 'p' && hasLetters(b.text));
-        if (firstP) { setMarkId(firstP.id); setSel(null); }
-      }
-      text = joinL(c.err[err.key], c.almost);
-    } else if (lv >= 2 && err.id) text = joinL(c.err[err.key], c.look);
-    setMsg(text);
-    sayNow(text, 'think');
+    const id = S15_STEP[stepRef.current];
+    const nb = blocksRef.current.map((b) => (b.id === id ? Object.assign({}, b, { marks: b.marks.concat([{ a: sel.a, b: sel.b, tag }]) }) : b));
+    blocksRef.current = nb;
+    setBlocks(nb);
+    setFlash({ id, n: Date.now() });
+    go(stepRef.current + 1);
   };
 
-  const goals = [
-    { id: 'h1', ok: blocks.filter((b) => b.tag === 'h1' && hasLetters(b.text)).length === 1, text: c.goals.h1 },
-    { id: 'h2', ok: blocks.some((b) => b.tag === 'h2' && hasLetters(b.text)), text: c.goals.h2 },
-    { id: 'p', ok: blocks.filter((b) => b.tag === 'p' && hasLetters(b.text)).length >= 2, text: c.goals.p },
-    { id: 'b', ok: blocks.some((b) => b.marks.some((m) => m.tag === 'b')), text: c.goals.b },
-    { id: 'i', ok: blocks.some((b) => b.marks.some((m) => m.tag === 'i')), text: c.goals.i }
-  ];
-  const building = phase === 'build';
+  const markTag = step === 7 ? 'b' : step === 8 ? 'i' : null;
+  const target = S15_STEP[step];
   const row = (b) => {
     const isH = isHead(b.tag);
-    const marking = markId === b.id;
     const toks = toTokens(b.text);
-    const ph = b.tag === 'h1' ? (T0 ? T0.ex : c.ph.p) : (c.ph[b.tag] || c.ph.p);
+    const ph = b.id === 'k1' ? (T0 ? T0.ex : c.ph.p1) : b.id === 'k2' ? c.ph.p1 : b.id === 'k3' ? c.ph.h2 : c.ph.p2;
+    const editing = step < 7 && target === b.id;
+    const marking = markTag && target === b.id;
     return (
-      <div key={b.id} className={'prj-r' + (bad === b.id ? ' is-bad' : '') + (marking ? ' is-marking' : '')} style={{ '--c': tagColor(b.tag) }}>
-        {isH && building ? (
-          <button type="button" className="tag-cycle" disabled={!canTap} onClick={() => cycle(b.id)} aria-label={pick(UI.levelOf)}>
-            <Tag tag={b.tag} /></button>
-        ) : <Tag tag={b.tag} />}
+      <div key={b.id} className={'prj-r' + (editing || marking ? ' is-now' : '') + (marking ? ' is-marking' : '')} style={{ '--c': tagColor(b.tag) }}>
+        <Tag tag={b.tag} />
         {marking ? (
           <span className="prj-words">
-            <WordLine toks={toks} marks={b.marks} sel={sel} onWord={(i) => { sfx('tap', true); tapWord(i); }} canTap={canTap} led={led && !sel} />
+            <WordLine toks={toks} marks={b.marks} sel={sel} onWord={(i) => { sfx('tap', true); tapWord(i); setMsg(null); }} canTap={canTap} led={led && !sel} />
           </span>
-        ) : building ? (
+        ) : editing ? (
           <InlineInput value={b.text} onChange={(v) => setText(b.id, v)} placeholder={ph} max={isH ? 50 : 140}
-            label={isH ? UI.heading : UI.para} cls={led && !b.text ? 'is-led-in' : ''} onFocus={() => { setMarkId(null); setView('code'); }} />
-        ) : <span className="tk-tx">{inlineParts(partsFrom(toks, b.marks))}</span>}
+            label={isH ? UI.heading : UI.para} cls={'is-wide' + (led && !b.text ? ' is-led-in' : '')} />
+        ) : <span className="tk-tx">{b.text ? inlineParts(partsFrom(toks, b.marks)) : <span className="prj-ph">{pick(ph)}</span>}</span>}
         <span className="prj-close"><Tag tag={b.tag} close /></span>
-        {building && b.tag === 'p' && !marking && hasLetters(b.text) ? (
-          <button type="button" className={'prj-mark' + (led && (!goals[3].ok || !goals[4].ok) ? ' is-led' : '')} disabled={!canTap}
-            onClick={() => openMark(b.id)}><b>B</b><i>I</i></button>
-        ) : null}
-        {building && !marking && blocks.length > 1 ? (
-          <button type="button" className="prj-x" disabled={!canTap} onClick={() => remove(b.id)} aria-label={pick(UI.remove)}>×</button>
-        ) : null}
       </div>
     );
   };
   const page = <MiniBrowser compact title={title} page={<Page blocks={blocks.map(toBlk)} flash={flash} />} cls="mb-prj" />;
+  const ask = step === 0 ? c.ask1 : step < 9 ? c.steps[step - 1].text : null;
   return (
-    <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo}
-      hint={phase === 'topic' ? c.ask1 : (markId ? c.markAsk : c.ask)} nav={navOf(p, canGo)}>
-      {phase === 'topic' ? (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo}
+      hint={step === 0 ? c.ask1 : step < 9 ? c.steps[step - 1].hint : null} nav={navOf(p, canGo)}>
+      {step === 0 ? (
         <>
           <p className="ask hook-ask">{pick(c.ask1)}</p>
           <div className="topic-row">
@@ -9524,43 +9648,33 @@ function S15({ p }) {
         </>
       ) : (
         <>
-          {!msg ? <Inspector rules={goals} /> : null}
-          <div className="only-narrow">
-            <SegToggle value={view} onChange={setView} options={[{ v: 'code', label: UI.code }, { v: 'result', label: UI.result }]} />
-          </div>
-          <Work view={view} cls="work-prj" browser={page} code={(
+          {ask ? (
+            <p className={'ask hook-ask' + (msg ? ' ask-hint' : '')}>
+              {msg ? null : <span className="s7q-n mono">{step + '/8'}</span>}{msg ? null : ' '}{pick(msg || ask)}
+            </p>
+          ) : null}
+          <Work ref={workRef} cls="work-prj" browser={page} code={(
             <div className="src prj">
-              <div className={'prj-r prj-title' + (bad === 'title' ? ' is-bad' : '')} style={{ '--c': TAGC.title }}>
-                <Tag tag="title" />
-                {building ? <InlineInput value={title} onChange={(v) => { setTitle(v); setBad(null); }} label={UI.tabName} max={40} />
-                  : <span className="tk-tx">{title}</span>}
-                <Tag tag="title" close />
-              </div>
               <div className="prj-body"><Tag tag="body" /></div>
               <div className="prj-rows">{blocks.map(row)}</div>
               <div className="prj-body"><Tag tag="body" close /></div>
             </div>
           )} />
-          {building && markId ? (
+          {step === 3 || step === 5 ? (
             <div className="prj-tools">
-              <MarkBtns onPick={applyMark} canTap={canTap} ready={!!sel} plainBtn compact />
-              <button type="button" className="key-b key-go" disabled={!canTap} onClick={() => { sfx('tap', true); setMarkId(null); }}>{pick(UI.ready)}</button>
+              <button type="button" className={'btn-soft add-b' + (led ? ' is-led' : '')} disabled={!canTap} onClick={() => add(step === 3 ? 'h2' : 'p')}>
+                <span className="mono">{step === 3 ? '+ h2' : '+ p'}</span><Led on={led} />
+              </button>
             </div>
           ) : null}
-          {building && !markId ? (
+          {markTag ? (
             <div className="prj-tools">
-              {!blocks.some((b) => b.tag === 'h1') ? (
-                <button type="button" className="btn-soft add-b" disabled={!canTap} onClick={() => addBlock('h1', 'top')}><span className="mono">+ h1</span></button>
-              ) : null}
-              {['h2', 'h3', 'p'].map((t) => (
-                <button key={t} type="button" className="btn-soft add-b" disabled={!canTap || blocks.length >= S15_MAX}
-                  onClick={() => addBlock(t)}><span className="mono">+ {t}</span></button>
-              ))}
-              <button type="button" className={'key-b key-go' + (goals.every((g) => g.ok) ? ' is-ready' : '')} disabled={!canTap} onClick={check}>
-                {pick(UI.check)}</button>
+              <button type="button" className={'mark-b ' + (markTag === 'b' ? 'mark-bb' : 'mark-ii') + (sel ? ' is-ready' : '')}
+                disabled={!canTap} onClick={() => mark(markTag)}>
+                <Tag tag={markTag} />{markTag === 'b' ? <b>{pick(C.s11.look.b)}</b> : <i>{pick(C.s11.look.i)}</i>}
+              </button>
             </div>
           ) : null}
-          {building ? <LadderNote level={lad.level || (msg ? 1 : 0)} text={msg} /> : null}
         </>
       )}
     </Stage>
@@ -9589,7 +9703,6 @@ function S16({ p }) {
   const [bad, setBad] = useState(null);
   const [msg, setMsg] = useState(null);
   const [flash, setFlash] = useState(null);
-  const [view, setView] = useState('code');
   const [shake, wobble] = useShake();
   const lad = useLadder();
   const attempts = useRef(0);
@@ -9600,52 +9713,38 @@ function S16({ p }) {
   const dateR = findRange(wpToks, pick(wp.date)) || [0, 0];
   const shownMarks = solved ? [{ a: dateR[0], b: dateR[1], tag: 'b' }] : marks;
 
-  // Как у архитектора (экран 7): строку выбирают касанием, тег — на панели.
+  // Как на экране «Расставь сам»: строку выбирают касанием, тег — на панели,
+  // и каждый выбор проверяется сразу (заказчик, 15.10.2026: без «Проверить»).
+  const miss = useRef({});
+  const [tip, setTip] = useState(null);
   const setTag = (t) => {
     if (!canTap || phase !== 'tags' || !cur) return;
-    sfx('pop', true);
-    const nt = Object.assign({}, tags, { [cur]: t });
-    setTags(nt);
-    setBad(null);
-    setMsg(null);
-    setFlash({ id: cur, n: Date.now() });
-    const k = c.lines.findIndex((l) => l.id === cur);
-    const next = c.lines.slice(k + 1).concat(c.lines.slice(0, k)).find((l) => !nt[l.id]);
-    setCur(next ? next.id : null);
-  };
-  const checkTags = () => {
-    if (!canTap || phase !== 'tags') return;
     attempts.current += 1;
-    const un = c.lines.find((l) => !tags[l.id]);
-    const wrong = c.lines.find((l) => tags[l.id] && tags[l.id] !== l.tag);
-    if (!un && !wrong) {
-      sfx('ok', true);
-      lad.reset();
+    const line = c.lines.find((l) => l.id === cur);
+    if (t === line.tag) {
+      sfx('pop', true);
+      const nt = Object.assign({}, tags, { [cur]: t });
+      setTags(nt);
+      setBad(null);
       setMsg(null);
-      setPhase('mark');
-      sayNow(c.ok1, 'smile');
+      setTip(null);
+      setFlash({ id: cur, n: Date.now() });
+      const k = c.lines.findIndex((l) => l.id === cur);
+      const next = c.lines.slice(k + 1).concat(c.lines.slice(0, k)).find((l) => !nt[l.id]);
+      setCur(next ? next.id : null);
+      if (!next) { setPhase('mark'); sayNow(c.ok1, 'smile'); }
       return;
     }
     clean.current = false;
     sfx('soft', true);
-    const it = un || wrong;
-    const key = un ? 'unassigned' : (it.tag === 'h1' ? 'mainNotH1' : it.tag === 'h2' ? 'sectionNotH2' : 'textNotP');
-    const m = fillL(c.err[key], { text: it.text });
-    wobble(it.id);
-    setBad(it.id);
-    setCur(it.id);
-    const lv = lad.bump();
-    if (lv >= 3) {
-      const o = {};
-      c.lines.forEach((l) => { if (l.id !== it.id) o[l.id] = l.tag; });
-      setTags(o);
-      setMsg(c.hints[2]);
-      sayNow(joinL(m, c.hints[2]), 'think');
-      return;
-    }
-    const h = c.hints[lv - 1];
-    setMsg(joinL(m, h));
-    sayNow(joinL(m, h), 'think');
+    wobble(cur);
+    setBad(cur);
+    const key = line.tag === 'h1' ? 'mainNotH1' : line.tag === 'h2' ? 'sectionNotH2' : 'textNotP';
+    const m = fillL(c.err[key], { text: line.text });
+    setMsg(m);
+    sayNow(m, 'think');
+    miss.current[cur] = (miss.current[cur] || 0) + 1;
+    if (miss.current[cur] >= 2) setTip({ id: cur, tag: line.tag });
   };
   const applyMark = (tag) => {
     if (!canTap || phase !== 'mark' || !tag) return;
@@ -9658,7 +9757,6 @@ function S16({ p }) {
       sfx('ok', true);
       setPhase('done');
       setMsg(null);
-      setView('result');
       put({ done: true });
       log({ screenId: 's16', type: 'transfer', correct: true, firstTry: clean.current, attempts: attempts.current });
       sayNow(joinL(fillL(C.s12.ok, { frag: wp.date }), c.ok), 'cheer');
@@ -9682,9 +9780,9 @@ function S16({ p }) {
         return (
           <div key={l.id} role={phase === 'tags' ? 'button' : undefined} tabIndex={phase === 'tags' ? 0 : undefined}
             className={'tr-r' + (bad === l.id ? ' is-bad' : '') + (shake === l.id ? ' fx-no' : '') + (cur === l.id && phase === 'tags' ? ' is-sel' : '')
-              + (phase === 'tags' ? ' is-tap' : '')}
+              + (phase === 'tags' && !t ? ' is-tap' : '') + (t ? ' is-ok' : '')}
             style={{ '--c': t ? tagColor(t) : T.ink3 }}
-            onClick={() => { if (phase === 'tags' && canTap) { sfx('tap', true); setCur(l.id); } }}
+            onClick={() => { if (phase === 'tags' && canTap && !t) { sfx('tap', true); setCur(l.id); setMsg(null); } }}
             onKeyDown={(e) => { if (phase === 'tags' && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setCur(l.id); } }}>
             <span className="tr-tag mono">{t ? '<' + t + '>' : '<?>'}</span>
             <span className="tr-t">
@@ -9698,32 +9796,34 @@ function S16({ p }) {
     </div>
   );
   return (
-    <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo}
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo}
       hint={phase === 'mark' ? c.ask2 : c.ask} nav={navOf(p, canGo)}>
-      {phase !== 'done' ? <p className={'ask hook-ask' + (msg ? ' ask-sub' : '')}>{pick(phase === 'mark' ? c.ask2 : c.ask)}</p> : null}
-      <div className="only-narrow">
-        <SegToggle value={view} onChange={setView} options={[{ v: 'code', label: UI.code }, { v: 'result', label: UI.result }]} />
-      </div>
-      <Work view={view} cls={'work-s16' + (msg && phase !== 'done' ? ' has-note' : '')}
+      {phase !== 'done' ? <p className={'ask hook-ask' + (msg ? ' ask-hint' : '')}>{pick(msg || (phase === 'mark' ? c.ask2 : c.ask))}</p> : null}
+      <Work cls={'work-s16' + (phase === 'done' ? ' is-done' : '')}
         browser={<MiniBrowser compact title={pick(c.lines[0].text)} page={<Page blocks={blocks} flash={flash} />} />}
         code={rows} />
       {phase === 'tags' ? (
         <div className="s7-tools" translate="no">
           <div className="lvl-row">
-            {S16_TAGS.map((x) => (
-              <button key={x} type="button" className={'lvl-b' + (cur && tags[cur] === x ? ' is-on' : '') + (led && cur ? ' is-led' : '')}
-                style={x === 'p' ? { color: tagColor('p') } : undefined} disabled={!canTap || !cur} onClick={() => setTag(x)}>
-                <span className="mono">{x}</span>
-              </button>
-            ))}
+            {S16_TAGS.map((x) => {
+              const isTip = tip && tip.id === cur && tip.tag === x;
+              return (
+                <button key={x} type="button" className={'lvl-b' + (isTip ? ' is-tip' : '')}
+                  style={x === 'p' ? { color: tagColor('p') } : undefined} disabled={!canTap || !cur} onClick={() => setTag(x)}>
+                  <span className="mono">{x}</span><Led on={!!isTip} />
+                </button>
+              );
+            })}
           </div>
-          {Object.keys(tags).length >= c.lines.length ? (
-            <button type="button" className="key-b key-go is-ready" disabled={!canTap} onClick={checkTags}>{pick(UI.check)}</button>
-          ) : null}
         </div>
       ) : null}
-      {phase === 'mark' ? <MarkBtns onPick={applyMark} canTap={canTap} ready={!!sel} /> : null}
-      {phase !== 'done' ? <LadderNote level={lad.level || (msg ? 1 : 0)} text={msg} /> : null}
+      {phase === 'mark' ? (
+        <div className="prj-tools">
+          <button type="button" className={'mark-b mark-bb' + (sel ? ' is-ready' : '')} disabled={!canTap} onClick={() => applyMark('b')}>
+            <Tag tag="b" /><b>{pick(C.s11.look.b)}</b>
+          </button>
+        </div>
+      ) : null}
     </Stage>
   );
 }
@@ -9824,6 +9924,7 @@ const SCREENS = [
   { id: 's5',  code: 'SHOW',        Comp: S5 },
   { id: 's6',  code: 'SHOW',        Comp: S6 },
   { id: 's7',  code: 'LEVEL-2',     Comp: S7 },
+  { id: 's7b', code: 'LEVEL-2B',    Comp: S7b },
   { id: 's8',  code: 'PREDICT',     Comp: S8 },
   { id: 's9',  code: 'LEVEL-3',     Comp: S9 },
   { id: 's10', code: 'LEVEL-4',     Comp: S10 },
@@ -9840,7 +9941,7 @@ const SCREENS = [
 // Что стирает «Повторить» на каждом экране. Проект ученика (s15) и
 // сохранённую страницу (artifact) повтор других экранов не трогает.
 const SCREEN_RESET = {
-  s1: ['s1'], s2: ['s2'], s3: ['s3'], s4: ['s4'], s5: ['s5'], s6: ['s6'], s7: ['s7'], s8: ['s8'], s9: ['s9'],
+  s1: ['s1'], s2: ['s2'], s3: ['s3'], s4: ['s4'], s5: ['s5'], s6: ['s6'], s7: ['s7'], s7b: ['s7b'], s8: ['s8'], s9: ['s9'],
   s10: ['s10'], s11: ['s11'], s12: ['s12'], s13: ['s13'], s14: ['s14'], s15: ['s15'], s16: ['s16'], s17: ['s17']
 };
 
@@ -9966,9 +10067,26 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
   transition: box-shadow .3s; }
 .mb-top { position: relative; display: flex; align-items: flex-end; gap: 8px; height: clamp(30px, 4.6dvh, 40px);
   padding: 0 10px; background: ${T.uiBar}; transition: background .3s, box-shadow .3s; }
-.mb-dots { display: flex; gap: 5px; align-self: center; flex: 0 0 auto; }
-.mb-dots i { width: 9px; height: 9px; border-radius: 50%; background: #F5B65A; }
-.mb-dots i:nth-child(2) { background: #F2D45C; } .mb-dots i:nth-child(3) { background: #7FD392; }
+/* ВИД CHROME В WINDOWS (заказчик, 15.10.2026): вкладка от левого края с
+   крестиком, за ней «+», справа кнопки окна «— ▢ ✕» (у macOS — три точки
+   слева). Значки нарисованы линиями CSS, без картинок. */
+.mb-x { position: relative; width: 14px; height: 14px; flex: 0 0 auto; margin-left: 2px; border-radius: 50%; color: ${T.ink3}; }
+.mb-x::before, .mb-x::after, .mb-new::before, .mb-new::after, .mb-w-x::before, .mb-w-x::after {
+  content: ''; position: absolute; left: 50%; top: 50%; height: 1.5px; border-radius: 1px; background: currentColor; }
+.mb-x::before, .mb-x::after { width: 8px; margin: -0.75px 0 0 -4px; }
+.mb-x::before, .mb-w-x::before { transform: rotate(45deg); }
+.mb-x::after, .mb-w-x::after { transform: rotate(-45deg); }
+.mb-new { position: relative; align-self: center; width: 20px; height: 20px; flex: 0 0 auto; color: ${T.ink2}; }
+.mb-new::before, .mb-new::after { width: 10px; margin: -0.75px 0 0 -5px; }
+.mb-new::after { transform: rotate(90deg); }
+.mb-win { display: flex; align-self: stretch; margin: 0 -10px 0 auto; flex: 0 0 auto; color: ${T.ink2}; }
+.mb-label + .mb-new + .mb-win { margin-left: 4px; }
+.mb-win i { position: relative; width: 26px; }
+.mb-w-min::before { content: ''; position: absolute; left: 50%; top: 50%; width: 9px; height: 1.5px; margin-left: -4.5px; background: currentColor; }
+.mb-w-max::before { content: ''; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px;
+  border: 1.5px solid currentColor; border-radius: 1px; box-sizing: border-box; }
+.mb-w-x::before, .mb-w-x::after { width: 11px; margin: -0.75px 0 0 -5.5px; }
+@media (max-width: 380px) { .mb-win i { width: 22px; } .mb-new { width: 16px; } }
 .mb-tab { position: relative; display: flex; align-items: center; gap: 6px; max-width: 64%; min-width: 0; height: 78%;
   padding: 0 12px; background: #fff; border-radius: 10px 10px 0 0;
   font: 700 clamp(12px, 3.2vw, 14px)/1 'Manrope', sans-serif; color: ${T.ink}; transition: box-shadow .3s; }
@@ -10437,16 +10555,27 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 /* ══ 1. КРЮЧОК ══════════════════════════════════════════════════ */
 .hook2 { width: 100%; max-width: 640px; align-self: center; }
 .mb-tall .mb-page { min-height: clamp(110px, 26dvh, 300px); }
-.wall-txt { line-height: 1.38; }
-.snt { cursor: pointer; border-radius: 4px; padding: 0 1px; transition: background .2s, box-shadow .2s;
+/* ПРЕДЛОЖЕНИЕ-КНОПКА (15.10.2026). Раньше предложение выделялось только
+   наведением мыши — на телефоне границ не было видно вовсе, а свечение при
+   бездействии (7 %) терялось. Теперь каждое предложение — своя плашка с
+   подчёркиванием: видно, где оно кончается и что на него можно нажать.
+   Соседние плашки чередуют оттенок, чтобы граница читалась и без пробела. */
+.wall-txt { line-height: 1.62; }
+.snt { cursor: pointer; border-radius: 5px; padding: 1px 3px; margin: 0 1px;
+  background: rgba(${T.shadowBase},.055); box-shadow: inset 0 -2px 0 rgba(255,79,40,.3);
+  transition: background .2s, box-shadow .2s;
   -webkit-box-decoration-break: clone; box-decoration-break: clone; }
-.snt:hover { background: ${T.uiSoft}; }
+.wall-txt .snt:nth-of-type(even) { background: rgba(255,79,40,.07); }
+.snt:hover, .snt:active { background: ${T.uiSoft}; box-shadow: inset 0 -2px 0 ${T.ui}; }
 .snt:focus-visible { outline: 2px solid ${T.ui}; outline-offset: 1px; }
 .snt[aria-disabled="true"] { cursor: default; }
-.snt.is-led { background: rgba(255,79,40,.07); }
-.snt.is-hit { background: ${T.successSoft}; box-shadow: inset 0 -2px 0 ${T.success}; }
-.snt.is-tip { background: ${T.hintSoft}; box-shadow: inset 0 -2px 0 ${T.hint}; }
-.snt.fx-no { background: #FFE6DF; }
+.snt.is-led, .wall-txt .snt.is-led { background: rgba(255,79,40,.15); box-shadow: inset 0 -2px 0 ${T.ui};
+  animation: sntLed 1.6s ease-in-out infinite; }
+@keyframes sntLed { 0%, 100% { background: rgba(255,79,40,.1); } 50% { background: rgba(255,79,40,.24); } }
+.snt.is-hit, .wall-txt .snt.is-hit { background: ${T.successSoft}; box-shadow: inset 0 -2px 0 ${T.success}; animation: none; }
+.snt.is-tip, .wall-txt .snt.is-tip { background: ${T.hintSoft}; box-shadow: inset 0 -2px 0 ${T.hint}; animation: none; }
+.snt.fx-no, .wall-txt .snt.fx-no { background: #FFD9CF; animation: none; }
+@media (prefers-reduced-motion: reduce) { .snt.is-led { animation: none; } }
 .hook2.is-clear .pg-h1 .snt, .hook2.is-clear .pg-h2 .snt, .hook2.is-clear .pg-h3 .snt { padding: 0 2px; }
 
 /* ══ 4. СБОРКА СТРОКИ ═══════════════════════════════════════════ */
@@ -10486,43 +10615,69 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .lad-r.is-on { background: color-mix(in srgb, ${TAGC.h} 12%, #fff); color: ${T.ink}; box-shadow: inset 3px 0 0 ${TAGC.h}; }
 .lad-tag { flex: 0 0 auto; min-width: 1.9em; font-size: 11px; font-weight: 800; color: ${TAGC.h}; }
 
-/* ══ 6. СХЕМА СТРУКТУРЫ ═════════════════════════════════════════ */
-.s6 { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; width: 100%; }
-@media (min-width: 720px) { .s6 { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: center; gap: 20px; } }
-.s6-map, .s7-map { padding: 8px; border-radius: 14px; background: ${T.paper}; box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.08); }
-.s7-map { background: ${T.hintSoft}; box-shadow: none; margin-bottom: 8px; }
-.ol { display: flex; flex-direction: column; gap: 3px; }
-.ol-r { position: relative; display: flex; align-items: center; gap: 6px; min-height: 30px;
-  padding: 3px 8px 3px calc(8px + var(--n) * 20px); border-radius: 9px; transition: background .3s, box-shadow .3s; }
-.ol-r::before { content: ''; position: absolute; left: calc(var(--n) * 20px - 7px); top: -6px; height: calc(50% + 6px); width: 10px;
-  border-left: 2px solid rgba(${T.shadowBase},0.18); border-bottom: 2px solid rgba(${T.shadowBase},0.18); border-bottom-left-radius: 7px; }
-.ol-r.ol-n0::before { display: none; }
-.ol-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: ${TAGC.h}; opacity: .55; }
-.ol-tag { flex: 0 0 auto; font-size: 11px; font-weight: 800; color: ${TAGC.h}; }
-.ol-t { min-width: 0; padding: 0; border: none; background: none; font: 700 13.5px/1.2 'Manrope', sans-serif; color: ${T.ink}; text-align: left; }
-.ol-r.is-hl { background: color-mix(in srgb, ${TAGC.h} 13%, #fff); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, ${TAGC.h} 40%, #fff); }
-.ol-r.is-hl .ol-dot { opacity: 1; transform: scale(1.25); }
-.src-s6 .src-line.is-p { opacity: .55; min-height: 0; line-height: 1.3; font-size: .9em; }
-.src-s6 .src-line.is-p.is-hl { opacity: 1; }
-.src-s6.is-flat .src-line.is-hl { box-shadow: inset 0 0 0 1.5px dashed color-mix(in srgb, ${TAGC.h} 40%, #fff); }
+/* ══ ЛЕСЕНКА ЗАГОЛОВКОВ (экраны 6–8) ═══════════════════════════════
+   Ступенька = уровень: каждая следующая строка сдвинута вправо, полоска
+   слева светлеет с уровнем. Цвет тега — синий заголовков. */
+.stairs { display: flex; flex-direction: column; gap: 5px; }
+.st-r { position: relative; display: flex; align-items: center; gap: 8px; min-height: 40px;
+  margin-left: calc(var(--n) * clamp(18px, 6vw, 30px)); padding: 4px 12px 4px 6px; border: none; border-radius: 11px;
+  background: #fff; text-align: left; font: inherit; color: ${T.ink};
+  box-shadow: 0 1px 0 rgba(${T.shadowBase},0.05), inset 0 0 0 1.5px rgba(${T.shadowBase},0.10);
+  transition: background .25s, box-shadow .25s, transform .15s; }
+.st-tap { cursor: pointer; }
+.st-tap:active:not(:disabled) { transform: scale(.98); }
+.st-tap:disabled { cursor: default; }
+.st-step { flex: 0 0 auto; align-self: stretch; width: 6px; border-radius: 3px; background: ${TAGC.h}; }
+.st-n1 .st-step { opacity: .62; } .st-n2 .st-step { opacity: .34; }
+.st-tag { flex: 0 0 auto; min-width: 2.1em; font-size: 14px; font-weight: 800; color: ${TAGC.h}; }
+.st-tag.is-hidden { color: ${T.ink3}; }
+.st-t { min-width: 0; font: 700 15px/1.2 'Manrope', sans-serif; }
+.st-r.is-hl { background: color-mix(in srgb, ${TAGC.h} 11%, #fff); box-shadow: inset 0 0 0 2px color-mix(in srgb, ${TAGC.h} 45%, #fff); }
+.st-r.is-q { background: color-mix(in srgb, ${TAGC.h} 8%, #fff); box-shadow: inset 0 0 0 2.5px ${TAGC.h}; }
+.st-r.is-ok { background: ${T.successSoft}; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, ${T.success} 45%, #fff); }
+.st-r.is-ok .st-tag { color: ${TAGC.h}; }
+.stairs.is-compact { gap: 3px; }
+.stairs.is-compact .st-r { min-height: 30px; padding-block: 2px; }
+.stairs.is-compact .st-t { font-size: 13.5px; }
 
-/* ══ 7. АРХИТЕКТОР ══════════════════════════════════════════════ */
+/* Подсказка на месте строки задания: экран не растёт от плашки. */
+.ask.ask-hint { padding: 6px 12px; border-radius: 12px; background: ${T.hintSoft}; color: ${T.hint}; font-size: clamp(14.5px, 2vw, 17px); }
+
+/* ══ 6. ЛЕСЕНКА + КОД ═══════════════════════════════════════════ */
+.s6 { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; width: 100%; }
+@media (min-width: 720px) { .s6 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 20px; } }
+.s6-map, .s6-code, .s7b-plan, .s7b-code { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.src-s6 .src-line.is-p { opacity: .55; min-height: 0; line-height: 1.3; font-size: .9em; }
+.src-s6 .src-line.is-hl { background: ${T.successSoft}; }
+
+/* ══ 7. КАКАЯ ЦИФРА? ════════════════════════════════════════════ */
+.s7q { width: 100%; max-width: 520px; align-self: center; animation: s7qIn .35s ease-out both; }
+@keyframes s7qIn { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+.s7q-n { display: inline-block; padding: 2px 8px; margin-right: 4px; border-radius: 99px; background: ${T.uiSoft};
+  color: ${T.uiDk}; font-size: 12.5px; vertical-align: 2px; }
+.s7q-lv, .s7b-lv { max-width: 420px; }
+.lvl-b.is-off { opacity: .35; }
+.lvl-b.is-tip { box-shadow: 0 0 0 3px ${T.hint}; }
+
+/* ══ 8. РАССТАВЬ САМ ════════════════════════════════════════════ */
+/* Готово: на телефоне — только страница (строки кода уже не нужны и не
+   влезали), на компьютере — страница и код рядом. */
+@media (max-width: 719px) { .s7b.is-done .s7b-code { display: none; } }
+.s7b { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; width: 100%; }
+@media (min-width: 720px) { .s7b { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 20px; } }
 .arch { display: flex; flex-direction: column; gap: 5px; }
-.arch-it { display: flex; flex-direction: column; gap: 1px; }
-.arch-r { position: relative; display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; padding: 4px 10px;
+.arch-r { position: relative; display: flex; align-items: center; gap: 8px; width: 100%; min-height: 42px; padding: 4px 10px;
   border: none; border-radius: 11px; background: ${T.paper}; text-align: left; cursor: pointer; font: inherit; color: inherit;
   box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.12); transition: box-shadow .2s, background .2s; }
 .arch-r:disabled { cursor: default; }
 .arch-r.is-sel { box-shadow: inset 0 0 0 2.5px ${TAGC.h}, 0 6px 14px -8px ${TAGC.h}; }
-.arch-r.is-bad { background: ${T.hintSoft}; }
+.arch-r.is-ok { background: ${T.successSoft}; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, ${T.success} 40%, #fff); }
 .arch-tag { flex: 0 0 auto; min-width: 3.4em; font: 800 var(--cv-fs)/1 'JetBrains Mono', ui-monospace, monospace; color: var(--c); }
 .arch-tag.is-empty { color: ${T.ink3}; }
-.arch-t { min-width: 0; font: 700 14.5px/1.2 'Manrope', sans-serif; color: ${T.ink}; }
-.arch-p { display: block; padding: 0 10px 0 calc(10px + 3.4em); font: 500 12px/1.3 'Manrope', sans-serif; color: ${T.ink3};
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.arch-p .mono { margin-right: 4px; font-size: 11px; }
-.s7-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; width: 100%; max-width: 560px; align-self: center; }
-.s7-tools .lvl-row { flex: 1 1 200px; }
+.arch-t { min-width: 0; flex: 1 1 auto; font: 700 14.5px/1.2 'Manrope', sans-serif; color: ${T.ink}; }
+.arch-ok { flex: 0 0 auto; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+  background: ${T.success}; color: #fff; }
+.arch-p { display: none; }
 
 /* ══ ПЕРЕКЛЮЧЕНИЕ «КОД / РЕЗУЛЬТАТ» НА ТЕЛЕФОНЕ ════════════════════ */
 @media (max-width: 719px) {
@@ -10553,18 +10708,48 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .src-tap.is-wrap::after { content: '+ <p>'; margin-left: 8px; padding: 1px 6px; border-radius: 6px; font-size: .82em; font-weight: 700;
   color: ${TAGC.p}; background: color-mix(in srgb, ${TAGC.p} 10%, #fff); white-space: nowrap; }
 
-/* ══ 9. НОЖНИЦЫ ═════════════════════════════════════════════════ */
-.split-l { display: inline; }
-.cut-b { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 26px;
-  vertical-align: middle; margin: 0 1px; border: 1.5px dashed rgba(${T.shadowBase},0.3); border-radius: 8px; cursor: pointer;
-  background: rgba(255,255,255,.8); color: ${T.ink2}; transition: background .2s, color .2s, transform .12s; }
-.cut-b:hover:not(:disabled) { background: ${T.uiSoft}; color: ${T.uiDk}; }
-.cut-b:active:not(:disabled) { transform: scale(.9); }
-.cut-b.is-cut { margin-left: 8px; border: none; background: ${TAGC.p}; color: #fff; }
-.cut-b.is-tip { border-color: ${T.hint}; background: ${T.hintSoft}; color: #7A5600; animation: ledFrame 1.15s ease-in-out infinite; }
-.cut-b.is-bad { background: #FFE6DF; }
-.cut-b .led > i { top: -3px; right: -3px; width: 7px; height: 7px; }
-.s9-tools { display: flex; justify-content: center; }
+/* ══ 9. РАЗЛОЖИ ПО АБЗАЦАМ ═══════════════════════════════════════
+   Абзац-коробка под заголовком: в неё нажимают после предложения. Пока
+   предложение выбрано, коробки зовут (пунктир), страница справа живая. */
+.s9b { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; width: 100%; }
+@media (min-width: 720px) { .s9b { grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); align-items: start; gap: 20px; } }
+/* Телефон: живая страница видна всё время; когда всё разложено — только она. */
+@media (max-width: 719px) { .s9b.is-done .s9b-code { display: none; } .s9b-page .mb-page { max-height: 150px; overflow-y: auto; } }
+.s9b-code { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.pbox { position: relative; display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 8px 10px; border: none;
+  border-radius: 14px; background: ${T.paper}; text-align: left; font: 500 14px/1.35 'Manrope', sans-serif; color: ${T.ink};
+  box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.12); cursor: pointer; transition: box-shadow .2s, background .2s; }
+.pbox:disabled { cursor: default; }
+.pbox.is-target { box-shadow: inset 0 0 0 2px ${TAGC.p}; background: color-mix(in srgb, ${TAGC.p} 6%, #fff); }
+.pbox-h { display: flex; align-items: center; gap: 4px; font-weight: 800; }
+.pbox-ht { font-size: 15px; }
+.pbox-p { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding-left: 12px; }
+.pbox-s { padding: 2px 6px; border-radius: 6px; background: color-mix(in srgb, ${TAGC.p} 10%, #fff); }
+.pbox-slot { min-width: 64px; padding: 2px 8px; border-radius: 6px; border: 1.5px dashed rgba(${T.shadowBase},0.25); color: ${T.ink3}; text-align: center; }
+.pbox.is-target .pbox-slot { border-color: ${TAGC.p}; color: ${TAGC.p}; }
+.s9b-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; max-width: 560px; align-self: center; }
+.s9b-chip { position: relative; padding: 8px 12px; border: none; border-radius: 12px; background: #fff; cursor: pointer;
+  font: 700 14px/1.25 'Manrope', sans-serif; color: ${T.ink}; text-align: left;
+  box-shadow: 0 2px 0 rgba(${T.shadowBase},0.06), inset 0 0 0 1.5px rgba(${T.shadowBase},0.14); transition: box-shadow .2s, transform .12s; }
+.s9b-chip:active:not(:disabled) { transform: scale(.97); }
+.s9b-chip.is-sel { box-shadow: inset 0 0 0 2.5px ${T.ui}, 0 6px 14px -8px ${T.ui}; }
+/* Новая задача: на телефоне страница — когда афиша готова; строки с верным
+   тегом зеленеют. */
+@media (max-width: 719px) { .work-s16.is-done .work-c { display: none; } }
+.tr-r.is-ok { background: ${T.successSoft}; }
+/* Поле с подсказкой-образцом шире своего текста: образец виден целиком. */
+.tk-input.is-wide { min-width: min(13em, 100%); }
+/* Свой проект: строка, которую правят сейчас, — в рамке; пустые — образцом. */
+.prj-r.is-now { border-radius: 10px; background: color-mix(in srgb, ${T.ui} 6%, #fff); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, ${T.ui} 35%, #fff); }
+.prj-ph { color: ${T.ink3}; font-style: italic; }
+/* Телефон: страница проекта — окошко с прокруткой (видна её нижняя часть,
+   где идёт работа), строки кода плотнее, рамки body не нужны. */
+@media (max-width: 719px) {
+  .work-prj .mb-prj .mb-page { max-height: 150px; min-height: 0; }
+  .work-prj .prj-body { display: none; }
+  .work-prj .prj-r { min-height: 30px; padding-block: 1px; }
+}
+@media (max-width: 719px) and (max-height: 700px) { .work-prj .mb-prj .mb-page { max-height: 120px; } }
 
 /* ══ СЛОВА И ВЫДЕЛЕНИЕ ══════════════════════════════════════════ */
 .wl, .wl-line { display: inline; }
@@ -10708,7 +10893,7 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 
 /* Меньше движения: смысл остаётся, движение уходит. */
 @media (prefers-reduced-motion: reduce) {
-  .pg-b.is-new, .pg-b.is-flash, .bslot.is-full, .ro-r, .cut-b.is-tip, .prj-mark.is-led { animation: none !important; }
+  .pg-b.is-new, .pg-b.is-flash, .bslot.is-full, .ro-r, .prj-mark.is-led { animation: none !important; }
 }
 
 /* Экран 3: браузер виден и при подсказке — ошибка «правлю h1 ради вкладки»
@@ -10731,12 +10916,16 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
   .src-s4 .src-line { min-height: 0; line-height: 1.4; }
   .work-s4 .mb-top { height: 28px; }
 }
-/* Экран 6 на невысоком телефоне: схема и свёрнутые абзацы плотнее. */
+/* Экраны 6–8 на невысоком телефоне: лесенка и свёрнутые абзацы плотнее. */
 @media (max-height: 700px) {
-  .s6 { gap: 6px; }
-  .s6-map { padding: 4px 6px; }
-  .s6-map .lad-h { display: none; }
-  .ol-r { min-height: 24px; padding-block: 1px; }
+  .s6, .s7b { gap: 4px; }
+  .s6-map, .s6-code, .s7b-plan, .s7b-code { gap: 3px; }
+  .st-r { min-height: 32px; padding-block: 2px; }
+  .stairs.is-compact { gap: 2px; }
+  .stairs.is-compact .st-r { min-height: 24px; }
+  .arch { gap: 4px; }
+  .arch-r { min-height: 34px; padding-block: 2px; }
+  .ask.ask-hint { padding: 4px 10px; font-size: 14px; line-height: 1.3; }
   .src-s6 .src-line { min-height: 0; line-height: 1.35; }
   .src-s6 .src-line.is-p { line-height: 1.05; font-size: .8em; }
 }
@@ -10753,12 +10942,11 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 @media (max-width: 400px) { .tr-r { grid-template-columns: auto minmax(0, 1fr); } }
 /* Экраны 9–10 на невысоком телефоне: на UZ и EN предложения длиннее. */
 @media (max-width: 719px) and (max-height: 700px) {
-  .work-s9 .mb-doc, .work-s10 .mb-doc { font-size: 13px; }
-  .work-s9 .mb-page, .work-s10 .mb-page { min-height: 0; padding-block: 5px; }
-  .src-s9, .src-s10 { line-height: 1.42; }
-  .src-s9 .src-line, .src-s10 .src-line { min-height: 0; }
-  .cut-b { height: 22px; width: 26px; }
-  .work-s10 .mb-top, .work-s9 .mb-top { height: 28px; }
+  .work-s10 .mb-doc { font-size: 13px; }
+  .work-s10 .mb-page { min-height: 0; padding-block: 5px; }
+  .src-s10 { line-height: 1.42; }
+  .src-s10 .src-line { min-height: 0; }
+  .work-s10 .mb-top { height: 28px; }
 }
 @media (max-width: 719px) and (max-height: 700px) {
   .insp:not(.insp-all) .insp-r:not(.is-now) { display: none; }
@@ -10781,12 +10969,10 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
   .lad-h { font-size: 12.5px; }
   .lad-r { font-size: 15px; padding-block: 6px; padding-left: calc(8px + var(--n) * 12px); }
   .lad-tag { font-size: 13px; }
-  .ol-r { min-height: 38px; padding-left: calc(10px + var(--n) * 26px); }
-  .ol-r::before { left: calc(var(--n) * 26px - 9px); }
-  .ol-t { font-size: 17px; }
-  .ol-tag { font-size: 13px; }
+  .st-r { min-height: 46px; }
+  .st-t { font-size: 17px; }
+  .st-tag { font-size: 15px; }
   .arch-t { font-size: 17px; }
-  .arch-p { font-size: 14px; }
   .tr-t { font-size: 17px; }
   .lvl-b { min-height: 50px; font-size: 17px; }
   .mark-b, .quiz-b, .guess-b { font-size: 16.5px; }
@@ -10805,7 +10991,7 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
   .pg-wait { min-height: 36px; font-size: 26px; }
   .guess-row .guess-b { min-height: 40px; padding: 4px 8px; font-size: 13px; }
   .guess-row .key-go { min-height: 40px; }
-  .work-s9 .mb-doc, .work-s10 .mb-doc { font-size: 12.5px; }
+  .work-s10 .mb-doc { font-size: 12.5px; }
   .src-sand .tk-input { padding-block: 1px; }
   .add-b { min-height: 34px; }
   .lesson-root .sand-tools .seg2-b { min-height: 34px; }
@@ -10821,8 +11007,7 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
   .lesson-root .bigbtn { min-height: 46px; padding-top: 6px; padding-bottom: 6px; }
   .mb-site .mb-page { min-height: 40px; }
   .lesson-root .key-b { min-height: 36px; }
-  .work-s9 .mb-page, .work-s10 .mb-page { padding-block: 3px; }
-  .cut-b { height: 20px; width: 24px; }
+  .work-s10 .mb-page { padding-block: 3px; }
   .lesson-root .sand-tools { flex-wrap: nowrap; gap: 4px; }
   .lesson-root .sand-tools .add-b { padding: 0 7px; }
   .lesson-root .sand-tools .seg2-b { padding: 0 8px; font-size: 13px; }
