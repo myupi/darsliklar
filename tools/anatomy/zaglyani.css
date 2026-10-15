@@ -1,0 +1,157 @@
+/* ══ КОД ═══════════════════════════════════════════════════════════
+   Светлая панель: цвета тегов подобраны тёмными, чтобы читались на белом
+   (контраст от 4.9:1). Слева — номера строк и цветные скобки вложенности. */
+.cv { position: relative; width: 100%; min-width: 0; text-align: left;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: var(--cv-fs); line-height: 1.5;
+  background: ${T.paper}; color: ${T.ink}; border-radius: 14px; padding: 6px 8px 6px 0;
+  box-shadow: 0 2px 0 rgba(${T.shadowBase},0.05), 0 12px 26px -16px rgba(${T.shadowBase},0.5),
+    inset 0 0 0 1.5px rgba(${T.shadowBase},0.08); }
+.cv-line { position: relative; display: flex; align-items: center; min-height: 1.5em; width: 100%;
+  padding-left: calc(var(--gut) + var(--d) * var(--ind)); padding-right: 4px; white-space: nowrap;
+  border-radius: 6px; transition: opacity .3s, background .3s; }
+.cv-line:has(.tk-btn) { min-height: 30px; }
+.cv-n { position: absolute; left: 0; width: 1.9em; text-align: right; color: ${T.ink3}; font-size: .78em; }
+.cv-bar { position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--c); opacity: .5;
+  left: calc(var(--gut) - .55em + var(--lv) * var(--ind)); }
+.cv-bar.is-first { top: 50%; } .cv-bar.is-last { bottom: 50%; } .cv-bar.is-first.is-last { display: none; }
+.cv-code { display: flex; align-items: center; flex-wrap: nowrap; min-width: 0; flex: 1 1 auto; gap: 0; }
+.cv-line.is-out { opacity: .32; }
+.cv-line.is-in { background: color-mix(in srgb, var(--hc) 8%, transparent); }
+.cv-note { margin-left: 10px; font: 700 11px/1 'Manrope', sans-serif; color: ${T.ink3}; white-space: nowrap;
+  text-transform: uppercase; letter-spacing: .05em; }
+.cv-line.is-new { animation: lineIn .55s cubic-bezier(.34,1.3,.5,1) both; }
+@keyframes lineIn { from { transform: translateX(-12px); background: rgba(255,79,40,.13); } to { transform: none; } }
+.cv-reveal .cv-line { animation: lineIn .45s cubic-bezier(.34,1.3,.5,1) both; }
+.cv-reveal .cv-line:nth-child(2) { animation-delay: .07s; } .cv-reveal .cv-line:nth-child(3) { animation-delay: .14s; }
+.cv-reveal .cv-line:nth-child(4) { animation-delay: .21s; } .cv-reveal .cv-line:nth-child(5) { animation-delay: .28s; }
+.cv-reveal .cv-line:nth-child(6) { animation-delay: .35s; } .cv-reveal .cv-line:nth-child(7) { animation-delay: .42s; }
+.cv-reveal .cv-line:nth-child(8) { animation-delay: .49s; } .cv-reveal .cv-line:nth-child(9) { animation-delay: .56s; }
+
+.tk { display: inline-flex; align-items: center; min-width: 0; border-radius: 6px; }
+.tk-tag { color: var(--c); font-weight: 700; white-space: nowrap; }
+.tk-br { opacity: .72; }
+.tk-sl { display: inline-block; border-radius: 4px; }
+.tk-doc { color: ${T.ink2}; }
+.tk-text { color: ${T.ink}; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+  font-family: 'Manrope', sans-serif; font-size: 1.02em; padding: 0 2px; border-radius: 5px; }
+.tk-slot { color: ${T.ink3}; }
+.tk.is-changed .tk-text, .tk-btn.is-changed .tk-text { background: ${T.hintSoft}; }
+.tk.is-pair { background: color-mix(in srgb, var(--c) 15%, #fff); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 45%, #fff); }
+.cv-line.is-title-pair { background: color-mix(in srgb, ${'#9F4471'} 7%, transparent); }
+
+/* Нажимаемый участок кода: подчёркнут цветом интерфейса — «сюда можно нажать». */
+.tk-btn { position: relative; font: inherit; color: inherit; border: none; cursor: pointer; margin: 1px 1px;
+  padding: 3px 5px; min-height: 26px; border-radius: 8px; background: rgba(255,79,40,.04);
+  box-shadow: inset 0 -2px 0 rgba(255,79,40,.25);
+  transition: background .2s, box-shadow .2s, transform .12s; }
+.tk-btn:hover:not(:disabled) { background: ${T.uiSoft}; }
+.tk-btn:active:not(:disabled) { transform: scale(.95); }
+.tk-btn:focus-visible { outline: 3px solid ${T.ui}; outline-offset: 1px; }
+.tk-btn.is-sel { background: color-mix(in srgb, var(--c) 18%, #fff); box-shadow: 0 0 0 2.5px var(--c); }
+.tk-btn:disabled { cursor: default; }
+/* Светодиод «нажми сюда» на коротком теге — в углу над токеном, не на тексте. */
+.tk-btn .led > i { top: -3px; right: -3px; width: 7px; height: 7px; }
+.chip-opt .led > i, .pool-chip .led > i, .nest-piece .led > i { top: 4px; right: 4px; width: 7px; height: 7px; }
+
+/* Поле прямо в строке кода. 16 px — меньше нельзя: iOS увеличит страницу. */
+.tk-input { flex: 1 1 0; min-width: 4.5ch; width: 100%; font: 600 16px/1.25 'Manrope', sans-serif; color: ${T.ink};
+  border: none; border-radius: 7px 7px 3px 3px; padding: 3px 7px; margin: 2px 2px; outline: none;
+  background: ${T.uiSoft}; box-shadow: inset 0 -2px 0 ${T.ui}; }
+.tk-input:focus { background: #fff; box-shadow: inset 0 0 0 2px ${T.ui}; }
+.tk-input::placeholder { color: ${T.ink3}; font-weight: 500; }
+.tk-input-tag { font-family: 'JetBrains Mono', ui-monospace, monospace; flex: 0 1 12ch; }
+.tk-input.is-led-in { animation: ledFrame 1.15s ease-in-out infinite; }
+
+.tt-caret { display: inline-block; width: 2px; height: 1em; margin-left: 1px; vertical-align: -.14em;
+  background: currentColor; animation: ttBlink .8s steps(2) infinite; }
+@keyframes ttBlink { 50% { opacity: 0; } }
+
+/* ══ МИНИ-БРАУЗЕР ════════════════════════════════════════════════
+   Рамка — интерфейс урока; страница внутри — HTML без CSS, как его рисует
+   браузер по умолчанию: шрифт с засечками, 16 px, чёрный на белом. */
+.mb { position: relative; width: 100%; background: #fff; border-radius: 14px; overflow: hidden;
+  box-shadow: 0 2px 0 rgba(${T.shadowBase},0.06), 0 14px 30px -18px rgba(${T.shadowBase},0.6),
+    inset 0 0 0 1.5px rgba(${T.shadowBase},0.10);
+  transition: box-shadow .3s; }
+.mb-top { position: relative; display: flex; align-items: flex-end; gap: 8px; height: clamp(30px, 4.6dvh, 40px);
+  padding: 0 10px; background: ${T.uiBar}; transition: background .3s, box-shadow .3s; }
+/* ВИД CHROME В WINDOWS (заказчик, 15.10.2026): вкладка от левого края с
+   крестиком, за ней «+», справа кнопки окна «— ▢ ✕» (у macOS — три точки
+   слева). Значки нарисованы линиями CSS, без картинок. */
+.mb-x { position: relative; width: 14px; height: 14px; flex: 0 0 auto; margin-left: 2px; border-radius: 50%; color: ${T.ink3}; }
+.mb-x::before, .mb-x::after, .mb-new::before, .mb-new::after, .mb-w-x::before, .mb-w-x::after {
+  content: ''; position: absolute; left: 50%; top: 50%; height: 1.5px; border-radius: 1px; background: currentColor; }
+.mb-x::before, .mb-x::after { width: 8px; margin: -0.75px 0 0 -4px; }
+.mb-x::before, .mb-w-x::before { transform: rotate(45deg); }
+.mb-x::after, .mb-w-x::after { transform: rotate(-45deg); }
+.mb-new { position: relative; align-self: center; width: 20px; height: 20px; flex: 0 0 auto; color: ${T.ink2}; }
+.mb-new::before, .mb-new::after { width: 10px; margin: -0.75px 0 0 -5px; }
+.mb-new::after { transform: rotate(90deg); }
+.mb-win { display: flex; align-self: stretch; margin: 0 -10px 0 auto; flex: 0 0 auto; color: ${T.ink2}; }
+.mb-label + .mb-new + .mb-win { margin-left: 4px; }
+.mb-win i { position: relative; width: 26px; }
+.mb-w-min::before { content: ''; position: absolute; left: 50%; top: 50%; width: 9px; height: 1.5px; margin-left: -4.5px; background: currentColor; }
+.mb-w-max::before { content: ''; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px;
+  border: 1.5px solid currentColor; border-radius: 1px; box-sizing: border-box; }
+.mb-w-x::before, .mb-w-x::after { width: 11px; margin: -0.75px 0 0 -5.5px; }
+@media (max-width: 380px) { .mb-win i { width: 22px; } .mb-new { width: 16px; } }
+.mb-tab { position: relative; display: flex; align-items: center; gap: 6px; max-width: 64%; min-width: 0; height: 78%;
+  padding: 0 12px; background: #fff; border-radius: 10px 10px 0 0;
+  font: 700 clamp(12px, 3.2vw, 14px)/1 'Manrope', sans-serif; color: ${T.ink}; transition: box-shadow .3s; }
+.mb-fav { width: 12px; height: 12px; border-radius: 3px; background: ${T.ui}; flex: 0 0 auto; }
+.mb-tab-t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.mb-tab-t.is-file { color: ${T.ink3}; font-weight: 600; font-style: italic; }
+.mb-page { position: relative; min-height: clamp(52px, 10dvh, 150px); padding: 8px 10px; background: #fff; transition: box-shadow .3s, background .3s; }
+.mb-doc { font-family: 'Times New Roman', Times, serif; font-size: 16px; line-height: 1.25; color: #000;
+  word-break: break-word; text-align: left; }
+.mb-compact .mb-page { min-height: clamp(40px, 7dvh, 96px); }
+.mb-tab.is-flash { animation: tabFlash 1s ease-out; }
+.mb-page.is-flash { animation: pageFlash 1s ease-out; }
+@keyframes tabFlash { 0% { background: #fff; } 25% { background: #FEEBF3; } 100% { background: #fff; } }
+@keyframes pageFlash { 0% { background: #fff; } 25% { background: #E4F4FF; } 100% { background: #fff; } }
+.mb-hl-html { box-shadow: 0 0 0 3px #586A83, 0 14px 30px -18px rgba(${T.shadowBase},0.6); }
+.mb-hl-head .mb-top { background: #F2EFFF; box-shadow: inset 0 0 0 2.5px #6F57AB; }
+.mb-hl-title .mb-tab { box-shadow: inset 0 0 0 2.5px #9F4471; }
+.mb-hl-body .mb-page { box-shadow: inset 0 0 0 2.5px #1171A0; background: #EEF7FF; }
+.mb-pin { position: absolute; z-index: 2; padding: 4px 8px; border-radius: 99px; background: ${T.ink}; color: #fff;
+  font: 800 10.5px/1 'Manrope', sans-serif; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap;
+  font-style: normal; }
+.mb-pin-tab { left: calc(100% + 8px); top: 50%; transform: translateY(-50%); }
+.mb-pin-page { right: 8px; bottom: 8px; background: rgba(14,14,16,.78); }
+.mb-info { position: absolute; z-index: 2; left: 10px; top: calc(clamp(30px, 4.6dvh, 40px) + 8px); display: flex; align-items: center;
+  gap: 6px; padding: 5px 9px; border-radius: 9px; background: #F2EFFF; color: #6F57AB;
+  font: 800 12px/1.2 'Manrope', sans-serif; box-shadow: 0 6px 14px -8px rgba(${T.shadowBase},.6); }
+
+/* ══ РАБОЧАЯ ОБЛАСТЬ: браузер + код ═══════════════════════════════ */
+.work { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(8px, 1.4dvh, 14px); width: 100%; }
+@media (min-width: 720px) { .work { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: center; gap: 22px; } }
+.wire { position: absolute; left: 0; top: 0; z-index: 6; pointer-events: none; overflow: visible; }
+.wire-path { fill: none; stroke: var(--c); stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: 100;
+  stroke-dashoffset: 100; animation: wireDraw .7s ease-out forwards, wireRest .8s ease 1.8s forwards; }
+.wire-dot { fill: var(--c); }
+.wire-end { animation: wireEnd .7s ease-out; transform-box: fill-box; transform-origin: center; }
+@keyframes wireDraw { to { stroke-dashoffset: 0; } }
+@keyframes wireRest { to { opacity: .35; } }
+@keyframes wireEnd { 0% { transform: scale(.2); } 60% { transform: scale(1.5); } 100% { transform: scale(1); } }
+
+/* ══ 10. ПОЧИНКА ════════════════════════════════════════════════ */
+.insp { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px 6px; }
+.insp-h { display: inline-flex; align-items: center; gap: 5px; width: 100%; justify-content: center;
+  font: 800 11px/1 'Manrope', sans-serif; letter-spacing: .07em; text-transform: uppercase; color: ${T.ink2}; }
+.insp-r { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px 4px 5px; border-radius: 99px;
+  background: ${T.paper}; color: ${T.ink2}; font: 700 12.5px/1.15 'Manrope', sans-serif;
+  box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.12); transition: background .3s, color .3s; }
+.insp-ic { width: 18px; height: 18px; flex: 0 0 auto; border-radius: 50%; display: grid; place-items: center;
+  box-shadow: inset 0 0 0 2px rgba(${T.shadowBase},0.25); }
+.insp-r.is-ok { color: ${T.success}; }
+.insp-r.is-ok .insp-ic { background: ${T.success}; color: #fff; box-shadow: none; }
+.insp-r.is-now { background: ${T.hintSoft}; color: #7A5600; box-shadow: inset 0 0 0 1.5px ${T.hint}; }
+.cv-tap { border: none; background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; min-height: 28px; }
+.cv-tap:hover:not(:disabled) { background: ${T.uiSoft}; }
+.cv-tap:focus-visible { outline: 3px solid ${T.ui}; outline-offset: -2px; }
+.cv-tap:disabled { cursor: default; }
+.cv-fix .cv-line.is-sel { background: #FEEBF3; box-shadow: inset 3px 0 0 #9F4471; }
+.cv-fix.is-picking .cv-line.is-drop { box-shadow: inset 0 -2px 0 rgba(255,79,40,.29); }
+.cv-line.is-typing { background: ${T.uiSoft}; min-height: 34px; }
+.keys { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+

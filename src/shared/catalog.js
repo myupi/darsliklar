@@ -58,6 +58,7 @@ function normalizeCourse(id, def) {
     short: d.short || id.replace(/^_/, '').slice(0, 4).toUpperCase(),
     color: d.color || '#6B7280',
     order: typeof d.order === 'number' ? d.order : 50,
+    sandbox: !!d.sandbox,   // песочница: файлы без плана — готовые уроки
     lessons: plan,
   };
 }
@@ -86,7 +87,7 @@ export function buildCatalog() {
     } else {
       course.lessons.push({
         key: fileId, n, kind, course: cid, title: kind === 'practice' ? 'Практика' : prettify(base), topics: [],
-        file: fileId, status: 'extra', expected: `lessons/${fileId}.jsx`,
+        file: fileId, status: course.sandbox ? 'ready' : 'extra', expected: `lessons/${fileId}.jsx`,
       });
     }
   }
@@ -100,7 +101,7 @@ export function buildCatalog() {
     const lessons = c.lessons.filter((l) => l.kind !== 'practice');
     const practices = c.lessons.filter((l) => l.kind === 'practice');
     c.ready = lessons.filter((l) => l.status !== 'planned').length;
-    c.planned = lessons.filter((l) => l.status !== 'extra').length;
+    c.planned = c.sandbox ? lessons.length : lessons.filter((l) => l.status !== 'extra').length;
     c.practiceReady = practices.filter((l) => l.status !== 'planned').length;
     c.practicePlanned = practices.filter((l) => l.status !== 'extra').length;
   });
