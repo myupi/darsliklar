@@ -14,5 +14,7 @@ export default {
   lessons: [
     { n: 2, slug: 'zaglyani-vnutr', title: 'HTML: загляни внутрь страницы — эксперимент',
       topics: ['html', 'head', 'title', 'body', 'anatomy'] },
+    { n: 3, slug: 'pervaya-stranitsa', title: 'Моя первая страница: исследуй, собери, создай',
+      topics: ['Эксперимент: интерактивный HTML + Anatomy'] },
   ],
 };
