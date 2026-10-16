@@ -4,6 +4,14 @@
 
 Статус: не начато.
 
+## Урок 3 «Списки» — новый, пока тестовый
+
+Статус (16.10.2026): две тестовые версии, ждут выбора заказчика.
+- Проба 1 «Сборы на турнир» — `lessons/test/04-spiski.jsx`, сценарий `docs/scenarij-03-spiski.md`, сборка `node tools/spiski/spiski.build.mjs`.
+- Проба 2 «Гайд по игре» — `lessons/test/05-spiski-2.jsx`, сценарий `docs/scenarij-03-spiski-v2.md`, сборка `node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/spiski2/spiski2.src.jsx lessons/test/05-spiski-2.jsx`. Сделана по навыку v2: другая история и механики (пункт ↔ строка, сборка li, разрез по запятым, прогноз, пара ul→ol, вставка шага, «перемешай», место для </ul>, жалобы игроков, строка li целиком).
+
+После одобрения: перенести в `lessons/html/03-spiski.jsx` (META уже `html-03-spiski`), включить `practice: true` в `_course.js`, сделать практику `03p`.
+
 ## Урок 1 — `lessons/html/01-struktura-dokumenta.jsx`
 
 | # | Что сейчас | В чём проблема | Что сделать |

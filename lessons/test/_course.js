@@ -16,5 +16,9 @@ export default {
       topics: ['html', 'head', 'title', 'body', 'anatomy'] },
     { n: 3, slug: 'pervaya-stranitsa', title: 'Моя первая страница: исследуй, собери, создай',
       topics: ['Эксперимент: интерактивный HTML + Anatomy'] },
+    { n: 4, slug: 'spiski', title: 'Списки — урок 3 курса HTML (проба)',
+      topics: ['ul', 'ol', 'li'] },
+    { n: 5, slug: 'spiski-2', title: 'Списки — урок 3 курса HTML (проба 2: гайд по игре)',
+      topics: ['ul', 'ol', 'li'] },
   ],
 };
