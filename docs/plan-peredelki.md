@@ -12,6 +12,10 @@
 
 После одобрения: перенести в `lessons/html/03-spiski.jsx` (META уже `html-03-spiski`), включить `practice: true` в `_course.js`, сделать практику `03p`.
 
+## Урок 4 «Ссылки и атрибуты» — тестовый
+
+Статус (16.10.2026): тестовая версия «Кино во дворе» — `lessons/test/06-ssylki-i-atributy.jsx` (14 экранов), сценарий `docs/scenarij-04-ssylki-i-atributy.md`, сборка `node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/ssylki/ssylki.src.jsx lessons/test/06-ssylki-i-atributy.jsx`. Мини-браузер урока с адресной строкой и «назад», переходы по ссылкам честные. Ждёт отзыва заказчика.
+
 ## Урок 1 — `lessons/html/01-struktura-dokumenta.jsx`
 
 | # | Что сейчас | В чём проблема | Что сделать |

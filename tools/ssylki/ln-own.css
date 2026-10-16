@@ -1,0 +1,132 @@
+/* ══ УРОК 4 · ССЫЛКИ И АТРИБУТЫ (свои стили, префикс ln-) ═════════
+   Мини-браузер урока — MiniBrowser урока 2 плюс адресная строка; ссылки на
+   странице — как у браузера по умолчанию: синие и подчёркнутые. */
+.ln-bar { display: flex; align-items: center; gap: 6px; height: clamp(26px, 3.8dvh, 32px); padding: 0 8px; background: #fff;
+  border-bottom: 1px solid rgba(${T.shadowBase},0.1); }
+.ln-back { display: grid; place-items: center; width: 26px; height: 22px; border: none; border-radius: 6px; background: transparent; color: ${T.ink2}; cursor: pointer; }
+.ln-back:hover:not(:disabled) { background: ${T.uiSoft}; }
+.ln-back:disabled { opacity: .3; cursor: default; }
+.ln-url { flex: 1; min-width: 0; padding: 2px 10px; border-radius: 99px; background: ${T.bg}; color: ${T.ink2}; font-size: 12px; line-height: 1.5;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: lnUrl .45s ease-out; }
+@keyframes lnUrl { 0% { background: color-mix(in srgb, ${TAGC.a} 22%, #fff); } 100% { background: ${T.bg}; } }
+.ln-mb .mb-page { animation: lnPage .35s ease-out; }
+@keyframes lnPage { 0% { opacity: .35; transform: translateX(10px); } 100% { opacity: 1; transform: none; } }
+.ln-status { position: absolute; left: 0; bottom: 0; padding: 1px 8px; border-radius: 0 6px 0 0; background: #F1F3F4; color: #3C4043;
+  font-size: 11.5px; box-shadow: 0 0 0 1px #DADCE0; animation: pgIn .3s ease-out both; }
+.ln-pg h1 { font-size: 1.6em; font-weight: bold; line-height: 1.18; margin: .25em 0; }
+.ln-pg p { margin: .35em 0; }
+.ln-pg > :first-child { margin-top: 0; }
+.ln-pg > :last-child { margin-bottom: 0; }
+.ln-links { line-height: 1.6; }
+.ln-menu { margin: .3em 0; padding-left: 1.6em; list-style: disc; }
+/* Ссылка — как в браузере: синяя, подчёркнутая; нажатая — фиолетовая не делаем (нет истории). */
+.ln-a { position: relative; padding: 0; border: none; background: transparent; font: inherit; color: #0000EE; text-decoration: underline;
+  cursor: pointer; border-radius: 3px; }
+.ln-a:disabled { cursor: default; }
+.ln-a:focus-visible { outline: 2px solid ${T.ui}; outline-offset: 2px; }
+.ln-plain { color: #000; }
+.ln-dead { position: relative; padding: 0; border: none; background: transparent; font: inherit; color: #000; cursor: pointer; border-radius: 3px; }
+.ln-aslink { color: #0000EE; text-decoration: underline; }
+.ln-pg .is-hl { background: color-mix(in srgb, ${TAGC.a} 18%, #fff); box-shadow: 0 0 0 2px color-mix(in srgb, ${TAGC.a} 40%, transparent); }
+.ln-pg .is-new { animation: pgIn .5s cubic-bezier(.34,1.3,.5,1) both; display: inline-block; }
+.ln-pg p.is-new, .ln-pg h1.is-new { display: block; }
+
+/* Код: открывающий тег a с атрибутом. */
+.ln-tag { white-space: normal; }
+.ln-an { color: ${TAGC.a}; font-weight: 600; opacity: .85; }
+.ln-eq { color: ${T.ink2}; }
+.ln-av { color: ${T.ink}; font-weight: 600; overflow-wrap: anywhere; }
+.ln-sp { white-space: pre; }
+.ln-src .src-line.is-cur { background: color-mix(in srgb, ${TAGC.a} 10%, transparent); }
+.ln-src .src-line.is-new { animation: lnLine 1.2s ease-out; }
+@keyframes lnLine { 0% { background: color-mix(in srgb, ${TAGC.a} 26%, transparent); } 100% { background: transparent; } }
+.ln-src .src-line.ln-show-href .ln-av { background: ${T.hintSoft}; border-radius: 4px; box-shadow: 0 0 0 2px ${T.hint}; }
+.ln-src .src-line.is-gap { min-height: 2.1em; }
+.ln-src-sm { --cv-fs: clamp(11.5px, 3.1vw, 14px); }
+.ln-one { padding: 10px 12px; font-size: calc(var(--cv-fs) * 1.15); line-height: 2; text-align: center; }
+.ln-anat { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px; }
+.ln-part { position: relative; padding: 2px 4px; border: none; border-radius: 7px; background: ${T.uiSoft}; font: inherit; cursor: pointer;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, ${T.ui} 40%, transparent); }
+.ln-part.is-seen { background: #fff; box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.18); }
+.ln-part.is-cur { background: #fff; box-shadow: inset 0 0 0 2px ${TAGC.a}; }
+.ln-part:disabled { cursor: default; }
+.ln-attr { white-space: nowrap; }
+.ln-legend { min-height: 1.6em; text-align: center; font-weight: 700; color: ${T.ink2}; font-size: 15px; }
+.ln-legend.is-on { color: ${TAGC.a}; animation: pgIn .3s ease-out both; }
+.ln-inp { position: relative; display: inline-flex; align-items: center; vertical-align: middle; max-width: calc(100% - 6.5em); }
+.ln-inp .tk-input { max-width: 100%; }
+.ln-inp-wide { max-width: 100%; min-width: 14ch; width: 100%; }
+.ln-inp-wide .tk-input { flex: 1 1 auto; width: 100%; }
+.ln-av .ln-inp { max-width: 14ch; }
+.ln-av .ln-inp .tk-input { min-width: 9ch; }
+.ln-inp.is-led .tk-input { animation: ledFrame 1.15s ease-in-out infinite; }
+.ln-hole { display: inline-block; width: 4.5ch; height: 1.1em; vertical-align: middle; border-radius: 4px; border: 1.5px dashed rgba(${T.shadowBase},0.3); }
+.ln-hole.is-act { border-color: ${T.ui}; background: ${T.uiSoft}; }
+
+/* Экран 8: места для атрибута. */
+.ln-slot { position: relative; width: 22px; height: 30px; margin: 0 1px; padding: 0; border: none; border-radius: 6px; cursor: pointer;
+  background: repeating-linear-gradient(180deg, color-mix(in srgb, ${T.ui} 55%, transparent) 0 4px, transparent 4px 7px) center / 2px 70% no-repeat, ${T.uiSoft}; }
+.ln-slot:hover:not(:disabled) { background-color: #fff; }
+.ln-slot:disabled { cursor: default; }
+.ln-stray { color: ${T.ink2}; background: ${T.hintSoft}; border-radius: 4px; }
+.ln-card { display: inline-flex; align-self: center; gap: 1px; margin: 0 auto; padding: 4px 12px; border-radius: 10px; background: #fff; font-size: 14px;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, ${T.ui} 45%, transparent); animation: lnBob 2.6s ease-in-out infinite; }
+@keyframes lnBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+
+/* Экран 4: варианты прогноза. */
+.ln-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; max-width: 600px; margin: 0 auto; }
+.ln-opt { position: relative; min-height: 64px; padding: 8px 8px; border: none; border-radius: 14px; background: #fff; color: ${T.ink};
+  font: 700 13.5px/1.25 'Manrope', sans-serif; cursor: pointer; box-shadow: 0 2px 0 rgba(${T.shadowBase},0.08), inset 0 0 0 1.5px rgba(${T.shadowBase},0.12); }
+.ln-opt:disabled { cursor: default; }
+.ln-opt.is-ok { box-shadow: inset 0 0 0 2.5px ${T.success}; color: ${T.success}; }
+.ln-opt.is-off { opacity: .45; }
+.ln-opt.is-real { box-shadow: inset 0 0 0 2.5px ${T.success}; }
+
+/* Папка сайта. */
+.ln-folder { width: 100%; max-width: 600px; margin: 0 auto; padding: 6px 8px 8px; border-radius: 14px; background: #fff;
+  box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.1); }
+.ln-folder-h { display: flex; align-items: center; gap: 5px; margin: 0 0 5px 2px; color: ${T.ink2}; font: 700 12px/1.2 'Manrope', sans-serif; }
+.ln-files { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.ln-file { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-height: 42px; padding: 4px 9px;
+  border: none; border-radius: 10px; background: ${T.bg}; text-align: left; cursor: pointer; box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.08); }
+.ln-file:disabled { cursor: default; }
+.ln-file:not(.is-static):hover:not(:disabled) { background: ${T.uiSoft}; }
+.ln-file.is-on { box-shadow: inset 0 0 0 2px ${TAGC.a}; background: #fff; }
+.ln-file.is-used { opacity: .45; }
+.ln-file.is-static { cursor: default; min-height: 0; padding: 3px 8px; }
+.ln-f-n { font-size: 13px; font-weight: 700; color: ${T.ink}; }
+.ln-f-l { font: 600 11.5px/1.2 'Manrope', sans-serif; color: ${T.ink2}; }
+.ln-folder.is-compact .ln-files { grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); }
+.ln-folder.is-compact .ln-file { min-height: 0; padding: 3px 8px; }
+
+/* Экран 10: номер дела. */
+.ln-case { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; font-size: 15px; text-align: center; }
+.ln-case-n { padding: 2px 8px; border-radius: 99px; background: ${T.uiSoft}; color: ${T.uiDk}; font-size: 12px; }
+
+/* Экран 12: темы. */
+.ln-topics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; max-width: 520px; margin: 0 auto; }
+.ln-topic { position: relative; min-height: 60px; padding: 10px 12px; border: none; border-radius: 16px; background: #fff; color: ${T.ink};
+  font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 0 rgba(${T.shadowBase},0.08), inset 0 0 0 2px rgba(${T.shadowBase},0.1); }
+.ln-topic:active:not(:disabled) { transform: scale(.97); }
+
+/* Экран 14. */
+.ln-recap { display: inline-flex; align-self: center; flex-wrap: wrap; justify-content: center; gap: 2px; margin: 0 auto; padding: 8px 14px;
+  border-radius: 12px; background: #fff; font-size: 15px; box-shadow: 0 2px 0 rgba(${T.shadowBase},0.05), inset 0 0 0 1.5px rgba(${T.shadowBase},0.08); }
+
+/* Открытая клавиатура (экраны 7, 9, 11, 12): браузер и папка прячутся. */
+.is-kbd .ln-typing .work-b { display: none; }
+.is-kbd .ln-folder { display: none; }
+
+@media (max-width: 719px) {
+  .ln-opt { min-height: 56px; font-size: 12.5px; padding: 6px; }
+  .ln-topic { min-height: 54px; font-size: 15px; }
+  .ln-legend { font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ln-url, .ln-mb .mb-page, .ln-status, .ln-pg .is-new, .ln-src .src-line.is-new, .ln-legend.is-on, .ln-card { animation: none; }
+}
+
+/* Итог: три тега следующего урока в одну строку. */
+.recap .next-tags { white-space: nowrap; font-size: 12px; }
+/* Подсказка адреса не закрывает ссылку: странице — место снизу. */
+.ln-mb .mb-page.has-status { padding-bottom: 26px; }

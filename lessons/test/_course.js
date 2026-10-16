@@ -20,5 +20,7 @@ export default {
       topics: ['ul', 'ol', 'li'] },
     { n: 5, slug: 'spiski-2', title: 'Списки — урок 3 курса HTML (проба 2: гайд по игре)',
       topics: ['ul', 'ol', 'li'] },
+    { n: 6, slug: 'ssylki-i-atributy', title: 'Ссылки и атрибуты — урок 4 курса HTML (проба)',
+      topics: ['a', 'href'] },
   ],
 };
