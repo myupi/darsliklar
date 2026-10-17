@@ -97,9 +97,9 @@ const C = {
         'Хочешь сделать свою? Сначала заглянем внутрь и узнаем, что за что отвечает.',
         'Want to make your own? First let us look inside and find out what does what.') }
     ],
-    opened: L3('Mana sahifa ichi: katta quti html, ichida head va body bo‘limlari.',
-      'Вот что внутри страницы: большая коробка html, а в ней отделения head и body.',
-      'This is what is inside the page: a big html box with the head and body sections in it.'),
+    opened: L3('Mana sahifa ichi: bitta katta quti, uning ichida ikkita bo‘lim. Hozir har biri nimaga kerakligini bilib olamiz.',
+      'Вот что внутри страницы: одна большая коробка, а в ней два отделения. Сейчас узнаем, зачем каждое.',
+      'This is what is inside the page: one big box with two sections in it. Now let’s find out what each one is for.'),
     ask: L3('Hujjat ichiga qarang', 'Загляни внутрь документа', 'Look inside the document'),
     askDone: L3('Ichi ochildi — keyingi qadamda har bir qismni ko‘ramiz', 'Документ открыт — дальше разберём каждую часть', 'The document is open: next we explore each part')
   },
@@ -273,7 +273,7 @@ const C = {
       close: L3('Ochuvchi va yopuvchi teg', 'Открывающий и закрывающий тег', 'Opening and closing tag')
     },
     selfNote: L3('★ — maslahatsiz', '★ — без подсказок', '★ — without hints'),
-    again: L3('Yaxshi! Endi shunga o‘xshash misolni o‘zingiz bajaring.', 'Хорошо! Теперь похожий пример — сам.', 'Good! Now a similar example on your own.'),
+    again: L3('Klass! Endi o‘xshash misol — maslahatsiz.', 'Классно! А теперь похожий пример — уже без подсказок.', 'Great! Now a similar example, with no hints.'),
     done: L3('To‘rttala vazifa bajarildi! Siz hujjat tuzilishini tushunasiz.', 'Все четыре задачи решены! Ты разбираешься в структуре документа.', 'All four tasks are done! You understand the document structure.'),
     ask: L3('Mustaqil vazifalar', 'Самостоятельные задачи', 'Tasks on your own')
   },
@@ -285,8 +285,8 @@ const C = {
     askWrite: L3('Nom va matn yozing', 'Напиши название и текст', 'Write a name and a text'),
     showTitle: L3('Kodda ko‘rsating: yorliq nomi qayerdan keldi?', 'Покажи в коде: откуда взялось название вкладки?', 'Show in the code: where did the tab name come from?'),
     showBody: L3('Sahifa matni-chi? Uni kodda ko‘rsating.', 'А текст страницы? Покажи его в коде.', 'And the page text? Show it in the code.'),
-    foundTitle: L3('Siz title ni topdingiz va yorliq nomini o‘zgartirdingiz.', 'Ты нашёл title и изменил название вкладки.', 'You found title and changed the tab name.'),
-    foundBody: L3('Sahifa matni body ichida — buni ham o‘zingiz yozdingiz.', 'А текст страницы лежит внутри body — его ты тоже написал сам.', 'And the page text is inside body: you wrote that yourself too.'),
+    foundTitle: L3('Voy! Topildi — yorliqning yangi nomi bor!', 'Вау! Нашлось — и у вкладки новое название!', 'Wow! Found it, and the tab has a new name!'),
+    foundBody: L3('Super! Sahifa matni esa body ichida yashaydi — butun sir shu!', 'Супер! А текст страницы живёт внутри body — вот и весь секрет!', 'Super! And the page text lives inside body: that’s the whole secret!'),
     notTitle: L3('Bu yorliqqa emas. Yorliq nomi qaysi teg ichida?', 'Это не для вкладки. Внутри какого тега название вкладки?', 'That is not for the tab. Which tag holds the tab name?'),
     notBody: L3('Sahifada ko‘rinadigan matnni toping.', 'Найди текст, который виден на странице.', 'Find the text that shows on the page.'),
     bye: L3('Birinchi sahifangiz tayyor. Keyingi darsda unga sarlavha va xatboshilar qo‘shamiz!', 'Твоя первая страница готова. На следующем уроке добавим на неё заголовки и абзацы!', 'Your first page is ready. Next lesson we add headings and paragraphs to it!'),

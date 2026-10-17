@@ -10,7 +10,7 @@
 // ===== УРОК 4 · «Ссылки и атрибуты» · модуль 1 «Основы разметки» · ТЕСТ =====
 //
 // ЗАМЫСЕЛ. Коди сделал сайт школьного «Кино во дворе» из четырёх страниц, но
-// страницы не связаны: гость застревает на главной. Ученик — веб-мастер сайта:
+// страницы не связаны: гость застревает на главной. Ученик — веб-программист сайта:
 // соединяет страницы ссылками, чинит адреса и делает меню своего сайта.
 // Сценарий: docs/scenarij-04-ssylki-i-atributy.md.
 //
@@ -30,8 +30,8 @@
 //     страницу; незакрытая <a> делает ссылкой и абзац ниже; текст атрибута вне
 //     тега виден на странице.
 //   · ЦВЕТ ТЕГА a — коричневый #8A5A3C (свободный тон той же светлоты).
-//   · ОЗВУЧКА: <a> — словами («эй»), href — «эйч-реф», имя файла — «rules
-//     точка эйч-ти-эм-эль» (spokenLn поверх spokenHtml урока 2).
+//   · ОЗВУЧКА: теги — по-английски во всех языках (A, H ref), имя файла —
+//     «rules точка HTML» (spokenLn поверх spokenHtml урока 2).
 //   · АРТЕФАКТ: главная своего сайта с меню из трёх ссылок.
 //
 // ОБРАЩЕНИЕ: UZ — Siz, RU — «ты», EN — «you».
@@ -124,10 +124,10 @@ const C = {
     eyebrow: L3('Reja', 'План', 'Plan'),
     say: L3('Saytni bog‘laymiz. Uch qadam.', 'Соединяем сайт. Три шага.', 'Let’s connect the site. Three steps.'),
     steps: [
-      { icon: 'arrowR', text: L3('Havola — <a> tegi', 'Ссылка — тег <a>', 'A link is the <a> tag'),
-        say: L3('Avval havola qanday tuzilganini ko‘ramiz.', 'Сначала разберём, из чего состоит ссылка.', 'First we’ll see what a link is made of.') },
-      { icon: 'doc', text: L3('Manzil — href atributi', 'Адрес — атрибут href', 'The address is the href attribute'),
-        say: L3('Keyin havola qayerga olib borishini hal qilamiz.', 'Потом научимся решать, куда она ведёт.', 'Then we’ll decide where it leads.') },
+      { icon: 'arrowR', text: L3('Sahifani ochadigan so‘z', 'Слово, которое открывает страницу', 'A word that opens a page'),
+        say: L3('Avval oddiy so‘z qanday qilib boshqa sahifaga eshikka aylanishini bilib olamiz.', 'Сначала узнаем, как обычное слово превращается в дверь на другую страницу.', 'First we’ll find out how an ordinary word turns into a door to another page.') },
+      { icon: 'doc', text: L3('Eshik qayerga olib boradi', 'Куда ведёт дверь', 'Where the door leads'),
+        say: L3('Keyin bu eshik qayerga olib borishini o‘zimiz hal qilamiz.', 'Потом научимся сами решать, куда она ведёт.', 'Then we’ll learn to decide where it leads.') },
       { icon: 'browser', text: L3('O‘z saytingiz menyusi', 'Меню своего сайта', 'A menu for your own site'),
         say: L3('Oxirida o‘z saytingizga menyu yasaysiz.', 'А в конце сделаешь меню своего сайта.', 'And at the end you’ll make a menu for your own site.') }
     ],
@@ -330,7 +330,7 @@ const C = {
   s13: {
     eyebrow: L3('Mening saytim', 'Мой сайт', 'My site'),
     say: L3('Mana saytingizning bosh sahifasi va uning kodi. Uni saqlang.', 'Вот главная страница твоего сайта и её код. Сохрани её.', 'Here’s your site’s home page and its code. Save it.'),
-    saved: L3('Saqlandi! Saytingizda menyu bor — sahifalar bog‘langan.', 'Сохранено! На твоём сайте есть меню — страницы связаны.', 'Saved! Your site has a menu, and its pages are connected.'),
+    saved: L3('Ura, saqlandi! Saytingizda menyu bor — bu allaqachon haqiqiy sayt!', 'Ура, сохранено! У твоего сайта есть меню — это уже настоящий сайт!', 'Hooray, saved! Your site has a menu: it’s a real site now!'),
     ask: L3('Saytni saqlang', 'Сохрани сайт', 'Save the site')
   },
 
@@ -357,13 +357,14 @@ const C = {
 // ═════════════════════════════════════════════════════════════════════════════
 TAGC.a = '#8A5A3C';
 TAGC.ul = '#2F6FB0'; TAGC.ol = '#2F6FB0'; TAGC.li = '#2F6FB0';
-Object.assign(TAG_SAY.ru, { a: 'эй', href: 'эйч-реф', ul: 'ю-эль', ol: 'о-эль', li: 'эль-ай', dot: 'точка', aWith: 'тег эй с адресом' });
-Object.assign(TAG_SAY.uz, { a: 'ey', href: 'eych-ref', ul: 'yu-el', ol: 'o-el', li: 'el-ay', dot: 'nuqta', aWith: 'ey tegi, manzili' });
+// Теги вслух — по-английски во всех языках (заказчик, 17.10.2026).
+Object.assign(TAG_SAY.ru, { a: 'A', href: 'H ref', ul: 'U L', ol: 'O L', li: 'L I', dot: 'точка', aWith: 'тег A с адресом' });
+Object.assign(TAG_SAY.uz, { a: 'A', href: 'H ref', ul: 'U L', ol: 'O L', li: 'L I', dot: 'nuqta', aWith: 'A tegi, manzili' });
 Object.assign(TAG_SAY.en, { a: 'A', href: 'H ref', ul: 'U L', ol: 'O L', li: 'L I', dot: 'dot', aWith: 'an A tag with the address' });
 Object.assign(SPOKEN, { nothing: 1, okLink: 1, found: 1, right: 1, miss: 1, asText: 1, inClose: 1, noExt: 1, typo: 1, hint3: 1,
   quotes: 1, msgs: 1, cases: 1, rounds: 1, used: 1, mismatch: 1 });
 Object.assign(NOT_SPOKEN_IN, { cases: { goal: 1 }, rounds: { ask: 1, link: 1, bad: 1 } });
-// Озвучка: теги a, ul, ol, li — словами; href — словом; имя файла — «rules точка эйч-ти-эм-эль».
+// Озвучка: теги a, ul, ol, li, href — по-английски; имя файла — «rules точка HTML».
 function spokenLn(text, lang) {
   const m = TAG_SAY[lang] || TAG_SAY.ru;
   const s = String(text || '')

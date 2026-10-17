@@ -108,12 +108,12 @@ const UI = {
 const C = {
   s1: {
     eyebrow: L3('Bitta sahifa', 'Одна страница', 'One page'),
-    say: L3('Sahifaning yorliqda nomi va ichida matni bor. Bugun o‘zingiznikini yasaysiz.',
-      'У страницы есть название на вкладке и текст внутри. Сегодня ты сделаешь свою.',
-      'A page has a name on the tab and text inside. Today you will make your own.'),
-    done: L3('Siz sahifani o‘zgartirdingiz. Endi bu qanday ishlashini bilib olamiz.',
-      'Ты уже изменил страницу. Теперь узнаем, как это работает.',
-      'You have already changed the page. Now let us find out how it works.'),
+    say: L3('Internetdagi har bir sahifada — yorliqda nom va ichida matn. Ular bilan o‘ynab ko‘ring: dars oxirida o‘z sahifangizni noldan yasaysiz.',
+      'У любой страницы в интернете есть название на вкладке и текст внутри. Поиграй с ними — а к концу урока сделаешь свою страницу с нуля.',
+      'Every page on the internet has a name on the tab and text inside. Play with them, and by the end of the lesson you’ll make your own page from scratch.'),
+    done: L3('Sahifa allaqachon o‘zgardi! Endi bu ichkaridan qanday ishlashini bilib olamiz.',
+      'Страница уже поменялась! Теперь узнаем, как это работает изнутри.',
+      'The page has already changed! Now let’s find out how it works from the inside.'),
     titles: [L3('Mening saytim', 'Мой сайт', 'My site'), L3('Kosmos', 'Космос', 'Space'), L3('Mushuklar', 'Котики', 'Cats')],
     texts: [L3('Salom, dunyo!', 'Привет, мир!', 'Hello, world!'), L3('Men HTML o‘rganyapman.', 'Я учу HTML.', 'I am learning HTML.'), L3('Xush kelibsiz!', 'Добро пожаловать!', 'Welcome!')],
     ask: L3('Nima o‘zgartiramiz?', 'Что поменяем?', 'What shall we change?'),
@@ -297,7 +297,7 @@ const C = {
     h2b: L3('Sahifa matni — body ichida.', 'Текст страницы находится внутри body.', 'The page text is inside body.'),
     h3b: L3('<body> va </body> orasidagi matnni bosing.', 'Нажми на текст между <body> и </body>.', 'Tap the text between <body> and </body>.'),
     ok: L3('Bajarildi, qolgani o‘zgarmadi.', 'Готово, остальное не изменилось.', 'Done, and the rest did not change.'),
-    again: L3('Yaxshi. Endi shunga o‘xshash yangi misol.', 'Хорошо. Теперь похожий новый пример.', 'Good. Now a similar new example.'),
+    again: L3('Super! Endi o‘xshash yangi misol.', 'Супер! А теперь похожий новый пример.', 'Super! Now a similar new example.'),
     done: L3('Ikkala buyurtma bajarildi.', 'Оба заказа выполнены.', 'Both orders are done.'),
     ask: L3('Kerakli matnni toping va o‘zgartiring', 'Найди нужный текст и измени его', 'Find the right text and change it')
   },

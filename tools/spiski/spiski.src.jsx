@@ -99,7 +99,7 @@ const C = {
 
   s2: {
     eyebrow: L3('Reja', 'План', 'Plan'),
-    say: L3('Bugun ro‘yxatlar qilamiz. Uch qadam.', 'Сегодня делаем списки. Три шага.', 'Today we make lists. Three steps.'),
+    say: L3('Bugun hammasi bir soniyada topiladigan ro‘yxatlar qilishni o‘rganasiz. Uch qadam.', 'Сегодня научишься делать списки, в которых всё находится за секунду. Три шага.', 'Today you’ll learn to make lists where everything is found in a second. Three steps.'),
     steps: [
       { icon: 'list', text: L3('Nuqtali ro‘yxat', 'Список с точками', 'Bulleted list'),
         say: L3('Avval nuqtali ro‘yxat: tartib muhim bo‘lmaganda.', 'Сначала список с точками — когда порядок не важен.', 'First a bulleted list, for when order does not matter.') },
@@ -263,7 +263,7 @@ const C = {
     ],
     ph: [L3('Jadval', 'Расписание', 'Schedule'), L3('Masalan: Ochilish', 'Например: Открытие', 'For example: Opening'), L3('Masalan: Birinchi o‘yin', 'Например: Первый матч', 'For example: First match')],
     noTags: L3('Bu yerga faqat so‘zlar.', 'Здесь только слова.', 'Only words here.'),
-    added: L3('Yaxshi! Davom etamiz.', 'Хорошо! Дальше.', 'Good! Next.'),
+    added: L3('Ana! Davom etamiz.', 'Есть! Дальше.', 'Yes! Next.'),
     done: L3('Bo‘lim tayyor: sarlavha va raqamli ro‘yxat.', 'Раздел готов: заголовок и список с номерами.', 'The section is ready: a heading and a numbered list.')
   },
 
@@ -291,7 +291,7 @@ const C = {
   s15: {
     eyebrow: L3('Mening sahifam', 'Моя страница', 'My page'),
     say: L3('Mana sizning sahifangiz! Uni saqlang.', 'Вот твоя страница! Сохрани её.', 'Here is your page! Save it.'),
-    saved: L3('Saqlandi! Ro‘yxatli birinchi sahifangiz.', 'Сохранено! Твоя первая страница со списком.', 'Saved! Your first page with a list.'),
+    saved: L3('Ura, saqlandi! Ro‘yxatli birinchi sahifangiz — zo‘r!', 'Ура, сохранено! Твоя первая страница со списком — огонь!', 'Hooray, saved! Your first page with a list is awesome!'),
     ask: L3('Sahifani saqlang', 'Сохрани страницу', 'Save the page')
   },
 
@@ -317,8 +317,9 @@ const C = {
 // body), li — оливковый. Оранжевый, жёлтый и зелёный теги не красят.
 TAGC.ul = '#2F6FB0'; TAGC.ol = '#2F6FB0'; TAGC.li = '#5B7F2A';
 // Произношение новых тегов.
-Object.assign(TAG_SAY.ru, { ul: 'ю-эль', ol: 'о-эль', li: 'эль-ай' });
-Object.assign(TAG_SAY.uz, { ul: 'yu-el', ol: 'o-el', li: 'el-ay' });
+// Теги вслух — по-английски во всех языках (заказчик, 17.10.2026).
+Object.assign(TAG_SAY.ru, { ul: 'U L', ol: 'O L', li: 'L I' });
+Object.assign(TAG_SAY.uz, { ul: 'U L', ol: 'O L', li: 'L I' });
 Object.assign(TAG_SAY.en, { ul: 'U L', ol: 'O L', li: 'L I' });
 // Ключи реплик урока 3, которых не было в уроке 2 (для прогрева озвучки).
 Object.assign(SPOKEN, { each: 1, outOfOrder: 1, toUl: 1, toOl: 1, right: 1, miss: 1, notDigit: 1, okOl: 1, okUl: 1,

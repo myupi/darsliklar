@@ -175,7 +175,7 @@ const C = {
       L3('Qator band tegi bilan boshlanadi.', 'Строка начинается с тега пункта.', 'The line starts with the item tag.'),
       L3('Keyingi bo‘lak — {x}.', 'Следующая деталь — {x}.', 'The next piece is {x}.')
     ],
-    praise: L3('Tayyor! Yangi band darhol nuqtasini oldi.', 'Готово! Новый пункт сразу получил точку.', 'Done! The new item got its bullet right away.'),
+    praise: L3('Voy! Yangi band darhol nuqtasini oldi!', 'Вау! Новый пункт сразу получил точку!', 'Wow! The new item got its bullet right away!'),
     more: L3('Yana bittasi — xarita bilan. Endi o‘zingiz.', 'Ещё одна строка — с картой. Теперь сам.', 'One more line, with a map. Now on your own.'),
     why: L3('Band shunday yoziladi: <li>, matn, </li>.', 'Пункт пишется так: <li>, текст, </li>.', 'An item is written like this: <li>, text, </li>.')
   },
@@ -375,7 +375,7 @@ const C = {
   s15: {
     eyebrow: L3('Mening bo‘limim', 'Мой раздел', 'My section'),
     say: L3('Mana qo‘llanmadagi bo‘limingiz va uning kodi. Uni saqlang.', 'Вот твой раздел гайда и его код. Сохрани его.', 'Here’s your guide section and its code. Save it.'),
-    saved: L3('Saqlandi! Bo‘limingiz o‘yinchilar uchun tayyor.', 'Сохранено! Твой раздел готов для игроков.', 'Saved! Your section is ready for the players.'),
+    saved: L3('Ura, saqlandi! O‘yinchilar bo‘limingizdan xursand bo‘ladi!', 'Ура, сохранено! Игроки будут в восторге от твоего раздела!', 'Hooray, saved! The players will love your section!'),
     ask: L3('Bo‘limni saqlang', 'Сохрани раздел', 'Save the section')
   },
 
@@ -403,8 +403,9 @@ const C = {
 // Цвет списков — один на семейство (как h1–h6 в уроке 2): ul, ol и li — стальной
 // синий той же светлоты. Зелёный тегам не даём — он значит «верно».
 TAGC.ul = '#2F6FB0'; TAGC.ol = '#2F6FB0'; TAGC.li = '#2F6FB0';
-Object.assign(TAG_SAY.ru, { ul: 'ю-эль', ol: 'о-эль', li: 'эль-ай' });
-Object.assign(TAG_SAY.uz, { ul: 'yu-el', ol: 'o-el', li: 'el-ay' });
+// Теги вслух — по-английски во всех языках (заказчик, 17.10.2026).
+Object.assign(TAG_SAY.ru, { ul: 'U L', ol: 'O L', li: 'L I' });
+Object.assign(TAG_SAY.uz, { ul: 'U L', ol: 'O L', li: 'L I' });
 Object.assign(TAG_SAY.en, { ul: 'U L', ol: 'O L', li: 'L I' });
 // Ключи реплик урока 3, которых нет в уроке 2 (для прогрева озвучки).
 Object.assign(SPOKEN, { each: 1, early: 1, late: 1, openFirst: 1, closeFirst: 1, right: 1, miss: 1, wrap: 1, okOl: 1, okUl: 1,

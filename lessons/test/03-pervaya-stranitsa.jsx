@@ -106,25 +106,25 @@ const T = {
 // голова-шлем из матового винила, тёмный стеклянный экран-лицо в медной рамке,
 // на экране светятся пиксельные глаза и рот, по бокам медные уши-вставки.
 // Тёмно-синий вязаный свитер с надписью JUNIOR IT · AKADEMIYA, кремовые
-// руки-варежки и короткие ноги.
+// руки-варежки и короткие ноги — так на листе; в уроках с v4 видна только
+// голова, а тёмно-синий цвет свитера остался у кружка вокруг неё.
 //
-// РИСУНОК v3 (15.10.2026) — по референсам заказчика (модельный лист, 13 поз,
-// лист лица, «разобранный» Коди); размеры сняты с картинок по пикселям.
-//   · шлем широкий и приземистый, медная рамка экрана почти во весь шлем;
-//   · глаза — круглые светящиеся точки, рот — тонкая дуга; в радости рот-
-//     полукруг, в восторге — пятиконечные звёзды;
-//   · уши — медные вставки в боках шлема вровень с силуэтом (на референсе они
-//     торчат — там же это отмечено как ошибка; заказчик просил без выпирания);
-//   · шеи нет: голова стоит прямо на вороте свитера (заказчик, 15.10.2026);
-//     свитер с округлыми плечами — рукав растёт из плеча; крупные варежки;
-//   · ноги-столбики с зазором и массивные тёмно-синие кеды с кремовой подошвой.
-// Углы рук в «rule» и «wonder» шире общей системы поз (KODI_POSE) — как на
-// референсе.
+// РИСУНОК v4 (17.10.2026, заказчик): ОСТАЛАСЬ ТОЛЬКО ГОЛОВА В КРУГЕ. Тело,
+// руки и ноги убраны, чтобы место занимал контент, а не робот. Голова v3
+// (широкий шлем, медная рамка экрана почти во весь шлем, глаза-точки, рот-
+// дуга, уши-вставки вровень с силуэтом) стоит в белом кружке. Пока Коди
+// говорит, вокруг кружка бегут хаотичные оранжевые волны, как у Алисы и Siri
+// (KodiWaves в hero-tail). Ученик ничего не делает — лицо само меняет
+// выражение (useKodiMood). Место: на телефоне — в шапке у подсказки, на
+// планшете и компьютере — справа снизу над нижней панелью (build-canon.mjs,
+// swapKodiHead).
+// Тот же кружок с головой — и в шапке экрана, когда урок ставит Stage voiceTop.
+// Прежний рисунок с телом (v3) — в истории гита.
 //
 // РИСУЕТСЯ КОДОМ, как робот Курса 0: урок автономен, поза меняется параметром,
-// цвета лежат здесь. Система движения (позы, такты, тайминги) — та же, что у
-// робота Курса 0, дословно: CSS канона двигает героя по классам узлов, а не по
-// рисунку. Каждый подвижный узел — пара pose + beat.
+// цвета лежат здесь. Позы — та же система канона, но у головы в круге они
+// меняют только лицо: форму и размер глаз, взгляд, веки, рот, румянец и цвет
+// свечения экрана. Голова не качается и не прыгает: эмоцию показывает лицо.
 //
 // ЖИЗНЬ ЛИЦА — собственный слой Коди (KODI_CSS) поверх системы движения:
 //   · взгляд — глаза иногда переводятся в сторону и возвращаются;
@@ -371,11 +371,49 @@ const KODI_GLOW = {
   [BOT_DIM]:  '#7E8A99'    // грусть, выключен — серый
 };
 
-// ЖИЗНЬ ЛИЦА — собственный слой Коди поверх системы движения канона.
+// ─────────────────────────────────────────────────────────────────────────────
+// КОДИ v4 — ТОЛЬКО ГОЛОВА В КРУГЕ (заказчик, 17.10.2026)
+//
+// «Пусть у Коди остаётся только голова, все эмоции показывает лицо. Голову —
+// внутрь кружка, а вокруг кружка, пока он говорит, — волны, как у Алисы и
+// Siri, всегда хаотичные. Больше места — контенту, а не роботу».
+//   · тела, рук и ног больше нет: строка героя в уроке стала ниже вдвое;
+//   · эмоция — только лицо: глаза (точки, дуги, звёзды, кольца), веки, рот,
+//     румянец и цвет свечения экрана берутся из той же системы поз канона;
+//     голова в круге не качается и не прыгает;
+//   · кружок — белый (заказчик, 17.10.2026: «фон головы — белый»); голова
+//     занимает 90%;
+//   · волны голоса — три полупрозрачных оранжевых контура за кружком, цвет
+//     интерфейса курса (заказчик: «волны — оранжевые, как основной цвет»). Пока
+//     звучит голос, их форма, размах и вращение меняются случайно, «по
+//     слогам» (KodiWaves); замолчал — волны прячутся за кружок;
+//   · не стоит без дела (заказчик: «не как АФК»): если ученик ничего не
+//     делает, а Коди молчит, лицо само меняет выражение — улыбается,
+//     задумывается, оглядывается, удивляется, а потом задрёмывает (useKodiMood).
+//     Голоса при этом нет.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ЖИЗНЬ ЛИЦА — собственный слой Коди поверх системы поз канона.
 // Классы состояний (eyes-*, loop-*, is-talking, no-blink) ставит RobotSVG,
 // поэтому слой знает, что сейчас чувствует герой, не спрашивая экран.
 // Все циклы медленнее 3 Гц; пауза урока и «меньше движения» их останавливают.
 const KODI_CSS = `
+.kodi-av { position: relative; display: block; width: 100%; aspect-ratio: 1 / 1; }
+.kodi-disc { position: absolute; inset: 0; border-radius: 50%; overflow: hidden;
+  background: radial-gradient(circle at 50% 28%, #FFFFFF 0%, #FFFFFF 58%, #F3F0EA 100%);
+  box-shadow: inset 0 0 0 1.5px rgba(28,36,51,.08), 0 8px 18px -10px rgba(28,36,51,.45); }
+.kodi-disc > .bot { position: absolute; inset: 0; display: block; width: 100%; height: 100%; overflow: visible; }
+/* Волны голоса: за кружком, шире его на треть с каждой стороны. */
+.kodi-waves { position: absolute; left: -30%; top: -30%; width: 160%; height: 160%;
+  overflow: visible; pointer-events: none; }
+.kodi-wave { opacity: .34; }
+.kodi-wave-2 { opacity: .42; }
+.kodi-wave-3 { opacity: .5; }
+/* Тонкое оранжевое кольцо — пока звучит голос, и при «меньше движения»
+   оно одно показывает, что Коди говорит. */
+.kodi-ring { fill: none; stroke: #FF4F28; stroke-width: 2.2; opacity: 0; transition: opacity .3s ease; }
+.kodi-av.is-talking .kodi-ring { opacity: .7; }
+
 .kodi .kodi-gaze { animation: kodiGaze 7.2s cubic-bezier(.3,0,.2,1) infinite; }
 @keyframes kodiGaze {
   0%, 34% { transform: translate(0, 0); }
@@ -419,36 +457,8 @@ const KODI_CSS = `
   88%, 100% { transform: translateX(200px); }
 }
 
-/* ОПОРА НА НОГИ. Система движения канона наклоняет корпус целиком, вокруг
-   нижней точки фигуры: робот Курса 0 парит, и крен в 24° («любопытство»)
-   читается у него как наклон. Коди стоит на ногах — тот же крен валит его
-   набок вместе с ногами, будто он падает. Поэтому у Коди наклон позы
-   (--bodyRot) берёт только верх — свитер, голову и руки — и идёт от пояса,
-   а ноги стоят. Сдвиги и сжатия позы (прыжок, оседание) по-прежнему двигают
-   героя целиком. Крен смягчён: от пояса тот же угол выглядел бы поклоном. */
-.bot.kodi .bot-pose-body {
-  transform: translate(var(--bodyX), var(--bodyY)) scale(var(--bodySX), var(--bodySY)); }
-.bot.kodi .kodi-torso { transform-box: view-box; transform-origin: 210px 288px;
-  transform: rotate(calc(var(--bodyRot) * .55));
-  transition: transform var(--dur) var(--ease); }
-
-/* ПЛЕЧО — ТОЧКА ВРАЩЕНИЯ РУКИ. Канон задаёт её процентами рамки фигуры
-   (50% 7%). У группы такта, вложенной в уже повёрнутую руку, браузер считает
-   эти проценты не от плеча: в «привет» рука махала вокруг кисти, а плечо
-   ездило. Поэтому у Коди точка вращения обеих групп руки — центр плечевого
-   шарнира в координатах рисунка. */
-.bot.kodi .bot-pose-arm-l, .bot.kodi .bot-beat-arm-l { transform-box: view-box; transform-origin: 127px 222px; }
-.bot.kodi .bot-pose-arm-r, .bot.kodi .bot-beat-arm-r { transform-box: view-box; transform-origin: 293px 222px; }
-/* Сдвиги рук в позах канона (armLX/armRX до 44 px) подбирались под
-   прежнюю точку вращения и уводили плечо на грудь — в «point» рука росла из
-   середины свитера. У Коди рука вращается ровно вокруг плеча, поэтому из позы
-   берётся только поворот: кисти и так приходят куда нужно (к подбородку в
-   «думаю», вместе под лицом в «улыбке», крест-накрест в «смущении»). */
-.bot.kodi .bot-pose-arm-l { transform: rotate(var(--armLR)); }
-.bot.kodi .bot-pose-arm-r { transform: rotate(var(--armRR)); }
-
-.speaker-av .kodi { transition: transform .22s cubic-bezier(.34,1.56,.64,1); }
-.speaker-av:active .kodi { transform: scale(.93, .9); }
+.speaker-av .kodi-av { transition: transform .22s cubic-bezier(.34,1.56,.64,1); }
+.speaker-av:active .kodi-av { transform: scale(.93); }
 
 @media (prefers-reduced-motion: reduce) {
   .kodi .kodi-gaze, .kodi .kodi-blink, .kodi .kodi-glare,
@@ -458,48 +468,194 @@ const KODI_CSS = `
 `;
 
 // Градиенты и обтравка объявляются внутри каждого экземпляра, поэтому им нужны
-// разные имена: на экране бывает два героя сразу (маленький в шапке и крупный
-// на прощании), и одинаковые id склеили бы их.
+// разные имена: на экране бывает два Коди сразу (в строке героя и в шапке).
 let _botUid = 0;
+
+// ВОЛНЫ ГОЛОСА — как у Алисы и Siri, всегда хаотичные. Три оранжевых контура вокруг
+// кружка: радиус каждого — сумма трёх синусоид с разным числом горбов. Пока
+// звучит голос, через случайные 90–320 мс («слог») меняются громкость, вес и
+// число горбов синусоид и направление их бега; слои ещё и вращаются с разной
+// скоростью — рисунок не повторяется. Замолчал — волны плавно уходят за кружок
+// и цикл засыпает. Атрибуты пишутся прямо в узлы, React кадры не
+// перерисовывает. «Меньше движения» — волн нет, о голосе говорит кольцо.
+const kodiCalm = () => typeof window !== 'undefined' && !!window.matchMedia
+  && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+// amp — множитель размаха: у маленького кружка в шапке телефона волны крупнее,
+// иначе их не разглядеть.
+function KodiWaves({ on, amp = 1 }) {
+  const ref = useRef(null);
+  const onRef = useRef(on);
+  onRef.current = on;
+  const ampRef = useRef(amp);
+  ampRef.current = amp;
+  const kick = useRef(() => {});
+  useEffect(() => {
+    const svg = ref.current;
+    if (!svg) return undefined;
+    const R = 50, N = 36, TAU = Math.PI * 2;
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    const layers = Array.prototype.slice.call(svg.querySelectorAll('.kodi-wave')).map((p, i) => ({
+      p, rot: rnd(0, TAU), spin: rnd(-0.6, 0.6), gain: [1, 0.86, 0.94][i] || 0.8,
+      comps: [0, 1, 2].map(() => ({ k: 2 + Math.floor(rnd(0, 5)), ph: rnd(0, TAU),
+        sp: rnd(0.8, 2.6) * (Math.random() < 0.5 ? -1 : 1), a: 0, at: rnd(0.3, 1) }))
+    }));
+    const f1 = (v) => v.toFixed(1);
+    const draw = (l, amp) => {
+      const pts = [];
+      for (let j = 0; j < N; j += 1) {
+        const t = (j / N) * TAU;
+        let sum = 0, w = 0;
+        l.comps.forEach((c) => { sum += c.a * Math.sin(c.k * t + c.ph); w += c.a; });
+        const f = w > 0.001 ? 0.5 + 0.5 * (sum / w) : 0.5;
+        const r = R - 1 + amp * (0.15 + 0.85 * f);
+        pts.push([r * Math.cos(t + l.rot), r * Math.sin(t + l.rot)]);
+      }
+      let d = 'M' + f1(pts[0][0]) + ' ' + f1(pts[0][1]);
+      for (let j = 0; j < N; j += 1) {
+        const p0 = pts[(j + N - 1) % N], p1 = pts[j], p2 = pts[(j + 1) % N], p3 = pts[(j + 2) % N];
+        d += 'C' + f1(p1[0] + (p2[0] - p0[0]) / 6) + ' ' + f1(p1[1] + (p2[1] - p0[1]) / 6) + ' '
+          + f1(p2[0] - (p3[0] - p1[0]) / 6) + ' ' + f1(p2[1] - (p3[1] - p1[1]) / 6) + ' ' + f1(p2[0]) + ' ' + f1(p2[1]);
+      }
+      l.p.setAttribute('d', d + 'Z');
+    };
+    let energy = 0, target = 0, nextAt = 0, last = 0, raf = 0;
+    const tick = (now) => {
+      const dt = last ? Math.min(0.05, (now - last) / 1000) : 1 / 60;
+      last = now;
+      const talking = !!onRef.current;
+      if (now >= nextAt) {
+        target = talking ? rnd(0.3, 1) : 0;
+        nextAt = now + rnd(90, 320);
+        layers.forEach((l) => l.comps.forEach((c) => {
+          c.at = rnd(0.15, 1);
+          if (Math.random() < 0.3) c.k = 2 + Math.floor(rnd(0, 5));
+          if (Math.random() < 0.2) c.sp = -c.sp;
+        }));
+      }
+      energy += (target - energy) * (1 - Math.exp(-dt / (target > energy ? 0.07 : 0.22)));
+      // Кружок спрятан (голос в шапке, клавиатура) — считаем, но не рисуем.
+      const shown = svg.getClientRects().length > 0;
+      layers.forEach((l) => {
+        l.rot += l.spin * dt * (0.4 + 1.6 * energy);
+        l.comps.forEach((c) => { c.ph += c.sp * dt * (0.6 + 2.4 * energy); c.a += (c.at - c.a) * (1 - Math.exp(-dt / 0.16)); });
+        if (shown) draw(l, 26 * ampRef.current * energy * l.gain);
+      });
+      if (!talking && energy < 0.004) { raf = 0; last = 0; layers.forEach((l) => draw(l, 0)); return; }
+      raf = requestAnimationFrame(tick);
+    };
+    const start = () => { if (!raf && !kodiCalm()) { last = 0; raf = requestAnimationFrame(tick); } };
+    kick.current = start;
+    layers.forEach((l) => draw(l, 0));
+    start();
+    return () => { cancelAnimationFrame(raf); raf = 0; kick.current = () => {}; };
+  }, []);
+  useEffect(() => { if (on) kick.current(); }, [on]);
+  return (
+    <svg ref={ref} className="kodi-waves" viewBox="-80 -80 160 160" aria-hidden="true" focusable="false">
+      <path className="kodi-wave kodi-wave-1" fill="#FFB08F" />
+      <path className="kodi-wave kodi-wave-2" fill="#FF8A65" />
+      <path className="kodi-wave kodi-wave-3" fill="#FF4F28" />
+      <circle className="kodi-ring" cx="0" cy="0" r="51.5" />
+    </svg>
+  );
+}
+
+// ЖИВОЙ, КОГДА УЧЕНИК НИЧЕГО НЕ ДЕЛАЕТ (заказчик, 17.10.2026): «пусть не стоит
+// как АФК — проявляет эмоции, но не говорит, это показывает лицо». Через 5 с
+// без касаний, пока Коди молчит, лицо само меняет выражение: подержал 2–3 с —
+// вернулся к обычному — через 1,5–3 с следующее (не то же, что было). Через
+// 30 с без касаний Коди задрёмывает (веки опускаются), а касание его будит —
+// на миг «ого!». Любое касание, клавиша или ввод сразу возвращает лицо реплики.
+// Отсчёт касаний общий на урок; позы — те же, что у реплик, но только лицо.
+const KODI_IDLE_MS = 5000;
+const KODI_SLEEPY_MS = 30000;
+const KODI_MOODS = [
+  { pose: 'smile', w: 3 },
+  { pose: 'curious', w: 3 },
+  { pose: 'explain', vars: { eyeX: -9, eyeY: 1 }, w: 3 },     // оглядывается влево
+  { pose: 'explain', vars: { eyeX: 9, eyeY: -3 }, w: 3 },     // и вправо-вверх
+  { pose: 'think', w: 2 },
+  { pose: 'wonder', w: 1 },
+  { pose: 'shy', w: 1 }
+];
+// Дрёма — глаза полуприкрыты, но видны (веко на 22 закрывало их целиком).
+const KODI_DROWSY = { pose: 'rule', vars: { lidY: 10, eyeSY: 0.72, glow: 0.45 }, sleepy: true };
+const KODI_WAKE = { pose: 'wonder' };
+const _kodiAct = { t: Date.now(), subs: new Set(), on: false };
+function kodiActInit() {
+  if (_kodiAct.on || typeof window === 'undefined') return;
+  _kodiAct.on = true;
+  const f = () => { _kodiAct.t = Date.now(); _kodiAct.subs.forEach((g) => g()); };
+  ['pointerdown', 'keydown', 'input', 'wheel'].forEach((e) => window.addEventListener(e, f, true));
+}
+function useKodiMood(talking) {
+  const [mood, setMood] = useState(null);
+  useEffect(() => {
+    kodiActInit();
+    if (talking) { setMood(null); return undefined; }
+    const quietFrom = Date.now();
+    let t = null;
+    let last = -1;
+    let cur = null;
+    const show = (m) => { cur = m; setMood(m); };
+    const pickMood = () => {
+      const total = KODI_MOODS.reduce((a, m, i) => a + (i === last ? 0 : m.w), 0);
+      let r = Math.random() * total;
+      for (let i = 0; i < KODI_MOODS.length; i += 1) {
+        if (i === last) continue;
+        r -= KODI_MOODS[i].w;
+        if (r <= 0) { last = i; return KODI_MOODS[i]; }
+      }
+      last = 0;
+      return KODI_MOODS[0];
+    };
+    const tick = () => {
+      const idle = Date.now() - Math.max(_kodiAct.t, quietFrom);
+      if (idle < KODI_IDLE_MS) { show(null); t = setTimeout(tick, KODI_IDLE_MS - idle + 50); return; }
+      if (idle >= KODI_SLEEPY_MS) { show(KODI_DROWSY); t = setTimeout(tick, 3000); return; }
+      if (cur) { show(null); t = setTimeout(tick, 1500 + Math.random() * 1500); return; }
+      show(pickMood());
+      t = setTimeout(tick, 2200 + Math.random() * 1200);
+    };
+    const wake = () => {
+      clearTimeout(t);
+      if (cur && cur.sleepy) { show(KODI_WAKE); t = setTimeout(tick, 900); return; }
+      show(null);
+      t = setTimeout(tick, KODI_IDLE_MS + 50);
+    };
+    _kodiAct.subs.add(wake);
+    t = setTimeout(tick, KODI_IDLE_MS + 50);
+    return () => { clearTimeout(t); _kodiAct.subs.delete(wake); };
+  }, [talking]);
+  return talking ? null : mood;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // КОДИ. Имя компонента RobotSVG оставлено каноническим: его зовут
-// PersonaBubble, прощание и типовые экраны, и замена героя не трогает их код.
+// PersonaBubble, голос в шапке, прощание и типовые экраны.
 //
-// Рамка та же, что у робота Курса 0 (viewBox 20 -70 380 520): её поля посчитаны
-// по крайним точкам движения, и Коди укладывается в те же габариты.
-//
-// ПРОПОРЦИИ (v3, по референсам заказчика 15.10.2026: модельный лист и
-// «разобранный» Коди, размеры сняты с картинок по пикселям). Рост от макушки до
-// подошвы 366: шлем 204 × 153 (~42% роста, широкий и приземистый), шея, свитер
-// 98 (подол y 284), ноги-столбики 51 с зазором 12, кеды 74 × 37. Медная рамка экрана — почти во весь шлем. Уши — вставки вровень
-// с силуэтом (на референсе они торчат, это отмечено там же как ошибка).
-// Ось симметрии x = 210; пояс (ось наклона торса) y = 288; плечевые шарниры
-// (127, 222) и (293, 222) — точки вращения рук в KODI_CSS.
+// Рисунок головы — тот же, что у Коди v3 (шлем 204 × 153, медная рамка, экран-
+// лицо, уши-вставки; ось x = 210, центр шлема y = 100.5). Рамка головы —
+// квадрат 227 вокруг центра шлема: шлем занимает 90% кружка.
+// Позы канона двигают здесь только лицо: взгляд и размер глаз (eyeX/eyeY/
+// eyeSX/eyeSY), веки, румянец, свечение и его цвет, форму глаз и рта.
+// Корпус, руки и голова больше не двигаются — их нет.
 //
 // Внутри рисунка нет атрибутов transform у групп и фигур с масштабом или
-// отражением: канон ставит узлам героя transform-box: fill-box, и такие
-// трансформации считались бы от края фигуры. Поэтому правая рука и правая нога
-// не зеркалятся атрибутом, а получают отражённые координаты (mirror ниже).
-//
-// РУКА — ТРУБА ОТ ПЛЕЧА. Рука нарисована строго вертикально, плечевой шарнир —
-// круг наверху: при любом повороте (до ±158° в позах) рукав остаётся рукавом.
+// отражением: канон ставит узлам героя transform-box: fill-box.
 // ─────────────────────────────────────────────────────────────────────────────
-
-// Углы рук, которые у Коди отличаются от общей системы поз: на референсах
-// «объясняю правило» и «ого!» руки разведены заметно шире.
 const LID_LIFT = 12;
-const KODI_POSE = {
-  rule: { armLR: 46, armRR: -46 },
-  wonder: { armLR: 52, armRR: -52 }
-};
 
-function RobotSVG({ pose = 'explain', className, talking }) {
-  const key = POSE_SET[pose] ? pose : 'explain';
+function RobotSVG({ pose = 'explain', className, talking, waveAmp }) {
+  const audio = useAudio();
+  const isTalking = talking !== undefined ? !!talking : !!(audio && audio.playing);
+  // Ученик ничего не делает — лицо живёт само (useKodiMood), без голоса.
+  const mood = useKodiMood(isTalking);
+  const key = mood ? mood.pose : (POSE_SET[pose] ? pose : 'explain');
   const S = POSE_SET[key];
   const uid = useMemo(() => { _botUid += 1; return 'bot' + _botUid; }, []);
 
-  const P = Object.assign({}, S.pose, KODI_POSE[key] || {});
+  const P = Object.assign({}, S.pose, mood && mood.vars);
   // Веки Коди висят на 12 выше глаз, чтобы их край не срезал свечение глаз в
   // покое; опущенное веко проходит на те же 12 дальше — выражение не меняется.
   if (P.lidY > 0) P.lidY += LID_LIFT;
@@ -509,109 +665,11 @@ function RobotSVG({ pose = 'explain', className, talking }) {
 
   const cls = ['bot', 'kodi', 'eyes-' + S.eyes, S.loop];
   if (S.noBlink) cls.push('no-blink');
-  if (talking) cls.push('is-talking');
-  if (className) cls.push(className);
+  if (isTalking) cls.push('is-talking');
 
   const u = (id) => `url(#${uid}${id})`;
-  const Spark = ({ x, y, s, d }) => (
-    <g transform={`translate(${x} ${y}) scale(${s})`}>
-      <path className="spark" style={d ? { animationDelay: d + 'ms' } : undefined}
-        fill="var(--accent)"
-        d="M0 -25 C3 -8 8 -3 25 0 C8 3 3 8 0 25 C-3 8 -8 3 -25 0 C-8 -3 -3 -8 0 -25 Z" />
-    </g>
-  );
-
-  // Отражение через ось x = 210: правая половина — те же фигуры, что левая.
-  const MX = 420;
-  const mx = (x) => +(MX - x).toFixed(2);
-  const mirrorPath = (d) => {
-    let cmd = '';
-    let i = 0;
-    return d.replace(/[A-Za-z]|-?\d*\.?\d+/g, (t) => {
-      if (/[A-Za-z]/.test(t)) { cmd = t.toUpperCase(); i = 0; return t; }
-      const flip = cmd === 'H' || (cmd !== 'V' && i % 2 === 0);
-      i += 1;
-      return flip ? String(mx(parseFloat(t))) : t;
-    });
-  };
-
-  // Рука: шарнир, рукав-труба с вязаной манжетой, крупная варежка с большим
-  // пальцем к телу.
-  const ARM_L = {
-    cap: [127, 222, 17],
-    sleeve: 'M110 222 C110 212 118 205 127 205 C136 205 144 212 144 222 L144 274 C144 282 136 287 127 287 C118 287 110 282 110 274 Z',
-    shade: 'M138 210 C142 214 144 218 144 224 L144 272 C144 278 141 283 136 285',
-    cuff: { x: 108, y: 268, w: 38, h: 15 },
-    hand: [127, 298, 21, 23],
-    thumb: [146, 290, 8, 11],
-    seam: 'M111 292 Q125 300 139 293',
-    shine: [118, 291, 6, 8]
-  };
-  const ARM_R = {
-    cap: [mx(ARM_L.cap[0]), ARM_L.cap[1], ARM_L.cap[2]],
-    sleeve: mirrorPath(ARM_L.sleeve),
-    shade: mirrorPath(ARM_L.shade),
-    cuff: { x: mx(ARM_L.cuff.x) - ARM_L.cuff.w, y: ARM_L.cuff.y, w: ARM_L.cuff.w, h: ARM_L.cuff.h },
-    hand: [mx(ARM_L.hand[0]), ARM_L.hand[1], ARM_L.hand[2], ARM_L.hand[3]],
-    thumb: [mx(ARM_L.thumb[0]), ARM_L.thumb[1], ARM_L.thumb[2], ARM_L.thumb[3]],
-    seam: mirrorPath(ARM_L.seam),
-    shine: [mx(ARM_L.shine[0]), ARM_L.shine[1], ARM_L.shine[2], ARM_L.shine[3]]
-  };
-  const Arm = ({ side }) => {
-    const a = side === 'l' ? ARM_L : ARM_R;
-    return (
-      <>
-        <circle cx={a.cap[0]} cy={a.cap[1]} r={a.cap[2]} fill={u('w')} />
-        <path d={a.sleeve} fill={u('w')} />
-        <path d={a.sleeve} fill={u('sl')} />
-        <path d={a.shade} fill="none" stroke={BOT.sweaterDk} strokeWidth="3" strokeLinecap="round" opacity=".5" />
-        <rect x={a.cuff.x} y={a.cuff.y} width={a.cuff.w} height={a.cuff.h} rx="7" fill={BOT.sweaterDk} />
-        <rect x={a.cuff.x} y={a.cuff.y} width={a.cuff.w} height={a.cuff.h} rx="7" fill={u('rib')} />
-        <ellipse cx={a.thumb[0]} cy={a.thumb[1]} rx={a.thumb[2]} ry={a.thumb[3]} fill={u('k')} />
-        <ellipse cx={a.hand[0]} cy={a.hand[1]} rx={a.hand[2]} ry={a.hand[3]} fill={u('k')} />
-        <path d={a.seam} fill="none" stroke={BOT.headDk} strokeWidth="2.5" strokeLinecap="round" opacity=".6" />
-        <ellipse cx={a.shine[0]} cy={a.shine[1]} rx={a.shine[2]} ry={a.shine[3]} fill="#fff" opacity=".55" />
-      </>
-    );
-  };
-
-  // Нога: толстая кремовая голень-столбик и массивный кед: синий верх,
-  // кремовая подошва, две полоски шнуровки, блик на носке.
-  const LEG_L = {
-    shin: { x: 152, y: 276, w: 51, h: 86 },
-    shoe: 'M136 384 C134 366 147 350 169 350 C191 350 207 364 206 384 Z',
-    sole: { x: 133, y: 380, w: 74, h: 11 },
-    lace1: 'M152 361 Q169 356 188 361',
-    lace2: 'M147 369 Q169 363 194 369',
-    toe: [150, 374, 7, 4]
-  };
-  const LEG_R = {
-    shin: { x: mx(LEG_L.shin.x) - LEG_L.shin.w, y: LEG_L.shin.y, w: LEG_L.shin.w, h: LEG_L.shin.h },
-    shoe: mirrorPath(LEG_L.shoe),
-    sole: { x: mx(LEG_L.sole.x) - LEG_L.sole.w, y: LEG_L.sole.y, w: LEG_L.sole.w, h: LEG_L.sole.h },
-    lace1: mirrorPath(LEG_L.lace1),
-    lace2: mirrorPath(LEG_L.lace2),
-    toe: [mx(LEG_L.toe[0]), LEG_L.toe[1], LEG_L.toe[2], LEG_L.toe[3]]
-  };
-  const Leg = ({ side }) => {
-    const g = side === 'l' ? LEG_L : LEG_R;
-    return (
-      <>
-        <rect x={g.shin.x} y={g.shin.y} width={g.shin.w} height={g.shin.h} rx="20" fill={u('l')} />
-        <rect x={g.sole.x} y={g.sole.y} width={g.sole.w} height={g.sole.h} rx="7" fill={BOT.sole} />
-        <rect x={g.sole.x} y={g.sole.y} width={g.sole.w} height={g.sole.h} rx="7" fill="none"
-          stroke={BOT.headDk} strokeWidth="1.5" opacity=".6" />
-        <path d={g.shoe} fill={u('sh2')} />
-        <path d={g.lace1} fill="none" stroke={BOT.sole} strokeWidth="3" strokeLinecap="round" />
-        <path d={g.lace2} fill="none" stroke={BOT.sole} strokeWidth="3" strokeLinecap="round" />
-        <ellipse cx={g.toe[0]} cy={g.toe[1]} rx={g.toe[2]} ry={g.toe[3]} fill="#fff" opacity=".22" />
-      </>
-    );
-  };
 
   // Рот: все формы на месте, видна одна — её выбирает KODI_CSS по состоянию.
-  // Формы — по листу лица: тонкая дуга, полукруг радости, «о», ровная черта,
-  // кривая усмешка.
   const MOUTH = (
     <g className="kodi-mouth">
       <path className="kodi-m kodi-m-smile" d="M183 128 Q210 147 237 128" fill="none"
@@ -626,9 +684,7 @@ function RobotSVG({ pose = 'explain', className, talking }) {
     </g>
   );
 
-  // УХО — медная вставка в боку шлема, а не наушник. Вставка лежит в обтравке
-  // шлема: внешний край идёт ровно по силуэту, ухо не выпирает. Внутри — тёмная
-  // прорезь и полоска-индикатор речи.
+  // УХО — медная вставка в боку шлема: тёмная прорезь и полоска-индикатор речи.
   const Ear = ({ x, side }) => (
     <>
       <rect x={x} y="78" width="16" height="62" rx="8" fill={u('c')} />
@@ -639,209 +695,119 @@ function RobotSVG({ pose = 'explain', className, talking }) {
   );
 
   return (
-    <svg className={cls.join(' ')} style={vars} viewBox="20 -70 380 520"
-      aria-hidden="true" focusable="false">
+    <span className={'kodi-av' + (isTalking ? ' is-talking' : '') + (className ? ' ' + className : '')} style={vars}>
       <style>{KODI_CSS}</style>
-      <defs>
-        {/* шлем: матовый винил — основа, блик сверху слева, тень снизу справа */}
-        <linearGradient id={uid + 'h'} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#FCFAF6" />
-          <stop offset="55%" stopColor={BOT.head} />
-          <stop offset="100%" stopColor={BOT.headMid} />
-        </linearGradient>
-        <radialGradient id={uid + 'hl'} cx="28%" cy="14%" r="50%">
-          <stop offset="0%" stopColor="#fff" stopOpacity=".95" />
-          <stop offset="100%" stopColor="#fff" stopOpacity="0" />
-        </radialGradient>
-        <radialGradient id={uid + 'hs'} cx="78%" cy="100%" r="75%">
-          <stop offset="0%" stopColor={BOT.headDk} stopOpacity=".95" />
-          <stop offset="100%" stopColor={BOT.headDk} stopOpacity="0" />
-        </radialGradient>
-        {/* медь: светлый верх, тёмный пояс, отражение внизу — так читается металл */}
-        <linearGradient id={uid + 'c'} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={BOT.rimLt} />
-          <stop offset="38%" stopColor={BOT.rim} />
-          <stop offset="72%" stopColor={BOT.rimDk} />
-          <stop offset="100%" stopColor={BOT.rim} />
-        </linearGradient>
-        {/* стекло экрана: светлее в центре, к краям уходит в черноту */}
-        <radialGradient id={uid + 's'} cx="210" cy="104" r="100" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor={BOT.visorMid} />
-          <stop offset="100%" stopColor={BOT.visor} />
-        </radialGradient>
-        {/* строки дисплея: тонкие, чтобы не гасить яркость глаз */}
-        <pattern id={uid + 'px'} width="3" height="3" patternUnits="userSpaceOnUse">
-          <path d="M0 0.5 H3" stroke="#000" strokeWidth=".7" opacity=".2" />
-        </pattern>
-        {/* свитер: объём сверху вниз, цилиндр рукава слева направо, вязаная резинка */}
-        <linearGradient id={uid + 'w'} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={BOT.sweaterLt} />
-          <stop offset="100%" stopColor={BOT.sweaterDk} />
-        </linearGradient>
-        <linearGradient id={uid + 'ws'} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#000" stopOpacity=".3" />
-          <stop offset="20%" stopColor="#000" stopOpacity="0" />
-          <stop offset="78%" stopColor="#000" stopOpacity="0" />
-          <stop offset="100%" stopColor="#000" stopOpacity=".34" />
-        </linearGradient>
-        <linearGradient id={uid + 'sl'} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#fff" stopOpacity=".14" />
-          <stop offset="45%" stopColor="#fff" stopOpacity="0" />
-          <stop offset="100%" stopColor="#000" stopOpacity=".28" />
-        </linearGradient>
-        <pattern id={uid + 'rib'} width="6" height="6" patternUnits="userSpaceOnUse">
-          <path d="M3 0 V6" stroke={BOT.sweaterLt} strokeWidth="1.6" opacity=".7" />
-        </pattern>
-        {/* кремовые варежки и голени: скругление светом слева */}
-        <linearGradient id={uid + 'k'} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#FCFAF6" />
-          <stop offset="60%" stopColor={BOT.headMid} />
-          <stop offset="100%" stopColor={BOT.headDk} />
-        </linearGradient>
-        <linearGradient id={uid + 'l'} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#F9F6F0" />
-          <stop offset="55%" stopColor={BOT.headMid} />
-          <stop offset="100%" stopColor={BOT.headDk} />
-        </linearGradient>
-        {/* кеды: свет сверху, тень к подошве */}
-        <linearGradient id={uid + 'sh2'} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={BOT.shoe} />
-          <stop offset="100%" stopColor={BOT.shoeDk} />
-        </linearGradient>
-        {/* прорезь уха: тёплая тёмная медь, а не чёрная дыра */}
-        <radialGradient id={uid + 'cup'} cx="38%" cy="32%" r="70%">
-          <stop offset="0%" stopColor="#6B4328" />
-          <stop offset="100%" stopColor="#2E1C11" />
-        </radialGradient>
-        <radialGradient id={uid + 'sh'}>
-          <stop offset="0%" stopColor={BOT.shadow} stopOpacity="1" />
-          <stop offset="100%" stopColor={BOT.shadow} stopOpacity="0" />
-        </radialGradient>
-        <clipPath id={uid + 'v'}><rect x="132" y="53" width="156" height="107" rx="27" /></clipPath>
-        <clipPath id={uid + 'hc'}><rect x="108" y="24" width="204" height="153" rx="62" /></clipPath>
-      </defs>
+      <KodiWaves on={isTalking} amp={waveAmp || 1} />
+      <span className="kodi-disc">
+        <svg className={cls.join(' ')} viewBox="96.5 -13 227 227" aria-hidden="true" focusable="false">
+          <defs>
+            {/* шлем: матовый винил — основа, блик сверху слева, тень снизу справа */}
+            <linearGradient id={uid + 'h'} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#FCFAF6" />
+              <stop offset="55%" stopColor={BOT.head} />
+              <stop offset="100%" stopColor={BOT.headMid} />
+            </linearGradient>
+            <radialGradient id={uid + 'hl'} cx="28%" cy="14%" r="50%">
+              <stop offset="0%" stopColor="#fff" stopOpacity=".95" />
+              <stop offset="100%" stopColor="#fff" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id={uid + 'hs'} cx="78%" cy="100%" r="75%">
+              <stop offset="0%" stopColor={BOT.headDk} stopOpacity=".95" />
+              <stop offset="100%" stopColor={BOT.headDk} stopOpacity="0" />
+            </radialGradient>
+            {/* медь: светлый верх, тёмный пояс, отражение внизу — так читается металл */}
+            <linearGradient id={uid + 'c'} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={BOT.rimLt} />
+              <stop offset="38%" stopColor={BOT.rim} />
+              <stop offset="72%" stopColor={BOT.rimDk} />
+              <stop offset="100%" stopColor={BOT.rim} />
+            </linearGradient>
+            {/* стекло экрана: светлее в центре, к краям уходит в черноту */}
+            <radialGradient id={uid + 's'} cx="210" cy="104" r="100" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor={BOT.visorMid} />
+              <stop offset="100%" stopColor={BOT.visor} />
+            </radialGradient>
+            {/* строки дисплея: тонкие, чтобы не гасить яркость глаз */}
+            <pattern id={uid + 'px'} width="3" height="3" patternUnits="userSpaceOnUse">
+              <path d="M0 0.5 H3" stroke="#000" strokeWidth=".7" opacity=".2" />
+            </pattern>
+            {/* прорезь уха: тёплая тёмная медь, а не чёрная дыра */}
+            <radialGradient id={uid + 'cup'} cx="38%" cy="32%" r="70%">
+              <stop offset="0%" stopColor="#6B4328" />
+              <stop offset="100%" stopColor="#2E1C11" />
+            </radialGradient>
+            <clipPath id={uid + 'v'}><rect x="132" y="53" width="156" height="107" rx="27" /></clipPath>
+            <clipPath id={uid + 'hc'}><rect x="108" y="24" width="204" height="153" rx="62" /></clipPath>
+          </defs>
 
-      {/* Мягкая контактная тень: размытый край вместо плоского овала. */}
-      <ellipse className="bot-shadow" cx="210" cy="403" rx="100" ry="15" fill={u('sh')} />
+          {/* шлем — широкий и приземистый */}
+          <rect x="108" y="24" width="204" height="153" rx="62" fill={u('h')} />
+          <g clipPath={u('hc')}>
+            <rect x="108" y="24" width="204" height="153" fill={u('hs')} />
+            <rect x="108" y="24" width="204" height="153" fill={u('hl')} />
+            {/* уши — вставки в боках шлема, край по силуэту */}
+            <Ear x={104} side="l" />
+            <Ear x={300} side="r" />
+          </g>
+          <rect x="108" y="24" width="204" height="153" rx="62" fill="none"
+            stroke={BOT.edge} strokeWidth="1.4" opacity=".55" />
 
-      <g className="bot-float">
-        <g className="bot-pose-body">
-          <g className="bot-beat-body">
+          {/* медная рамка экрана — почти во весь шлем; фаска и блик по кромке */}
+          <rect x="123" y="44" width="174" height="125" rx="35" fill={u('c')} />
+          <rect x="127.5" y="48.5" width="165" height="116" rx="31" fill="none"
+            stroke={BOT.rimDk} strokeWidth="2" opacity=".55" />
+          <path d="M150 45 Q210 38 270 45" fill="none" stroke="#FFE2C6" strokeWidth="3"
+            strokeLinecap="round" opacity=".6" />
 
-            {/* ноги стоят; наклон позы берёт только торс */}
-            <Leg side="l" />
-            <Leg side="r" />
-
-            {/* Всё, что выше ног, наклоняется от пояса (см. «ОПОРА НА НОГИ» в KODI_CSS). */}
-            <g className="kodi-torso">
-
-            {/* свитер: округлые плечи от ворота к рукавам — рукав растёт из плеча, а не
-                торчит сбоку. Шеи нет (заказчик, 15.10.2026): верх свитера и ворот уходят
-                под шлем, голова стоит прямо на вороте и при наклоне не даёт просвета. */}
-            <path d="M112 240 C112 204 158 170 210 170 C262 170 308 204 308 240 C308 250 291 254 284 262 L284 272
-                     C284 280 278 284 269 284 L151 284 C142 284 136 280 136 272 L136 262 C129 254 112 250 112 240 Z" fill={u('w')} />
-            <path d="M112 240 C112 204 158 170 210 170 C262 170 308 204 308 240 C308 250 291 254 284 262 L284 272
-                     C284 280 278 284 269 284 L151 284 C142 284 136 280 136 272 L136 262 C129 254 112 250 112 240 Z" fill={u('ws')} />
-            <rect x="137" y="271" width="146" height="13" rx="6.5" fill={BOT.sweaterDk} />
-            <rect x="137" y="271" width="146" height="13" rx="6.5" fill={u('rib')} />
-            <rect x="176" y="170" width="68" height="16" rx="8" fill={BOT.sweaterDk} />
-            <rect x="176" y="170" width="68" height="16" rx="8" fill={u('rib')} />
-            <text x="210" y="234" textAnchor="middle" fontFamily="Manrope, Arial, sans-serif"
-              fontWeight="800" fontSize="17" fill="#F4F1EA" letterSpacing=".5">JUNIOR IT</text>
-            <rect x="166" y="240" width="88" height="18" rx="3" fill={BOT.label} />
-            <rect x="166" y="240" width="88" height="6" rx="3" fill="#fff" opacity=".14" />
-            <text x="210" y="253.5" textAnchor="middle" fontFamily="Manrope, Arial, sans-serif"
-              fontWeight="800" fontSize="12" fill="#fff" letterSpacing="1">AKADEMIYA</text>
-
-            {/* голова */}
-            <g className="bot-pose-head">
-              <g className="bot-beat-head">
-                {/* шлем — широкий и приземистый */}
-                <rect x="108" y="24" width="204" height="153" rx="62" fill={u('h')} />
-                <g clipPath={u('hc')}>
-                  <rect x="108" y="24" width="204" height="153" fill={u('hs')} />
-                  <rect x="108" y="24" width="204" height="153" fill={u('hl')} />
-                  {/* уши — вставки в боках шлема, край по силуэту */}
-                  <Ear x={104} side="l" />
-                  <Ear x={300} side="r" />
+          {/* экран-лицо */}
+          <rect x="132" y="53" width="156" height="107" rx="27" fill={u('s')} />
+          <g clipPath={u('v')}>
+            <ellipse className="bot-blush" cx="152" cy="140" rx="12" ry="6" fill={BOT.blush} />
+            <ellipse className="bot-blush" cx="268" cy="140" rx="12" ry="6" fill={BOT.blush} />
+            <g className="bot-pose-eyes">
+              <g className="kodi-gaze">
+                <g className="kodi-blink">
+                  <circle className="bot-glow" cx="172" cy="104" r="17" fill="var(--accent)" />
+                  <circle className="bot-glow" cx="248" cy="104" r="17" fill="var(--accent)" />
+                  {/* глаза — круглые светящиеся точки, как на листе лица */}
+                  <circle className="pupil" cx="172" cy="104" r="12.5" fill="var(--accent)" />
+                  <circle className="pupil" cx="248" cy="104" r="12.5" fill="var(--accent)" />
+                  {/* кольца — удивление */}
+                  <circle className="ring" cx="172" cy="104" r="11" fill="none"
+                    stroke="var(--accent)" strokeWidth="4.5" />
+                  <circle className="ring" cx="248" cy="104" r="11" fill="none"
+                    stroke="var(--accent)" strokeWidth="4.5" />
+                  {/* звёзды — восторг: пятиконечные, как на листе лица */}
+                  <path className="star" fill="var(--accent)"
+                    strokeLinejoin="round" stroke="var(--accent)" strokeWidth="2" d="M172.0 90.5 L175.6 100.0 L185.8 100.5 L177.9 106.9 L180.5 116.7 L172.0 111.2 L163.5 116.7 L166.1 106.9 L158.2 100.5 L168.4 100.0 Z" />
+                  <path className="star" fill="var(--accent)"
+                    strokeLinejoin="round" stroke="var(--accent)" strokeWidth="2" d="M248.0 90.5 L251.6 100.0 L261.8 100.5 L253.9 106.9 L256.5 116.7 L248.0 111.2 L239.5 116.7 L242.1 106.9 L234.2 100.5 L244.4 100.0 Z" />
+                  {/* дуги — улыбка глазами */}
+                  <path className="arc" d="M160 110 Q172 94 184 110" fill="none"
+                    stroke="var(--accent)" strokeWidth="5.5" strokeLinecap="round" />
+                  <path className="arc" d="M236 110 Q248 94 260 110" fill="none"
+                    stroke="var(--accent)" strokeWidth="5.5" strokeLinecap="round" />
                 </g>
-                <rect x="108" y="24" width="204" height="153" rx="62" fill="none"
-                  stroke={BOT.edge} strokeWidth="1.4" opacity=".55" />
-
-                {/* медная рамка экрана — почти во весь шлем; фаска и блик по кромке */}
-                <rect x="123" y="44" width="174" height="125" rx="35" fill={u('c')} />
-                <rect x="127.5" y="48.5" width="165" height="116" rx="31" fill="none"
-                  stroke={BOT.rimDk} strokeWidth="2" opacity=".55" />
-                <path d="M150 45 Q210 38 270 45" fill="none" stroke="#FFE2C6" strokeWidth="3"
-                  strokeLinecap="round" opacity=".6" />
-
-                {/* экран-лицо */}
-                <rect x="132" y="53" width="156" height="107" rx="27" fill={u('s')} />
-                <g clipPath={u('v')}>
-                  <ellipse className="bot-blush" cx="152" cy="140" rx="12" ry="6" fill={BOT.blush} />
-                  <ellipse className="bot-blush" cx="268" cy="140" rx="12" ry="6" fill={BOT.blush} />
-                  <g className="bot-pose-eyes">
-                    <g className="kodi-gaze">
-                      <g className="kodi-blink">
-                        <circle className="bot-glow" cx="172" cy="104" r="17" fill="var(--accent)" />
-                        <circle className="bot-glow" cx="248" cy="104" r="17" fill="var(--accent)" />
-                        {/* глаза — круглые светящиеся точки, как на листе лица */}
-                        <circle className="pupil" cx="172" cy="104" r="12.5" fill="var(--accent)" />
-                        <circle className="pupil" cx="248" cy="104" r="12.5" fill="var(--accent)" />
-                        {/* кольца — удивление */}
-                        <circle className="ring" cx="172" cy="104" r="11" fill="none"
-                          stroke="var(--accent)" strokeWidth="4.5" />
-                        <circle className="ring" cx="248" cy="104" r="11" fill="none"
-                          stroke="var(--accent)" strokeWidth="4.5" />
-                        {/* звёзды — восторг: пятиконечные, как на листе лица */}
-                        <path className="star" fill="var(--accent)"
-                          strokeLinejoin="round" stroke="var(--accent)" strokeWidth="2" d="M172.0 90.5 L175.6 100.0 L185.8 100.5 L177.9 106.9 L180.5 116.7 L172.0 111.2 L163.5 116.7 L166.1 106.9 L158.2 100.5 L168.4 100.0 Z" />
-                        <path className="star" fill="var(--accent)"
-                          strokeLinejoin="round" stroke="var(--accent)" strokeWidth="2" d="M248.0 90.5 L251.6 100.0 L261.8 100.5 L253.9 106.9 L256.5 116.7 L248.0 111.2 L239.5 116.7 L242.1 106.9 L234.2 100.5 L244.4 100.0 Z" />
-                        {/* дуги — улыбка глазами */}
-                        <path className="arc" d="M160 110 Q172 94 184 110" fill="none"
-                          stroke="var(--accent)" strokeWidth="5.5" strokeLinecap="round" />
-                        <path className="arc" d="M236 110 Q248 94 260 110" fill="none"
-                          stroke="var(--accent)" strokeWidth="5.5" strokeLinecap="round" />
-                      </g>
-                    </g>
-                  </g>
-                  {MOUTH}
-                  {/* веки — того же стекла, что экран: в покое их не видно */}
-                  <rect className="bot-lid bot-lid-l" x="132" y="-12" width="80" height="90" fill={u('s')} />
-                  <rect className="bot-lid bot-lid-r" x="208" y="-12" width="80" height="90" fill={u('s')} />
-                  {/* пиксели дисплея и стекло: отражение сверху, блик, пробегающее сияние */}
-                  <rect x="132" y="53" width="156" height="107" fill={u('px')} />
-                  <path d="M140 62 Q154 54 188 54 L156 104 Q138 96 140 62 Z" fill="#fff" opacity=".07" />
-                  <ellipse cx="210" cy="54" rx="66" ry="8" fill="#fff" opacity=".06" />
-                  <rect x="143" y="58" width="26" height="5" rx="2.5" fill="#fff" opacity=".2" />
-                  <g className="kodi-glare">
-                    <path d="M150 40 L176 40 L146 180 L120 180 Z" fill="#fff" opacity=".1" />
-                  </g>
-                </g>
-                <rect x="132" y="53" width="156" height="107" rx="27" fill="none"
-                  stroke="#000" strokeWidth="3" opacity=".35" />
               </g>
             </g>
-
-            {/* Искры восторга со сдвигом 140 мс. */}
-            <g>
-              <Spark x={84} y={60} s={0.5} />
-              <Spark x={338} y={40} s={0.42} d={140} />
-              <Spark x={112} y={0} s={0.34} d={280} />
-              <Spark x={334} y={186} s={0.3} d={420} />
-              <Spark x={82} y={200} s={0.38} d={560} />
-            </g>
-
-            {/* Руки отстают от тела на 90 мс — это и читается как живое. */}
-            <g className="bot-pose-arm-l"><g className="bot-beat-arm-l"><Arm side="l" /></g></g>
-            <g className="bot-pose-arm-r"><g className="bot-beat-arm-r"><Arm side="r" /></g></g>
-
+            {MOUTH}
+            {/* веки — того же стекла, что экран: в покое их не видно */}
+            <rect className="bot-lid bot-lid-l" x="132" y="-12" width="80" height="90" fill={u('s')} />
+            <rect className="bot-lid bot-lid-r" x="208" y="-12" width="80" height="90" fill={u('s')} />
+            {/* пиксели дисплея и стекло: отражение сверху, блик, пробегающее сияние */}
+            <rect x="132" y="53" width="156" height="107" fill={u('px')} />
+            <path d="M140 62 Q154 54 188 54 L156 104 Q138 96 140 62 Z" fill="#fff" opacity=".07" />
+            <ellipse cx="210" cy="54" rx="66" ry="8" fill="#fff" opacity=".06" />
+            <rect x="143" y="58" width="26" height="5" rx="2.5" fill="#fff" opacity=".2" />
+            <g className="kodi-glare">
+              <path d="M150 40 L176 40 L146 180 L120 180 Z" fill="#fff" opacity=".1" />
             </g>
           </g>
-        </g>
-      </g>
-    </svg>
+          <rect x="132" y="53" width="156" height="107" rx="27" fill="none"
+            stroke="#000" strokeWidth="3" opacity=".35" />
+        </svg>
+      </span>
+    </span>
   );
 }
 
@@ -902,10 +868,48 @@ const LANG_MARK = {
   ru: '[Русское произношение] ',
   en: '[English pronunciation] '
 };
+// КУРС HTML: ЭМОЦИИ ГОЛОСА — тег подачи ElevenLabs (v3/v4) по смыслу реплики.
+// Решение детерминированное: одна и та же реплика всегда получает один и тот
+// же тег — прогрев и озвучка совпадают. Правила — по началу фразы:
+//   ошибся сам Коди → [embarrassed]; большая победа → [very excited] [laughs];
+//   «ого» → [gasps] [amazed]; похвала → [excited] (+ [laughs] или [chuckles]
+//   у двух похвал из трёх); «почти», подсказка → [reassuring]; привет →
+//   [cheerful]; прощание → [warmly]; вопрос → [curious]; с «!» → [upbeat];
+//   остальное (рассказ, объяснение) → [friendly].
+const TTS_EMOTION = true;
+const EMO_W = (words) => new RegExp('^(?:' + words.join('|') + ')(?=[\\s!,.?…:;]|$)', 'i');
+const EMO = {
+  oops: { ru: /^(?:ой|упс)(?=[\s!,.]|$)|кажется, я /i, uz: /o‘xshayman|adashdim|chalkashtirdim/i, en: /^(?:oops|uh-oh)(?=[\s!,.]|$)|i think i (?:put|mixed|made)/i },
+  big: { ru: EMO_W(['ура', 'это было мощно', 'вот это да']), uz: EMO_W(['ura', 'bu kuchli', 'qoyil']), en: EMO_W(['hooray', 'that was epic', 'look at that']) },
+  wow: { ru: EMO_W(['ого', 'ух ты', 'вот оно']), uz: /^(?:voy,|ajab|mana u!)/i, en: EMO_W(['whoa', 'there it is']) },
+  win: { ru: EMO_W(['есть', 'огонь', 'супер', 'вау', 'класс', 'бомба', 'чётко', 'четко', 'точно', 'в точку', 'получилось', 'отлично', 'круто', 'красота', 'идеально', 'готово', 'собрано', 'спасибо', 'дожали', 'верно', 'да', 'нашлось', 'сработало', 'правильно', 'вот так', 'работает']),
+    uz: EMO_W(['ana', 'zo‘r', 'zo‘r-ku', 'super', 'voy', 'klass', 'bomba', 'aniq', 'aynan nishonga', 'aynan', 'chiqdi', 'mukammal', 'ajoyib', 'tayyor', 'yig‘ildi', 'rahmat', 'barakalla', 'ofarin', 'to‘g‘ri', 'ha', 'topildi', 'ishladi', 'ishlayapti']),
+    en: EMO_W(['yes', 'awesome', 'super', 'wow', 'cool', 'boom', 'spot on', 'nailed it', 'perfect', 'great', 'built', 'thanks', 'got it', 'done', 'right', 'nice', 'found it', 'it works', 'correct']) },
+  soft: { ru: EMO_W(['почти', 'ничего', 'смотри:', 'хорошая попытка', 'уже близко', 'не страшно']), uz: EMO_W(['deyarli', 'hechqisi', 'qarang:', 'yaxshi urinish', 'yaqin qoldi']),
+    en: EMO_W(['almost', 'no worries', 'look:', 'good try', "you're close", 'so close']) },
+  hello: { ru: EMO_W(['привет']), uz: EMO_W(['salom']), en: EMO_W(['hi', 'hello']) },
+  bye: { ru: /до встречи|до скорого/i, uz: /ko‘rishguncha|xayr/i, en: /see you|goodbye/i }
+};
+const emoHash = (s) => { let h = 0; for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); };
+const emoTag = (text, lang) => {
+  const s = String(text || '').trim();
+  const L = EMO.win[lang] ? lang : 'ru';
+  const is = (k) => EMO[k][L].test(s);
+  if (is('oops')) return '[embarrassed] ';
+  if (is('big')) return '[very excited] [laughs] ';
+  if (is('wow')) return '[gasps] [amazed] ';
+  if (is('win')) { const r = emoHash(s) % 3; return '[excited] ' + (r === 0 ? '[laughs] ' : r === 1 ? '[chuckles] ' : ''); }
+  if (is('soft')) return '[reassuring] ';
+  if (is('hello')) return '[cheerful] ';
+  if (is('bye')) return '[warmly] ';
+  if (/\?$/.test(s)) return '[curious] ';
+  if (/!$/.test(s)) return '[upbeat] ';
+  return '[friendly] ';
+};
 const markLang = (text, lang) => {
   const s = String(text || '');
   if (!s) return s;
-  return (LANG_MARK[lang] || LANG_MARK.ru) + s;
+  return (LANG_MARK[lang] || LANG_MARK.ru) + (TTS_EMOTION ? emoTag(s, lang) : '') + s;
 };
 
 // КУРС HTML: голос от LMS (пропс voiceGender, как у эталона математики).
@@ -1581,6 +1585,7 @@ const setSoundOff = (v) => { _soundOff = !!v; };
 function resumeSfx() {
   try { if (_ctx && _ctx.state === 'suspended') _ctx.resume(); } catch (e) { /* no-op */ }
 }
+let _clapBuf = null;
 function sfx(kind, enabled) {
   if (_soundOff || enabled === false || typeof window === 'undefined') return;
   try {
@@ -1616,7 +1621,94 @@ function sfx(kind, enabled) {
     else if (kind === 'off') { beep(494, 0.10, 0, 'sine', 0.06); beep(370, 0.12, 0.08, 'sine', 0.05); beep(247, 0.30, 0.17, 'sine', 0.045); }
     // МАШИНА ПРОСЫПАЕТСЯ — ровный подъём: питание пошло по цепочке.
     else if (kind === 'boot') { beep(330, 0.10, 0, 'sine', 0.05); beep(440, 0.12, 0.09, 'sine', 0.05); beep(587, 0.22, 0.19, 'sine', 0.05); }
+    // КУРС HTML: АПЛОДИСМЕНТЫ — хлопки зала вразнобой и аккорд «победы».
+    else if (kind === 'cheer') {
+      const sr = ctx.sampleRate;
+      if (!_clapBuf || _clapBuf.sampleRate !== sr) {
+        _clapBuf = ctx.createBuffer(1, Math.floor(sr * 0.05), sr);
+        const d = _clapBuf.getChannelData(0);
+        for (let k = 0; k < d.length; k += 1) d[k] = (Math.random() * 2 - 1) * Math.pow(1 - k / d.length, 3);
+      }
+      const N = 28;
+      for (let k = 0; k < N; k += 1) {
+        const when = (k / N) * 1.3 + Math.random() * 0.07;
+        const env = Math.sin(Math.PI * Math.min(1, (when + 0.1) / 1.5));
+        const src = ctx.createBufferSource(); src.buffer = _clapBuf;
+        src.playbackRate.value = 0.8 + Math.random() * 0.45;
+        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1000 + Math.random() * 1000; bp.Q.value = 0.8;
+        const g = ctx.createGain(); g.gain.value = 0.08 + 0.16 * env;
+        src.connect(bp); bp.connect(g); g.connect(ctx.destination);
+        src.start(t0 + when);
+      }
+      beep(784, 0.12, 0, 'triangle', 0.05); beep(988, 0.12, 0.1, 'triangle', 0.05); beep(1319, 0.3, 0.2, 'sine', 0.05);
+    }
   } catch (e) { /* no-op */ }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// КУРС HTML: ПРАЗДНИК ПОХВАЛЫ — хлопушки и аплодисменты (см. build-canon.mjs).
+const _celebSubs = new Set();
+let _celebLast = 0;
+function celebrate() {
+  const now = Date.now();
+  if (now - _celebLast < 2500) return;
+  _celebLast = now;
+  sfx('cheer', true);
+  _celebSubs.forEach((f) => { try { f(); } catch (e) { /* no-op */ } });
+}
+const CELEB_COLORS = ['#FF4F28', '#FFB703', '#1171A0', '#6F57AB', '#227882', '#97368A', '#2F6FB0', '#F4A261'];
+const CELEB_BITS = (() => {
+  const out = [];
+  const r = (k, m) => { const x = Math.sin(k * 12.9898 + m * 78.233) * 43758.5453; return x - Math.floor(x); };
+  for (let k = 0; k < 40; k += 1) {
+    const side = k % 2;
+    out.push({ side, c: CELEB_COLORS[k % CELEB_COLORS.length], shape: k % 3,
+      dx: (side ? -1 : 1) * Math.round(40 + r(k, 1) * 220), dy: -Math.round(240 + r(k, 2) * 300),
+      rot: Math.round(r(k, 3) * 720 - 360), delay: +(r(k, 4) * 0.18).toFixed(2), dur: +(1.3 + r(k, 5) * 0.6).toFixed(2) });
+  }
+  return out;
+})();
+const CELEB_CSS = `
+.celeb { position: fixed; inset: 0; z-index: 70; pointer-events: none; overflow: hidden; }
+.celeb-pop { position: absolute; bottom: 18px; width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent;
+  border-bottom: 46px solid #FFB703; filter: drop-shadow(0 2px 0 rgba(58,53,48,.15)); animation: celebPop 1.1s ease-out both; }
+.celeb-pop::after { content: ''; position: absolute; left: -9px; top: 14px; width: 18px; height: 6px; background: #FF4F28; border-radius: 2px; }
+.celeb-pop.is-l { left: 22px; transform-origin: 50% 100%; --rz: 32deg; }
+.celeb-pop.is-r { right: 22px; transform-origin: 50% 100%; --rz: -32deg; }
+@keyframes celebPop { 0% { transform: rotate(var(--rz)) scale(.4); opacity: 0; } 15% { transform: rotate(var(--rz)) scale(1.15); opacity: 1; }
+  30% { transform: rotate(var(--rz)) scale(1); } 80% { opacity: 1; } 100% { transform: rotate(var(--rz)) scale(.9); opacity: 0; } }
+.celeb-bit { position: absolute; bottom: 60px; width: 9px; height: 14px; background: var(--c); border-radius: 2px; opacity: 0;
+  animation: celebFly var(--dur) cubic-bezier(.2,.7,.4,1) both; }
+.celeb-bit.is-l { left: 36px; }
+.celeb-bit.is-r { right: 36px; }
+.celeb-bit.sh-1 { width: 10px; height: 10px; border-radius: 50%; }
+.celeb-bit.sh-2 { width: 6px; height: 16px; border-radius: 3px; }
+@keyframes celebFly {
+  0% { transform: translate(0, 0) rotate(0); opacity: 1; }
+  45% { transform: translate(calc(var(--dx) * .8), var(--dy)) rotate(calc(var(--rot) * .5)); opacity: 1; }
+  100% { transform: translate(var(--dx), calc(var(--dy) + 360px)) rotate(var(--rot)); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .celeb { display: none; } }
+`;
+function CelebrateLayer() {
+  const [burst, setBurst] = useState(0);
+  useEffect(() => {
+    let t = null;
+    const f = () => { setBurst((v) => v + 1); clearTimeout(t); t = setTimeout(() => setBurst(0), 2200); };
+    _celebSubs.add(f);
+    return () => { _celebSubs.delete(f); clearTimeout(t); };
+  }, []);
+  if (!burst) return null;
+  return (
+    <div className="celeb" key={burst} aria-hidden="true">
+      <style>{CELEB_CSS}</style>
+      <span className="celeb-pop is-l" />
+      <span className="celeb-pop is-r" />
+      {CELEB_BITS.map((b, k) => (
+        <i key={k} className={'celeb-bit is-' + (b.side ? 'r' : 'l') + ' sh-' + b.shape}
+          style={{ '--c': b.c, '--dx': b.dx + 'px', '--dy': b.dy + 'px', '--rot': b.rot + 'deg', '--dur': b.dur + 's', animationDelay: b.delay + 's' }} />
+      ))}
+    </div>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1850,11 +1942,8 @@ function PersonaBubble({ who = 'bot', pose, text, onSpoken, nonce, quiet }) {
       </span>
       {quiet ? null : silent ? (
         <>
-          {/* Полоски — только индикатор «робот говорит». Кнопкой повтора они
-              больше не являются: управление озвучкой одно, в шапке. */}
-          <span className={'speaker-voice' + (speaking ? ' is-on' : '')} aria-hidden="true">
-            <span className="sv-bars"><i /><i /><i /><i /><i /></span>
-          </span>
+          {/* КУРС HTML: речь показывают волны вокруг кружка с головой Коди —
+              отдельного кружка с полосками больше нет. */}
           {/* реплика убрана с экрана, но экранному диктору она по-прежнему нужна.
               Отдельным узлом, а не внутри кнопки: aria-label кнопки перебил бы её. */}
           <span className="sv-sr">{line}</span>
@@ -1986,9 +2075,9 @@ function useAdvanceGate(solved, spoken) {
 // Подбадривание НИКОГДА не выдаёт ответ — оно называет способ.
 // ─────────────────────────────────────────────────────────────────────────────
 const PRAISE = {
-  uz: ['To‘g‘ri!', 'Barakalla!', 'Ajoyib!', 'Ofarin!'],
-  ru: ['Правильно!', 'Молодец!', 'Отлично!', 'Точно!'],
-  en: ['Correct!', 'Well done!', 'Nice!', 'Exactly!']
+  uz: ['Voy, zo‘r!', 'Ana! Chiqdi!', 'Super!', 'Qoyil!', 'Ura!', 'Zo‘r-ku!'],
+  ru: ['Вау, классно!', 'Есть! Получилось!', 'Супер!', 'Огонь!', 'Ура!', 'Вот это да!'],
+  en: ['Wow, awesome!', 'Yes! You did it!', 'Super!', 'Brilliant!', 'Hooray!', 'Amazing!']
 };
 // Слов «нет», «неправильно», «ошибка» здесь нет и быть не может: ошибка в этом
 // курсе означает «попробуй ещё», а не «ты не смог» (требование заказчика).
@@ -2065,7 +2154,7 @@ const Stage = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroFi
                 номер страницы. Он не меняется нигде. */}
             <div className="chrome-side">
               <ExitBtn />
-              {voiceTop ? <VoiceDot /> : null}
+              {speaker && !hideSpeaker ? <VoiceDot pose={speaker.pose} /> : null}
               {nav && <HintChromeBtn />}
               {nav && <PauseBtn done={done} />}
               <div className="mono counter">{String(screen + 1).padStart(2, '0')}/{String(total).padStart(2, '0')}</div>
@@ -2095,13 +2184,15 @@ const Stage = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroFi
 // Признак конца страницы приходит от экрана (done — то же условие, что
 // открывает «Дальше»), а не угадывается по тишине: между репликами пауза
 // дольше секунды, и кнопка успевала бы стать «Повторить» посреди рассказа.
-// КУРС HTML: кружок голоса в шапке (Stage voiceTop) — на экранах, где герою
-// не хватает места. Оживает, пока звучит голос.
-const VoiceDot = () => {
+// КУРС HTML: Коди в шапке, рядом с подсказкой. На телефоне он живёт здесь
+// всегда (заказчик, 17.10.2026: «на телефоне — возле кнопки подсказки»), на
+// ноутбуке спрятан — там Коди справа снизу. Тот же кружок с головой: лицо
+// держит эмоцию реплики, вокруг бегут волны, пока звучит голос.
+const VoiceDot = ({ pose }) => {
   const audio = useAudio();
   return (
-    <span className={'speaker-voice ctl-voice' + (audio && audio.playing ? ' is-on' : '')} aria-hidden="true">
-      <span className="sv-bars"><i /><i /><i /><i /><i /></span>
+    <span className="ctl-voice kodi-dot" aria-hidden="true">
+      <RobotSVG pose={pose || 'explain'} talking={!!(audio && audio.playing)} waveAmp={1.6} />
     </span>
   );
 };
@@ -2897,7 +2988,8 @@ const CSS_BASE = `
      на сорок вбок, и при тесной рамке это обрезалось краем кадра. Поэтому все
      три яруса пересчитаны с коэффициентом 1.165 — робот на экране остался
      прежнего размера, выросло только пустое поле вокруг него. */
-  --av: clamp(66px, min(22vw, 13dvh), 138px);
+  /* КУРС HTML: Коди v4 — диаметр кружка с головой (волны выходят за него). */
+  --av: clamp(54px, min(16vw, 9dvh), 70px);
   --bar-y: clamp(6px, 1.2dvh, 11px);
   --ctl: clamp(36px, 5.4vw, 42px);          /* единый размер служебных кнопок */
   font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -2989,7 +3081,7 @@ const CSS_BASE = `
 .speaker { display: flex; align-items: center; gap: var(--gap-dlg); animation: sayIn .34s cubic-bezier(.2,.8,.3,1) both; }
 /* Высота зоны персонажа постоянна, поэтому карточка под ней не прыгает при
    смене позы. 1.368 — пропорция рамки героя (380×520). */
-.stage-hero-fixed .speaker { min-height: calc(var(--av) * 1.368); }
+.stage-hero-fixed .speaker { min-height: var(--av); }
 .speaker-bot { flex-direction: row; }
 @keyframes sayIn { from { opacity:0; transform: translateY(-12px) scale(.96);} to { opacity:1; transform:none; } }
 /* Влёт, затем бесконечное тихое покачивание — кадр никогда не мёртвый. */
@@ -3432,7 +3524,7 @@ const CSS_BASE = `
 /* Низкое окно (маленький ноутбук, планшет в альбомной): панели и кнопки
    поджимаются, чтобы всё помещалось без прокрутки. */
 @media (max-height: 620px) {
-  .lesson-root { --gap-stack: clamp(7px, 1.3dvh, 12px); --av: clamp(74px, min(23.4vw, 14.5dvh), 126px); }
+  .lesson-root { --gap-stack: clamp(7px, 1.3dvh, 12px); --av: clamp(48px, min(15vw, 9dvh), 60px); }
   .btn-accent, .btn-ghost { min-height: 46px; padding: 10px 20px; }
   .opt { min-height: 50px; }
   .bigbtn { padding: 11px 16px; min-height: 46px; }
@@ -3451,8 +3543,8 @@ const CSS_BASE = `
     --pad: clamp(28px, 3.6vw, 76px);
     --gap-stack: clamp(11px, 1.7dvh, 20px);
     --gap-dlg: clamp(18px, 2.4vw, 32px);
-    /* Те же 1.165 к рамке: сам робот прежнего размера, поле вокруг больше. */
-    --av: clamp(124px, min(29vw, 19.9dvh), 275px);
+    /* КУРС HTML: кружок Коди v4 на крупном ярусе. */
+    --av: clamp(72px, min(9vw, 10.5dvh), 108px);
     --av-lg: clamp(157px, min(37.2vw, 26dvh), 354px);
     --bar-y: clamp(8px, 1.5dvh, 15px);
   }
@@ -3750,6 +3842,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
                 <div className={'lesson-root' + (v.audio && v.audio.paused ? ' is-paused' : '')}>
                   <style>{CSS_BASE + (css || '')}</style>
                   {children}
+                  <CelebrateLayer />
                 </div>
               </PageProvider>
               </LangSetProvider>
@@ -3837,6 +3930,8 @@ function useVoice(initial) {
   // очереди, и вытеснять они ничего не должны.
   const sayNow = useCallback((text, pose, who) => {
     const item = { text, pose: pose || 'point', who: who || 'bot' };
+    // КУРС HTML: похвала героя — с хлопушками и аплодисментами.
+    if (pose === 'cheer' || pose === 'celebrate') celebrate();
     const i0 = iRef.current;
     // ГЕРОЯ НЕ ПЕРЕБИВАЮТ НА ПОЛУСЛОВЕ.
     //
@@ -5584,28 +5679,70 @@ const CANON_UI_CSS = `
   .stage.is-idle .ctl-hint, .stage.is-idle .stage-nav .btn-ready,
   .stage.is-idle-2 .ctl-hint::after, .stage.is-idle-2 .stage-nav .btn-ready::before { animation: none; } }
 
-/* КУРС HTML: голос в шапке вместо героя (Stage voiceTop) — только на телефоне:
-   узкий экран или телефон лёжа. На ноутбуке Коди на месте, кружка нет.
-   Герой прячется, но не размонтируется: пузырь ведёт озвучку. */
+/* КУРС HTML: Коди в шапке вместо строки героя (Stage voiceTop) — только на
+   телефоне: узкий экран или телефон лёжа. На ноутбуке строка героя на месте,
+   в шапке его нет. Строка прячется, но не размонтируется: пузырь ведёт озвучку. */
 .stage-voicetop .ctl-voice { display: none; }
+.kodi-dot { width: var(--ctl); height: var(--ctl); flex: 0 0 auto; place-items: center; }
+.kodi-dot .kodi-av { width: 100%; }
+/* Волны у маленького кружка в шапке скромнее — не наезжают на полосу прогресса. */
+.kodi-dot .kodi-waves { transform: scale(.8); }
 @media (max-width: 719px), (orientation: landscape) and (max-height: 500px) {
   .stage-voicetop .ctl-voice { display: grid; }
   .stage-voicetop .speaker-wrap { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0;
     overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .stage-voicetop .stage-content { grid-column: 1 / -1; }
 }
-/* КУРС HTML: невысокий ноутбук (окно 700–860 px). Крупный ярус ставит герою
-   до 20dvh — на окне 720 px робот выходит ~200 px, выше реплики, и тесные
-   экраны вылезают за низ. Здесь робот плавно уменьшается вместе с высотой
-   окна (на 860 px размер тот же, что у крупного яруса, на 720 — ~97 px),
-   а не прячется: на ноутбуке Коди всегда на месте. */
+/* КУРС HTML: невысокий ноутбук (окно 700–860 px) — кружок Коди чуть меньше
+   крупного яруса: на окне 720 px ~72 px. На ноутбуке Коди всегда на месте. */
 @media (min-width: 760px) and (min-height: 700px) and (max-height: 860px) {
-  .lesson-root { --av: clamp(90px, min(29vw, calc(52.9dvh - 284px)), 275px); }
+  .lesson-root { --av: clamp(68px, min(9vw, 10dvh), 96px); }
 }
-/* Пока звучит голос, вокруг кружка мягко расходится кольцо. */
-.ctl-voice.is-on { animation: ctlVoiceRing 1.6s ease-out infinite; }
-@keyframes ctlVoiceRing { 0% { box-shadow: 0 0 0 0 rgba(255,79,40,.32); } 100% { box-shadow: 0 0 0 10px rgba(255,79,40,0); } }
-@media (prefers-reduced-motion: reduce) { .ctl-voice.is-on { animation: none; } }
+
+/* КУРС HTML: МЕСТО КОДИ (заказчик, 17.10.2026) — телефон: в шапке у подсказки;
+   планшет и компьютер: справа снизу, крупнее. */
+.chrome-side { margin-left: auto; }
+.ctl-voice { display: none; }
+@media (max-width: 759px) {
+  .ctl-voice { display: grid; }
+  /* Вокруг кружка — место для волн: они не прячутся под кнопку подсказки.
+     Волны здесь крупнее (waveAmp у VoiceDot) и плотнее — кружок маленький. */
+  .kodi-dot { position: relative; z-index: 1; width: clamp(46px, 13vw, 52px); height: clamp(46px, 13vw, 52px);
+    margin-inline: 14px 18px; }
+  .kodi-dot .kodi-waves { transform: none; }
+  .kodi-dot .kodi-wave { opacity: .5; }
+  .kodi-dot .kodi-wave-2 { opacity: .62; }
+  .kodi-dot .kodi-wave-3 { opacity: .8; }
+  .speaker-av { display: none; }
+  .stage:not(:has(.speaker-bubble)) > .speaker-wrap { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .speaker-bot .speaker-bubble { border-radius: 18px 6px 18px 18px;
+    box-shadow: 0 2px 0 rgba(58,53,48,0.05), 0 12px 26px -16px rgba(58,53,48,0.5), inset -3px 0 0 #FF4F28; }
+}
+@media (min-width: 760px) and (min-height: 501px) {
+  .lesson-root { --av: clamp(84px, min(10vw, 13dvh), 128px); }
+  .stage-content { order: 2; }
+  .speaker-wrap { order: 3; position: relative; padding-top: 0; padding-bottom: clamp(8px, 1.2dvh, 14px); background: transparent; }
+  .stage-nav { order: 4; }
+  .speaker, .stage-hero-fixed .speaker { flex-direction: row-reverse; min-height: 0; animation: none; }
+  /* Без анимации влёта: строка героя пересоздаётся на каждой реплике, и
+     кружок в углу «выпрыгивал» бы заново (а в части браузеров застревал
+     полупрозрачным на первом кадре). Коди в углу просто стоит. */
+  .speaker-av { position: absolute; z-index: 30; right: clamp(16px, 1.8vw, 32px); bottom: calc(var(--av) * .12 + 4px);
+    animation: none; }
+  .speaker-bot .speaker-bubble { flex: 0 1 auto; margin-right: calc(var(--av) + clamp(16px, 2vw, 30px));
+    max-width: min(640px, 72%); max-height: min(20dvh, 180px); border-radius: 24px 24px 8px 24px;
+    box-shadow: 0 2px 0 rgba(58,53,48,0.05), 0 16px 34px -16px rgba(58,53,48,0.55), inset 0 -3px 0 #FF4F28; }
+  .stage:has(> .speaker-wrap):not(:has(.speaker-bubble)) .stage-content { padding-bottom: calc(var(--av) + 10px); }
+  .stage-content.has-speaker::before { max-height: clamp(4px, 30dvh, 260px); }
+}
+/* Широкий экран: справа от колонки содержания хватает поля — Коди стоит в
+   нём и ничего не закрывает, запас снизу не нужен; облако — к правому краю
+   колонки, рядом с Коди. */
+@media (min-width: 1200px) and (min-height: 501px) {
+  .stage:has(> .speaker-wrap):not(:has(.speaker-bubble)) .stage-content { padding-bottom: 6px; }
+  .speaker-bot .speaker-bubble { margin-right: 0; }
+}
 
 /* UI-09: служебные кнопки не меньше 44 px — меньше палец ребёнка промахивается. */
 .lesson-root { --ctl: clamp(44px, 5.4vw, 48px); }
@@ -5681,7 +5818,7 @@ const CANON_UI_CSS = `
    прокрутка сцены: лучше прокрутить, чем не увидеть Enter или лоток с частями.
    ══════════════════════════════════════════════════════════════ */
 @media (orientation: landscape) and (max-height: 500px) {
-  .lesson-root { --av: clamp(46px, 13dvh, 62px); --gap-stack: 8px; --bar-y: 5px; }
+  .lesson-root { --av: clamp(40px, 11dvh, 52px); --gap-stack: 8px; --bar-y: 5px; }
   .stage { display: grid; grid-template-columns: minmax(170px, 30%) minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr) auto; }
   .stage-header { grid-column: 1 / -1; grid-row: 1; }
@@ -6587,12 +6724,12 @@ const UI = {
 const C = {
   s1: {
     eyebrow: L3('Bitta sahifa', 'Одна страница', 'One page'),
-    say: L3('Sahifaning yorliqda nomi va ichida matni bor. Bugun o‘zingiznikini yasaysiz.',
-      'У страницы есть название на вкладке и текст внутри. Сегодня ты сделаешь свою.',
-      'A page has a name on the tab and text inside. Today you will make your own.'),
-    done: L3('Siz sahifani o‘zgartirdingiz. Endi bu qanday ishlashini bilib olamiz.',
-      'Ты уже изменил страницу. Теперь узнаем, как это работает.',
-      'You have already changed the page. Now let us find out how it works.'),
+    say: L3('Internetdagi har bir sahifada — yorliqda nom va ichida matn. Ular bilan o‘ynab ko‘ring: dars oxirida o‘z sahifangizni noldan yasaysiz.',
+      'У любой страницы в интернете есть название на вкладке и текст внутри. Поиграй с ними — а к концу урока сделаешь свою страницу с нуля.',
+      'Every page on the internet has a name on the tab and text inside. Play with them, and by the end of the lesson you’ll make your own page from scratch.'),
+    done: L3('Sahifa allaqachon o‘zgardi! Endi bu ichkaridan qanday ishlashini bilib olamiz.',
+      'Страница уже поменялась! Теперь узнаем, как это работает изнутри.',
+      'The page has already changed! Now let’s find out how it works from the inside.'),
     titles: [L3('Mening saytim', 'Мой сайт', 'My site'), L3('Kosmos', 'Космос', 'Space'), L3('Mushuklar', 'Котики', 'Cats')],
     texts: [L3('Salom, dunyo!', 'Привет, мир!', 'Hello, world!'), L3('Men HTML o‘rganyapman.', 'Я учу HTML.', 'I am learning HTML.'), L3('Xush kelibsiz!', 'Добро пожаловать!', 'Welcome!')],
     ask: L3('Nima o‘zgartiramiz?', 'Что поменяем?', 'What shall we change?'),
@@ -6776,7 +6913,7 @@ const C = {
     h2b: L3('Sahifa matni — body ichida.', 'Текст страницы находится внутри body.', 'The page text is inside body.'),
     h3b: L3('<body> va </body> orasidagi matnni bosing.', 'Нажми на текст между <body> и </body>.', 'Tap the text between <body> and </body>.'),
     ok: L3('Bajarildi, qolgani o‘zgarmadi.', 'Готово, остальное не изменилось.', 'Done, and the rest did not change.'),
-    again: L3('Yaxshi. Endi shunga o‘xshash yangi misol.', 'Хорошо. Теперь похожий новый пример.', 'Good. Now a similar new example.'),
+    again: L3('Super! Endi o‘xshash yangi misol.', 'Супер! А теперь похожий новый пример.', 'Super! Now a similar new example.'),
     done: L3('Ikkala buyurtma bajarildi.', 'Оба заказа выполнены.', 'Both orders are done.'),
     ask: L3('Kerakli matnni toping va o‘zgartiring', 'Найди нужный текст и измени его', 'Find the right text and change it')
   },
@@ -6823,10 +6960,13 @@ const C = {
 // Обёртка ставится вокруг экрана внутри Shell и подменяет только speak():
 // пауза, повтор и флаги идут из канона как есть.
 // ─────────────────────────────────────────────────────────────────────────────
+// Названия тегов вслух — по-английски во всех языках (заказчик, 17.10.2026:
+// «body, а не бади»): сервис читает их как английские слова. Остальные слова
+// (закрывающий тег, уголок, косая черта) — на языке урока.
 const TAG_SAY = {
-  ru: { html: 'эйч-ти-эм-эль', head: 'хэд', title: 'тайтл', body: 'бади', doctype: 'доктайп',
+  ru: { html: 'HTML', head: 'head', title: 'title', body: 'body', doctype: 'doctype',
     close: 'закрывающий тег', lt: 'уголок', gt: 'закрывающий уголок', slash: 'косая черта' },
-  uz: { html: 'eych-ti-em-el', head: 'xed', title: 'taytl', body: 'badi', doctype: 'doktayp',
+  uz: { html: 'HTML', head: 'head', title: 'title', body: 'body', doctype: 'doctype',
     close: 'yopuvchi teg', lt: 'ochuvchi burchak', gt: 'yopuvchi burchak', slash: 'qiya chiziq' },
   en: { html: 'H T M L', head: 'head', title: 'title', body: 'body', doctype: 'doctype',
     close: 'closing tag', lt: 'less-than sign', gt: 'greater-than sign', slash: 'slash' }

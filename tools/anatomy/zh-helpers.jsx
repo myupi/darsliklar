@@ -6,10 +6,13 @@
 // Обёртка ставится вокруг экрана внутри Shell и подменяет только speak():
 // пауза, повтор и флаги идут из канона как есть.
 // ─────────────────────────────────────────────────────────────────────────────
+// Названия тегов вслух — по-английски во всех языках (заказчик, 17.10.2026:
+// «body, а не бади»): сервис читает их как английские слова. Остальные слова
+// (закрывающий тег, уголок, косая черта) — на языке урока.
 const TAG_SAY = {
-  ru: { html: 'эйч-ти-эм-эль', head: 'хэд', title: 'тайтл', body: 'бади', doctype: 'доктайп',
+  ru: { html: 'HTML', head: 'head', title: 'title', body: 'body', doctype: 'doctype',
     close: 'закрывающий тег', lt: 'уголок', gt: 'закрывающий уголок', slash: 'косая черта' },
-  uz: { html: 'eych-ti-em-el', head: 'xed', title: 'taytl', body: 'badi', doctype: 'doktayp',
+  uz: { html: 'HTML', head: 'head', title: 'title', body: 'body', doctype: 'doctype',
     close: 'yopuvchi teg', lt: 'ochuvchi burchak', gt: 'yopuvchi burchak', slash: 'qiya chiziq' },
   en: { html: 'H T M L', head: 'head', title: 'title', body: 'body', doctype: 'doctype',
     close: 'closing tag', lt: 'less-than sign', gt: 'greater-than sign', slash: 'slash' }
