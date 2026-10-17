@@ -167,3 +167,16 @@
 .s12-in.is-led { box-shadow: 0 0 0 2px ${T.ui}; }
 .s12-locked { display: inline-block; min-width: 4.5ch; padding: 1px 8px; border-radius: 7px; color: ${T.ink2}; opacity: .5;
   box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},.18); }
+/* Шкаф документа (вместо коробки, заказчик 17.10.2026): глубина проёмов и подсветка своим цветом тега. */
+.fig .fg-void { fill: #3b3d44; opacity: .26; }
+.fig [data-part="case"], .fig [data-part="case-near"], .fig [data-part="html-close"] { --anatomy-lit-top: #f1f4f8; --anatomy-lit-shade: #e1e6ed; }
+.fig [data-part="head"] { --anatomy-lit-top: #f4f0fd; --anatomy-lit-shade: #e4dcf5; }
+.fig [data-part="body"] { --anatomy-lit-top: #eef7fc; --anatomy-lit-shade: #d8e9f3; }
+.fig [data-part="title-card"], .fig [data-part="title-stray"] { --anatomy-lit-top: #fff; --anatomy-lit-shade: #f6e9ef; }
+.fig [data-part="page-card"] { --anatomy-lit-top: #fff; --anatomy-lit-shade: #eaf3f9; }
+.fig [data-part="doctype"] { --anatomy-lit-top: #fffbea; --anatomy-lit-shade: #f2ecd8; }
+/* «Нажми сюда» в шкафу: заметное пульсирующее свечение и оранжевая обводка детали. */
+.fig .is-led { animation: rbCabLed 1.2s ease-in-out infinite; }
+.fig .is-led .iso-edge { stroke: ${T.ui}; stroke-width: 1.5; }
+@keyframes rbCabLed { 0%, 100% { filter: drop-shadow(0 0 1px rgba(255,79,40,.35)); } 50% { filter: drop-shadow(0 0 7px rgba(255,79,40,.95)); } }
+@media (prefers-reduced-motion: reduce) { .fig .is-led { animation: none; filter: drop-shadow(0 0 4px rgba(255,79,40,.8)); } }

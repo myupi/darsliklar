@@ -2,15 +2,15 @@
 //   node tools/robot/robot.build.mjs → lessons/test/07-struktura-robot.jsx
 // Файл урока = шапка + канон курса HTML (дословно, не правится) + пометка
 // «УРОК» + robot.src.jsx, куда встают: помощники урока 1 (../anatomy/zh-helpers.jsx),
-// части интерфейса (rb-ui.jsx), две фигуры — коробка документа
-// (../anatomy/pervaya.figures.mjs) и робот Pixel (robot.figures.mjs), CSS урока 1,
+// части интерфейса (rb-ui.jsx), две фигуры — шкаф документа
+// (../anatomy/shkaf.figures.mjs — шкаф документа) и робот Pixel (robot.figures.mjs), CSS урока 1,
 // базовый CSS моделей, свой CSS (pv-own.css + rb-own.css + раскраска Pixel) и CSS
 // кита anatomy.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import * as k from '../anatomy/kit/iso-kit.mjs';
-import { docModel } from '../anatomy/pervaya.figures.mjs';
+import { cabinetModel } from '../anatomy/shkaf.figures.mjs';
 import { robotModel, armCss } from './robot.figures.mjs';
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
@@ -65,7 +65,11 @@ const paintCss = Object.entries(PAINT).map(([name, c]) => {
 
 put('/*@HELPERS@*/', helpers);
 put('/*@UI@*/', read('./rb-ui.jsx').trim());
-put('/*@FIGURES@*/', 'const FIG = ' + JSON.stringify(docModel()) + ';\nconst RFIG = ' + JSON.stringify(robotModel()) + ';\nconst RFIG_BUST = ' + JSON.stringify(robotModel({ bust: true })) + ';');
+// Шкаф документа (заказчик, 17.10.2026) с настройками урока: табличка <!DOCTYPE html>
+// на крышке, ящики в покое задвинуты — экран 6 выдвигает их по одному (head-cover /
+// body-cover), ярлыки в порядке кода: <head> на панели, </head> внутри, <html> / </html>
+// на боковине сверху и снизу.
+put('/*@FIGURES@*/', 'const FIG = ' + JSON.stringify(cabinetModel({ doctype: true, covers: true, tagsFront: true })) + ';\nconst RFIG = ' + JSON.stringify(robotModel()) + ';\nconst RFIG_BUST = ' + JSON.stringify(robotModel({ bust: true })) + ';');
 put('/*@LESSON1_CSS@*/', read('../anatomy/zaglyani.css').trim());   // CSS внутри шаблонной строки урока
 put('/*@ISO_CSS@*/', tpl(k.ISO_CSS.trim()));
 put('/*@FIG_CSS@*/', read('../anatomy/pv-base.css').trim());

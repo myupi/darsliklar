@@ -276,39 +276,39 @@ const C = {
 
   s3: {
     eyebrow: L3('Sahifa ichida', 'Внутри страницы', 'Inside the page'),
-    say: L3('Bu — sahifaning modeli, u qutiga o‘xshaydi. Qutini ochish uchun qopqog‘ini bosing!',
-      'Это модель страницы — как коробка. Открой её: нажми на крышку!',
-      'This is a model of the page, like a box. Open it: tap the lid!'),
-    html: L3('html — butun sahifani o‘z ichiga oladigan katta quti. Uning ichida head va body bo‘limlari bor.',
-      'Вся коробка — это html: в ней вся страница целиком. Внутри — два отделения.',
-      'The whole box is html: the entire page is inside it. There are two sections inside.'),
-    head: L3('head bo‘limida sahifa haqidagi ma’lumotlar saqlanadi — xuddi pasportdagidek. Bu bo‘lim sahifada ko‘rinmaydi, lekin unda sahifa nomi bor.',
+    say: L3('Bu — sahifaning modeli, u shkafga o‘xshaydi. Uni ochish uchun eshikchasini bosing!',
+      'Это модель страницы — как шкаф. Открой его: нажми на дверцу!',
+      'This is a model of the page, like a cabinet. Open it: tap the door!'),
+    html: L3('html — butun sahifani o‘z ichiga oladigan shkaf. Uning ichida head va body tortmalari bor.',
+      'Весь шкаф — это html: в нём вся страница целиком. Внутри — два ящика.',
+      'The whole cabinet is html: the entire page is inside it. There are two drawers inside.'),
+    head: L3('head tortmasida sahifa haqidagi ma’lumotlar saqlanadi — xuddi pasportdagidek. Bu tortma sahifada ko‘rinmaydi, lekin unda sahifa nomi bor.',
       'head — паспорт страницы. В окне его не видно, но в нём хранится название.',
       'head is the page’s passport. You don’t see it in the window, but the name is kept in it.'),
     title: L3('Mana u! Sahifa nomi title teglari orasiga yoziladi, title esa head ichida turadi. Brauzer bu nomni yuqoridagi yorliqda ko‘rsatadi.',
       'Вот оно! title — название для вкладки. Видишь, вкладка подсветилась?',
       'There it is! title is the name for the tab. See the tab light up?'),
-    body: L3('body — sahifada ko‘rinadigan hamma narsa joylashadigan bo‘lim. Matn, rasm va tugmalar shu yerda bo‘ladi.',
+    body: L3('body — sahifada ko‘rinadigan hamma narsa joylashadigan tortma. Matn, rasm va tugmalar shu yerda bo‘ladi.',
       'body — тело страницы: всё, что видно в окне. Текст, картинки, кнопки — всё здесь.',
       'body is the page’s body: everything you see in the window. Text, pictures, buttons: it all goes here.'),
     doctype: L3('Bu — har bir sahifaning birinchi qatori. U doim bir xil bo‘ladi va brauzerga bu HTML sahifa ekanini bildiradi.',
       'Это первая строка любой страницы. Она всегда одинаковая и говорит браузеру: это HTML-страница.',
       'This is the first line of every page. It’s always the same and tells the browser: this is an HTML page.'),
-    needHead: L3('E’tibor bering: title head bo‘limi ichida turadi. Avval head bo‘limini oching.', 'title лежит внутри head. Сначала открой head.', 'title lies inside head. Open head first.'),
+    needHead: L3('E’tibor bering: title head tortmasi ichida turadi. Avval head tortmasini oching.', 'title лежит внутри head. Сначала открой head.', 'title lies inside head. Open head first.'),
     done: L3('Zo‘r! html — butun sahifa, head — sahifa haqidagi ma’lumotlar va nom, body — sahifada ko‘rinadigan hamma narsa.',
       'Супер! html — вся страница, head — паспорт с названием, body — всё, что в окне.',
       'Super! html is the whole page, head is the passport with the name, body is everything in the window.'),
     next: {
-      html: L3('Qopqoqni bosing', 'Нажми на крышку', 'Tap the lid')
+      html: L3('Eshikchani bosing', 'Нажми на дверцу', 'Tap the door')
     },
-    pickOne: L3('Endi ichidagi bo‘limlardan birini oching: head yoki body.', 'Открой любое из них — нажми head или body.', 'Open either one: tap head or body.'),
-    other: L3('Endi ikkinchi bo‘lim — {x} bo‘limini oching.', 'Теперь открой другое отделение — {x}.', 'Now open the other section: {x}.'),
-    lastTitle: L3('head bo‘limida title kartochkasi qoldi. Uni bosing.', 'В паспорте осталась карточка. Нажми на title.', 'There’s a card left in the passport. Tap title.'),
-    sum0: L3('Zo‘r! Endi takrorlaymiz: quti, kod va brauzerga qarang.', 'Супер! Повторим — смотри на коробку, код и браузер.', 'Super! Let’s recap: watch the box, the code and the browser.'),
+    pickOne: L3('Endi tortmalardan birini oching: head yoki body.', 'Открой любой ящик — нажми head или body.', 'Open either drawer: tap head or body.'),
+    other: L3('Endi ikkinchi tortma — {x} tortmasini oching.', 'Теперь открой другой ящик — {x}.', 'Now open the other drawer: {x}.'),
+    lastTitle: L3('head tortmasida title kartochkasi qoldi. Uni bosing.', 'В паспорте осталась карточка. Нажми на title.', 'There’s a card left in the passport. Tap title.'),
+    sum0: L3('Zo‘r! Endi takrorlaymiz: shkaf, kod va brauzerga qarang.', 'Супер! Повторим — смотри на шкаф, код и браузер.', 'Super! Let’s recap: watch the cabinet, the code and the browser.'),
     sumHtml: L3('html — butun sahifa.', 'html — вся страница целиком.', 'html is the whole page.'),
-    sumHead: L3('head — sahifa haqidagi ma’lumotlar bo‘limi, unda yorliqdagi nom saqlanadi.', 'head — паспорт страницы, в нём название для вкладки.', 'head is the page’s passport, with the name for the tab.'),
+    sumHead: L3('head — sahifa haqidagi ma’lumotlar tortmasi, unda yorliqdagi nom saqlanadi.', 'head — паспорт страницы, в нём название для вкладки.', 'head is the page’s passport, with the name for the tab.'),
     sumBody: L3('body — sahifada ko‘rinadigan hamma narsa.', 'body — всё, что видно в окне.', 'body is everything you see in the window.'),
-    ask: L3('Sahifa qutisini oching', 'Открой коробку страницы', 'Open the page box'),
+    ask: L3('Sahifa shkafini oching', 'Открой шкаф страницы', 'Open the page cabinet'),
     askDone: L3('Hammasi ochildi! Qismlarni yana bosish mumkin', 'Всё открыто! Части можно нажимать ещё', 'All open! You can tap the parts again')
   },
 
@@ -360,27 +360,27 @@ const C = {
       'Теперь собери страницу, как конструктор: выбери деталь, потом её место.',
       'Now build the page like a kit: choose a piece, then its place.'),
     ok: {
-      head: L3('Ana! head bo‘limi html qutisiga tushdi.', 'Есть! head — в коробке html.', 'Yes! head is in the html box.'),
-      body: L3('Klass! body ham html ichida, head bo‘limidan keyin turadi.', 'Класс! body — в html, после head.', 'Cool! body is in html, after head.'),
-      title: L3('Zo‘r! title head bo‘limiga tushdi — sahifa nomi shu yerda saqlanadi.', 'В точку! title — в паспорте head.', 'Nailed it! title is in the head passport.')
+      head: L3('Ana! head tortmasi html shkafiga kirdi.', 'Есть! head — в шкафу html.', 'Yes! head is in the html cabinet.'),
+      body: L3('Klass! body ham html ichida, head tortmasidan keyin turadi.', 'Класс! body — в html, после head.', 'Cool! body is in html, after head.'),
+      title: L3('Zo‘r! title head tortmasiga tushdi — sahifa nomi shu yerda saqlanadi.', 'В точку! title — в паспорте head.', 'Nailed it! title is in the head passport.')
     },
-    titleBody: L3('Hechqisi yo‘q. Yorliqdagi nom sahifada ko‘rinmaydi, demak u body ichida turmaydi. Uning joyi — head bo‘limi.',
+    titleBody: L3('Hechqisi yo‘q. Yorliqdagi nom sahifada ko‘rinmaydi, demak u body ichida turmaydi. Uning joyi — head tortmasi.',
       'Почти! Название вкладки не видно в окне — значит, не в body. Ищи паспорт — head.',
       'Almost! The tab name isn’t shown in the window, so not in body. Look for the passport: head.'),
-    titleHtml: L3('Yana bir qarang: title to‘g‘ridan-to‘g‘ri qutiga emas, bo‘limlardan biriga qo‘yiladi. Sahifa nomi qaysi bo‘limda saqlanadi?',
-      'Почти! title кладут не прямо в коробку, а в отделение. Какое из них — паспорт?',
-      'Almost! title doesn’t go straight into the box but into a section. Which one is the passport?'),
-    bodyFirst: L3('E’tibor bering: html ichida avval head bo‘limi turadi, body esa undan keyin.', 'В коробке сначала идёт head, а body — после него.', 'In the box, head comes first and body after it.'),
-    nested: L3('Qarang: head va body — ikki alohida bo‘lim. Ikkalasi ham to‘g‘ridan-to‘g‘ri html ichida turadi.', 'head и body — два отдельных отделения, оба прямо в html.', 'head and body are two separate sections, both straight inside html.'),
-    noPlace: L3('E’tibor bering: bu bo‘lim hali qo‘yilmagan. Avval uni joyiga qo‘ying.', 'Этого отделения пока нет. Сначала поставь его.', 'That section isn’t there yet. Put it in first.'),
+    titleHtml: L3('Yana bir qarang: title to‘g‘ridan-to‘g‘ri shkafga emas, tortmalardan biriga qo‘yiladi. Sahifa nomi qaysi tortmada saqlanadi?',
+      'Почти! title кладут не прямо в шкаф, а в ящик. Какой из них — паспорт?',
+      'Almost! title doesn’t go straight into the cabinet but into a drawer. Which one is the passport?'),
+    bodyFirst: L3('E’tibor bering: html ichida avval head tortmasi turadi, body esa undan keyin.', 'В шкафу сначала идёт head, а body — после него.', 'In the cabinet, head comes first and body after it.'),
+    nested: L3('Qarang: head va body — ikki alohida tortma. Ikkalasi ham to‘g‘ridan-to‘g‘ri html ichida turadi.', 'head и body — два отдельных ящика, оба прямо в html.', 'head and body are two separate drawers, both straight inside html.'),
+    noPlace: L3('E’tibor bering: bu tortma hali qo‘yilmagan. Avval uni joyiga qo‘ying.', 'Этого ящика пока нет. Сначала поставь его.', 'That drawer isn’t there yet. Put it in first.'),
     pickFirst: L3('Avval detalni tanlang.', 'Сначала выбери деталь.', 'Choose a piece first.'),
     done: L3('Hammasi yig‘ildi! Endi «3D ko‘rinish» va «Kod» tugmalarini bosib, ikkala ko‘rinishni solishtiring.',
       'Собрано! Вот это да! Теперь переключай «Объём» и «Код» и сравнивай.',
       'Built! Look at that! Now switch between “Volume” and “Code” and compare.'),
-    h1: L3('Qaysi bo‘limda sahifa nomi saqlanadi, qaysi bo‘lim esa sahifada ko‘rinadi?', 'Какое отделение — паспорт с названием, а какое видно в окне?', 'Which section is the passport with the name, and which shows in the window?'),
+    h1: L3('Qaysi tortmada sahifa nomi saqlanadi, qaysi tortma esa sahifada ko‘rinadi?', 'Какой ящик — паспорт с названием, а какой видно в окне?', 'Which drawer is the passport with the name, and which shows in the window?'),
     h2: L3('head va body html ichida turadi (avval head). title esa head ichida.', 'head и body — внутри html (сначала head). title — внутри head.', 'head and body go inside html (head first). title goes inside head.'),
     h3: L3('Keyingi qadam: {p}', 'Сейчас: {p}', 'Now: {p}'),
-    hintAsk: L3('Sahifa nomi qaysi bo‘limda saqlanadi?', 'Какое отделение — паспорт страницы?', 'Which section is the page’s passport?'),
+    hintAsk: L3('Sahifa nomi qaysi tortmada saqlanadi?', 'Какой ящик — паспорт страницы?', 'Which drawer is the page’s passport?'),
     ask: L3('Detalni tanlang, keyin uning joyini bosing', 'Выбери деталь, потом место', 'Choose a piece, then its place'),
     askPlace: L3('Endi joyni bosing', 'Теперь выбери место', 'Now choose the place'),
     askDone: L3('Qismni tanlang — u ikkala ko‘rinishda ham belgilanadi', 'Выбери часть — она выделится в обоих видах', 'Choose a part: it stays selected in both views')
@@ -412,7 +412,7 @@ const C = {
     pickTitle: L3('Avval title qatorini tanlang', 'Сначала выбери строку title', 'First choose the title line'),
     pickPlace: L3('Endi head bo‘limi ichidagi joyni bosing', 'Теперь выбери место внутри head', 'Now choose a place inside head'),
     inBody: L3('Hechqisi yo‘q. Bu — body bo‘limi, unda sahifada ko‘rinadigan matn turadi. Sahifa nomi esa head bo‘limida saqlanadi.', 'Это body — там то, что видно в окне. А название живёт в паспорте.', 'That’s body: it holds what shows in the window. The name lives in the passport.'),
-    inHtml: L3('Yana bir qarang: bu to‘g‘ridan-to‘g‘ri html qutisi. Sahifa nomi qaysi bo‘limda saqlanadi?', 'Это прямо коробка html. В каком отделении паспорт?', 'That’s straight in the html box. Which section is the passport?'),
+    inHtml: L3('Yana bir qarang: bu to‘g‘ridan-to‘g‘ri html shkafi. Sahifa nomi qaysi tortmada saqlanadi?', 'Это прямо шкаф html. В каком ящике паспорт?', 'That’s straight in the html cabinet. Which drawer is the passport?'),
     h1: L3('Yuqoridagi qoidaga qarang.', 'Посмотри на панель правила.', 'Look at the rule panel.'),
     h2: L3('Sahifa nomi title ichiga yoziladi. title esa head bo‘limida bo‘ladi.', 'title — название страницы, оно живёт в паспорте head.', 'title is the page name; it lives in the head passport.'),
     h3: L3('<head> qatorini bosing — title qatori uning ichiga o‘tadi.', 'Нажми строку <head> — title переедет внутрь.', 'Tap the <head> line: title moves inside.'),
@@ -1099,7 +1099,11 @@ function S3({ p }) {
     : hlKey === 'body' ? ['body', 'body-close', 'page'] : hlKey === 'title' ? ['title'] : hlKey === 'doctype' ? ['doctype'] : [];
   const prompt = promptFor(seen);
   const ledTargets = !next ? [] : next === 'html' ? ['lid'] : prompt === c.pickOne ? ['head', 'body'] : [next === 'title' && seen.indexOf('body') < 0 ? 'body' : next];
-  const ledKeys = led ? ledTargets : [];
+  // Часть, которую Коди просит нажать, горит в самом шкафу с той минуты, как он
+  // это говорит, и до нажатия (заказчик, 17.10.2026). Пока Коди объясняет только
+  // что открытую часть, подсветки нет — она не спорит с объяснением.
+  const askingNow = !!speaker.text && [c.say, prompt].some((t) => t && pick(t) === pick(speaker.text));
+  const ledKeys = !solved && (askingNow || spoken || led) ? ledTargets : [];
   const askText = solved ? c.askDone : prompt || c.ask;
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
@@ -1516,7 +1520,7 @@ function S7({ p }) {
       pickable={solved ? null : sel ? ['html', 'head', 'body', 'title', 'page'] : []}
       parts={{ lid: 'off', 'title-stray': 'off', 'head-cover': 'off', 'body-cover': 'off', doctype: 'on', slots: placed.length < 2 ? 'on' : 'off',
         head: has('head') ? 'on' : 'off', body: has('body') ? 'on' : 'off', 'title-card': has('title') ? 'on' : 'off' }}
-      move={{ lid: LID_UP(), head: has('head') ? 0 : DROP(), body: has('body') ? 0 : DROP(), 'title-card': has('title') ? 0 : DROP() }}
+      move={{ lid: LID_UP(), 'head-cover': COVER_UP(), 'body-cover': COVER_UP(), head: has('head') ? 0 : DROP(), body: has('body') ? 0 : DROP(), 'title-card': has('title') ? 0 : DROP() }}
       lit={lit} shake={shake} led={led && sel ? ['html', 'head'] : []} label={c.ask} />
   );
   const code = (

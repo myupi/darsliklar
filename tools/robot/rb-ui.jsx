@@ -29,7 +29,12 @@ const docTexts = (title, text) => { const [a, b] = twoLines(text); return { titl
 // Фигура. Экран задаёт состояние, фигура только рисует:
 //   texts · parts { ключ: on|ghost|off } · lit [ключи] · move { ключ: величина } ·
 //   led [ключи] · shake { k, n } · onPick(ключ) · pickable [ключи].
-// fig — модель (FIG — коробка документа, RFIG — робот Pixel); по умолчанию FIG.
+// fig — модель (FIG — шкаф документа, RFIG — робот Pixel); по умолчанию FIG.
+// Пружины частей шкафа документа: [жёсткость, демпфирование, порог «доехал»].
+// Ящик въезжает и чуть отскакивает, как на доводчике; карточки — легче.
+// У ключей *-cover значение 0…1 (ось уже растянута на длину хода) — порог мельче.
+const SPRING_MOVE = { 'head-cover': [150, 17, 0.002], 'body-cover': [130, 16, 0.002], head: [150, 17, 0.05], body: [130, 16, 0.05],
+  'title-card': [220, 22, 0.05], 'page-card': [220, 22, 0.05], 'title-stray': [220, 22, 0.05] };
 function Fig({ fig, texts, parts, lit, move, led, shake, onPick, pickable, cls, label }) {
   const F = fig || FIG;
   const pick = usePick();
@@ -53,6 +58,7 @@ function Fig({ fig, texts, parts, lit, move, led, shake, onPick, pickable, cls, 
     place();
     return () => cancelAnimationFrame(raf.current);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const vel = useRef({});
   const moveKey = JSON.stringify(move || {});
   useEffect(() => {
     if (!pos.current) return undefined;
@@ -65,8 +71,17 @@ function Fig({ fig, texts, parts, lit, move, led, shake, onPick, pickable, cls, 
       Object.keys(want.current).forEach((k) => {
         const w = want.current[k];
         const v = pos.current[k] === undefined ? w : pos.current[k];
-        const nv = calm ? w : v + (w - v) * (1 - Math.exp(-dt / 0.18));
-        pos.current[k] = Math.abs(w - nv) < 0.05 ? w : nv;
+        const sp = SPRING_MOVE[k];
+        let nv;
+        if (calm) nv = w;
+        else if (sp) {
+          let u = vel.current[k] || 0;
+          u += (sp[0] * (w - v) - sp[1] * u) * dt;
+          nv = v + u * dt;
+          vel.current[k] = u;
+          if (Math.abs(w - nv) < sp[2] && Math.abs(u) < sp[2] * 10) { nv = w; vel.current[k] = 0; }
+        } else nv = v + (w - v) * (1 - Math.exp(-dt / 0.18));
+        pos.current[k] = !sp && Math.abs(w - nv) < 0.05 ? w : nv;
         if (pos.current[k] !== w) moving = true;
       });
       place();
