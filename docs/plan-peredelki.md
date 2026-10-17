@@ -16,7 +16,7 @@
 
 Статус (16.10.2026): тестовая версия «Кино во дворе» — `lessons/test/06-ssylki-i-atributy.jsx` (14 экранов), сценарий `docs/scenarij-04-ssylki-i-atributy.md`, сборка `node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/ssylki/ssylki.src.jsx lessons/test/06-ssylki-i-atributy.jsx`. Мини-браузер урока с адресной строкой и «назад», переходы по ссылкам честные. Ждёт отзыва заказчика.
 
-## Урок 1 — тестовая переделка по отзывам учеников «Робот Bob»
+## Урок 1 — тестовая переделка по отзывам учеников «Робот Pixel»
 
 Статус (17.10.2026): тестовая версия — `lessons/test/07-struktura-robot.jsx` (16 экранов), сценарий `docs/scenarij-01-struktura-robot.md`, сборка `node tools/robot/robot.build.mjs`. Сделана по отзывам учеников на урок 1:
 - озвучка;
@@ -27,7 +27,11 @@
 - трудный язык;
 - зависание на слайде 4.
 
-Робот Bob из трёх слоёв (HTML · CSS · JavaScript) — навык anatomy. Основа — «Моя первая страница». Курсовой урок не тронут. Ждёт отзыва заказчика; после одобрения — перенести в `lessons/html/01-struktura-dokumenta.jsx`.
+Робот Pixel из трёх слоёв (HTML · CSS · JavaScript) — навык anatomy. Основа — «Моя первая страница». Курсовой урок не тронут. Ждёт отзыва заказчика; после одобрения — перенести в `lessons/html/01-struktura-dokumenta.jsx`.
+
+## Тестовый урок «Из чего сделан сайт: робот Пиксель»
+
+Статус (17.10.2026): `lessons/test/08-robot-pixel.jsx`, 4 экрана — слои HTML · CSS · JavaScript, экран Пикселя со страницей и кодом, «Почини Пикселя» (по виду узнать выключенный слой), финал. Папка `tools/pixel/` самодостаточна (свои копии помощников, интерфейса, фигуры, CSS и кита anatomy), сборка `node tools/pixel/pixel.build.mjs`; правки в ней не трогают урок 07 и другие. Ждёт отзыва заказчика.
 
 ## Урок 1 — `lessons/html/01-struktura-dokumenta.jsx`
 
