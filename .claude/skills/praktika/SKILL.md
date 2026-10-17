@@ -15,7 +15,8 @@ description: Самостоятельно создать или передела
 - контракт платформы, канон, сборка файла, API — `../novyy-urok/references/realizaciya.md`;
 - эталоны и приоритет правил — `../novyy-urok/references/istochniki.md`;
 - методика, тон, языки, озвучка — `../novyy-urok/references/metodika.md` и `../novyy-urok/references/vizual-i-ux.md`;
-- проверка в браузере и помощник `qa.js` — `../novyy-urok/references/proverka.md`.
+- проверка в браузере и помощник `qa.js` — `../novyy-urok/references/proverka.md`;
+- похвалы и подбадривания — `../novyy-urok/references/pohvala.md` (банк живых фраз на трёх языках).
 
 ## Режимы
 
