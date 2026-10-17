@@ -107,6 +107,9 @@ swapAutoplay();
 swapTtsDiag();
 swapIdleCoach();
 swapVoiceTop();
+swapCelebrate();
+swapKodiHead();
+swapEmotion();
 
 swap("  ui: '#1E88E5',", "  // КУРС HTML: интерфейс — #FF4F28 (заказчик, 12.10.2026), а не голубой.\n  ui: '#FF4F28',");
 swap("  uiSoft: '#E3F2FD',", "  uiSoft: '#FFE8E1',");
@@ -406,50 +409,327 @@ function useIdleCoach(active, speaking) {
 // отнимает место и контент не помещается, урок ставит Stage проп voiceTop.
 // ТОЛЬКО НА ТЕЛЕФОНЕ (уточнение заказчика): на узком экране и на телефоне лёжа
 // герой скрыт (как stage-bare: пузырь жив и ведёт озвучку), а в шапке, рядом
-// с подсказкой, — кружок с полосками, как в практике. На ноутбуке места
-// хватает — Коди стоит как обычно, кружка нет.
+// с подсказкой, — кружок с головой Коди и волнами голоса (с v4, 17.10.2026;
+// раньше — кружок с полосками, как в практике). На ноутбуке места хватает —
+// строка героя на месте, в шапке Коди нет.
 function swapVoiceTop() {
   swap(`const Stage = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroFixed, done, hideSpeaker, hint }) => {`,
     `const Stage = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroFixed, done, hideSpeaker, hint, voiceTop }) => {`);
   swap(`(hideSpeaker ? ' stage-bare' : '')`, `(hideSpeaker ? ' stage-bare' : '') + (voiceTop ? ' stage-voicetop' : '')`);
   swap(`              <ExitBtn />
 `, `              <ExitBtn />
-              {voiceTop ? <VoiceDot /> : null}
+              {speaker && !hideSpeaker ? <VoiceDot pose={speaker.pose} /> : null}
 `);
-  swap(`const PauseBtn = ({ done }) => {`, `// КУРС HTML: кружок голоса в шапке (Stage voiceTop) — на экранах, где герою
-// не хватает места. Оживает, пока звучит голос.
-const VoiceDot = () => {
+  // Коди v4 (17.10.2026): в шапке — тот же кружок с головой Коди и волнами
+  // голоса, только размером со служебную кнопку.
+  swap(`const PauseBtn = ({ done }) => {`, `// КУРС HTML: Коди в шапке, рядом с подсказкой. На телефоне он живёт здесь
+// всегда (заказчик, 17.10.2026: «на телефоне — возле кнопки подсказки»), на
+// ноутбуке спрятан — там Коди справа снизу. Тот же кружок с головой: лицо
+// держит эмоцию реплики, вокруг бегут волны, пока звучит голос.
+const VoiceDot = ({ pose }) => {
   const audio = useAudio();
   return (
-    <span className={'speaker-voice ctl-voice' + (audio && audio.playing ? ' is-on' : '')} aria-hidden="true">
-      <span className="sv-bars"><i /><i /><i /><i /><i /></span>
+    <span className="ctl-voice kodi-dot" aria-hidden="true">
+      <RobotSVG pose={pose || 'explain'} talking={!!(audio && audio.playing)} waveAmp={1.6} />
     </span>
   );
 };
 
 const PauseBtn = ({ done }) => {`);
-  swap(`/* UI-09: служебные кнопки`, `/* КУРС HTML: голос в шапке вместо героя (Stage voiceTop) — только на телефоне:
-   узкий экран или телефон лёжа. На ноутбуке Коди на месте, кружка нет.
-   Герой прячется, но не размонтируется: пузырь ведёт озвучку. */
+  swap(`/* UI-09: служебные кнопки`, `/* КУРС HTML: Коди в шапке вместо строки героя (Stage voiceTop) — только на
+   телефоне: узкий экран или телефон лёжа. На ноутбуке строка героя на месте,
+   в шапке его нет. Строка прячется, но не размонтируется: пузырь ведёт озвучку. */
 .stage-voicetop .ctl-voice { display: none; }
+.kodi-dot { width: var(--ctl); height: var(--ctl); flex: 0 0 auto; place-items: center; }
+.kodi-dot .kodi-av { width: 100%; }
+/* Волны у маленького кружка в шапке скромнее — не наезжают на полосу прогресса. */
+.kodi-dot .kodi-waves { transform: scale(.8); }
 @media (max-width: 719px), (orientation: landscape) and (max-height: 500px) {
   .stage-voicetop .ctl-voice { display: grid; }
   .stage-voicetop .speaker-wrap { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0;
     overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .stage-voicetop .stage-content { grid-column: 1 / -1; }
 }
-/* КУРС HTML: невысокий ноутбук (окно 700–860 px). Крупный ярус ставит герою
-   до 20dvh — на окне 720 px робот выходит ~200 px, выше реплики, и тесные
-   экраны вылезают за низ. Здесь робот плавно уменьшается вместе с высотой
-   окна (на 860 px размер тот же, что у крупного яруса, на 720 — ~97 px),
-   а не прячется: на ноутбуке Коди всегда на месте. */
+/* КУРС HTML: невысокий ноутбук (окно 700–860 px) — кружок Коди чуть меньше
+   крупного яруса: на окне 720 px ~72 px. На ноутбуке Коди всегда на месте. */
 @media (min-width: 760px) and (min-height: 700px) and (max-height: 860px) {
-  .lesson-root { --av: clamp(90px, min(29vw, calc(52.9dvh - 284px)), 275px); }
+  .lesson-root { --av: clamp(68px, min(9vw, 10dvh), 96px); }
 }
-/* Пока звучит голос, вокруг кружка мягко расходится кольцо. */
-.ctl-voice.is-on { animation: ctlVoiceRing 1.6s ease-out infinite; }
-@keyframes ctlVoiceRing { 0% { box-shadow: 0 0 0 0 rgba(255,79,40,.32); } 100% { box-shadow: 0 0 0 10px rgba(255,79,40,0); } }
-@media (prefers-reduced-motion: reduce) { .ctl-voice.is-on { animation: none; } }
 
 /* UI-09: служебные кнопки`);
 }
+
+// ПРАЗДНИК ПОХВАЛЫ (заказчик, 16.10.2026): «вау, классно получилось» вместо
+// сухого «ты сам сделал», и к похвале — хлопушки с конфетти и аплодисменты.
+// 1) Похвала из общего набора — живая и неформальная, без форм рода на RU.
+// 2) sfx('cheer') — аплодисменты: короткие всплески шума через полосовой
+//    фильтр вразнобой, как у зала, и светлый аккорд поверх. Без файлов.
+// 3) celebrate() — хлопушки из нижних углов и аплодисменты. Сам срабатывает,
+//    когда герой хвалит (sayNow с позой cheer или celebrate), не чаще раза
+//    в 2,5 с. Слой рисуется в Shell, касаний не ловит; при «меньше движения»
+//    конфетти нет, звук остаётся.
+function swapCelebrate() {
+  swap(`const PRAISE = {
+  uz: ['To‘g‘ri!', 'Barakalla!', 'Ajoyib!', 'Ofarin!'],
+  ru: ['Правильно!', 'Молодец!', 'Отлично!', 'Точно!'],
+  en: ['Correct!', 'Well done!', 'Nice!', 'Exactly!']
+};`, `const PRAISE = {
+  uz: ['Voy, zo‘r!', 'Ana! Chiqdi!', 'Super!', 'Qoyil!', 'Ura!', 'Zo‘r-ku!'],
+  ru: ['Вау, классно!', 'Есть! Получилось!', 'Супер!', 'Огонь!', 'Ура!', 'Вот это да!'],
+  en: ['Wow, awesome!', 'Yes! You did it!', 'Super!', 'Brilliant!', 'Hooray!', 'Amazing!']
+};`);
+  swap(`function sfx(kind, enabled) {`, `let _clapBuf = null;
+function sfx(kind, enabled) {`);
+  swap(`    else if (kind === 'boot') { beep(330, 0.10, 0, 'sine', 0.05); beep(440, 0.12, 0.09, 'sine', 0.05); beep(587, 0.22, 0.19, 'sine', 0.05); }`,
+`    else if (kind === 'boot') { beep(330, 0.10, 0, 'sine', 0.05); beep(440, 0.12, 0.09, 'sine', 0.05); beep(587, 0.22, 0.19, 'sine', 0.05); }
+    // КУРС HTML: АПЛОДИСМЕНТЫ — хлопки зала вразнобой и аккорд «победы».
+    else if (kind === 'cheer') {
+      const sr = ctx.sampleRate;
+      if (!_clapBuf || _clapBuf.sampleRate !== sr) {
+        _clapBuf = ctx.createBuffer(1, Math.floor(sr * 0.05), sr);
+        const d = _clapBuf.getChannelData(0);
+        for (let k = 0; k < d.length; k += 1) d[k] = (Math.random() * 2 - 1) * Math.pow(1 - k / d.length, 3);
+      }
+      const N = 28;
+      for (let k = 0; k < N; k += 1) {
+        const when = (k / N) * 1.3 + Math.random() * 0.07;
+        const env = Math.sin(Math.PI * Math.min(1, (when + 0.1) / 1.5));
+        const src = ctx.createBufferSource(); src.buffer = _clapBuf;
+        src.playbackRate.value = 0.8 + Math.random() * 0.45;
+        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1000 + Math.random() * 1000; bp.Q.value = 0.8;
+        const g = ctx.createGain(); g.gain.value = 0.08 + 0.16 * env;
+        src.connect(bp); bp.connect(g); g.connect(ctx.destination);
+        src.start(t0 + when);
+      }
+      beep(784, 0.12, 0, 'triangle', 0.05); beep(988, 0.12, 0.1, 'triangle', 0.05); beep(1319, 0.3, 0.2, 'sine', 0.05);
+    }`);
+  swap(`// 7. ЖУРНАЛ ОТВЕТОВ, ПАМЯТЬ ЭКРАНОВ И СОХРАНЁННЫЙ ПРОГРЕСС`, `// КУРС HTML: ПРАЗДНИК ПОХВАЛЫ — хлопушки и аплодисменты (см. build-canon.mjs).
+const _celebSubs = new Set();
+let _celebLast = 0;
+function celebrate() {
+  const now = Date.now();
+  if (now - _celebLast < 2500) return;
+  _celebLast = now;
+  sfx('cheer', true);
+  _celebSubs.forEach((f) => { try { f(); } catch (e) { /* no-op */ } });
+}
+const CELEB_COLORS = ['#FF4F28', '#FFB703', '#1171A0', '#6F57AB', '#227882', '#97368A', '#2F6FB0', '#F4A261'];
+const CELEB_BITS = (() => {
+  const out = [];
+  const r = (k, m) => { const x = Math.sin(k * 12.9898 + m * 78.233) * 43758.5453; return x - Math.floor(x); };
+  for (let k = 0; k < 40; k += 1) {
+    const side = k % 2;
+    out.push({ side, c: CELEB_COLORS[k % CELEB_COLORS.length], shape: k % 3,
+      dx: (side ? -1 : 1) * Math.round(40 + r(k, 1) * 220), dy: -Math.round(240 + r(k, 2) * 300),
+      rot: Math.round(r(k, 3) * 720 - 360), delay: +(r(k, 4) * 0.18).toFixed(2), dur: +(1.3 + r(k, 5) * 0.6).toFixed(2) });
+  }
+  return out;
+})();
+const CELEB_CSS = \`
+.celeb { position: fixed; inset: 0; z-index: 70; pointer-events: none; overflow: hidden; }
+.celeb-pop { position: absolute; bottom: 18px; width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent;
+  border-bottom: 46px solid #FFB703; filter: drop-shadow(0 2px 0 rgba(58,53,48,.15)); animation: celebPop 1.1s ease-out both; }
+.celeb-pop::after { content: ''; position: absolute; left: -9px; top: 14px; width: 18px; height: 6px; background: #FF4F28; border-radius: 2px; }
+.celeb-pop.is-l { left: 22px; transform-origin: 50% 100%; --rz: 32deg; }
+.celeb-pop.is-r { right: 22px; transform-origin: 50% 100%; --rz: -32deg; }
+@keyframes celebPop { 0% { transform: rotate(var(--rz)) scale(.4); opacity: 0; } 15% { transform: rotate(var(--rz)) scale(1.15); opacity: 1; }
+  30% { transform: rotate(var(--rz)) scale(1); } 80% { opacity: 1; } 100% { transform: rotate(var(--rz)) scale(.9); opacity: 0; } }
+.celeb-bit { position: absolute; bottom: 60px; width: 9px; height: 14px; background: var(--c); border-radius: 2px; opacity: 0;
+  animation: celebFly var(--dur) cubic-bezier(.2,.7,.4,1) both; }
+.celeb-bit.is-l { left: 36px; }
+.celeb-bit.is-r { right: 36px; }
+.celeb-bit.sh-1 { width: 10px; height: 10px; border-radius: 50%; }
+.celeb-bit.sh-2 { width: 6px; height: 16px; border-radius: 3px; }
+@keyframes celebFly {
+  0% { transform: translate(0, 0) rotate(0); opacity: 1; }
+  45% { transform: translate(calc(var(--dx) * .8), var(--dy)) rotate(calc(var(--rot) * .5)); opacity: 1; }
+  100% { transform: translate(var(--dx), calc(var(--dy) + 360px)) rotate(var(--rot)); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .celeb { display: none; } }
+\`;
+function CelebrateLayer() {
+  const [burst, setBurst] = useState(0);
+  useEffect(() => {
+    let t = null;
+    const f = () => { setBurst((v) => v + 1); clearTimeout(t); t = setTimeout(() => setBurst(0), 2200); };
+    _celebSubs.add(f);
+    return () => { _celebSubs.delete(f); clearTimeout(t); };
+  }, []);
+  if (!burst) return null;
+  return (
+    <div className="celeb" key={burst} aria-hidden="true">
+      <style>{CELEB_CSS}</style>
+      <span className="celeb-pop is-l" />
+      <span className="celeb-pop is-r" />
+      {CELEB_BITS.map((b, k) => (
+        <i key={k} className={'celeb-bit is-' + (b.side ? 'r' : 'l') + ' sh-' + b.shape}
+          style={{ '--c': b.c, '--dx': b.dx + 'px', '--dy': b.dy + 'px', '--rot': b.rot + 'deg', '--dur': b.dur + 's', animationDelay: b.delay + 's' }} />
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7. ЖУРНАЛ ОТВЕТОВ, ПАМЯТЬ ЭКРАНОВ И СОХРАНЁННЫЙ ПРОГРЕСС`);
+  swap(`    const item = { text, pose: pose || 'point', who: who || 'bot' };`, `    const item = { text, pose: pose || 'point', who: who || 'bot' };
+    // КУРС HTML: похвала героя — с хлопушками и аплодисментами.
+    if (pose === 'cheer' || pose === 'celebrate') celebrate();`);
+  swap(`                  {children}
+                </div>
+              </PageProvider>`, `                  {children}
+                  <CelebrateLayer />
+                </div>
+              </PageProvider>`);
+}
+
+// КОДИ v4 — ТОЛЬКО ГОЛОВА В КРУГЕ (заказчик, 17.10.2026): «пусть остаётся только
+// голова, эмоции — лицом; голову — внутрь кружка, а вокруг кружка — волны, как
+// у Алисы и Siri; больше места — контенту, а не роботу». Рисунок и волны — в
+// canon/html/hero-tail.part.jsx. Здесь — строка героя:
+// 1) пока звучит голос, рядом с героем больше нет кружка с полосками: кружок с
+//    головой сам показывает речь волнами;
+// 2) --av — теперь диаметр кружка, а не ширина рамки робота с телом: строка
+//    героя стала ниже вдвое (телефон ~58 px вместо ~110 px);
+// 3) постоянная высота строки героя (heroFixed) — по кружку.
+function swapKodiHead() {
+  swap(`          {/* Полоски — только индикатор «робот говорит». Кнопкой повтора они
+              больше не являются: управление озвучкой одно, в шапке. */}
+          <span className={'speaker-voice' + (speaking ? ' is-on' : '')} aria-hidden="true">
+            <span className="sv-bars"><i /><i /><i /><i /><i /></span>
+          </span>
+`, `          {/* КУРС HTML: речь показывают волны вокруг кружка с головой Коди —
+              отдельного кружка с полосками больше нет. */}
+`);
+  swap(`.stage-hero-fixed .speaker { min-height: calc(var(--av) * 1.368); }`,
+    `.stage-hero-fixed .speaker { min-height: var(--av); }`);
+  swap(`  --av: clamp(66px, min(22vw, 13dvh), 138px);`,
+    `  /* КУРС HTML: Коди v4 — диаметр кружка с головой (волны выходят за него). */
+  --av: clamp(54px, min(16vw, 9dvh), 70px);`);
+  swap(`  .lesson-root { --gap-stack: clamp(7px, 1.3dvh, 12px); --av: clamp(74px, min(23.4vw, 14.5dvh), 126px); }`,
+    `  .lesson-root { --gap-stack: clamp(7px, 1.3dvh, 12px); --av: clamp(48px, min(15vw, 9dvh), 60px); }`);
+  swap(`    /* Те же 1.165 к рамке: сам робот прежнего размера, поле вокруг больше. */
+    --av: clamp(124px, min(29vw, 19.9dvh), 275px);`,
+    `    /* КУРС HTML: кружок Коди v4 на крупном ярусе. */
+    --av: clamp(72px, min(9vw, 10.5dvh), 108px);`);
+  swap(`  .lesson-root { --av: clamp(46px, 13dvh, 62px); --gap-stack: 8px; --bar-y: 5px; }`,
+    `  .lesson-root { --av: clamp(40px, 11dvh, 52px); --gap-stack: 8px; --bar-y: 5px; }`);
+  // 4) МЕСТО КОДИ (заказчик, 17.10.2026): «на компе голова Коди — справа снизу
+  //    экрана, чуть крупнее (и на планшете); на телефоне — сверху, а кнопки
+  //    сверху и сам Коди — с правой стороны».
+  //    · Телефон (до 759 px): кнопки шапки прижаты вправо, Коди — в шапке
+  //      рядом с подсказкой (заказчик: «на телефоне — возле кнопки
+  //      подсказки»). Строки героя под шапкой нет; без звука там остаётся
+  //      только облако реплики, хвостиком вверх-вправо — к Коди.
+  //    · Планшет и компьютер (от 760 px, кроме телефона лёжа): строки героя
+  //      сверху нет — кружок стоит в правом нижнем углу, чуть выше нижней
+  //      панели и у самого правого края экрана (заказчик: «чуть выше нижней
+  //      панели и ближе к правой части»). Облако реплики (без звука) —
+  //      строкой над кнопками, слева от Коди: оно не ложится поверх задания.
+  //      Со звуком строка пустая; на экране уже 1200 px у содержания снизу
+  //      запас на высоту кружка, на широком Коди стоит в поле справа.
+  swap(`/* UI-09: служебные кнопки`, `/* КУРС HTML: МЕСТО КОДИ (заказчик, 17.10.2026) — телефон: в шапке у подсказки;
+   планшет и компьютер: справа снизу, крупнее. */
+.chrome-side { margin-left: auto; }
+.ctl-voice { display: none; }
+@media (max-width: 759px) {
+  .ctl-voice { display: grid; }
+  /* Вокруг кружка — место для волн: они не прячутся под кнопку подсказки.
+     Волны здесь крупнее (waveAmp у VoiceDot) и плотнее — кружок маленький. */
+  .kodi-dot { position: relative; z-index: 1; width: clamp(46px, 13vw, 52px); height: clamp(46px, 13vw, 52px);
+    margin-inline: 14px 18px; }
+  .kodi-dot .kodi-waves { transform: none; }
+  .kodi-dot .kodi-wave { opacity: .5; }
+  .kodi-dot .kodi-wave-2 { opacity: .62; }
+  .kodi-dot .kodi-wave-3 { opacity: .8; }
+  .speaker-av { display: none; }
+  .stage:not(:has(.speaker-bubble)) > .speaker-wrap { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .speaker-bot .speaker-bubble { border-radius: 18px 6px 18px 18px;
+    box-shadow: 0 2px 0 rgba(58,53,48,0.05), 0 12px 26px -16px rgba(58,53,48,0.5), inset -3px 0 0 #FF4F28; }
+}
+@media (min-width: 760px) and (min-height: 501px) {
+  .lesson-root { --av: clamp(84px, min(10vw, 13dvh), 128px); }
+  .stage-content { order: 2; }
+  .speaker-wrap { order: 3; position: relative; padding-top: 0; padding-bottom: clamp(8px, 1.2dvh, 14px); background: transparent; }
+  .stage-nav { order: 4; }
+  .speaker, .stage-hero-fixed .speaker { flex-direction: row-reverse; min-height: 0; animation: none; }
+  /* Без анимации влёта: строка героя пересоздаётся на каждой реплике, и
+     кружок в углу «выпрыгивал» бы заново (а в части браузеров застревал
+     полупрозрачным на первом кадре). Коди в углу просто стоит. */
+  .speaker-av { position: absolute; z-index: 30; right: clamp(16px, 1.8vw, 32px); bottom: calc(var(--av) * .12 + 4px);
+    animation: none; }
+  .speaker-bot .speaker-bubble { flex: 0 1 auto; margin-right: calc(var(--av) + clamp(16px, 2vw, 30px));
+    max-width: min(640px, 72%); max-height: min(20dvh, 180px); border-radius: 24px 24px 8px 24px;
+    box-shadow: 0 2px 0 rgba(58,53,48,0.05), 0 16px 34px -16px rgba(58,53,48,0.55), inset 0 -3px 0 #FF4F28; }
+  .stage:has(> .speaker-wrap):not(:has(.speaker-bubble)) .stage-content { padding-bottom: calc(var(--av) + 10px); }
+  .stage-content.has-speaker::before { max-height: clamp(4px, 30dvh, 260px); }
+}
+/* Широкий экран: справа от колонки содержания хватает поля — Коди стоит в
+   нём и ничего не закрывает, запас снизу не нужен; облако — к правому краю
+   колонки, рядом с Коди. */
+@media (min-width: 1200px) and (min-height: 501px) {
+  .stage:has(> .speaker-wrap):not(:has(.speaker-bubble)) .stage-content { padding-bottom: 6px; }
+  .speaker-bot .speaker-bubble { margin-right: 0; }
+}
+
+/* UI-09: служебные кнопки`);
+}
+
+// ЭМОЦИИ ГОЛОСА (заказчик, 17.10.2026): «все реплики — эмоциональными, ярко и
+// живо, чтобы приятно было слушать». Сервис озвучки работает на ElevenLabs:
+// модели v3 и v4 понимают теги подачи в квадратных скобках ([excited],
+// [laughs], [reassuring] …). Тег ставит сам движок перед отправкой — по смыслу
+// реплики, — в той же функции, что ставит маркер языка. Поэтому:
+//   · тексты уроков не меняются, на экране тегов нет;
+//   · прогрев и сама реплика уходят одной и той же строкой (кэш сервиса);
+//   · голос браузера (запасной) тегов не получает.
+// Выключатель — TTS_EMOTION (модели v2 и Flash тегов не знают и прочли бы их).
+function swapEmotion() {
+  swap(`const markLang = (text, lang) => {
+  const s = String(text || '');
+  if (!s) return s;
+  return (LANG_MARK[lang] || LANG_MARK.ru) + s;
+};`, `// КУРС HTML: ЭМОЦИИ ГОЛОСА — тег подачи ElevenLabs (v3/v4) по смыслу реплики.
+// Решение детерминированное: одна и та же реплика всегда получает один и тот
+// же тег — прогрев и озвучка совпадают. Правила — по началу фразы:
+//   ошибся сам Коди → [embarrassed]; большая победа → [very excited] [laughs];
+//   «ого» → [gasps] [amazed]; похвала → [excited] (+ [laughs] или [chuckles]
+//   у двух похвал из трёх); «почти», подсказка → [reassuring]; привет →
+//   [cheerful]; прощание → [warmly]; вопрос → [curious]; с «!» → [upbeat];
+//   остальное (рассказ, объяснение) → [friendly].
+const TTS_EMOTION = true;
+const EMO_W = (words) => new RegExp('^(?:' + words.join('|') + ')(?=[\\\\s!,.?…:;]|$)', 'i');
+const EMO = {
+  oops: { ru: /^(?:ой|упс)(?=[\\s!,.]|$)|кажется, я /i, uz: /o‘xshayman|adashdim|chalkashtirdim/i, en: /^(?:oops|uh-oh)(?=[\\s!,.]|$)|i think i (?:put|mixed|made)/i },
+  big: { ru: EMO_W(['ура', 'это было мощно', 'вот это да']), uz: EMO_W(['ura', 'bu kuchli', 'qoyil']), en: EMO_W(['hooray', 'that was epic', 'look at that']) },
+  wow: { ru: EMO_W(['ого', 'ух ты', 'вот оно']), uz: /^(?:voy,|ajab|mana u!)/i, en: EMO_W(['whoa', 'there it is']) },
+  win: { ru: EMO_W(['есть', 'огонь', 'супер', 'вау', 'класс', 'бомба', 'чётко', 'четко', 'точно', 'в точку', 'получилось', 'отлично', 'круто', 'красота', 'идеально', 'готово', 'собрано', 'спасибо', 'дожали', 'верно', 'да', 'нашлось', 'сработало', 'правильно', 'вот так', 'работает']),
+    uz: EMO_W(['ana', 'zo‘r', 'zo‘r-ku', 'super', 'voy', 'klass', 'bomba', 'aniq', 'aynan nishonga', 'aynan', 'chiqdi', 'mukammal', 'ajoyib', 'tayyor', 'yig‘ildi', 'rahmat', 'barakalla', 'ofarin', 'to‘g‘ri', 'ha', 'topildi', 'ishladi', 'ishlayapti']),
+    en: EMO_W(['yes', 'awesome', 'super', 'wow', 'cool', 'boom', 'spot on', 'nailed it', 'perfect', 'great', 'built', 'thanks', 'got it', 'done', 'right', 'nice', 'found it', 'it works', 'correct']) },
+  soft: { ru: EMO_W(['почти', 'ничего', 'смотри:', 'хорошая попытка', 'уже близко', 'не страшно']), uz: EMO_W(['deyarli', 'hechqisi', 'qarang:', 'yaxshi urinish', 'yaqin qoldi']),
+    en: EMO_W(['almost', 'no worries', 'look:', 'good try', "you're close", 'so close']) },
+  hello: { ru: EMO_W(['привет']), uz: EMO_W(['salom']), en: EMO_W(['hi', 'hello']) },
+  bye: { ru: /до встречи|до скорого/i, uz: /ko‘rishguncha|xayr/i, en: /see you|goodbye/i }
+};
+const emoHash = (s) => { let h = 0; for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); };
+const emoTag = (text, lang) => {
+  const s = String(text || '').trim();
+  const L = EMO.win[lang] ? lang : 'ru';
+  const is = (k) => EMO[k][L].test(s);
+  if (is('oops')) return '[embarrassed] ';
+  if (is('big')) return '[very excited] [laughs] ';
+  if (is('wow')) return '[gasps] [amazed] ';
+  if (is('win')) { const r = emoHash(s) % 3; return '[excited] ' + (r === 0 ? '[laughs] ' : r === 1 ? '[chuckles] ' : ''); }
+  if (is('soft')) return '[reassuring] ';
+  if (is('hello')) return '[cheerful] ';
+  if (is('bye')) return '[warmly] ';
+  if (/\\?$/.test(s)) return '[curious] ';
+  if (/!$/.test(s)) return '[upbeat] ';
+  return '[friendly] ';
+};
+const markLang = (text, lang) => {
+  const s = String(text || '');
+  if (!s) return s;
+  return (LANG_MARK[lang] || LANG_MARK.ru) + (TTS_EMOTION ? emoTag(s, lang) : '') + s;
+};`);
+}
+
