@@ -1,0 +1,211 @@
+
+.lesson-root { --ind: 1.1em; --gut: 2.2em; --cv-fs: clamp(11.5px, 3.1vw, 14px); --fig-h: min(40dvh, 420px); }
+.cv-empty { display: inline-block; min-width: 4ch; }
+
+/* ══ МОДЕЛЬ ДОКУМЕНТА (навык anatomy) ═══════════════════════════════ */
+.fig { position: relative; width: 100%; height: auto; aspect-ratio: var(--ar, 1.33); max-height: var(--fig-h); min-height: 110px;
+  flex: 0 1 auto; display: flex; justify-content: center; border-radius: 18px; background: #fbfbfa; overflow: hidden;
+  box-shadow: 0 2px 0 rgba(${T.shadowBase},0.05), 0 14px 30px -18px rgba(${T.shadowBase},0.45), inset 0 0 0 1.5px rgba(${T.shadowBase},0.06);
+  -webkit-tap-highlight-color: transparent; }
+.fig > svg { width: 100%; height: 100%; padding: 4px; box-sizing: border-box; }
+.fig.iso[data-theme="light"] { --anatomy-paper: #fbfbfa; --anatomy-lit: ${T.ink}; }
+.fig [data-state="ghost"] { opacity: .16; }
+.fig [data-state="off"] { opacity: 0; pointer-events: none; }
+.fig [data-part] { transition: opacity .45s ease; }
+.fig .is-pick { cursor: pointer; }
+.fig .is-led { animation: figLed 1.3s ease-in-out infinite; }
+@keyframes figLed { 0%, 100% { filter: drop-shadow(0 0 0 rgba(255,79,40,0)); } 50% { filter: drop-shadow(0 0 5px rgba(255,79,40,.95)); } }
+.fig .fx-shake { animation: figShake .46s ease; }
+@keyframes figShake { 0%, 100% { transform: none; } 20% { transform: translateX(-4px); } 45% { transform: translateX(4px); } 70% { transform: translateX(-2px); } }
+/* Материалы: коробка html — графитовая, head — фиолетовая, body — голубая
+   (цвета тегов курса, разбавленные до светлого), карточки — белая бумага. */
+.fig [data-part="case"], .fig [data-part="case-near"], .fig [data-part="html-close"], .fig [data-part="lid"] {
+  --anatomy-top: #f3f5f8; --anatomy-shade-0: #d0d6de; --anatomy-shade-1: #dbe0e7; --anatomy-shade-2: #e5e9ee; --anatomy-shade-3: #eef0f3; }
+.fig [data-part="head"] { --anatomy-top: #f6f3fc; --anatomy-shade-0: #d6cdec; --anatomy-shade-1: #e0d9f1; --anatomy-shade-2: #e9e4f6; --anatomy-shade-3: #f1eefa; }
+.fig [data-part="body"] { --anatomy-top: #eff7fb; --anatomy-shade-0: #cbdfeb; --anatomy-shade-1: #d6e7f1; --anatomy-shade-2: #e1eef5; --anatomy-shade-3: #ebf4f9; }
+.fig [data-part="title-card"], .fig [data-part="page-card"], .fig [data-part="title-stray"] {
+  --anatomy-top: #fff; --anatomy-shade-0: #dededb; --anatomy-shade-1: #e7e7e4; --anatomy-shade-2: #efefec; --anatomy-shade-3: #f6f6f3; }
+.fig .fg-tint { opacity: .12; transition: opacity .3s; }
+.fig .fg-tint[data-tag="html"] { fill: #586A83; } .fig .fg-tint[data-tag="head"] { fill: #6F57AB; } .fig .fg-tint[data-tag="body"] { fill: #1171A0; }
+.fig .is-lit > .fg-tint, .fig .is-lit .fg-tint { opacity: .3; }
+.fig text[data-tag="html"] { fill: #586A83; } .fig text[data-tag="head"] { fill: #6F57AB; }
+.fig text[data-tag="body"] { fill: #1171A0; } .fig text[data-tag="title"] { fill: #9F4471; }
+.fig text[data-font="sans"] { font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif; font-weight: 700; letter-spacing: 0; fill: #1d1d1f; }
+.fig .fg-slot { fill: rgba(88,106,131,.06); stroke: #8a95a5; stroke-width: .9; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
+/* Подсветка части — цветом её тега (обводка + светлая заливка). */
+.fig [data-tag="html"] .iso-solid[data-lit] > .iso-edge, .fig [data-sel="html"].is-lit .iso-edge { stroke: #586A83; }
+.fig [data-tag="head"].is-lit > .iso-solid > .iso-edge, .fig [data-tag="head"] .is-lit > .iso-solid > .iso-edge { stroke: #6F57AB; }
+.fig [data-tag="body"].is-lit > .iso-solid > .iso-edge, .fig [data-tag="body"] .is-lit > .iso-solid > .iso-edge { stroke: #1171A0; }
+.fig [data-tag="title"].is-lit > .iso-solid > .iso-edge { stroke: #9F4471; }
+.fig .is-lit > .iso-solid > .iso-edge { stroke-width: 1.6; }
+.fig .is-lit > .iso-solid > .iso-top { fill: #fff; }
+.fig-s1.is-lifting [data-part="lid"] { opacity: .5; }
+
+/* ══ РАСКЛАДКИ ══════════════════════════════════════════════════════ */
+.duo, .ex { display: flex; flex-direction: column; gap: var(--gap-stack); width: 100%; min-height: 0; }
+.stack > .duo, .stack > .ex, .stack > .work, .stack > .fig, .stack > .lab, .stack > .final { flex: 0 1 auto; min-height: 0; }
+.ex-side { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.cv-ex, .cv-pr { --cv-fs: clamp(11px, 2.9vw, 13.5px); }
+.fig-mini { --fig-h: min(22dvh, 220px); }
+.ex-side { position: relative; }
+/* Плашка head ложится поверх страницы браузера: раскладка не прыгает. */
+.note-line { position: absolute; z-index: 3; left: 8px; right: 8px; top: calc(clamp(30px, 4.6dvh, 40px) + 6px); display: flex; align-items: center; gap: 6px;
+  margin: 0; padding: 6px 10px; border-radius: 10px; background: #F2EFFF; color: #4E3D86; font: 700 13px 'Manrope', sans-serif;
+  box-shadow: inset 0 0 0 1.5px #6F57AB, 0 8px 18px -10px rgba(0,0,0,.35); }
+.bigbtn-in { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+@media (max-width: 899px) {
+  .ex > .fig { min-height: 150px; }
+  .cv-ex, .cv-pr { --cv-fs: 11.5px; }
+  .cv-ex .cv-line, .cv-pr .cv-line { min-height: 1.38em; }
+  .ex-side .mb-page { min-height: 46px; padding: 6px 10px; }
+  .ex-side .mb-doc { font-size: 15px; }
+}
+@media (min-width: 900px) {
+  .duo { flex-direction: row; align-items: center; }
+  .duo > * { flex: 1 1 50%; }
+  /* Модель берёт высоту ряда (её задаёт код), а не свою: иначе на невысоком
+     ноутбуке ряд переполнялся по центру и наезжал на задание и кнопки. */
+  .ex { flex-direction: row; align-items: stretch; }
+  .ex > .fig { flex: 1 1 54%; height: auto; max-height: none; aspect-ratio: auto; min-height: 0; }
+  .ex > .cv, .ex > .ex-side { align-self: center; }
+  .cv-ex .cv-line, .cv-ex .cv-tap { min-height: 22px; }
+  .ex-side .mb-page { min-height: 38px; padding-block: 6px; }
+  .duo > .fig { --fig-h: min(36dvh, 330px); }
+  .ex > .cv, .ex > .ex-side { flex: 1 1 46%; }
+  .cv-ex, .cv-pr { --cv-fs: clamp(13px, 1.2vw, 15px); }
+}
+
+/* Кнопки частей: имя тега, цветная полоса и галочка — не только цвет. */
+.chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.chips { flex-wrap: nowrap; }
+.chip { position: relative; display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 6px 10px 6px 7px; flex: 0 1 auto; min-width: 0; border: none; border-radius: 12px;
+  background: #fff; color: var(--c); font: 700 14px 'JetBrains Mono', ui-monospace, monospace; cursor: pointer;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 35%, #fff), inset 4px 0 0 var(--c), 0 2px 0 rgba(${T.shadowBase},0.08); }
+.chip-mark { display: grid; place-items: center; width: 16px; height: 16px; flex: none; border-radius: 6px; background: color-mix(in srgb, var(--c) 12%, #fff); color: #fff; }
+.chip.is-seen .chip-mark { background: ${T.success}; }
+.chip.is-sel { background: color-mix(in srgb, var(--c) 12%, #fff); box-shadow: inset 0 0 0 2.5px var(--c), 0 2px 0 rgba(${T.shadowBase},0.08); }
+.chip:disabled { cursor: default; }
+.ask-n { display: inline-block; min-width: 2.4em; padding: 1px 7px; border-radius: 8px; background: ${T.uiSoft}; color: ${T.uiDk};
+  font-size: .78em; font-weight: 700; text-align: center; vertical-align: 2px; }
+
+/* 3. Предсказание: браузер, код и модель. На телефоне — в колонку,
+   на ноутбуке — в один ряд (рядом с Коди по высоте влезает только ряд). */
+.pr3 { position: relative; display: flex; flex-direction: column; gap: var(--gap-stack); width: 100%; min-height: 0; }
+.stack > .pr3 { flex: 0 1 auto; min-height: 0; }
+@media (min-width: 900px) {
+  .pr3 { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.15fr) minmax(0, .95fr); align-items: center; gap: 16px; }
+  .pr3 > .fig-mini { --fig-h: min(30dvh, 260px); }
+  .cv-pr .cv-line { min-height: 22px; }
+}
+/* 3. Предсказание — кнопки */
+.where { display: flex; gap: 10px; justify-content: center; }
+.where-b { display: inline-flex; align-items: center; gap: 8px; min-width: 132px; min-height: 52px; padding: 8px 16px; border: none; border-radius: 14px;
+  background: #fff; color: ${T.ink}; font: 800 16px 'Manrope', sans-serif; cursor: pointer;
+  box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.14), 0 3px 0 rgba(${T.shadowBase},0.12); }
+.where-b:disabled { cursor: default; }
+.where-b.is-ok { background: ${T.successSoft}; color: ${T.success}; box-shadow: inset 0 0 0 2px ${T.success}; }
+.where-b.is-miss { opacity: .55; }
+.where-b.is-real { box-shadow: inset 0 0 0 2px ${T.success}; }
+.where-ic { width: 22px; height: 16px; border-radius: 3px; box-shadow: inset 0 0 0 1.6px currentColor; position: relative; }
+.where-tab::before { content: ''; position: absolute; left: 2px; top: 2px; width: 9px; height: 3px; border-radius: 1px; background: currentColor; }
+.where-page::before { content: ''; position: absolute; left: 3px; right: 3px; top: 6px; height: 1.6px; background: currentColor; box-shadow: 0 3px 0 currentColor; }
+
+/* 4. Сборка */
+.build-row { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.pieces, .places { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.piece { position: relative; min-height: 46px; padding: 6px 12px; border: none; border-radius: 12px; background: #fff; color: var(--c); cursor: grab;
+  font: 700 14px 'JetBrains Mono', ui-monospace, monospace; touch-action: none;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 40%, #fff), inset 0 -4px 0 color-mix(in srgb, var(--c) 18%, #fff), 0 3px 0 rgba(${T.shadowBase},0.1); }
+.piece.is-sel { transform: translateY(-4px); box-shadow: inset 0 0 0 2.5px var(--c), 0 10px 18px -8px rgba(${T.shadowBase},0.45); }
+.place { min-height: 40px; padding: 6px 12px; border: none; border-radius: 11px; background: transparent; color: var(--c); cursor: pointer;
+  font: 700 13px 'Manrope', sans-serif; box-shadow: inset 0 0 0 1.5px currentColor; opacity: .45; transition: opacity .2s, background .2s; }
+.places.is-on .place:not(:disabled) { opacity: 1; background: #fff; }
+.place:disabled { cursor: default; opacity: .25; }
+.drag-ghost { position: fixed; z-index: 50; pointer-events: none; transform: translate(-50%, -120%); padding: 6px 12px; border-radius: 12px; background: #fff;
+  color: var(--c); font: 700 14px 'JetBrains Mono', monospace; box-shadow: inset 0 0 0 2px var(--c), 0 12px 24px -10px rgba(0,0,0,.4); }
+
+/* 5. Починка */
+.cv-line.is-picked { background: #FCEAF2; box-shadow: inset 0 0 0 2px #9F4471; }
+.gap-in { position: relative; display: inline-flex; flex: 1 1 auto; }
+
+/* 6. Лаборатория: на телефоне — браузер или модель (переключатель), под ними
+   код с полями; на компьютере — три панели. */
+.lab { display: flex; flex-direction: column; gap: var(--gap-stack); width: 100%; min-height: 0; }
+.lab-views { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.lab-toggle { display: flex; align-self: center; padding: 3px; border-radius: 12px; background: rgba(${T.shadowBase},0.07); }
+.seg { min-height: 36px; padding: 4px 16px; border: none; border-radius: 9px; background: transparent; color: ${T.ink2}; font: 700 14px 'Manrope', sans-serif; cursor: pointer; }
+.seg.is-on { background: #fff; color: ${T.ink}; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.lab-b, .lab-m { display: none; }
+.lab-b.is-shown, .lab-m.is-shown { display: block; }
+.fig-lab { --fig-h: min(30dvh, 300px); }
+.lab-c { position: relative; display: flex; flex-direction: column; gap: 6px; }
+.lab-reset { align-self: center; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 14px; }
+.cv-lab .tk-input { min-width: 6ch; }
+@media (min-width: 900px) {
+  .lab { display: grid; grid-template-columns: 1fr 1fr; align-items: center; }
+  .lab-toggle { display: none; }
+  .lab-b, .lab-m { display: block; }
+  .fig-lab { --fig-h: min(30dvh, 300px); }
+}
+
+/* 7. Самостоятельно */
+.card-float { display: flex; justify-content: center; }
+.card-f { padding: 8px 14px; border-radius: 12px; background: #fff; color: var(--c); font: 700 14px 'JetBrains Mono', monospace;
+  box-shadow: inset 0 0 0 2px var(--c), 0 10px 20px -12px rgba(0,0,0,.4); transform: rotate(-1.5deg); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pool { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.pool-chip { position: relative; display: inline-flex; align-items: center; min-height: 42px; padding: 4px 12px; border: none; border-radius: 11px;
+  background: #fff; cursor: pointer; font: 600 var(--cv-fs) 'JetBrains Mono', ui-monospace, monospace;
+  box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.12), 0 2px 0 rgba(${T.shadowBase},0.12); }
+.pool-chip:disabled { cursor: default; }
+.jaws { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.opt-tag { position: relative; min-width: 104px; min-height: 52px; padding: 6px 14px; border: none; border-radius: 14px; background: #fff; cursor: pointer;
+  color: ${T.ink}; font: 700 18px 'JetBrains Mono', monospace; box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.14), 0 3px 0 rgba(${T.shadowBase},0.12); }
+.opt-tag.is-on { background: ${T.successSoft}; color: ${T.success}; box-shadow: inset 0 0 0 2px ${T.success}; }
+.opt-tag:disabled { cursor: default; }
+.ticks { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 8px; }
+.tick { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 4px 12px 4px 6px; border-radius: 12px; background: ${T.paper};
+  color: ${T.ink}; font: 700 14px 'Manrope', sans-serif; box-shadow: inset 0 0 0 1.5px ${T.success}; }
+.tick-note { width: 100%; text-align: center; color: ${T.ink3}; font: 600 12px 'Manrope', sans-serif; }
+.tick-m { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; background: ${T.success}; color: #fff; }
+
+/* 8. Итог */
+.tk.is-found { background: #E8F6EE; box-shadow: inset 0 0 0 1.5px ${T.success}; }
+.final { display: flex; flex-direction: column; gap: var(--gap-stack); align-items: stretch; }
+.final-side { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.ready-stamp { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 14px; background: ${T.successSoft}; color: ${T.success}; font: 800 16px 'Manrope', sans-serif; }
+.final-note { margin: 0; color: ${T.ink2}; font: 600 13px 'Manrope', sans-serif; text-align: center; }
+.bye-next.next-card { width: 100%; max-width: 420px; align-self: center; background: ${T.paper}; color: ${T.ink};
+  box-shadow: 0 2px 0 rgba(${T.shadowBase},0.05), 0 12px 26px -16px rgba(${T.shadowBase},0.5), inset 0 0 0 1.5px ${T.uiSoft}; }
+.next-card .bye-next-ic { background: ${T.uiSoft}; color: ${T.uiDk}; border: none; }
+.next-card .bye-next-t span { color: ${T.ink2}; }
+.next-card .bye-next-t b { color: ${T.ink}; }
+.next-tags { margin-left: auto; padding-left: 8px; color: ${T.uiDk}; font-size: 14px; font-weight: 700; }
+@media (min-width: 900px) { .final { flex-direction: row; align-items: center; } .final > * { flex: 1 1 50%; } }
+
+/* Низкие экраны и открытая клавиатура: модель уступает место заданию. */
+@media (max-height: 700px) {
+  .lesson-root { --fig-h: min(30dvh, 300px); }
+  .ex > .fig { min-height: 132px; }
+  .cv-ex .cv-line, .cv-ex .cv-tap { min-height: 1.3em; }
+  .ex-side .mb-page { min-height: 38px; }
+  .fig-mini { --fig-h: 16dvh; }
+}
+.is-kbd .fig, .is-kbd .fig-lab { --fig-h: 18dvh; }
+.is-kbd .fig-mini { display: none; }
+/* Клавиатура открыта: видно активное поле и результат. Строки кода без полей,
+   переключатель, модель и «Вернуть пример» на время ввода уходят. */
+.is-kbd .lab-toggle, .is-kbd .lab-m, .is-kbd .lab-reset { display: none !important; }
+.is-kbd .lab-b { display: block !important; }
+.is-kbd .cv-lab .cv-line:not(:has(input)) { display: none; }
+.is-kbd .mb-top { height: 28px; }
+.is-kbd .mb-page { min-height: 34px; padding: 4px 10px; }
+.is-kbd .ex-s5 > .fig { display: none; }
+.is-kbd .insp-h, .is-kbd .insp-r:not(.is-now) { display: none; }
+.is-kbd .cv-ex { --cv-fs: 11px; padding-block: 3px; }
+.is-kbd .cv-ex .cv-line { min-height: 1.22em; }
+.is-kbd .ask { font-size: 15px; }
+.is-kbd .cv-line.is-ctx { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .fig .is-led, .fig .fx-shake { animation: none; }
+  .fig [data-part] { transition: none; }
+}

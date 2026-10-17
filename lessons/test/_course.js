@@ -22,7 +22,9 @@ export default {
       topics: ['ul', 'ol', 'li'] },
     { n: 6, slug: 'ssylki-i-atributy', title: 'Ссылки и атрибуты — урок 4 курса HTML (проба)',
       topics: ['a', 'href'] },
-    { n: 7, slug: 'struktura-robot', title: 'Структура HTML-документа — урок 1 (проба: робот Bob)',
+    { n: 7, slug: 'struktura-robot', title: 'Структура HTML-документа — урок 1 (проба: робот Пиксель)',
       topics: ['html', 'head', 'title', 'body', 'HTML · CSS · JavaScript'] },
+    { n: 8, slug: 'robot-pixel', title: 'Из чего сделан сайт: робот Пиксель (проба)',
+      topics: ['HTML · CSS · JavaScript', 'веб-страница и её код'] },
   ],
 };
