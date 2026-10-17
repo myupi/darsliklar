@@ -74,16 +74,16 @@
 .rb-open .rb-code { transition: box-shadow .3s; }
 .rb-open.is-code .rb-code { box-shadow: 0 0 0 3px #586A83, 0 14px 30px -18px rgba(${T.shadowBase},0.6); }
 .rb-tapfig { cursor: pointer; border-radius: 18px; -webkit-tap-highlight-color: transparent; }
+/* Bob целиком (с ногами и подставкой) — на экране 2 место есть, картинка крупнее. */
+.rb-tapfig .fig-robot { --fig-h: min(40dvh, 380px); }
 .rb-acts { display: flex; justify-content: center; }
 .rb-open-b { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 10px 20px; }
 
 /* Финал: страница ученика на экране Bob */
-.rb-fin { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; width: 100%; }
-.rb-fin .fig-robot { --fig-h: min(30dvh, 300px); }
-.rb-fin-code { display: none; }
-.rb-fin-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.rb-fin.is-code .rb-fin-code { display: block; }
-.rb-fin.is-code .rb-fin-bob { display: none; }
+.rb-fin { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; width: 100%; }
+.rb-fin .fig-robot { --fig-h: min(36dvh, 330px); }
+.rb-fin-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; align-items: center; }
+.rb-fin-side .bye-next { width: 100%; max-width: 420px; }
 
 @media (max-width: 899px) {
   .rb-layer { min-height: 78px; padding: 8px 4px 6px; }
@@ -92,11 +92,10 @@
 }
 @media (max-height: 700px) and (max-width: 899px) {
   .fig-robot { --fig-h: min(30dvh, 240px); }
-  .rb-fin .fig-robot { --fig-h: min(24dvh, 200px); }
+  .rb-fin .fig-robot { --fig-h: min(30dvh, 230px); }
   .rb-fin-side { gap: 6px; }
   .rb-fin-side .ach { gap: 4px; }
   .rb-fin-side .ach-i { padding-block: 3px; font-size: 13px; }
-  .rb-fin-side .final-note { font-size: 12px; }
   .rb-layer { min-height: 66px; gap: 2px; }
   .rb-l-ic { display: none; }
 }
@@ -107,10 +106,59 @@
   .rb-stage .rb-layer { flex-direction: row; justify-content: flex-start; gap: 12px; min-height: 64px; padding: 10px 16px; text-align: left; }
   .rb-stage .rb-l-txt { align-items: flex-start; gap: 2px; flex: 1 1 auto; }
   .rb-stage .rb-sw { margin: 0; }
-  .rb-fin { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) minmax(0, .95fr); align-items: center; gap: 16px; }
-  .rb-fin .rb-fin-code, .rb-fin.is-code .rb-fin-bob { display: block; }
-  .rb-fin .fig-robot { --fig-h: min(52dvh, 380px); }
-  .rb-fin-code { display: flex; flex-direction: column; gap: 8px; }
+  .rb-fin { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: center; gap: 24px; }
+  .rb-fin .fig-robot { --fig-h: min(56dvh, 420px); }
+  .rb-fin-side { align-items: stretch; }
   .rb-fin-side .ach { flex-direction: column; align-items: stretch; }
-  .rb-fin-side .final-note { font-size: 12px; }
 }
+
+/* Рука-подсказка (DemoHand) */
+.demo-hand { position: absolute; left: 0; top: 0; z-index: 40; margin: -4px 0 0 -16px; pointer-events: none;
+  transition: transform .7s cubic-bezier(.4,0,.2,1); filter: drop-shadow(0 4px 6px rgba(0,0,0,.25)); }
+.demo-hand.is-drag { transition-duration: 1s; }
+.demo-hand svg { position: relative; display: block; transition: transform .18s; transform-origin: 40% 10%; }
+.demo-hand.is-tap svg { transform: scale(.86) translateY(3px); }
+.dh-ring { position: absolute; left: 16px; top: 4px; }
+.demo-hand.is-tap .dh-ring::after { content: ''; position: absolute; left: -17px; top: -17px; width: 34px; height: 34px;
+  border-radius: 50%; border: 3px solid ${T.ui}; animation: dhRing .6s ease-out both; }
+@keyframes dhRing { from { transform: scale(.3); } to { transform: scale(1.3); border-color: rgba(255,79,40,.0); } }
+.dh-ghost { position: absolute; left: 6px; top: -30px; white-space: nowrap; padding: 4px 9px; border-radius: 10px; background: #fff;
+  color: ${T.ink}; font-size: 13px; font-weight: 700; box-shadow: 0 8px 18px -8px rgba(0,0,0,.4), inset 0 0 0 1.5px rgba(${T.shadowBase},.15); }
+@media (prefers-reduced-motion: reduce) { .demo-hand { transition: none; } }
+
+/* Общие для правок 17.10.2026 */
+/* Слой с рукой-подсказкой — над соседними блоками (кнопками деталей и т. п.):
+   иначе рука уходила под кнопку, которая стоит в разметке ниже. */
+.rb-rel { position: relative; z-index: 6; }
+/* 5. Строка тега — в одну строку и на телефоне; длинное название переносится
+   внутри своей части, а теги не разрываются. */
+.s2-board .pv-bl { flex-wrap: nowrap; font-size: clamp(16px, 4.8vw, 30px); max-width: 100%; }
+.s2-board .bl-part { padding-inline: clamp(5px, 1.6vw, 10px); flex: 0 0 auto; }
+.s2-board .bl-content { flex: 0 1 auto; min-width: 0; }
+.s2-board .bl-text { white-space: normal; text-align: center; }
+.s2-tabwrap { width: 100%; max-width: 620px; align-self: center; }
+.s2-tabwrap .mb { width: 100%; max-width: none; }
+.s2-tabwrap .mb-new { visibility: hidden; }   /* место под подпись «← вкладка» */
+/* Часть, о которой говорит Коди: приподнята, обведена, с подписью; остальные — тише.
+   Высота частей с запасом под подпись — строка не прыгает. */
+.s2-board .bl-part { min-height: clamp(78px, 11dvh, 92px); justify-content: center; padding-bottom: 24px;
+  transition: transform .28s cubic-bezier(.34,1.4,.64,1), opacity .25s, box-shadow .25s, background .25s; }
+/* Селекторы сильнее канонового «экран ждёт, пока герой говорит» (там все
+   неактивные кнопки бледнеют — и выделенная часть тоже бледнела). */
+.stage .stage-content .pv-bl.is-watch .bl-part { opacity: .38; filter: none; }
+.stage .stage-content .pv-bl.is-watch .bl-part.is-now { opacity: 1; filter: none; transform: translateY(-4px) scale(1.08);
+  background: #FFF0E8; box-shadow: inset 0 0 0 3px ${T.ui}, 0 14px 26px -12px rgba(255,79,40,.65); }
+.s2-board .bl-lbl { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); margin: 0; white-space: nowrap; }
+.bl-lbl.is-now { background: ${T.ui}; }
+@media (prefers-reduced-motion: reduce) { .pv-bl.is-watch .bl-part.is-now { transform: none; } }
+/* 10. «Код» светится оранжевым, пока его не открыли. */
+.seg.is-glow:not(.is-on) { color: ${T.ui}; animation: rbGlow 1.4s ease-in-out infinite; }
+@keyframes rbGlow { 0%, 100% { box-shadow: 0 0 0 0 rgba(255,79,40,.45); } 50% { box-shadow: 0 0 0 6px rgba(255,79,40,0); } }
+/* 12. Правило — спокойная карточка, не жёлтая (жёлтым — только подсказка в строке задания). */
+.rule-panel:not(.is-ok) { background: #fff; color: ${T.ink2}; box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.12), inset 4px 0 0 #6F57AB; }
+.rule-panel:not(.is-ok) .rule-ic { background: #6F57AB; }
+/* 15. Перетаскивание строк. */
+.pool-chip { touch-action: none; cursor: grab; }
+.pool-chip.is-drag { opacity: .4; }
+.cv-flat .cv-line { touch-action: none; }
+@media (prefers-reduced-motion: reduce) { .seg.is-glow { animation: none; } }

@@ -91,15 +91,15 @@ const UI = {
   intoBody: L3('body ichiga', 'внутрь body', 'into body'),
   pageText: L3('sahifa matni', 'текст страницы', 'page text'),
   slot: L3('joy', 'место', 'slot'),
-  swapNote: L3('Qatorni bosing, keyin boshqasini — ular joy almashadi. Tanlangan qatorni olib tashlash mumkin.', 'Нажми строку, потом другую — они поменяются местами. Выбранную строку можно убрать.', 'Tap a line, then another: they swap places. A chosen line can be removed.'),
+  swapNote: L3('Qatorni boshqasining ustiga suring (yoki ikkalasini bosing) — ular joy almashadi.', 'Перетащи строку на другую (или нажми обе) — они поменяются местами.', 'Drag a line onto another (or tap both): they swap places.'),
   noTags: L3('Bu yerga faqat so‘zlar, burchaklarsiz.', 'Здесь только слова, без уголков.', 'Only words here, no angle brackets.'),
   ideas: L3('G‘oyalar', 'Идеи', 'Ideas'),
   goal: L3('Buyurtma', 'Заказ', 'Order'),
   scheme: L3('Tuzilma', 'Структура', 'Structure'),
   done: L3('Bajarildi', 'Сделано', 'Done'),
   // Робот Bob
-  robot: L3('Robot Bob: korpus, ekran, qo‘llar, oyoqlar, antenna', 'Робот Bob: корпус, экран, руки, ноги, антенна', 'Robot Bob: case, screen, arms, legs, antenna'),
-  bob: L3('Bob', 'Bob', 'Bob'),
+  robot: L3('Robot Bob: korpus, ekran, qo‘llar, oyoqlar, antenna', 'Робот Боб: корпус, экран, руки, ноги, антенна', 'Robot Bob: case, screen, arms, legs, antenna'),
+  bob: L3('Bob', 'Боб', 'Bob'),
   layers: {
     html: { name: 'HTML', sub: L3('Detallar', 'Детали', 'Parts') },
     css: { name: 'CSS', sub: L3('Ko‘rinish', 'Вид', 'Look') },
@@ -108,7 +108,8 @@ const UI = {
   scr2: L3('1-savol', 'Вопрос 1', 'Question 1'),
   gameQ: L3('1-savol: o‘rgimchakning nechta oyog‘i bor?', 'Вопрос 1: сколько ног у паука?', 'Question 1: how many legs does a spider have?'),
   openScreen: L3('Ekranni ochish', 'Открыть экран', 'Open the screen'),
-  passport: L3('Pasport: sahifa nomi va sozlamalari', 'Паспорт: название и настройки страницы', 'Passport: the page name and settings')
+  passport: L3('Pasport: sahifa nomi va sozlamalari', 'Паспорт: название и настройки страницы', 'Passport: the page name and settings'),
+  tabPin: L3('← yorliq', '← вкладка', '← tab')
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -119,50 +120,57 @@ const UI = {
 // ─────────────────────────────────────────────────────────────────────────────
 const C = {
   r1: {
-    eyebrow: L3('Robot Bob', 'Робот Bob', 'Robot Bob'),
+    eyebrow: L3('Robot Bob', 'Робот Боб', 'Robot Bob'),
     cast: [
       { pose: 'hello', text: L3('Salom! Men Kodi, dasturchi robotman. Bu mening loyiham — robot Bob. Hozircha u ko‘rinmayapti.',
-        'Привет! Я Коди, робот-программист. А это мой проект — робот Bob. Пока его не видно.',
+        'Привет! Я Коди, робот-программист. А это мой проект — робот Боб. Пока его не видно.',
         'Hi! I’m Kodi, a programmer robot. This is my project, robot Bob. You can’t see him yet.') },
       { pose: 'point', text: L3('Bob uch qatlamdan yig‘ilgan. Ularni navbat bilan yoqing!',
-        'Bob собран из трёх слоёв. Включи их по очереди!',
+        'Боб собран из трёх слоёв. Включи их по очереди!',
         'Bob is built from three layers. Turn them on one by one!') }
     ],
     on: {
       html: L3('Voy, detallar paydo bo‘ldi: korpus, ekran, qo‘llar, oyoqlar! Bu HTML — Bob nimadan yasalgani.',
-        'Ого, появились детали: корпус, экран, руки, ноги! Это HTML — из чего Bob сделан.',
+        'Ого, появились детали: корпус, экран, руки, ноги! Это HTML — из чего сделан Боб.',
         'Whoa, the parts appeared: the case, screen, arms and legs! That’s HTML: what Bob is made of.'),
       css: L3('Endi Bob rangli! Bu CSS — tashqi ko‘rinish.',
-        'Теперь Bob цветной! Это CSS — внешний вид.',
+        'Теперь Боб цветной! Это CSS — внешний вид.',
         'Now Bob has colours! That’s CSS: the look.'),
       js: L3('Mana endi Bob sizga qo‘l silkitayapti! Bu JavaScript — harakat.',
-        'А теперь Bob машет тебе! Это JavaScript — движения.',
+        'А теперь Боб машет тебе! Это JavaScript — движения.',
         'And now Bob is waving at you! That’s JavaScript: the moves.')
     },
     done: L3('Har bir sayt ham shunday tuzilgan: detallar, ko‘rinish, harakat. Asosiysi — HTML: usiz hech narsa yo‘q. Shundan boshlaymiz!',
       'Так устроен и каждый сайт: детали, вид, движение. Главное — HTML: без него ничего нет. С него и начнём!',
       'Every website works the same way: parts, look, moves. The key one is HTML: without it there’s nothing. That’s where we start!'),
-    off: L3('Ko‘rdingizmi? HTML siz Bob butunlay yo‘qoldi.', 'Видишь? Без HTML исчез весь Bob.', 'See? Without HTML, all of Bob is gone.'),
+    next: {
+      css: L3('Endi keyingisini yoqing — «Ko‘rinish», ya’ni CSS.', 'Теперь включи следующий слой — «Вид», это CSS.', 'Now turn on the next layer, “Look”: that’s CSS.'),
+      js: L3('Endi oxirgisi — «Harakat» qatlamini, JavaScript ni yoqing!', 'А теперь последний — включи «Движение», это JavaScript!', 'Now the last one: turn on “Moves”, that’s JavaScript!')
+    },
+    off: L3('Ko‘rdingizmi? HTML siz Bob butunlay yo‘qoldi.', 'Видишь? Без HTML исчез весь Боб.', 'See? Without HTML, all of Bob is gone.'),
     ask: L3('Qatlamlarni navbat bilan yoqing', 'Включи слои по очереди', 'Turn the layers on one by one'),
     askOne: L3('«{x}» qatlamini yoqing', 'Включи слой «{x}»', 'Turn on the “{x}” layer'),
     askDone: L3('Qatlamlarni o‘chirib-yoqib ko‘ring', 'Слои можно выключать и включать', 'You can switch the layers off and on')
   },
 
   r2: {
-    eyebrow: L3('Bob ekrani', 'Экран Bob', 'Bob’s screen'),
+    eyebrow: L3('Bob ekrani', 'Экран Боба', 'Bob’s screen'),
     say: L3('Bobning ko‘kragida ekran bor, unda «Bilimlar jangi» o‘yini. Ekranni bosing — ichiga qaraymiz!',
-      'На груди у Bob экран, а на нём игра «Битва знаний». Нажми на экран — заглянем внутрь!',
+      'На груди у Боба экран, а на нём игра «Битва знаний». Нажми на экран — заглянем внутрь!',
       'Bob has a screen on his chest with the game “Battle of Knowledge”. Tap the screen and let’s look inside!'),
-    page: L3('Bu oddiy veb-sahifa! Tepada — yorliqdagi nom, pastda — o‘yinning o‘zi.',
-      'Это обычная веб-страница! Сверху — название на вкладке, ниже — сама игра.',
-      'It’s a normal web page! The name is on the tab at the top, the game itself is below.'),
+    tab: L3('Bu oddiy veb-sahifa! Eng tepada, yorliqda — uning nomi: «Bilimlar jangi».',
+      'Это обычная веб-страница! В самом верху, на вкладке, — её название: «Битва знаний».',
+      'It’s a normal web page! At the very top, on the tab, is its name: “Battle of Knowledge”.'),
+    win: L3('Pastda, oynada — sahifa mazmuni: o‘yin savoli. Uni o‘yinchi ko‘radi.',
+      'А ниже, в окне, — содержимое страницы: вопрос игры. Его и видит игрок.',
+      'And below, in the window, is the page content: the game question. That’s what the player sees.'),
     code: L3('Yonida esa uning kodi — brauzer uchun ko‘rsatmali matn. Brauzer uni o‘qib, sahifani chizadi. Ranglar yo‘q — bu faqat HTML.',
       'А рядом — её код: текст с подсказками для браузера. Браузер читает его и рисует страницу. Цветов нет — это только HTML.',
       'And next to it is its code: text with instructions for the browser. The browser reads it and draws the page. No colours: this is just HTML.'),
-    done: L3('Internetdagi har bir sayt shunday yozilgan. Bugun siz ham o‘rganasiz — oxirida Bob ekranida sizning sahifangiz bo‘ladi!',
-      'Каждый сайт в интернете написан так. Сегодня научишься и ты — а в конце на экране Bob будет твоя страница!',
-      'Every website on the internet is written like this. Today you’ll learn how, and at the end Bob’s screen will show your page!'),
-    ask: L3('Bob ekranini bosing', 'Нажми на экран Bob', 'Tap Bob’s screen'),
+    done: L3('Internetdagi har bir sayt shunday yozilgan. Bugun siz ham o‘rganasiz — oxirida sahifangiz Bobning ekranida chiqadi!',
+      'Каждый сайт в интернете написан так. Сегодня научишься и ты, а в конце твоя страница появится на экране у Боба!',
+      'Every website on the internet is written like this. Today you’ll learn how, and at the end your page will appear on Bob’s screen!'),
+    ask: L3('Bob ekranini bosing', 'Нажми на экран Боба', 'Tap Bob’s screen'),
     askDone: L3('Bu sahifa kodi. Dars oxirida har bir qatorini tushunasiz', 'Это код страницы. К концу урока будет понятна каждая строчка', 'This is the page’s code. By the end you’ll understand every line')
   },
 
@@ -178,9 +186,9 @@ const C = {
         say: L3('Keyin sahifani qismlardan konstruktordek yig‘amiz.',
           'Потом соберём страницу из частей, как конструктор.',
           'Then we put a page together from parts, like a kit.') },
-      { icon: 'browser', text: L3('Sahifangiz Bob ekranida', 'Своя страница на экране Bob', 'Your page on Bob’s screen'),
+      { icon: 'browser', text: L3('Sahifangiz — Bob ekranida', 'Твоя страница — на экране Боба', 'Your page on Bob’s screen'),
         say: L3('Oxirida o‘z sahifangizni yasaysiz — va u Bob ekranida chiqadi!',
-          'А в конце сделаешь свою страницу — и она появится на экране Bob!',
+          'А в конце сделаешь свою страницу — и она появится на экране у Боба!',
           'And at the end you’ll make your own page, and it will appear on Bob’s screen!') }
     ],
     done: L3('Reja tayyor! Endi doim yordam beradigan ikki tugmani ko‘rsataman.',
@@ -223,42 +231,46 @@ const C = {
 
   s2: {
     eyebrow: L3('Nom kodda', 'Название в коде', 'The name in code'),
-    say: L3('Nom kodda mana shunday yozilgan. Qatorning har bir qismini bosing.',
-      'Вот как название записано в коде. Нажми на каждую часть строки.',
-      'Here’s how the name is written in code. Tap each part of the line.'),
+    say: L3('Nom kodda mana shunday yozilgan. Qarang: qatorda uch qism bor.',
+      'Вот как название записано в коде. Смотри: в строке три части.',
+      'Here’s how the name is written in code. Look: the line has three parts.'),
     parts: {
       start: L3('Bu ochuvchi teg — boshlanish. U brauzerga aytadi: shu yerda sahifa nomi boshlanadi.',
         'Это открывающий тег — начало. Он говорит браузеру: здесь начинается название страницы.',
         'This is the opening tag, the start. It tells the browser: the page name starts here.'),
-      content: L3('Bu esa nomning o‘zi. Aynan u yorliqda ko‘rinadi — qarang!',
-        'А это само название. Его и видно на вкладке — смотри!',
-        'And this is the name itself. That’s what shows on the tab. Look!'),
-      end: L3('Bu yopuvchi teg — oxiri. Xuddi o‘sha so‘z, faqat qiya chiziq bilan.',
-        'Это закрывающий тег — конец. То же слово, только с косой чертой.',
-        'This is the closing tag, the end. The same word, but with a slash.')
+      content: L3('Bu esa nomning o‘zi. U yorliqda — brauzerning eng tepasida ko‘rinadi. Qarang!',
+        'А это само название. Его видно на вкладке — в самом верху браузера. Смотри!',
+        'And this is the name itself. It shows on the tab, at the very top of the browser. Look!'),
+      end: L3('Bu yopuvchi teg — oxiri. Xuddi o‘sha so‘z, faqat qiya chiziq bilan. Teglarning o‘zi sahifada ko‘rinmaydi.',
+        'Это закрывающий тег — конец. То же слово, только с косой чертой. Сами теги на странице не видны.',
+        'This is the closing tag, the end. The same word, but with a slash. The tags themselves aren’t shown on the page.')
     },
-    phase2: L3('Teglar — brauzer uchun ko‘rsatma, sahifada ular ko‘rinmaydi. Endi yangi qator: belgini tanlang, keyin qator qismini.',
-      'Теги — подсказки для браузера, на странице их не видно. Теперь новая строка: выбери подпись, потом часть строки.',
-      'Tags are instructions for the browser; you don’t see them on the page. Now a new line: choose a label, then a part of the line.'),
+    quiz: L3('Endi tekshiramiz: men so‘rayman — siz bosasiz!', 'А теперь проверим: я спрашиваю — ты нажимаешь!', 'Now let’s check: I ask, you tap!'),
+    q: {
+      start: L3('Tegning boshlanishi qayerda?', 'Где начало тега?', 'Where’s the start of the tag?'),
+      content: L3('Mazmun qayerda — yorliqda ko‘rinadigan qismi?', 'Где содержимое — то, что видно на вкладке?', 'Where’s the content, the part shown on the tab?'),
+      end: L3('Tegning oxiri qayerda?', 'А где конец тега?', 'And where’s the end of the tag?')
+    },
     ok: {
       start: L3('Ana! Boshlanish — qiya chiziqsiz teg.', 'Есть! Начало — тег без косой черты.', 'Yes! The start is the tag without a slash.'),
       content: L3('Aniq! Mazmun — teglar orasida.', 'Точно! Содержимое — между тегами.', 'Spot on! The content sits between the tags.'),
       end: L3('Aynan nishonga! Oxiri — qiya chiziqli teg.', 'В точку! Конец — тег с косой чертой.', 'Nailed it! The end is the tag with a slash.')
     },
     miss: {
-      start: L3('Deyarli! Bu yozuvda qiya chiziq yo‘q — demak, bu boshlanish.', 'Почти! В этой записи нет косой черты — значит, это начало.', 'Almost! This one has no slash, so it’s the start.'),
-      content: L3('Deyarli! Bu burchaksiz matn — demak, bu mazmun.', 'Почти! Это текст без уголков — значит, это содержимое.', 'Almost! This is text without angle brackets, so it’s the content.'),
-      end: L3('Deyarli! Bu yozuvda qiya chiziq bor — demak, bu oxiri.', 'Почти! В этой записи есть косая черта — значит, это конец.', 'Almost! This one has a slash, so it’s the end.')
+      start: L3('Deyarli! Bu yozuvda qiya chiziq yo‘q — bu boshlanish.', 'Почти! Здесь нет косой черты — это начало.', 'Almost! This one has no slash, so it’s the start.'),
+      content: L3('Deyarli! Bu burchaksiz matn — bu mazmun.', 'Почти! Это текст без уголков — это содержимое.', 'Almost! This is text without angle brackets, so it’s the content.'),
+      end: L3('Deyarli! Bu yozuvda qiya chiziq bor — bu oxiri.', 'Почти! Здесь есть косая черта — это конец.', 'Almost! This one has a slash, so it’s the end.')
     },
-    h1: L3('Burchaklar va qiya chiziqqa qarang.', 'Посмотри на уголки и косую черту.', 'Look at the angle brackets and the slash.'),
-    h2: L3('Boshlanish va oxiri — burchakli teglar. Mazmun ular orasida.', 'Начало и конец — теги в уголках. Содержимое — между ними.', 'Start and end are tags in brackets. The content is between them.'),
-    h3: L3('«Oxiri» — o‘ngdagi, qiya chiziqli yozuv.', '«Конец» — запись справа, с косой чертой.', '“End” is the one on the right, with the slash.'),
+    hint: {
+      start: L3('Boshlanish — chapdagi, qiya chiziqsiz yozuv.', 'Начало — запись слева, без косой черты.', 'The start is the one on the left, without a slash.'),
+      content: L3('Mazmun — o‘rtadagi so‘zlar.', 'Содержимое — слова посередине.', 'The content is the words in the middle.'),
+      end: L3('Oxiri — o‘ngdagi, qiya chiziqli yozuv.', 'Конец — запись справа, с косой чертой.', 'The end is the one on the right, with the slash.')
+    },
     done: L3('Zo‘r-ku! Boshlanish, mazmun, oxiri — sahifaning har bir qismi shunday tuzilgan.',
       'Огонь! Начало, содержимое, конец — так устроена каждая часть страницы.',
       'Awesome! Start, content, end: every part of a page is built like this.'),
-    askA: L3('Qatorning har bir qismini bosing', 'Нажми на каждую часть строки', 'Tap each part of the line'),
-    askB: L3('Belgini tanlang, keyin qismni', 'Выбери подпись, потом часть', 'Choose a label, then a part'),
-    askFollow: L3('Yana bir qator: belgilarni qo‘ying', 'Ещё строка: расставь подписи', 'One more line: place the labels')
+    askWatch: L3('Tinglang va qatorga qarang', 'Слушай и смотри на строку', 'Listen and watch the line'),
+    follow: L3('Yana bir qator — yana javob bering!', 'Ещё одна строка — снова отвечай!', 'One more line: answer again!')
   },
 
   s3: {
@@ -286,11 +298,15 @@ const C = {
       'Супер! html — вся страница, head — паспорт с названием, body — всё, что в окне.',
       'Super! html is the whole page, head is the passport with the name, body is everything in the window.'),
     next: {
-      html: L3('Qopqoqni bosing', 'Нажми на крышку', 'Tap the lid'),
-      head: L3('head bo‘limini oching', 'Открой отделение head', 'Open the head section'),
-      title: L3('title kartochkasini bosing', 'Нажми на карточку title', 'Tap the title card'),
-      body: L3('body bo‘limini oching', 'Открой отделение body', 'Open the body section')
+      html: L3('Qopqoqni bosing', 'Нажми на крышку', 'Tap the lid')
     },
+    pickOne: L3('Ulardan birini oching — head yoki body ni bosing.', 'Открой любое из них — нажми head или body.', 'Open either one: tap head or body.'),
+    other: L3('Endi ikkinchi bo‘limni oching — {x}.', 'Теперь открой другое отделение — {x}.', 'Now open the other section: {x}.'),
+    lastTitle: L3('Pasportda kartochka qoldi. title ni bosing.', 'В паспорте осталась карточка. Нажми на title.', 'There’s a card left in the passport. Tap title.'),
+    sum0: L3('Super! Takrorlaymiz: quti, kod va brauzerga qarang.', 'Супер! Повторим — смотри на коробку, код и браузер.', 'Super! Let’s recap: watch the box, the code and the browser.'),
+    sumHtml: L3('html — butun sahifa.', 'html — вся страница целиком.', 'html is the whole page.'),
+    sumHead: L3('head — sahifa pasporti, unda yorliq uchun nom bor.', 'head — паспорт страницы, в нём название для вкладки.', 'head is the page’s passport, with the name for the tab.'),
+    sumBody: L3('body — oynada ko‘rinadigan hamma narsa.', 'body — всё, что видно в окне.', 'body is everything you see in the window.'),
     ask: L3('Sahifa qutisini oching', 'Открой коробку страницы', 'Open the page box'),
     askDone: L3('Hammasi ochildi! Qismlarni yana bosish mumkin', 'Всё открыто! Части можно нажимать ещё', 'All open! You can tap the parts again')
   },
@@ -327,7 +343,9 @@ const C = {
       body: { want: 'page', text: L3('Bugun final!', 'Сегодня финал!', 'The final is today!'), extra: L3('Men chizishni yaxshi ko‘raman.', 'Я люблю рисовать.', 'I love drawing.'),
         ask: L3('body ichida «{t}» bo‘ladi. Bu matn qayerda chiqadi?', 'В body будет «{t}». А где появится этот текст?', 'body will say “{t}”. Where will this text appear?') }
     },
-    say: L3('Avval taxmin qiling, keyin ishga tushiramiz!', 'Сначала угадай, потом запустим!', 'Guess first, then we run it!'),
+    say: L3('Hozir kodga yangi so‘z tushadi. U qayerda chiqishini taxmin qiling: yorliqdami yoki oynadami? Javobni bosing — va ishga tushiramiz!',
+      'Сейчас в код попадёт новое слово. Угадай, где оно появится: на вкладке или в окне? Нажми свой ответ — и запустим!',
+      'A new word is about to go into the code. Guess where it will appear: on the tab or in the window? Tap your answer and we’ll run it!'),
     okTab: L3('Aniq! title yorliqni o‘zgartirdi, oynaga tegmadi.', 'Точно! title поменял вкладку, а окно не тронул.', 'Spot on! title changed the tab and left the window alone.'),
     okPage: L3('Aynan nishonga! body dagi matn — oynada, yorliq o‘sha-o‘sha.', 'В точку! Текст из body — в окне, вкладка прежняя.', 'Nailed it! The text from body is in the window; the tab stayed the same.'),
     missTab: L3('Qarang: so‘z yorliqqa tushdi. title — yorliq nomi. Yana bir misol!', 'Смотри: слово попало на вкладку. title — это имя вкладки. Ещё пример!', 'Look: the word went to the tab. title is the tab’s name. One more!'),
@@ -469,9 +487,9 @@ const C = {
   },
 
   s14: {
-    eyebrow: L3('Sahifangiz Bob ekranida', 'Твоя страница на экране Bob', 'Your page on Bob’s screen'),
+    eyebrow: L3('Sahifangiz Bob ekranida', 'Твоя страница на экране Боба', 'Your page on Bob’s screen'),
     say: L3('Qarang — sahifangiz Bob ekranida! Bu kuchli bo‘ldi! Endi sahifani teglardan yig‘a olasiz, xuddi haqiqiy veb-dasturchi kabi.',
-      'Смотри — твоя страница на экране Bob! Это было мощно! Теперь ты умеешь собирать страницу из тегов, как настоящий веб-программист.',
+      'Смотри — твоя страница на экране у Боба! Это было мощно! Теперь ты умеешь собирать страницу из тегов, как настоящий веб-программист.',
       'Look, your page is on Bob’s screen! That was epic! Now you can build a page from tags, like a real web developer.'),
     ach: {
       place: { self: L3('Kerakli joyni o‘zingiz topdingiz', 'Место изменения — найдено без подсказок', 'Found the place to change on your own'),
@@ -609,7 +627,11 @@ function R1({ p }) {
         log({ screenId: 'r1', type: 'layers', correct: true, attempts: ns.length });
         sayNow(c.on.js, 'cheer');
         say(c.done, 'explain');
-      } else sayNow(c.on[k], k === 'html' ? 'wonder' : 'smile');
+      } else {
+        sayNow(c.on[k], k === 'html' ? 'wonder' : 'smile');
+        // Следующий слой Коди называет сам (заказчик, 17.10.2026).
+        say(k === 'html' ? c.next.css : c.next.js, 'point');
+      }
       return;
     }
     if (k === 'html' && !now && !offSaid.current) { offSaid.current = true; sayNow(c.off, 'explain'); }
@@ -657,18 +679,19 @@ function R2({ p }) {
     sfx('pop', true);
     setOpen(true); setFlash((n) => n + 1);
     put({ done: true });
-    sayNow(c.page, 'wonder');
+    sayNow(c.tab, 'wonder');
+    say(c.win, 'point');
     say(c.code, 'explain');
     say(c.done, 'cheer');
   };
-  // Пока звучит реплика про код — код подсвечен; про страницу — окно.
-  const now = speaker.text === c.code ? 'code' : speaker.text === c.page ? 'page' : null;
+  // Что Коди называет, то и обведено: вкладка, окно, код.
+  const now = speaker.text === c.tab ? 'tab' : speaker.text === c.win ? 'win' : speaker.text === c.code ? 'code' : null;
   return (
     <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={open ? c.askDone : c.ask} nav={navOf(p, canGo)}>
       <Ask text={open ? c.askDone : c.ask} />
       {open ? (
         <div className={'work pr rb-zoom rb-open' + (now ? ' is-' + now : '')}>
-          <MiniBrowser title={game.title} page={game.text} flashTab={flash} flashPage={flash} hl={now === 'page' ? 'html' : null} />
+          <MiniBrowser title={game.title} page={game.text} flashTab={flash} flashPage={flash} hl={now === 'tab' ? 'title' : now === 'win' ? 'body' : null} />
           <CodeLines lines={buildLines(FULL_DOC, game)} className="cv-pr rb-code" />
         </div>
       ) : (
@@ -836,7 +859,10 @@ function S1({ p }) {
 // на том, что ученик уже видел (название на вкладке). Потом — подписи.
 // =============================================================================
 const PARTS3 = ['start', 'content', 'end'];
-function BigLine({ tag, text, sel, found, onPart, disabled, led }) {
+// now — часть, о которой сейчас говорит Коди: она приподнята, обведена, под ней
+// подпись, остальные приглушены (заказчик, 17.10.2026: «говорит „это начало“ —
+// а не показывает»).
+function BigLine({ tag, text, sel, found, onPart, disabled, led, now }) {
   const pick = usePick();
   const parts = [
     { k: 'start', node: <Tag tag={tag} big /> },
@@ -844,116 +870,109 @@ function BigLine({ tag, text, sel, found, onPart, disabled, led }) {
     { k: 'end', node: <Tag tag={tag} close big /> }
   ];
   return (
-    <div className="pv-bl" translate="no">
+    <div className={'pv-bl' + (now !== undefined ? ' is-watch' : '')} translate="no">
       {parts.map((pt) => (
         <button key={pt.k} type="button" disabled={disabled} onClick={() => onPart(pt.k)}
-          className={'bl-part bl-' + pt.k + (sel === pt.k ? ' is-sel' : '') + (found && found[pt.k] ? ' is-found' : '')}
+          className={'bl-part bl-' + pt.k + (sel === pt.k ? ' is-sel' : '') + (now === pt.k ? ' is-now' : '') + (found && found[pt.k] ? ' is-found' : '')}
           aria-label={found && found[pt.k] ? pick(UI.labels[pt.k]) : undefined}>
           {pt.node}
-          {found && found[pt.k] ? <span className="bl-lbl">{pick(UI.labels[pt.k])}</span> : null}
+          {now === pt.k ? <span className="bl-lbl is-now">{pick(UI.labels[pt.k])}</span>
+            : found && found[pt.k] ? <span className="bl-lbl">{pick(UI.labels[pt.k])}</span> : null}
           <Led on={!!led && led.indexOf(pt.k) >= 0} />
         </button>
       ))}
     </div>
   );
 }
+// Сначала Коди сам показывает три части по очереди (часть подсвечена, пока он
+// о ней говорит; на «содержимом» мигает вкладка). Потом спрашивает: «Где
+// начало?», «Где конец?»… — ученик нажимает часть строки (заказчик,
+// 17.10.2026: не тыкать наугад в начале, а сначала послушать).
+const S2_ORDER = { a: ['end', 'start', 'content'], b: ['content', 'end', 'start'] };
 function S2({ p }) {
   const pick = usePick();
   const log = useLog();
   const c = C.s2;
   const [rec, put] = useRec('s2');
   const solved = !!(rec && rec.done);
-  const [phase, setPhase] = useState(solved ? 'done' : 'explore');   // explore → label → (follow) → done
-  const [seen, setSeen] = useState([]);
-  const [cur, setCur] = useState(null);
-  const [label, setLabel] = useState(null);
+  const [phase, setPhase] = useState(solved ? 'done' : 'watch');   // watch → quiz → (follow) → done
+  const [qi, setQi] = useState(0);
   const [found, setFound] = useState({});
   const [msg, setMsg] = useState(null);
   const [tabFlash, setTabFlash] = useState(0);
   const [shake, wobble] = useShake();
-  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.done : c.say, pose: solved ? 'smile' : 'point' }]);
+  const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
+    : [{ text: c.say, pose: 'point' }, { text: c.parts.start, pose: 'point' }, { text: c.parts.content, pose: 'point' },
+      { text: c.parts.end, pose: 'point' }, { text: c.quiz, pose: 'explain' }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved, spoken);
-  const lad = useLadder(phase === 'label' || phase === 'follow');
-  const st = useRef({ tries: 0, misses: 0, follow: null, followMiss: 0 });
-  const led = useIdleLed(canTap && phase === 'explore', seen.length);
-
-  const explore = (k) => {
-    if (!canTap) return;
-    sfx('tap', true);
-    setCur(k);
-    if (k === 'content') setTabFlash((n) => n + 1);
-    const next = seen.indexOf(k) >= 0 ? seen : seen.concat(k);
-    setSeen(next);
-    sayNow(c.parts[k], 'point');
-    if (next.length === 3 && seen.length < 3) setTimeout(() => { setPhase('label'); setCur(null); sayNow(c.phase2, 'explain'); }, 2200);
-  };
-  const place = (part) => {
-    if (!canTap) return;
-    if (!label) { setMsg(c.askB); return; }
-    if (found[part]) return;
+  const st = useRef({ tries: 0, misses: 0, miss1: 0, follow: null, followMiss: 0, helped: false });
+  const order = phase === 'follow' ? S2_ORDER.b : S2_ORDER.a;
+  const target = phase === 'quiz' || phase === 'follow' ? order[qi] : null;
+  const cur = phase === 'watch' ? (speaker.text === c.parts.start ? 'start' : speaker.text === c.parts.content ? 'content' : speaker.text === c.parts.end ? 'end' : null) : null;
+  useEffect(() => { if (cur === 'content') setTabFlash((n) => n + 1); }, [cur]);
+  // Рассказ договорён — первый вопрос.
+  useEffect(() => {
+    if (phase !== 'watch' || !spoken || solved) return;
+    setPhase('quiz'); setQi(0);
+    sayNow(c.q[S2_ORDER.a[0]], 'curious');
+  }, [spoken]); // eslint-disable-line react-hooks/exhaustive-deps
+  const led = useIdleLed(canTap && !!target, qi * 10 + Object.keys(found).length);
+  const tap = (part) => {
+    if (!canTap || !target || found[part]) return;
     st.current.tries += 1;
-    if (label === part) {
+    if (part === target) {
       sfx('ok', true);
       const f = Object.assign({}, found, { [part]: true });
-      setFound(f); setLabel(null); setMsg(null);
-      if (PARTS3.every((k) => f[k])) {
-        const s = st.current;
-        if (phase === 'label' && lad.lv >= 3) {
-          // Подробная помощь — ещё одна строка того же типа.
-          sayNow(joinL(c.ok[part], c.askFollow), 'smile');
-          setTimeout(() => { setFound({}); setPhase('follow'); lad.reset(); }, 1500);
-          return;
-        }
-        if (phase === 'follow') s.follow = s.followMiss === 0;
-        log({ screenId: 's2', type: 'tag-parts', correct: true, firstTry: s.misses === 0 && lad.asked.current === 0, attempts: s.tries,
-          hints: lad.asked.current, depth: lad.lv, helped: lad.lv >= 3 || phase === 'follow', followUp: s.follow });
-        put({ done: true });
-        setPhase('done');
-        sayNow(joinL(c.ok[part], c.done), 'cheer');
-      } else sayNow(c.ok[part], 'smile');
+      setFound(f); setMsg(null); st.current.miss1 = 0;
+      if (qi + 1 < order.length) {
+        setQi(qi + 1);
+        sayNow(joinL(c.ok[part], c.q[order[qi + 1]]), 'smile');
+        return;
+      }
+      const s0 = st.current;
+      if (phase === 'quiz' && s0.helped) {
+        // Помогали подсказкой — ещё одна строка того же типа.
+        sayNow(joinL(c.ok[part], c.follow), 'smile');
+        setTimeout(() => { setFound({}); setQi(0); setPhase('follow'); sayNow(c.q[S2_ORDER.b[0]], 'curious'); }, 1600);
+        return;
+      }
+      if (phase === 'follow') s0.follow = s0.followMiss === 0;
+      log({ screenId: 's2', type: 'tag-parts', correct: true, firstTry: s0.misses === 0, attempts: s0.tries,
+        hints: s0.helped ? 1 : 0, helped: s0.helped, followUp: s0.follow });
+      put({ done: true });
+      setPhase('done');
+      sayNow(joinL(c.ok[part], c.done), 'cheer');
       return;
     }
     st.current.misses += 1;
+    st.current.miss1 += 1;
     if (phase === 'follow') st.current.followMiss += 1;
     sfx('soft', true);
     wobble(part);
-    setMsg(c.miss[part]);
-    sayNow(c.miss[part], 'think');
-    if (st.current.misses >= 2) lad.bump();
+    // Первый промах — что это за часть; второй — где искать нужную (и она светится).
+    const m = st.current.miss1 >= 2 ? joinL(c.miss[part], c.hint[target]) : c.miss[part];
+    if (st.current.miss1 >= 2) st.current.helped = true;
+    setMsg(m);
+    sayNow(m, 'think');
   };
-  const line = phase === 'explore' ? { tag: 'title', text: pick(SAMPLE.title) }
-    : phase === 'follow' ? { tag: 'title', text: pick(L3('Kosmos', 'Космос', 'Space')) }
+  const line = phase === 'follow' ? { tag: 'title', text: pick(L3('Kosmos', 'Космос', 'Space')) }
+    : phase === 'watch' ? { tag: 'title', text: pick(SAMPLE.title) }
       : { tag: 'title', text: pick(L3('Mening saytim', 'Мой сайт', 'My site')) };
-  const hint = hintOf(lad.lv, [c.h1, c.h2, c.h3]);
-  const askText = phase === 'explore' ? c.askA : phase === 'follow' ? c.askFollow : phase === 'done' ? c.done : c.askB;
+  const askText = phase === 'watch' ? c.askWatch : phase === 'done' ? c.done : c.q[target];
   const doneFound = phase === 'done' ? { start: true, content: true, end: true } : found;
+  const ledOn = target && (st.current.miss1 >= 2 || led) ? [target] : null;
   return (
-    <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintOf(Math.min(3, lad.lv + 1), [c.h1, c.h2, c.h3]) || askText} nav={navOf(p, canGo)}>
-      <Ask text={askText} hint={phase !== 'done' && phase !== 'explore' ? msg : null} n={phase === 'explore' ? seen.length + '/3' : null} />
-      <HintNote lv={phase === 'label' || phase === 'follow' ? lad.lv : 0} text={hint} />
+    <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={target ? c.hint[target] : askText} nav={navOf(p, canGo)}>
+      <Ask text={askText} hint={target ? msg : null} n={target ? (qi + 1) + '/3' : null} />
       <div className="s2-board">
-        <BigLine tag={line.tag} text={line.text} sel={phase === 'explore' ? cur : shake} found={phase === 'explore' ? null : doneFound}
-          onPart={phase === 'explore' ? explore : place} disabled={!canTap || phase === 'done'}
-          led={phase === 'explore' && led ? PARTS3.filter((k) => seen.indexOf(k) < 0) : lad.lv >= 3 && label ? [label] : null} />
-        {phase === 'explore' ? (
-          <div className="s2-result">
-            <span className="s2-res-l">{pick(UI.tab)}</span>
-            <span key={'t' + tabFlash} className={'s2-tab' + (tabFlash ? ' is-flash' : '')}><span className="mb-fav" aria-hidden="true" />{line.text}</span>
-            {cur ? <span className="s2-expl">{pick(c.parts[cur])}</span> : null}
-          </div>
-        ) : null}
-      </div>
-      {phase === 'label' || phase === 'follow' ? (
-        <div className="labels" role="group">
-          {PARTS3.map((k) => (
-            <button key={k} type="button" disabled={!canTap || found[k]} aria-pressed={label === k}
-              className={'lbl-chip' + (label === k ? ' is-sel' : '') + (found[k] ? ' is-done' : '')} onClick={() => { setLabel(label === k ? null : k); setMsg(null); }}>
-              {found[k] ? <Icon name="check" size={13} /> : null}{pick(UI.labels[k])}
-            </button>
-          ))}
+        <BigLine tag={line.tag} text={line.text} sel={phase === 'watch' ? null : shake} found={phase === 'watch' ? null : doneFound}
+          now={phase === 'watch' && cur ? cur : undefined} onPart={tap} disabled={!canTap || !target} led={ledOn} />
+        <div className="s2-tabwrap">
+          <MiniBrowser title={line.text} page={pick(SAMPLE.text)} compact hl={cur === 'content' || target === 'content' ? 'title' : null}
+            flashTab={tabFlash} pins={{ tab: UI.tabPin }} />
         </div>
-      ) : null}
+      </div>
     </Stage>
   );
 }
@@ -1001,14 +1020,34 @@ function S3({ p }) {
     }
     return false;
   };
+  // Что открыть дальше — Коди говорит сам после каждой части (заказчик,
+  // 17.10.2026: «дальше молчание — ученик должен догадаться»).
+  const promptFor = (sn) => {
+    if (sn.indexOf('html') < 0) return c.next.html;
+    const hasHead = sn.indexOf('head') >= 0, hasBody = sn.indexOf('body') >= 0;
+    if (!hasHead && !hasBody) return c.pickOne;
+    if (!hasHead) return fillL(c.other, { x: 'head' });
+    if (!hasBody) return fillL(c.other, { x: 'body' });
+    if (sn.indexOf('title') < 0) return c.lastTitle;
+    return null;
+  };
   const tell = (k, pose) => {
-    if (mark(k)) { sayNow(c[k], 'cheer'); say(c.done, 'explain'); } else sayNow(c[k], pose);
+    if (mark(k)) {
+      // Всё открыто — итог по частям; пока Коди называет часть, она светится
+      // в коробке, в коде и в браузере.
+      sayNow(c[k], 'cheer');
+      say(c.sum0, 'cheer'); say(c.sumHtml, 'point'); say(c.sumHead, 'point'); say(c.sumBody, 'point');
+      return;
+    }
+    sayNow(c[k], pose);
+    const nx = promptFor(seenRef.current);
+    if (nx) say(nx, 'point');
   };
   const act = (k) => {
     if (!canTap || !k) return;
     taps.current += 1;
     setMsg(null);
-    if (k === 'doctype') { setSel('doctype'); sayNow(c.doctype, 'explain'); return; }
+    if (k === 'doctype') { setSel('doctype'); sayNow(c.doctype, 'explain'); const nx = promptFor(seenRef.current); if (nx) say(nx, 'point'); return; }
     if (k === 'html') {
       if (!open.html) { sfx('pop', true); setOpen({ html: true, head: false, body: false }); }
       setSel('html');
@@ -1037,9 +1076,15 @@ function S3({ p }) {
     ? ['html-o'].concat(open.head ? ['head-o', 'title', 'head-c'] : ['head-fold']).concat(open.body ? ['body-o', 'text', 'body-c'] : ['body-fold']).concat(['html-c'])
     : ['html-fold']);
   const t = pick(SAMPLE.title), x = pick(SAMPLE.text);
-  const lit = sel === 'html' ? ['html', 'html-close'] : sel === 'head' ? ['head', 'head-close'] : sel === 'body' ? ['body', 'body-close', 'page'] : sel === 'title' ? ['title'] : sel === 'doctype' ? ['doctype'] : [];
-  const ledKeys = !led || !next ? [] : next === 'html' ? ['lid'] : [next];
-  const askText = solved ? c.askDone : next ? c.next[next] : c.ask;
+  // Итог: часть, которую Коди сейчас называет, светится везде сразу.
+  const sumKey = speaker.text === c.sumHtml ? 'html' : speaker.text === c.sumHead ? 'head' : speaker.text === c.sumBody ? 'body' : null;
+  const hlKey = sumKey || sel;
+  const lit = hlKey === 'html' ? ['html', 'html-close'] : hlKey === 'head' ? ['head', 'head-close'].concat(sumKey ? ['title'] : [])
+    : hlKey === 'body' ? ['body', 'body-close', 'page'] : hlKey === 'title' ? ['title'] : hlKey === 'doctype' ? ['doctype'] : [];
+  const prompt = promptFor(seen);
+  const ledTargets = !next ? [] : next === 'html' ? ['lid'] : prompt === c.pickOne ? ['head', 'body'] : [next === 'title' && seen.indexOf('body') < 0 ? 'body' : next];
+  const ledKeys = led ? ledTargets : [];
+  const askText = solved ? c.askDone : prompt || c.ask;
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Ask text={askText} hint={msg} n={solved ? null : seen.length + '/4'} />
@@ -1051,8 +1096,8 @@ function S3({ p }) {
             'title-card': open.head ? (sel === 'title' ? 6 : 0) : DROP(), 'page-card': open.body ? 0 : DROP() }}
           lit={lit} led={ledKeys} />
         <div className="ex-side">
-          <MiniBrowser title={t} page={x} compact hl={sel === 'doctype' ? null : sel} info={UI.passport} flashTab={flash.tab} flashPage={flash.page} />
-          <CodeLines lines={docLines(order, { title: t, text: x })} hl={sel && sel !== 'doctype' ? sel : null} className="cv-ex"
+          <MiniBrowser title={t} page={x} compact hl={hlKey === 'doctype' ? null : hlKey} info={UI.passport} flashTab={flash.tab} flashPage={flash.page} />
+          <CodeLines lines={docLines(order, { title: t, text: x })} hl={hlKey && hlKey !== 'doctype' ? hlKey : null} className="cv-ex"
             lineProps={(ln) => (ln.id === 'doctype' ? { cls: sel === 'doctype' ? 'is-doc' : 'is-doc-dim' } : null)} />
         </div>
       </div>
@@ -1064,7 +1109,7 @@ function S3({ p }) {
             <button key={k} type="button" disabled={!canTap || (k !== 'html' && !open.html) || (k === 'title' && !open.head)} style={{ '--c': TAGC[k] }}
               className={'chip mono' + (sel === k ? ' is-sel' : '') + (isSeen ? ' is-seen' : '')} aria-pressed={sel === k} onClick={() => act(k)}>
               {k}
-              <Led on={led && k === next} />
+              <Led on={led && ledTargets.indexOf(k === 'html' ? 'lid' : k) >= 0} />
             </button>
           );
         })}
@@ -1224,7 +1269,7 @@ function S6({ p }) {
   const [answered, setAnswered] = useState(null);
   const [flash, setFlash] = useState({ tab: 0, page: 0 });
   const [wire, setWire] = useState(0);
-  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.done : c.say, pose: solved ? 'smile' : 'curious' }]);
+  const [speaker, say, spoken, sayNow] = useVoice([{ text: solved ? c.done : c.say, pose: solved ? 'smile' : 'curious' }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved, spoken);
   const stats = useRef({ title: { first: null, extra: null }, body: { first: null, extra: null } });
@@ -1247,6 +1292,11 @@ function S6({ p }) {
       const rest = queue.slice(1);
       if (!right && round.v !== 'extra') rest.unshift({ k, v: 'extra' });
       setQueue(rest); setDoneN((n) => n + 1); setAnswered(null);
+      // Вопрос следующего раунда — вслух.
+      if (rest.length) {
+        const NR = c.rounds[rest[0].k];
+        say(fillL(NR.ask, { t: pick(rest[0].v === 'extra' ? NR.extra : NR.text) }), 'curious');
+      }
       if (!rest.length) {
         const s = stats.current;
         ['title', 'body'].forEach((kk) => log({ screenId: 's6.' + kk, type: 'predict', correct: true, firstTry: s[kk].first === true,
@@ -1373,6 +1423,9 @@ function S7({ p }) {
   const [msg, setMsg] = useState(null);
   const [newest, setNewest] = useState(null);
   const [view, setView] = useState('volume');
+  const [codeSeen, setCodeSeen] = useState(false);   // «Код» светится, пока его не открыли
+  const exRef = useRef(null);
+  const pieceRefs = useRef({});
   const [part, setPart] = useState(null);           // выделение после сборки — общее для «Объём» и «Код»
   const [shake, setShake] = useState({ k: null, n: 0 });
   const [chipShake, wobble] = useShake();
@@ -1464,13 +1517,14 @@ function S7({ p }) {
   );
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={solved ? c.askDone : (hintOf(Math.min(3, lad.lv + 1), [c.hintAsk]) || c.ask)} nav={navOf(p, canGo)}>
-      <Ask text={solved ? c.askDone : hand ? c.askPlace : c.ask} hint={solved ? null : msg} n={placed.length + '/3'} />
-      <HintNote lv={solved ? 0 : lad.lv} text={hintText} />
+      <Ask text={solved ? c.askDone : hand ? c.askPlace : c.ask} hint={solved ? null : (msg || hintText)} n={placed.length + '/3'} />
       {solved ? (
         <>
           <div className="seg-row" role="tablist">
             {['volume', 'code'].map((v) => (
-              <button key={v} type="button" role="tab" aria-selected={view === v} className={'seg' + (view === v ? ' is-on' : '')} onClick={() => setView(v)}>{pick(v === 'volume' ? UI.volume : UI.code)}</button>
+              <button key={v} type="button" role="tab" aria-selected={view === v}
+                className={'seg' + (view === v ? ' is-on' : '') + (v === 'code' && !codeSeen ? ' is-glow' : '')}
+                onClick={() => { setView(v); if (v === 'code') setCodeSeen(true); }}>{pick(v === 'volume' ? UI.volume : UI.code)}</button>
             ))}
           </div>
           <div className={'vc vc-' + view}>{view === 'volume' ? fig : code}</div>
@@ -1482,12 +1536,19 @@ function S7({ p }) {
         </>
       ) : (
         <>
-          <div className={'ex' + (hand ? ' is-hand' : '')}>{fig}{code}</div>
+          <div ref={exRef} className={'ex rb-rel' + (hand ? ' is-hand' : '')}>{fig}{code}
+            <DemoHand wrapRef={exRef} drag label={UI.piece.head} run={canTap && !solved && placed.length === 0 && !sel && !dnd.ghost}
+              targets={[() => pieceRefs.current.head, () => {
+                // В код: к строке </html> — при перетаскивании над ней встаёт место «сюда: внутрь html».
+                const ls = exRef.current ? exRef.current.querySelectorAll('.cv .cv-line') : [];
+                return ls.length ? ls[ls.length - 1] : null;
+              }]} />
+          </div>
           <div className="build-row">
             <span className="drag-tip">{pick(UI.dragTip)}</span>
             <div className="pieces" role="group" aria-label={pick(UI.pieces)}>
               {PIECES.filter((k) => !has(k)).map((k) => (
-                <button key={k} type="button" disabled={!canTap} style={{ '--c': TAGC[k] }} aria-pressed={sel === k}
+                <button key={k} ref={(el) => { pieceRefs.current[k] = el; }} type="button" disabled={!canTap} style={{ '--c': TAGC[k] }} aria-pressed={sel === k}
                   className={'piece mono' + (sel === k ? ' is-sel' : '') + (chipShake === k ? ' fx-no' : '') + (dnd.ghost && dnd.ghost.payload === k ? ' is-drag' : '')}
                   onPointerDown={(e) => { if (canTap) dnd.start(e, k, UI.piece[k]); }}
                   onClick={() => { setSel(sel === k ? null : k); setMsg(null); }}>
@@ -1523,6 +1584,8 @@ function S8({ p }) {
   const canGo = useAdvanceGate(solved, spoken);
   const st = useRef({ tries: 0, misses: 0 });
   const led = useIdleLed(canTap && !solved, found.length * 10 + (first ? 1 : 0));
+  const boxRef = useRef(null);
+  const zoneEls = useRef({});
   const tapTok = (z, el, t) => {
     if (!canTap || !t || (t.k !== 'open' && t.k !== 'close') || PAIR_TAGS.indexOf(t.tag) < 0) return;
     if (found.indexOf(t.tag) >= 0) { setLast(t.tag); sayNow(c.area[t.tag], 'explain'); return; }
@@ -1560,8 +1623,13 @@ function S8({ p }) {
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={first ? c.picked : c.ask} nav={navOf(p, canGo)}>
       <Ask text={solved || found.length === 4 ? c.done : first ? c.picked : c.ask} hint={found.length === 4 ? null : msg} n={found.length + '/4'} />
-      <div className="pairs-box">
-        <CodeLines lines={buildLines(FULL_DOC, mine)} className="cv-big" barsFor={found} hl={last} zone={zone} onZone={tapTok} />
+      <div ref={boxRef} className="pairs-box rb-rel">
+        {/* Первую пару показывает рука: «нажми сюда — потом сюда». Код вне пары
+            не тускнеет — найденные пары остаются цветными, со скобкой слева. */}
+        <CodeLines lines={buildLines(FULL_DOC, mine)} className="cv-big" barsFor={found} zone={zone} onZone={tapTok}
+          regZone={(z, el) => { zoneEls.current[z] = el; }} />
+        <DemoHand wrapRef={boxRef} run={canTap && !solved && found.length === 0 && !first}
+          targets={[() => zoneEls.current['head-o'], () => zoneEls.current['head-c']]} />
         <div className="pairs-side">
         <div className="pair-chips" translate="no">
           {PAIR_TAGS.map((k) => (
@@ -1652,6 +1720,7 @@ function S9({ p }) {
     if (st.current.misses >= 2) lad.bump();
   };
   const lineMap = { title: 'title', 'head-o': 'head', 'head-c': 'head', 'body-o': 'body', text: 'body', 'body-c': 'body', 'html-o': 'html', 'html-c': 'html' };
+  const fixRef = useRef(null);
   // Строку title можно перетащить: пока она «в руке», внутри head видно место «сюда».
   const codeRef = useRef(null);
   const shownRef = useRef(order);
@@ -1666,6 +1735,7 @@ function S9({ p }) {
   const shown = hand ? order.slice(0, order.indexOf('head-o') + 1).concat([null]).concat(order.slice(order.indexOf('head-o') + 1)) : order;
   shownRef.current = shown;
   const startTitle = (e) => { if (canTap && !fixed) dnd.start(e, 'title', '<title>' + titleText + '</title>'); };
+  const lineEl = (id) => { const box = codeRef.current; const i = shown.indexOf(id); return box && i >= 0 ? box.querySelectorAll('.cv-line')[i] : null; };
   const onCodeDown = (e) => {
     const ln = e.target.closest && e.target.closest('.cv-line');
     if (!ln || !codeRef.current || !codeRef.current.contains(ln)) return;
@@ -1675,9 +1745,10 @@ function S9({ p }) {
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintOf(Math.min(3, lad.lv + 1), [c.h1, c.h2, c.h3]) || c.ask} nav={navOf(p, canGo)}>
       <div className={'rule-panel' + (fixed ? ' is-ok' : '')}><span className="rule-ic">{fixed ? <Icon name="check" size={13} /> : '!'}</span><span><b>{pick(UI.inspector)}:</b> {pick(c.rule)}</span></div>
-      <Ask text={fixed ? c.ok : picked ? c.pickPlace : c.ask} hint={fixed ? null : msg} n={variant === 'B' ? pick(UI.again) : null} />
-      <HintNote lv={fixed ? 0 : lad.lv} text={hint} />
-      <div className="fix-row">
+      <Ask text={fixed ? c.ok : picked ? c.pickPlace : c.ask} hint={fixed ? null : (msg || hint)} n={variant === 'B' ? pick(UI.again) : null} />
+      <div ref={fixRef} className="fix-row rb-rel">
+        <DemoHand wrapRef={fixRef} run={canTap && !fixed && !picked && variant === 'A' && st.current.misses === 0}
+          targets={[() => lineEl('title'), () => lineEl('head-o')]} />
         <div ref={codeRef} onPointerDown={onCodeDown} className="drag-host">
           <CodeLines lines={buildLines(shown, { title: titleText, text: mine.text })} className="cv-ex"
             lineProps={(ln) => {
@@ -1765,8 +1836,7 @@ function S10({ p }) {
   const order = okNow ? FULL_DOC : DOC10[tag];
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintOf(Math.min(3, lad.lv + 1), [c.h1, c.h2, c.h3]) || c.ask} nav={navOf(p, canGo)}>
-      <Ask text={okNow ? (tag === 'head' ? c.okHead : c.ok) : tag === 'head' ? c.askHead : c.ask} hint={okNow ? null : msg} n={tag === 'head' ? pick(UI.again) : null} />
-      <HintNote lv={okNow ? 0 : lad.lv} text={hint} />
+      <Ask text={okNow ? (tag === 'head' ? c.okHead : c.ok) : tag === 'head' ? c.askHead : c.ask} hint={okNow ? null : (msg || hint)} n={tag === 'head' ? pick(UI.again) : null} />
       <div className="work pr s10-work">
       <MiniBrowser title={mine.title} page={mine.text} flashPage={okNow ? 1 : 0} />
       <CodeLines lines={buildLines(order, mine)} className="cv-big cv-10"
@@ -1809,7 +1879,7 @@ function S12({ p }) {
   const [msg, setMsg] = useState(null);
   const [okNow, setOkNow] = useState(false);
   const [flash, setFlash] = useState({ tab: 0, page: 0 });
-  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.done : c.say, pose: solved ? 'smile' : 'explain' }]);
+  const [speaker, say, spoken, sayNow] = useVoice([{ text: solved ? c.done : c.say, pose: solved ? 'smile' : 'explain' }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved, spoken);
   const lad = useLadder(!solved && !okNow);
@@ -1860,12 +1930,18 @@ function S12({ p }) {
   }, [val]); // eslint-disable-line react-hooks/exhaustive-deps
   const hint = hintOf(lad.lv, hints);
   const goal = task ? fillL(task.goal, { t: target }) : c.done;
+  // Заказ Коди читает вслух (заказчик, 17.10.2026: «не понятно, что просят»):
+  // первый — после вступления, следующие — сразу, как появились.
+  const firstGoal = useRef(true);
+  useEffect(() => {
+    if (!task || solved) return;
+    if (firstGoal.current) { firstGoal.current = false; say(goal, 'explain'); } else sayNow(goal, 'explain');
+  }, [ti, variant]); // eslint-disable-line react-hooks/exhaustive-deps
   const showT = editing === 'title' ? val : doc.title, showB = editing === 'text' ? val : doc.text;
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintOf(Math.min(3, lad.lv + 1), hints) || goal} nav={navOf(p, canGo)}>
       <div className={'goal-card' + (okNow ? ' is-ok' : '')}><span className="goal-l">{pick(UI.goal)} {task ? (ti + 1) + '/2' : ''}{variant === 'B' ? ' · ' + pick(UI.again) : ''}</span><b>{pick(goal)}</b></div>
-      <Ask text={!task ? c.done : editing ? c.typeIt : c.ask} hint={okNow || !task ? null : msg} />
-      <HintNote lv={okNow ? 0 : lad.lv} text={hint} />
+      <Ask text={!task ? c.done : editing ? c.typeIt : c.ask} hint={okNow || !task ? null : (msg || hint)} />
       <div className="work pr">
         <MiniBrowser title={okText(showT) ? showT : ''} page={okText(showB) ? showB : ''} flashTab={flash.tab} flashPage={flash.page} />
         <CodeLines lines={buildLines(FULL_DOC, doc)} className="cv-pr"
@@ -1971,6 +2047,36 @@ function S13({ p }) {
     return () => clearTimeout(t);
   }, [title, text, phase]); // eslint-disable-line react-hooks/exhaustive-deps
   const hint = hintOf(lad.lv, [c.h1, c.h2, c.h3]);
+  // ПЕРЕТАСКИВАНИЕ (заказчик, 17.10.2026): строку из лотка можно перетащить на
+  // место, а строки на местах — друг на друга (меняются). Нажатия работают
+  // как раньше. Первый ход показывает рука: «<html> — на первое место».
+  const flatRef = useRef(null);
+  const chipRefs = useRef({});
+  const slotOf = (el) => {
+    const ln = el && el.closest && el.closest('.cv-line');
+    const box = flatRef.current;
+    if (!ln || !box || !box.contains(ln)) return -1;
+    return [...ln.parentNode.children].indexOf(ln) - 1;
+  };
+  const dropAt = (payload, k) => {
+    if (!canTap || k < 0 || k >= 8 || !payload) return;
+    const s2 = slots.slice();
+    if (payload.from === 'tray') s2[k] = payload.id;                     // прежняя строка места — обратно в лоток
+    else if (payload.from === 'slot' && payload.k !== k) { const t2 = s2[payload.k]; s2[payload.k] = s2[k]; s2[k] = t2; }
+    else return;
+    setSlots(s2); setRes(null); setHeld(null);
+    const ne = s2.indexOf(null);
+    setCur(ne >= 0 ? ne : k);
+    sfx('tap', true);
+  };
+  const dnd = useDragDrop((payload, el) => dropAt(payload, slotOf(el)));
+  const labelOf = (id) => buildLines([id], { title: '…', text: pick(UI.pageText) })[0].toks
+    .map((t) => (t.k === 'text' ? t.v : '<' + (t.k === 'close' ? '/' : '') + t.tag + '>')).join('');
+  const onFlatDown = (e) => {
+    if (!canTap) return;
+    const k = slotOf(e.target);
+    if (k >= 0 && slots[k]) dnd.start(e, { from: 'slot', k }, labelOf(slots[k]));
+  };
   if (phase !== 'build') {
     return (
       <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.askFill} nav={navOf(p, canGo)}>
@@ -1993,9 +2099,10 @@ function S13({ p }) {
   }
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintOf(Math.min(3, lad.lv + 1), [c.h1, c.h2, c.h3]) || c.ask} nav={navOf(p, canGo)}>
-      <Ask text={c.ask} hint={res ? c.rules[res.rule] : null} n={slots.filter(Boolean).length + '/8'} />
-      <HintNote lv={lad.lv} text={hint} />
-      <div className="s13-row">
+      <Ask text={c.ask} hint={res ? c.rules[res.rule] : hint} n={slots.filter(Boolean).length + '/8'} />
+      <div ref={flatRef} className="s13-row rb-rel" onPointerDown={onFlatDown}>
+      <DemoHand wrapRef={flatRef} drag label="<html>" run={canTap && slots.every((x) => !x) && !dnd.ghost}
+        targets={[() => chipRefs.current['html-o'], () => flatRef.current && flatRef.current.querySelectorAll('.cv-flat .cv-line')[1]]} />
       {/* Тот же вид кода, что во всём уроке: номера строк, отступы и цветные скобки
           вложенности считаются по текущему порядку строк. Пустое место — пунктир. */}
       <CodeLines lines={buildLines(['doctype'].concat(slots), v)} className="cv-ex cv-flat"
@@ -2016,7 +2123,10 @@ function S13({ p }) {
           {tray.map((id) => {
             const ln = lineOf(id);
             return (
-              <button key={id} type="button" disabled={!canTap} className="pool-chip" onClick={() => putPiece(id)}>
+              <button key={id} ref={(el) => { chipRefs.current[id] = el; }} type="button" disabled={!canTap}
+                className={'pool-chip' + (dnd.ghost && dnd.ghost.payload.id === id ? ' is-drag' : '')}
+                onPointerDown={(e) => { e.stopPropagation(); if (canTap) dnd.start(e, { from: 'tray', id }, labelOf(id)); }}
+                onClick={() => putPiece(id)}>
                 {ln.toks.map((t, j) => (t.k === 'text' ? <span key={j} className="tk-text">{t.v}</span> : <Tag key={j} tag={t.tag} close={t.k === 'close'} />))}
               </button>
             );
@@ -2029,6 +2139,7 @@ function S13({ p }) {
       {slots.some(Boolean) ? <p className="swap-note">{pick(UI.swapNote)}</p> : null}
       </div>
       </div>
+      <DragGhost ghost={dnd.ghost} />
     </Stage>
   );
 }
@@ -2038,12 +2149,14 @@ function S13({ p }) {
 // страницу ученика, рядом её код; подтверждённые достижения.
 // =============================================================================
 function S14({ p }) {
+  // Финал без перегруза (заказчик, 17.10.2026): крупный Боб со страницей ученика
+  // на экране, короткий список того, что получилось, и следующий урок. Код и
+  // браузер здесь больше не дублируются — они были на всех экранах урока.
   const pick = usePick();
   const store = useStore();
   const c = C.s14;
   const mine = useMine();
   const ach = store.get('ach') || {};
-  const [view, setView] = useState('bob');
   const [speaker, , spoken] = useVoice([{ text: c.say, pose: 'celebrate' }]);
   const canGo = useAdvanceGate(true, spoken);
   useEffect(() => { const t = setTimeout(() => celebrate(), 700); return () => clearTimeout(t); }, []);
@@ -2051,34 +2164,22 @@ function S14({ p }) {
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask}
       nav={<><BackBtn onPrev={p.prev} /><NextBtn disabled={!canGo} onClick={p.finish} label={c.btn} /></>}>
-      <div className="fin-head"><span className="fin-author">{pick(UI.author)}: <b>{p.name}</b></span></div>
-      <div className="seg-row only-phone" role="tablist">
-        {['bob', 'code'].map((v) => (
-          <button key={v} type="button" role="tab" aria-selected={view === v} className={'seg' + (view === v ? ' is-on' : '')} onClick={() => setView(v)}>{pick(v === 'bob' ? UI.bob : UI.code)}</button>
-        ))}
-      </div>
-      <div className={'rb-fin' + (view === 'code' ? ' is-code' : '')}>
+      <div className="rb-fin">
         <div className="rb-fin-bob">
           <Fig fig={RFIG_BUST} cls="fig-robot rb-html rb-css rb-js" texts={{ scr1: mine.title, scr2: shortTxt(mine.text, 22) }} label={UI.robot} />
         </div>
-        <div className="rb-fin-code">
-          <MiniBrowser title={mine.title} page={mine.text} compact />
-          <CodeLines lines={buildLines(FULL_DOC, mine)} className="cv-pr" />
-        </div>
         <div className="rb-fin-side">
-      <div className="ach" aria-label={pick(UI.done)}>
-        {list.map((k) => (
-          <span key={k} className={'ach-i' + (ach[k] === 'self' ? ' is-self' : '')}><span className="ach-m"><Icon name={ach[k] === 'self' ? 'star' : 'check'} size={12} /></span>{pick(c.ach[k][ach[k] === 'self' ? 'self' : 'help'])}</span>
-        ))}
-      </div>
-      <div className="fin-foot">
-        <p className="final-note">{pick(UI.saveNote)}</p>
-        <div className="bye-next next-card">
-          <span className="bye-next-ic"><Icon name="doc" size={22} /></span>
-          <span className="bye-next-t"><span>{pick(UI.nextLesson)}</span><b>{pick(UI.next)}</b></span>
-          <span className="next-tags mono" translate="no">h1 · p</span>
-        </div>
-      </div>
+          {list.length ? (
+            <div className="ach" aria-label={pick(UI.done)}>
+              {list.map((k) => (
+                <span key={k} className={'ach-i' + (ach[k] === 'self' ? ' is-self' : '')}><span className="ach-m"><Icon name={ach[k] === 'self' ? 'star' : 'check'} size={12} /></span>{pick(c.ach[k][ach[k] === 'self' ? 'self' : 'help'])}</span>
+              ))}
+            </div>
+          ) : null}
+          <div className="bye-next next-card">
+            <span className="bye-next-ic"><Icon name="doc" size={22} /></span>
+            <span className="bye-next-t"><span>{pick(UI.nextLesson)}</span><b>{pick(UI.next)}</b></span>
+          </div>
         </div>
       </div>
     </Stage>

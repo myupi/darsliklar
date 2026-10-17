@@ -16,10 +16,11 @@ import * as k from '../anatomy/kit/iso-kit.mjs';
 const r4 = (v) => Math.round(v * 10000) / 10000;
 const f1 = (v) => Math.round(v * 10) / 10;
 
-// bust — крупный план: камера ближе, в кадре корпус с экраном и голова
-// (ноги и подставка уходят за край). Нужен там, где читают экран Bob.
+// bust — крупный план: камера ближе, Bob в кадре целиком — от ступней с
+// табличкой до антенны (заказчик, 17.10.2026: «ноги не видны»), за край
+// уходят только боковые края подставки. Нужен там, где читают экран Bob.
 export function robotModel({ bust = false } = {}) {
-  const WIDTH = 420, HEIGHT = bust ? 340 : 470;
+  const WIDTH = 420, HEIGHT = bust ? 430 : 470;
   const AZ = 56, EL = 30;
 
   const PLINTH = { x: -62, y: -46, w: 124, d: 92, r: 9 };
@@ -28,8 +29,11 @@ export function robotModel({ bust = false } = {}) {
   const Z = { base0: -12, base1: 0, foot1: 8, leg1: 44, hip1: 52, torso1: 112, neck1: 118, head1: 152, ant1: 166, ball1: 173 };
 
   const P = k.fitProjection([
-    ...(bust ? [] : k.boxCorners(PLINTH, Z.base0, Z.base1)),
-    ...k.boxCorners({ x: -50, y: -20, w: 100, d: 40 }, bust ? 50 : 40, Z.torso1),
+    ...(bust
+      ? [...k.boxCorners({ x: -28, y: -16, w: 56, d: 36 }, Z.base0, Z.foot1),           // ступни на подставке
+        ...k.boxCorners({ x: -32, y: PLINTH.y + PLINTH.d - 2, w: 64, d: 3 }, Z.base0, Z.base1)]  // табличка
+      : k.boxCorners(PLINTH, Z.base0, Z.base1)),
+    ...k.boxCorners({ x: -50, y: -20, w: 100, d: 40 }, 40, Z.torso1),
     ...k.boxCorners(HEAD, Z.neck1, Z.head1),
     [0, -2, Z.ball1 + 4], [62, 0, 130]
   ], WIDTH, HEIGHT, { pad: bust ? 10 : 14, azimuth: AZ, elevation: EL });

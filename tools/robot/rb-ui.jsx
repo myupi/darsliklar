@@ -192,3 +192,80 @@ function Inspector({ rules }) {
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// РУКА-ПОДСКАЗКА (по образцу DemoHand уроков курса). Новая механика сначала
+// показывается движением:
+//   · tap  — рука по очереди «нажимает» цели;
+//   · drag — рука нажимает первую цель и, не отпуская, ведёт её ко второй
+//            (с призраком детали `label`), там отпускает.
+// Показ повторяется дважды и исчезает от первого касания ребёнка. На паузе
+// стоит на месте. При «меньше движения» рука просто стоит на первой цели.
+// ─────────────────────────────────────────────────────────────────────────────
+function DemoHand({ wrapRef, targets, run, drag, label }) {
+  const audio = useAudio();
+  const pausedRef = useRef(false);
+  pausedRef.current = !!(audio && audio.paused);
+  const [pos, setPos] = useState(null);
+  const [tap, setTap] = useState(false);
+  const [carry, setCarry] = useState(false);
+  const [gone, setGone] = useState(false);
+  useEffect(() => {
+    if (!run || gone) return undefined;
+    const off = () => setGone(true);
+    window.addEventListener('pointerdown', off, true);
+    return () => window.removeEventListener('pointerdown', off, true);
+  }, [run, gone]);
+  useEffect(() => {
+    if (!run || gone) { setPos(null); return undefined; }
+    let dead = false;
+    const tm = [];
+    const at = (i) => {
+      const w = wrapRef.current;
+      const get = targets[i];
+      const el = get && get();
+      if (!w || !el) return null;
+      const W = w.getBoundingClientRect(), R = el.getBoundingClientRect();
+      return { x: R.left + R.width / 2 - W.left, y: R.top + R.height / 2 - W.top };
+    };
+    const later = (ms, f) => { tm.push(setTimeout(() => { if (!dead) f(); }, ms)); };
+    let loop = 0;
+    const cycle = () => {
+      if (dead) return;
+      if (pausedRef.current) { later(400, cycle); return; }
+      if (loop >= 2) { setPos(null); return; }
+      loop += 1;
+      const a = at(0);
+      if (!a) { later(400, cycle); return; }
+      setTap(false); setCarry(false); setPos(a);
+      if (reduceMotion()) return;
+      if (drag) {
+        later(700, () => { setTap(true); setCarry(true); });
+        later(1000, () => { const b = at(1); if (b) setPos(b); });
+        later(2100, () => { setTap(false); setCarry(false); });
+        later(2900, cycle);
+      } else {
+        let t = 600;
+        targets.forEach((_, i) => {
+          later(t, () => { const p = at(i); if (p) setPos(p); setTap(false); });
+          later(t + 560, () => setTap(true));
+          t += 1500;
+        });
+        later(t, cycle);
+      }
+    };
+    later(450, cycle);
+    return () => { dead = true; tm.forEach(clearTimeout); };
+  }, [run, gone]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!pos || !run || gone) return null;
+  return (
+    <span className={'demo-hand' + (tap ? ' is-tap' : '') + (drag ? ' is-drag' : '')} style={{ transform: `translate(${pos.x}px, ${pos.y}px)` }} aria-hidden="true">
+      {carry && label ? <span className="dh-ghost mono">{label}</span> : null}
+      <span className="dh-ring" />
+      <svg viewBox="0 0 40 48" width="34" height="41">
+        <path d="M14 6a4 4 0 0 1 8 0v15a4 4 0 0 1 7 1 4 4 0 0 1 7 2v10c0 7-5 12-13 12h-3c-5 0-8-2-11-6l-6-9a3.6 3.6 0 0 1 5.6-4.4L14 30z"
+          fill="#fff" stroke={T.ink} strokeWidth="2.4" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+}

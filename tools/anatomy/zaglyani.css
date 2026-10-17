@@ -58,6 +58,12 @@
   border: none; border-radius: 7px 7px 3px 3px; padding: 3px 7px; margin: 2px 2px; outline: none;
   background: ${T.uiSoft}; box-shadow: inset 0 -2px 0 ${T.ui}; }
 .tk-input:focus { background: #fff; box-shadow: inset 0 0 0 2px ${T.ui}; }
+/* Поле растёт по тексту: перенос внутри, высота — по содержимому (InlineInput). */
+.tk-grow { display: block; resize: none; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere;
+  word-break: normal; min-height: 0; align-self: center; flex: 0 1 auto; width: auto; max-width: 100%; }
+/* В строке кода теги не сжимаются — сжимается (и переносит текст) только поле. */
+.cv-code > .tk:has(.tk-tag) { flex-shrink: 0; }
+.cv-code > .tk:has(.tk-grow) { flex: 0 1 auto; min-width: 4.5ch; }
 .tk-input::placeholder { color: ${T.ink3}; font-weight: 500; }
 .tk-input-tag { font-family: 'JetBrains Mono', ui-monospace, monospace; flex: 0 1 12ch; }
 .tk-input.is-led-in { animation: ledFrame 1.15s ease-in-out infinite; }

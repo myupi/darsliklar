@@ -305,14 +305,48 @@ function Wire({ wrapRef, from, to, color, on, nonce }) {
 // ребёнка. На паузе стоит на месте.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function InlineInput({ value, onChange, placeholder, label, max = 40, inputRef, onEnter, cls }) {
+// Ширина поля — по тексту (или подсказке-примеру), высота — по переносам.
+// Ширину меряем холстом тем же шрифтом, что у поля; дальше её ограничивает
+// строка (max-width: 100%, flex-shrink), и тогда текст переносится.
+let _growCtx = null;
+function fitGrow(el) {
+  if (!el) return;
+  const cs = getComputedStyle(el);
+  if (!_growCtx) _growCtx = document.createElement('canvas').getContext('2d');
+  if (_growCtx) {
+    _growCtx.font = cs.font || (cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily);
+    const txt = el.value || el.placeholder || '';
+    const w = Math.ceil(_growCtx.measureText(txt).width) + parseFloat(cs.paddingLeft || 0) + parseFloat(cs.paddingRight || 0) + 8;
+    el.style.width = w + 'px';
+  }
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+function InlineInput({ value, onChange, placeholder, label, max = 40, inputRef, onEnter, cls, onFocus }) {
+  // РАСТЁТ ПО ТЕКСТУ (заказчик, 17.10.2026): сначала в ширину — поле ровно по
+  // тексту и расширяется по мере набора; упёрлось в край строки — текст
+  // переносится внутри поля, и тогда оно растёт в высоту. Видно всё написанное.
+  // Поле — textarea; Enter строку не переносит, а работает, как раньше.
   const pick = usePick();
+  const ref = useRef(null);
+  const setRef = (el) => { ref.current = el; if (inputRef) inputRef.current = el; };
+  const fit = () => fitGrow(ref.current);
+  useLayoutEffect(fit, [value]);
+  useEffect(() => {
+    const host = ref.current && ref.current.parentElement;
+    if (typeof ResizeObserver === 'undefined' || !host) {
+      window.addEventListener('resize', fit);
+      return () => window.removeEventListener('resize', fit);
+    }
+    const ro = new ResizeObserver(() => fit());
+    ro.observe(host);
+    return () => ro.disconnect();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <input ref={inputRef} className={'tk-input' + (cls ? ' ' + cls : '')} value={value} maxLength={max}
-      size={Math.max(4, Math.min(28, String(value || '').length + 1))}
+    <textarea ref={setRef} rows={1} className={'tk-input tk-grow' + (cls ? ' ' + cls : '')} value={value} maxLength={max}
       placeholder={placeholder ? pick(placeholder) : ''} aria-label={label ? pick(label) : undefined}
       autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} enterKeyHint="done"
-      onChange={(e) => onChange(e.target.value)}
+      onFocus={onFocus} onChange={(e) => onChange(e.target.value.replace(/\r?\n/g, ' '))}
       onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (onEnter) onEnter(); else e.currentTarget.blur(); } }} />
   );
 }
