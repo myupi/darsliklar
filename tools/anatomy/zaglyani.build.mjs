@@ -3,12 +3,12 @@
 // Файл урока = шапка + канон курса HTML (дословно, не правится) + пометка
 // «УРОК» + zaglyani.src.jsx, где на место меток встают: помощники урока 1
 // (zh-helpers.jsx: произношение тегов, код, мини-браузер, провод), CSS урока 1
-// (zaglyani.css), посчитанная фигура (zaglyani.figures.mjs) и CSS кита anatomy.
+// (zaglyani.css), посчитанная фигура — шкаф документа (shkaf.figures.mjs) и CSS кита anatomy.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import * as k from './kit/iso-kit.mjs';
-import { docModel } from './zaglyani.figures.mjs';
+import { cabinetModel } from './shkaf.figures.mjs';
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 const canon = readFileSync(here('../../canon/html/canon-v1.jsx'), 'utf8').replace(/\n+$/, '');
@@ -19,7 +19,7 @@ const put = (mark, text) => {
 };
 const tpl = (s) => s.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
 put('/*@HELPERS@*/', readFileSync(here('./zh-helpers.jsx'), 'utf8').trim());
-put('/*@FIGURES@*/', 'const FIG = ' + JSON.stringify(docModel()) + ';');
+put('/*@FIGURES@*/', 'const FIG = ' + JSON.stringify(cabinetModel()) + ';');   // шкаф документа (заказчик, 17.10.2026)
 put('/*@LESSON1_CSS@*/', readFileSync(here('./zaglyani.css'), 'utf8').trim());   // уже внутри шаблонной строки
 put('/*@ISO_CSS@*/', tpl(k.ISO_CSS.trim()));
 
@@ -31,7 +31,7 @@ const head = `// ===============================================================
 //
 // Пропсы: { studentName, lang, ttsApiBase, voiceGender, onFinished } — весь список.
 // ФАЙЛ СОБРАН: node tools/anatomy/zaglyani.build.mjs. Правится
-// tools/anatomy/zaglyani.src.jsx и zaglyani.figures.mjs, а не этот файл.
+// tools/anatomy/zaglyani.src.jsx и shkaf.figures.mjs, а не этот файл.
 // =============================================================================
 `;
 const out = head + '\n' + canon + '\n' + '// ==============================  У Р О К  =====================================\n' + src;

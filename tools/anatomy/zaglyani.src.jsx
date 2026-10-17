@@ -7,11 +7,15 @@
 // мини-браузер, код с цветными скобками, озвучка, подсказки), канон курса не
 // тронут; урок лежит в разделе тестовых.
 //
-// МОДЕЛЬ. Открываемая коробка: html — внешняя коробка с крышкой; внутри два
-// отделения — head (сведения о странице; в нём карточка title) и body (то,
-// что видно на странице; в нём лист с текстом). Передняя стенка отделения —
-// его закрывающая граница: так показан закрывающий тег. Модель показывает
-// только вложенность; рядом всегда обычный мини-браузер и настоящий код.
+// МОДЕЛЬ — ШКАФ ДОКУМЕНТА (заказчик, 17.10.2026: шкафчик из пробы 01 вместо
+// коробки; фигура — shkaf.figures.mjs). html — шкаф на подставке; в нём два
+// ящика — head (сведения о странице; в нём карточка title) и body (то, что
+// видно на странице; в нём лист с текстом). В каждом ящике у задней стенки —
+// разделитель с открывающим тегом, передняя панель с ярлыком закрывающего
+// тега — его закрывающая граница: без неё ящик не закрыт. Лицевая рамка
+// шкафа с табличкой </html> — закрывающая граница html. Закрытый документ —
+// шкаф с поднятой дверцей-фасадом index.html. Модель показывает только
+// вложенность; рядом всегда обычный мини-браузер и настоящий код.
 //
 // ВОСЕМЬ ЭТАПОВ: 1 «Это будет твоя страница» → 2 «Загляни внутрь» →
 // 3 «Предскажи изменение» → 4 «Собери документ» → 5 «Помоги Коди
@@ -97,9 +101,9 @@ const C = {
         'Хочешь сделать свою? Сначала заглянем внутрь и узнаем, что за что отвечает.',
         'Want to make your own? First let us look inside and find out what does what.') }
     ],
-    opened: L3('Mana sahifa ichi: bitta katta quti, uning ichida ikkita bo‘lim. Hozir har biri nimaga kerakligini bilib olamiz.',
-      'Вот что внутри страницы: одна большая коробка, а в ней два отделения. Сейчас узнаем, зачем каждое.',
-      'This is what is inside the page: one big box with two sections in it. Now let’s find out what each one is for.'),
+    opened: L3('Mana sahifa ichi: bitta shkaf, unda ikkita tortma. Hozir har biri nimaga kerakligini bilib olamiz.',
+      'Вот что внутри страницы: один шкаф, а в нём два ящика. Сейчас узнаем, зачем каждый.',
+      'This is what is inside the page: one cabinet with two drawers in it. Now let’s find out what each one is for.'),
     ask: L3('Hujjat ichiga qarang', 'Загляни внутрь документа', 'Look inside the document'),
     askDone: L3('Ichi ochildi — keyingi qadamda har bir qismni ko‘ramiz', 'Документ открыт — дальше разберём каждую часть', 'The document is open: next we explore each part')
   },
@@ -111,18 +115,18 @@ const C = {
       'Нажимай на части: в модели, в коде или на кнопках внизу.',
       'Tap the parts: in the model, in the code or on the buttons below.'),
     parts: {
-      html: L3('html — tashqi quti. U hujjatning barcha qismlarini birlashtiradi: ichida head va body.',
-        'html — внешняя коробка. Она объединяет все части документа: внутри неё head и body.',
-        'html is the outer box. It holds all parts of the document together: head and body are inside it.'),
-      head: L3('head — sahifa haqidagi ma’lumot bo‘limi. Bu ma’lumot sahifaning o‘zida ko‘rinmaydi.',
-        'head — отделение сведений о странице. Сами эти сведения на странице не видны.',
-        'head is the section with information about the page. That information is not shown on the page itself.'),
+      html: L3('html — butun shkaf. U hujjatning barcha qismlarini birlashtiradi: unda head va body tortmalari bor.',
+        'html — весь шкаф. Он объединяет все части документа: в нём ящики head и body.',
+        'html is the whole cabinet. It holds all parts of the document together: the head and body drawers are inside it.'),
+      head: L3('head — sahifa haqidagi ma’lumotlar tortmasi. Bu ma’lumotlar sahifaning o‘zida ko‘rinmaydi.',
+        'head — ящик сведений о странице. Сами эти сведения на странице не видны.',
+        'head is the drawer with information about the page. That information is not shown on the page itself.'),
       title: L3('title head ichida turadi. Uning matni — brauzer yorlig‘idagi nom.',
         'title лежит внутри head. Его текст — это название на вкладке браузера.',
         'title sits inside head. Its text is the name on the browser tab.'),
-      body: L3('body — mazmun bo‘limi. Undagi hamma narsa sahifada ko‘rinadi.',
-        'body — отделение содержимого. Всё, что лежит в нём, видно на странице.',
-        'body is the content section. Everything in it shows on the page.')
+      body: L3('body — mazmun tortmasi. Undagi hamma narsa sahifada ko‘rinadi.',
+        'body — ящик содержимого. Всё, что лежит в нём, видно на странице.',
+        'body is the content drawer. Everything in it shows on the page.')
     },
     done: L3('Tushunarli: html ichida head va body, title esa head ichida. Istagan qismni yana bosishingiz mumkin.',
       'Итак: внутри html — head и body, а title — внутри head. Можно нажимать части ещё раз.',
@@ -167,13 +171,13 @@ const C = {
       body: L3('body ham html ichida. Endi u head dan keyin turibdi.', 'body тоже внутри html. В коде он стоит после head.', 'body is inside html too. In the code it comes after head.'),
       title: L3('title head ichida — kodda ham, modelda ham.', 'title внутри head — и в модели, и в коде.', 'title is inside head, in the model and in the code.')
     },
-    titleHtml: L3('title — sahifa haqidagi ma’lumot. U to‘g‘ridan-to‘g‘ri html ga emas, head bo‘limiga qo‘yiladi.', 'title — сведения о странице. Его кладут не прямо в html, а в отделение head.', 'title is information about the page. It goes into the head section, not straight into html.'),
+    titleHtml: L3('title — sahifa haqidagi ma’lumot. U to‘g‘ridan-to‘g‘ri html ga emas, head tortmasiga qo‘yiladi.', 'title — сведения о странице. Его кладут не прямо в html, а в ящик head.', 'title is information about the page. It goes into the head drawer, not straight into html.'),
     titleBody: L3('body dagi hamma narsa sahifada ko‘rinadi. title esa yorliq nomi — uning joyi head da.', 'Всё, что в body, видно на странице. А title — название вкладки, его место в head.', 'Everything in body shows on the page. title is the tab name: its place is in head.'),
-    nested: L3('head va body — ikki alohida bo‘lim. Ikkalasi ham to‘g‘ridan-to‘g‘ri html ichida turadi.', 'head и body — два отдельных отделения. Оба лежат прямо внутри html.', 'head and body are two separate sections. Both sit right inside html.'),
-    noPlace: L3('Bu joy hali yo‘q: avval kerakli bo‘limni qo‘ying.', 'Этого места пока нет: сначала поставь нужное отделение.', 'That place does not exist yet: place the section first.'),
-    done: L3('Tuzilma yig‘ildi! Qarang: bo‘limlar qutiga qanday joylashgan bo‘lsa, kod qatorlari ham shunday joylashgan.',
-      'Структура собрана! Посмотри: как отделения вложены в коробку, так и строки вложены в код.',
-      'The structure is built! Look: the lines in the code are nested just like the sections in the box.'),
+    nested: L3('head va body — ikki alohida tortma. Ikkalasi ham to‘g‘ridan-to‘g‘ri html ichida turadi.', 'head и body — два отдельных ящика. Оба стоят прямо внутри html.', 'head and body are two separate drawers. Both sit right inside html.'),
+    noPlace: L3('Bu joy hali yo‘q: avval kerakli tortmani qo‘ying.', 'Этого места пока нет: сначала поставь нужный ящик.', 'That place does not exist yet: put the drawer in first.'),
+    done: L3('Tuzilma yig‘ildi! Qarang: tortmalar shkafga qanday joylashgan bo‘lsa, kod qatorlari ham shunday joylashgan.',
+      'Структура собрана! Посмотри: как ящики вложены в шкаф, так и строки вложены в код.',
+      'The structure is built! Look: the lines in the code are nested just like the drawers in the cabinet.'),
     ask: L3('Qismni tanlang, keyin joyini', 'Выбери деталь, потом место', 'Choose a piece, then its place'),
     askDone: L3('Yig‘ildi: model va kodni solishtiring', 'Собрано: сравни модель и код', 'Built: compare the model and the code'),
     askPlace: L3('Endi joyni tanlang', 'Теперь выбери место', 'Now choose the place')
@@ -195,11 +199,11 @@ const C = {
     moveTarget: L3('Endi title qayerga borishi kerak?', 'Теперь — куда должен попасть title?', 'Now, where should title go?'),
     moveOk: L3('title head da. Ikkinchi qoida bajarildi.', 'title в head. Второе правило выполнено.', 'title is in head. The second rule is met.'),
     moveBody: L3('title body da edi — sahifada ko‘rinadigan joyda. Uni head ga o‘tkazamiz.', 'title уже был в body, где всё видно на странице. Его место — head.', 'title was already in body, where everything shows on the page. Its place is head.'),
-    moveHtml: L3('To‘g‘ridan-to‘g‘ri html ga emas: title ni head bo‘limiga qo‘yamiz.', 'Не прямо в html: title кладут в отделение head.', 'Not straight into html: title goes into the head section.'),
+    moveHtml: L3('To‘g‘ridan-to‘g‘ri html ga emas: title ni head tortmasiga qo‘yamiz.', 'Не прямо в html: title кладут в ящик head.', 'Not straight into html: title goes into the head drawer.'),
     pickTitle: L3('Avval title ni tanlang.', 'Сначала выбери title.', 'Choose title first.'),
-    type: L3('Endi body yopilmagan: oldingi devori yo‘q. Bo‘sh qatorga body ning yopuvchi tegini yozing.',
-      'Теперь видно: у body нет передней стенки — он не закрыт. Допиши закрывающий тег body в пустую строку.',
-      'Now you can see that body has no front wall: it is not closed. Type the closing body tag in the empty line.'),
+    type: L3('Endi ko‘rinib turibdi: body tortmasining old paneli yo‘q — u yopilmagan. Bo‘sh qatorga body ning yopuvchi tegini yozing.',
+      'Теперь видно: у ящика body нет передней панели — он не закрыт. Допиши закрывающий тег body в пустую строку.',
+      'Now you can see that the body drawer has no front panel: it is not closed. Type the closing body tag in the empty line.'),
     typeAsk: L3('Bo‘sh qatorga body ning yopuvchi tegini yozing', 'Допиши закрывающий тег body в пустую строку', 'Type the closing body tag in the empty line'),
     typeAskHead: L3('Bo‘sh qatorga head ning yopuvchi tegini yozing', 'Допиши закрывающий тег head в пустую строку', 'Type the closing head tag in the empty line'),
     typeHead: L3('Yana bitta: bu hujjatda head yopilmagan. Yopuvchi tegini yozing.', 'Ещё один: в этом документе не закрыт head. Допиши его закрывающий тег.', 'One more: in this document head is not closed. Type its closing tag.'),
@@ -242,18 +246,18 @@ const C = {
         ok: L3('Ha, shu joy.', 'Да, это место.', 'Yes, that place.')
       },
       where: {
-        ask: L3('Yangi title kartochkasi. Uni qaysi bo‘limga qo‘yasiz?', 'Новая карточка title. В какое отделение её положить?', 'A new title card. Which section does it go in?'),
+        ask: L3('Yangi title kartochkasi. Uni qaysi tortmaga qo‘yasiz?', 'Новая карточка title. В какой ящик её положить?', 'A new title card. Which drawer does it go in?'),
         askB: L3('Sahifa matni bo‘lgan varaq. Uni qayerga qo‘yasiz?', 'Лист с текстом страницы. Куда его положить?', 'A sheet with the page text. Where does it go?'),
         hint1: L3('title sahifada emas, yorliqda ko‘rinadi.', 'title виден не на странице, а на вкладке.', 'title shows on the tab, not on the page.'),
-        hint2: L3('Sahifa haqidagi ma’lumot bo‘limi — head.', 'Отделение сведений о странице — head.', 'The section with page information is head.'),
+        hint2: L3('Sahifa haqidagi ma’lumotlar tortmasi — head.', 'Ящик сведений о странице — head.', 'The drawer with page information is head.'),
         hint1B: L3('Bu matn sahifada ko‘rinishi kerak.', 'Этот текст должен быть виден на странице.', 'This text has to show on the page.'),
         hint2B: L3('Sahifada ko‘rinadigan hamma narsa body da.', 'Всё, что видно на странице, — в body.', 'Everything shown on the page is in body.'),
-        ok: L3('To‘g‘ri bo‘lim.', 'Верное отделение.', 'The right section.')
+        ok: L3('To‘g‘ri tortma.', 'Верный ящик.', 'The right drawer.')
       },
       build: {
         ask: L3('Asosiy tuzilmani tartib bilan yig‘ing: qatorlarni yuqoridan pastga bosing.', 'Собери основную структуру: нажимай строки по порядку, сверху вниз.', 'Build the main structure: tap the lines in order, from top to bottom.'),
         askB: L3('Faqat head qismini yig‘ing.', 'Собери только часть head.', 'Build just the head part.'),
-        hint1: L3('Avval tashqi quti ochiladi, oxirida yopiladi.', 'Внешняя коробка открывается первой и закрывается последней.', 'The outer box opens first and closes last.'),
+        hint1: L3('Avval tashqi qism — html shkafi — ochiladi, oxirida yopiladi.', 'Внешняя часть — шкаф html — открывается первой и закрывается последней.', 'The outer part, the html cabinet, opens first and closes last.'),
         hint2: L3('html ichida avval head (ochiladi va yopiladi), keyin body.', 'Внутри html сначала head (открыть и закрыть), потом body.', 'Inside html: first head (open and close), then body.'),
         ok: L3('Tuzilma to‘g‘ri.', 'Структура верная.', 'The structure is right.')
       },
@@ -338,6 +342,9 @@ function twoLines(s) {
 }
 const docTexts = (title, text) => { const [a, b] = twoLines(text); return { title, page1: a, page2: b }; };
 
+// Пружины частей шкафа: [жёсткость, демпфирование]. Ящик — тяжелее и с
+// заметным отскоком «доводчика», карточки — легче и почти без отскока.
+const SPRING_MOVE = { head: [150, 17], body: [130, 16], 'title-card': [220, 22], 'page-card': [220, 22], 'title-stray': [220, 22] };
 // Фигура. Экран задаёт состояние, фигура только рисует:
 //   texts · parts { ключ: on|ghost|off } · lit [ключи] · move { ключ: величина } ·
 //   led [ключи] · shake { k, n } · onPick(ключ) · pickable [ключи].
@@ -365,6 +372,10 @@ function Fig({ texts, parts, lit, move, led, shake, onPick, pickable, cls, label
     return () => cancelAnimationFrame(raf.current);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const moveKey = JSON.stringify(move || {});
+  // Ящики и карточки встают на место пружиной: ящик въезжает и чуть отскакивает,
+  // как на доводчике, карточка опускается с лёгким отскоком. Дверца — плавно,
+  // без отскока. При «меньше движения» — сразу на место.
+  const vel = useRef({});
   useEffect(() => {
     if (!pos.current) return undefined;
     const calm = reduceMotion();
@@ -376,8 +387,17 @@ function Fig({ texts, parts, lit, move, led, shake, onPick, pickable, cls, label
       Object.keys(want.current).forEach((k) => {
         const w = want.current[k];
         const v = pos.current[k] === undefined ? w : pos.current[k];
-        const nv = calm ? w : v + (w - v) * (1 - Math.exp(-dt / 0.18));
-        pos.current[k] = Math.abs(w - nv) < 0.05 ? w : nv;
+        let nv;
+        if (calm) nv = w;
+        else if (SPRING_MOVE[k]) {
+          const [stiff, damp] = SPRING_MOVE[k];
+          let sp = vel.current[k] || 0;
+          sp += (stiff * (w - v) - damp * sp) * dt;
+          nv = v + sp * dt;
+          vel.current[k] = sp;
+          if (Math.abs(w - nv) < 0.05 && Math.abs(sp) < 0.5) { nv = w; vel.current[k] = 0; }
+        } else nv = v + (w - v) * (1 - Math.exp(-dt / 0.18));
+        pos.current[k] = !SPRING_MOVE[k] && Math.abs(w - nv) < 0.05 ? w : nv;
         if (pos.current[k] !== w) moving = true;
       });
       place();
@@ -455,10 +475,11 @@ function Fig({ texts, parts, lit, move, led, shake, onPick, pickable, cls, label
     aria-label={label ? pick(label) : undefined} onClick={click} dangerouslySetInnerHTML={html} />;
 }
 
-// Состояние модели по умолчанию: коробка открыта, всё на месте.
+// Состояние модели по умолчанию: дверца шкафа поднята, ящики выдвинуты, всё на месте.
 const OPEN_PARTS = { lid: 'off', slots: 'off', 'title-stray': 'off' };
 const LID_UP = () => FIG.open.lid;
 const DROP = () => FIG.open.drop;
+const PULL = () => FIG.open.pull;   // выбранный ящик выдвигается ещё
 
 // Кнопки частей: имя тега + цвет + форма. Для клавиатуры и для тех, кому
 // неудобно попадать в модель.
@@ -499,7 +520,7 @@ function S1({ p }) {
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(opened, spoken);
   const led = useIdleLed(canTap && !opened, 0);
-  const [stage, setStage] = useState(opened ? 3 : 0);   // 0 закрыт · 1 крышка · 2 отделения · 3 title
+  const [stage, setStage] = useState(opened ? 3 : 0);   // 0 закрыт · 1 дверца поднимается · 2 ящики въезжают · 3 title
   useEffect(() => {
     if (!opened || stage >= 3) return undefined;
     const t = setTimeout(() => setStage((s) => s + 1), reduceMotion() ? 0 : 520);
@@ -567,7 +588,7 @@ function S2({ p }) {
       <Ask text={c.ask} n={seen.length + '/4'} />
       <div className="ex">
         <Fig texts={docTexts(t, x)} parts={OPEN_PARTS} lit={lit} onPick={(h) => choose(HIT_PART[h])}
-          move={{ lid: LID_UP(), head: cur === 'head' ? 5 : 0, body: cur === 'body' ? 5 : 0, 'title-card': cur === 'title' ? 7 : 0 }}
+          move={{ lid: LID_UP(), head: cur === 'head' ? PULL() : 0, body: cur === 'body' ? PULL() : 0, 'title-card': cur === 'title' ? 7 : 0 }}
           led={led ? left.map((k) => (k === 'html' ? 'html' : k)) : []} label={c.ask} />
         <div className="ex-side">
           <MiniBrowser title={t} page={x} compact hl={cur === 'title' ? 'title' : cur === 'body' ? 'body' : cur === 'html' ? 'html' : null} />
@@ -1036,12 +1057,12 @@ const BUILD7B = ['head-o', 'title', 'head-c'];
 const POOL7 = ['body-o', 'html-c', 'head-o', 'body-c', 'html-o', 'head-c'];
 const POOL7B = ['head-c', 'title', 'head-o'];
 const BUILD_RULE = {
-  'html-o': L3('Tashqi quti birinchi ochiladi: <html>.', 'Внешняя коробка открывается первой: <html>.', 'The outer box opens first: <html>.'),
+  'html-o': L3('Avval shkaf ochiladi: <html>.', 'Первым открывается шкаф: <html>.', 'The cabinet opens first: <html>.'),
   'head-o': L3('html ichida avval head ochiladi.', 'Внутри html сначала открывается head.', 'Inside html, head opens first.'),
   'head-c': L3('head ni yopish kerak, body boshlanishidan oldin.', 'head нужно закрыть до того, как начнётся body.', 'head must close before body starts.'),
   'body-o': L3('Endi body ochiladi.', 'Теперь открывается body.', 'Now body opens.'),
   'body-c': L3('body ni yopamiz.', 'Закрываем body.', 'We close body.'),
-  'html-c': L3('Oxirida tashqi quti yopiladi: </html>.', 'Последней закрывается внешняя коробка: </html>.', 'Last, the outer box closes: </html>.'),
+  'html-c': L3('Oxirida shkaf yopiladi: </html>.', 'Последним закрывается шкаф: </html>.', 'Last, the cabinet closes: </html>.'),
   title: L3('head ichida title turadi.', 'Внутри head стоит title.', 'title sits inside head.')
 };
 function S7({ p }) {
@@ -1412,7 +1433,7 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 @keyframes figLed { 0%, 100% { filter: drop-shadow(0 0 0 rgba(255,79,40,0)); } 50% { filter: drop-shadow(0 0 5px rgba(255,79,40,.95)); } }
 .fig .fx-shake { animation: figShake .46s ease; }
 @keyframes figShake { 0%, 100% { transform: none; } 20% { transform: translateX(-4px); } 45% { transform: translateX(4px); } 70% { transform: translateX(-2px); } }
-/* Материалы: коробка html — графитовая, head — фиолетовая, body — голубая
+/* Материалы: шкаф html — графитовый, head — фиолетовый, body — голубой
    (цвета тегов курса, разбавленные до светлого), карточки — белая бумага. */
 .fig [data-part="case"], .fig [data-part="case-near"], .fig [data-part="html-close"], .fig [data-part="lid"] {
   --anatomy-top: #f3f5f8; --anatomy-shade-0: #d0d6de; --anatomy-shade-1: #dbe0e7; --anatomy-shade-2: #e5e9ee; --anatomy-shade-3: #eef0f3; }
@@ -1426,6 +1447,13 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .fig text[data-tag="html"] { fill: #586A83; } .fig text[data-tag="head"] { fill: #6F57AB; }
 .fig text[data-tag="body"] { fill: #1171A0; } .fig text[data-tag="title"] { fill: #9F4471; }
 .fig text[data-font="sans"] { font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif; font-weight: 700; letter-spacing: 0; fill: #1d1d1f; }
+.fig .fg-void { fill: #3b3d44; opacity: .26; }
+/* Подсвеченная часть шкафа остаётся своего цвета: светлый оттенок тега вместо серого кита. */
+.fig [data-part="case"], .fig [data-part="case-near"], .fig [data-part="html-close"] { --anatomy-lit-top: #f1f4f8; --anatomy-lit-shade: #e1e6ed; }
+.fig [data-part="head"] { --anatomy-lit-top: #f4f0fd; --anatomy-lit-shade: #e4dcf5; }
+.fig [data-part="body"] { --anatomy-lit-top: #eef7fc; --anatomy-lit-shade: #d8e9f3; }
+.fig [data-part="title-card"], .fig [data-part="title-stray"] { --anatomy-lit-top: #fff; --anatomy-lit-shade: #f6e9ef; }
+.fig [data-part="page-card"] { --anatomy-lit-top: #fff; --anatomy-lit-shade: #eaf3f9; }
 .fig .fg-slot { fill: rgba(88,106,131,.06); stroke: #8a95a5; stroke-width: .9; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
 /* Подсветка части — цветом её тега (обводка + светлая заливка). */
 .fig [data-tag="html"] .iso-solid[data-lit] > .iso-edge, .fig [data-sel="html"].is-lit .iso-edge { stroke: #586A83; }
