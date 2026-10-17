@@ -29,7 +29,7 @@ const docTexts = (title, text) => { const [a, b] = twoLines(text); return { titl
 // Фигура. Экран задаёт состояние, фигура только рисует:
 //   texts · parts { ключ: on|ghost|off } · lit [ключи] · move { ключ: величина } ·
 //   led [ключи] · shake { k, n } · onPick(ключ) · pickable [ключи].
-// fig — модель (FIG — коробка документа, RFIG — робот Bob); по умолчанию FIG.
+// fig — модель (FIG — коробка документа, RFIG — робот Pixel); по умолчанию FIG.
 function Fig({ fig, texts, parts, lit, move, led, shake, onPick, pickable, cls, label }) {
   const F = fig || FIG;
   const pick = usePick();

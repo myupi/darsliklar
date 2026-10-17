@@ -1,17 +1,17 @@
-// Сборка тестового урока «Структура HTML-документа — робот Bob».
+// Сборка тестового урока «Структура HTML-документа — робот Pixel».
 //   node tools/robot/robot.build.mjs → lessons/test/07-struktura-robot.jsx
 // Файл урока = шапка + канон курса HTML (дословно, не правится) + пометка
 // «УРОК» + robot.src.jsx, куда встают: помощники урока 1 (../anatomy/zh-helpers.jsx),
 // части интерфейса (rb-ui.jsx), две фигуры — коробка документа
-// (../anatomy/pervaya.figures.mjs) и робот Bob (robot.figures.mjs), CSS урока 1,
-// базовый CSS моделей, свой CSS (pv-own.css + rb-own.css + раскраска Bob) и CSS
+// (../anatomy/pervaya.figures.mjs) и робот Pixel (robot.figures.mjs), CSS урока 1,
+// базовый CSS моделей, свой CSS (pv-own.css + rb-own.css + раскраска Pixel) и CSS
 // кита anatomy.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import * as k from '../anatomy/kit/iso-kit.mjs';
 import { docModel } from '../anatomy/pervaya.figures.mjs';
-import { robotModel } from './robot.figures.mjs';
+import { robotModel, armCss } from './robot.figures.mjs';
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 const read = (p) => readFileSync(here(p), 'utf8');
@@ -36,6 +36,11 @@ helpers = helpers.replace(printedRe, "title: 1, sel: 1, icon: 1, id: 1, pose: 1,
 helpers = helpers
   .replace("doctype: 'doctype',", "doctype: 'doctype', css: 'CSS', js: 'JavaScript',")
 ;
+// Узбекская озвучка знаков «<» и «>» — тем же термином, что в текстах урока:
+// burchakli qavs (правка узбекских текстов, 17.10.2026).
+const uzMarks = "lt: 'ochuvchi burchak', gt: 'yopuvchi burchak'";
+if (helpers.indexOf(uzMarks) < 0) throw new Error('нет узбекских названий < и > в zh-helpers.jsx');
+helpers = helpers.replace(uzMarks, "lt: 'chap burchakli qavs', gt: 'o‘ng burchakli qavs'");
 
 // Раскраска слоя «вид»: у каждой группы data-paint свой цвет; грани — светлее
 // и темнее его, рёбра — темнее (на тёмных деталях — светлее).
@@ -64,11 +69,11 @@ put('/*@FIGURES@*/', 'const FIG = ' + JSON.stringify(docModel()) + ';\nconst RFI
 put('/*@LESSON1_CSS@*/', read('../anatomy/zaglyani.css').trim());   // CSS внутри шаблонной строки урока
 put('/*@ISO_CSS@*/', tpl(k.ISO_CSS.trim()));
 put('/*@FIG_CSS@*/', read('../anatomy/pv-base.css').trim());
-put('/*@OWN_CSS@*/', read('../anatomy/pv-own.css').trim() + '\n' + read('./rb-own.css').trim() + '\n' + paintCss);
+put('/*@OWN_CSS@*/', read('../anatomy/pv-own.css').trim() + '\n' + read('./rb-own.css').trim() + '\n' + paintCss + '\n' + armCss());
 
 const head = `// =============================================================================
-// ТЕСТОВЫЕ УРОКИ · «Структура HTML-документа — робот Bob» (проба урока 1)
-// Переделка урока 1 курса HTML по отзывам учеников: зачем HTML, робот Bob из
+// ТЕСТОВЫЕ УРОКИ · «Структура HTML-документа — робот Pixel» (проба урока 1)
+// Переделка урока 1 курса HTML по отзывам учеников: зачем HTML, робот Pixel из
 // трёх слоёв (навык anatomy), каждый тег объясняется там, где появляется.
 // Один самодостаточный JSX: канон курса HTML (до пометки «УРОК») + урок.
 //

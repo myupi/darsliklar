@@ -1,9 +1,9 @@
 // =============================================================================
-// == ТЕСТОВЫЙ УРОК · «Структура HTML-документа — робот Bob» (проба урока 1) ===
+// == ТЕСТОВЫЙ УРОК · «Структура HTML-документа — робот Pixel» (проба урока 1) ===
 //
 // Переделка урока 1 курса HTML по отзывам учеников (17.10.2026). Отзывы стоят
 // выше навыка /novyy-urok:
-//   • «зачем это нужно» — в начале: робот Bob собирается из трёх слоёв (детали ·
+//   • «зачем это нужно» — в начале: робот Pixel собирается из трёх слоёв (детали ·
 //     вид · движение = HTML · CSS · JavaScript), на его экране — игра «Битва
 //     знаний», это настоящая страница, и у неё есть код (экраны r1, r2);
 //   • каждый тег объясняется там, где появляется: тег — на строке title (s2),
@@ -17,7 +17,7 @@
 //   • живые короткие реплики, теги в речи — по минимуму (озвучка).
 //
 // ЛОВУШКА «ГОЛОВА». У робота есть голова, а head страницы — не голова, а паспорт.
-// Поэтому в речи у Bob нет «головы», а head везде — «паспорт страницы».
+// Поэтому в речи у Pixel нет «головы», а head везде — «паспорт страницы».
 // Робот — для крючка и финала; структура разбирается на настоящей странице.
 //
 // ОДНА МОДЕЛЬ ДОКУМЕНТА. Документ — это { order, title, text }: порядок строк
@@ -37,9 +37,9 @@ const META = {
   lessonId: 'test-html-struktura-robot',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: 'HTML hujjat tuzilishi: robot Bob',
-    ru: 'Структура HTML-документа: робот Bob',
-    en: 'HTML document structure: robot Bob'
+    uz: 'HTML hujjat tuzilishi: robot Piksel',
+    ru: 'Структура HTML-документа: робот Пиксель',
+    en: 'HTML document structure: robot Pixel'
   }
 };
 
@@ -54,22 +54,22 @@ const fillL = (node, vars) => {
   return out;
 };
 
-// Игра «Битва знаний» — страница, которую показывает Bob и которую разбирает урок.
+// Игра «Битва знаний» — страница, которую показывает Pixel и которую разбирает урок.
 const SAMPLE = {
   title: L3('Bilimlar jangi', 'Битва знаний', 'Battle of Knowledge'),
   text: L3('Salom! O‘yinga xush kelibsiz!', 'Привет! Добро пожаловать в игру!', 'Hi! Welcome to the game!')
 };
 
 const UI = {
-  tab: L3('Yorliq', 'Вкладка', 'Tab'),
+  tab: L3('Yorliqda', 'Вкладка', 'Tab'),
   page: L3('Sahifa', 'Страница', 'Page'),
-  window: L3('Oyna', 'Окно', 'Window'),
+  window: L3('Sahifada', 'Окно', 'Window'),
   code: L3('Kod', 'Код', 'Code'),
-  volume: L3('Hajm', 'Объём', 'Volume'),
+  volume: L3('3D ko‘rinish', 'Объём', 'Volume'),
   inspector: L3('Tuzilma qoidasi', 'Правило структуры', 'Structure rule'),
   changeTitle: L3('Nomni o‘zgartirish', 'Поменять название', 'Change the name'),
   changeText: L3('Matnni o‘zgartirish', 'Поменять текст', 'Change the text'),
-  was: L3('Oldin', 'Было', 'Before'),
+  was: L3('Avval', 'Было', 'Before'),
   now: L3('Hozir', 'Сейчас', 'Now'),
   erase: L3('So‘zni o‘chirish', 'Стереть слово', 'Erase a word'),
   check: L3('Tekshirish', 'Проверить', 'Check'),
@@ -80,26 +80,27 @@ const UI = {
   next: L3('Katta sarlavha va xatboshilar qo‘shamiz', 'Добавим большой заголовок и абзацы', 'We add a big heading and paragraphs'),
   hintN: L3('Maslahat', 'Подсказка', 'Hint'),
   again: L3('yangi misol', 'новый пример', 'new example'),
-  labels: { start: L3('Boshlanish', 'Начало', 'Start'), content: L3('Mazmun', 'Содержимое', 'Content'), end: L3('Oxiri', 'Конец', 'End') },
-  pieces: L3('Qismlar', 'Детали', 'Pieces'),
+  labels: { start: L3('Ochuvchi', 'Начало', 'Start'), content: L3('Mazmun', 'Содержимое', 'Content'), end: L3('Yopuvchi', 'Конец', 'End') },
+  pieces: L3('Detallar', 'Детали', 'Pieces'),
   piece: { head: '<head>…</head>', body: '<body>…</body>', title: '<title>…</title>' },
-  dragTip: L3('Detalni kodga sudrang yoki bosing, keyin joyni tanlang', 'Перетащи деталь в код — или нажми на неё, потом на место', 'Drag a piece into the code, or tap it and then the place'),
-  dragTitle: L3('title qatorini head ichiga sudrang yoki bosing, keyin joyni tanlang', 'Перетащи строку title внутрь head — или нажми её, потом место', 'Drag the title line into head, or tap it and then the place'),
+  dragTip: L3('Detalni kodga sudrang yoki avval detalni, keyin joyni bosing', 'Перетащи деталь в код — или нажми на неё, потом на место', 'Drag a piece into the code, or tap it and then the place'),
+  dragTitle: L3('title qatorini head bo‘limiga sudrang yoki avval qatorni, keyin joyni bosing', 'Перетащи строку title внутрь head — или нажми её, потом место', 'Drag the title line into head, or tap it and then the place'),
   here: L3('shu yerga: head ichiga', 'сюда: внутрь head', 'here: into head'),
   intoHtml: L3('html ichiga', 'внутрь html', 'into html'),
   intoHead: L3('head ichiga', 'внутрь head', 'into head'),
   intoBody: L3('body ichiga', 'внутрь body', 'into body'),
-  pageText: L3('sahifa matni', 'текст страницы', 'page text'),
+  pageText: L3('sahifadagi matn', 'текст страницы', 'page text'),
   slot: L3('joy', 'место', 'slot'),
-  swapNote: L3('Qatorni boshqasining ustiga suring (yoki ikkalasini bosing) — ular joy almashadi.', 'Перетащи строку на другую (или нажми обе) — они поменяются местами.', 'Drag a line onto another (or tap both): they swap places.'),
-  noTags: L3('Bu yerga faqat so‘zlar, burchaklarsiz.', 'Здесь только слова, без уголков.', 'Only words here, no angle brackets.'),
+  swapNote: L3('Qatorni boshqa qator ustiga suring yoki ikkalasini bosing — ular joy almashadi.', 'Перетащи строку на другую (или нажми обе) — они поменяются местами.', 'Drag a line onto another (or tap both): they swap places.'),
+  noTags: L3('Bu yerga faqat so‘z yozing, < va > belgilarisiz.', 'Здесь только слова, без уголков.', 'Only words here, no angle brackets.'),
   ideas: L3('G‘oyalar', 'Идеи', 'Ideas'),
   goal: L3('Buyurtma', 'Заказ', 'Order'),
+  forExample: L3('Masalan', 'Например', 'For example'),
   scheme: L3('Tuzilma', 'Структура', 'Structure'),
   done: L3('Bajarildi', 'Сделано', 'Done'),
-  // Робот Bob
-  robot: L3('Robot Bob: korpus, ekran, qo‘llar, oyoqlar, antenna', 'Робот Боб: корпус, экран, руки, ноги, антенна', 'Robot Bob: case, screen, arms, legs, antenna'),
-  bob: L3('Bob', 'Боб', 'Bob'),
+  // Робот Pixel
+  robot: L3('Robot Piksel: korpus, ekran, qo‘llar, oyoqlar, antenna', 'Робот Пиксель: корпус, экран, руки, ноги, антенна', 'Robot Pixel: case, screen, arms, legs, antenna'),
+  pixel: L3('Piksel', 'Пиксель', 'Pixel'),
   layers: {
     html: { name: 'HTML', sub: L3('Detallar', 'Детали', 'Parts') },
     css: { name: 'CSS', sub: L3('Ko‘rinish', 'Вид', 'Look') },
@@ -108,7 +109,7 @@ const UI = {
   scr2: L3('1-savol', 'Вопрос 1', 'Question 1'),
   gameQ: L3('1-savol: o‘rgimchakning nechta oyog‘i bor?', 'Вопрос 1: сколько ног у паука?', 'Question 1: how many legs does a spider have?'),
   openScreen: L3('Ekranni ochish', 'Открыть экран', 'Open the screen'),
-  passport: L3('Pasport: sahifa nomi va sozlamalari', 'Паспорт: название и настройки страницы', 'Passport: the page name and settings'),
+  passport: L3('Pasport: sahifa nomi va boshqa ma’lumotlar', 'Паспорт: название и настройки страницы', 'Passport: the page name and settings'),
   tabPin: L3('← yorliq', '← вкладка', '← tab')
 };
 
@@ -120,203 +121,203 @@ const UI = {
 // ─────────────────────────────────────────────────────────────────────────────
 const C = {
   r1: {
-    eyebrow: L3('Robot Bob', 'Робот Боб', 'Robot Bob'),
+    eyebrow: L3('Robot Piksel', 'Робот Пиксель', 'Robot Pixel'),
     cast: [
-      { pose: 'hello', text: L3('Salom! Men Kodi, dasturchi robotman. Bu mening loyiham — robot Bob. Hozircha u ko‘rinmayapti.',
-        'Привет! Я Коди, робот-программист. А это мой проект — робот Боб. Пока его не видно.',
-        'Hi! I’m Kodi, a programmer robot. This is my project, robot Bob. You can’t see him yet.') },
-      { pose: 'point', text: L3('Bob uch qatlamdan yig‘ilgan. Ularni navbat bilan yoqing!',
-        'Боб собран из трёх слоёв. Включи их по очереди!',
-        'Bob is built from three layers. Turn them on one by one!') }
+      { pose: 'hello', text: L3('Salom! Men Kodi, dasturchi robotman. Bu mening loyiham — robot Piksel. Hozircha u ko‘rinmayapti.',
+        'Привет! Я Коди, робот-программист. А это мой проект — робот Пиксель. Пока его не видно.',
+        'Hi! I’m Kodi, a programmer robot. This is my project, robot Pixel. You can’t see him yet.') },
+      { pose: 'point', text: L3('Piksel uchta qatlamdan iborat. Ularni birma-bir yoqing!',
+        'Пиксель собран из трёх слоёв. Включи их по очереди!',
+        'Pixel is built from three layers. Turn them on one by one!') }
     ],
     on: {
-      html: L3('Voy, detallar paydo bo‘ldi: korpus, ekran, qo‘llar, oyoqlar! Bu HTML — Bob nimadan yasalgani.',
-        'Ого, появились детали: корпус, экран, руки, ноги! Это HTML — из чего сделан Боб.',
-        'Whoa, the parts appeared: the case, screen, arms and legs! That’s HTML: what Bob is made of.'),
-      css: L3('Endi Bob rangli! Bu CSS — tashqi ko‘rinish.',
-        'Теперь Боб цветной! Это CSS — внешний вид.',
-        'Now Bob has colours! That’s CSS: the look.'),
-      js: L3('Mana endi Bob sizga qo‘l silkitayapti! Bu JavaScript — harakat.',
-        'А теперь Боб машет тебе! Это JavaScript — движения.',
-        'And now Bob is waving at you! That’s JavaScript: the moves.')
+      html: L3('Voy, detallar paydo bo‘ldi: korpus, ekran, qo‘llar va oyoqlar! HTML Piksel nimalardan tuzilganini belgilaydi.',
+        'Ого, появились детали: корпус, экран, руки, ноги! Это HTML — из чего сделан Пиксель.',
+        'Whoa, the parts appeared: the case, screen, arms and legs! That’s HTML: what Pixel is made of.'),
+      css: L3('Ana, endi Piksel rang-barang! CSS uning tashqi ko‘rinishini belgilaydi.',
+        'Теперь Пиксель цветной! Это CSS — внешний вид.',
+        'Now Pixel has colours! That’s CSS: the look.'),
+      js: L3('Zo‘r, Piksel sizga qo‘l silkitayapti! JavaScript unga harakat beradi.',
+        'А теперь Пиксель машет тебе! Это JavaScript — движения.',
+        'And now Pixel is waving at you! That’s JavaScript: the moves.')
     },
-    done: L3('Har bir sayt ham shunday tuzilgan: detallar, ko‘rinish, harakat. Asosiysi — HTML: usiz hech narsa yo‘q. Shundan boshlaymiz!',
+    done: L3('Har qanday sayt shunday tuzilgan: detallar, ko‘rinish va harakat. Eng asosiysi — HTML, usiz sahifada hech narsa ko‘rinmaydi. Shuning uchun biz HTML bilan boshlaymiz!',
       'Так устроен и каждый сайт: детали, вид, движение. Главное — HTML: без него ничего нет. С него и начнём!',
       'Every website works the same way: parts, look, moves. The key one is HTML: without it there’s nothing. That’s where we start!'),
     next: {
-      css: L3('Endi keyingisini yoqing — «Ko‘rinish», ya’ni CSS.', 'Теперь включи следующий слой — «Вид», это CSS.', 'Now turn on the next layer, “Look”: that’s CSS.'),
-      js: L3('Endi oxirgisi — «Harakat» qatlamini, JavaScript ni yoqing!', 'А теперь последний — включи «Движение», это JavaScript!', 'Now the last one: turn on “Moves”, that’s JavaScript!')
+      css: L3('Endi «Ko‘rinish» qatlamini yoqing — bu CSS.', 'Теперь включи следующий слой — «Вид», это CSS.', 'Now turn on the next layer, “Look”: that’s CSS.'),
+      js: L3('Oxirgi qatlam qoldi: «Harakat», ya’ni JavaScript. Uni yoqing!', 'А теперь последний — включи «Движение», это JavaScript!', 'Now the last one: turn on “Moves”, that’s JavaScript!')
     },
-    off: L3('Ko‘rdingizmi? HTML siz Bob butunlay yo‘qoldi.', 'Видишь? Без HTML исчез весь Боб.', 'See? Without HTML, all of Bob is gone.'),
-    ask: L3('Qatlamlarni navbat bilan yoqing', 'Включи слои по очереди', 'Turn the layers on one by one'),
+    off: L3('Ko‘rdingizmi? HTML qatlami o‘chirilganda, Piksel ko‘rinmay qoladi.', 'Видишь? Без HTML исчез весь Пиксель.', 'See? Without HTML, all of Pixel is gone.'),
+    ask: L3('Qatlamlarni birma-bir yoqing', 'Включи слои по очереди', 'Turn the layers on one by one'),
     askOne: L3('«{x}» qatlamini yoqing', 'Включи слой «{x}»', 'Turn on the “{x}” layer'),
-    askDone: L3('Qatlamlarni o‘chirib-yoqib ko‘ring', 'Слои можно выключать и включать', 'You can switch the layers off and on')
+    askDone: L3('Qatlamlarni o‘chirib, qayta yoqish mumkin', 'Слои можно выключать и включать', 'You can switch the layers off and on')
   },
 
   r2: {
-    eyebrow: L3('Bob ekrani', 'Экран Боба', 'Bob’s screen'),
-    say: L3('Bobning ko‘kragida ekran bor, unda «Bilimlar jangi» o‘yini. Ekranni bosing — ichiga qaraymiz!',
-      'На груди у Боба экран, а на нём игра «Битва знаний». Нажми на экран — заглянем внутрь!',
-      'Bob has a screen on his chest with the game “Battle of Knowledge”. Tap the screen and let’s look inside!'),
-    tab: L3('Bu oddiy veb-sahifa! Eng tepada, yorliqda — uning nomi: «Bilimlar jangi».',
+    eyebrow: L3('Piksel ekrani', 'Экран Пикселя', 'Pixel’s screen'),
+    say: L3('Pikselning ko‘kragidagi ekranda «Bilimlar jangi» o‘yini ochiq. Ekranni bosing — ichiga qaraymiz!',
+      'На груди у Пикселя экран, а на нём игра «Битва знаний». Нажми на экран — заглянем внутрь!',
+      'Pixel has a screen on his chest with the game “Battle of Knowledge”. Tap the screen and let’s look inside!'),
+    tab: L3('Voy, bu oddiy veb-sahifa ekan! Brauzerning yuqorisidagi kichik yorliqqa qarang — unda «Bilimlar jangi» deb yozilgan. Bu sahifaning nomi.',
       'Это обычная веб-страница! В самом верху, на вкладке, — её название: «Битва знаний».',
       'It’s a normal web page! At the very top, on the tab, is its name: “Battle of Knowledge”.'),
-    win: L3('Pastda, oynada — sahifa mazmuni: o‘yin savoli. Uni o‘yinchi ko‘radi.',
+    win: L3('Pastdagi katta oynada esa sahifadagi matn — o‘yin savoli. O‘yinchi aynan shuni ko‘radi.',
       'А ниже, в окне, — содержимое страницы: вопрос игры. Его и видит игрок.',
       'And below, in the window, is the page content: the game question. That’s what the player sees.'),
-    code: L3('Yonida esa uning kodi — brauzer uchun ko‘rsatmali matn. Brauzer uni o‘qib, sahifani chizadi. Ranglar yo‘q — bu faqat HTML.',
+    code: L3('Yonidagi matn — sahifaning kodi. Brauzer shu kodni o‘qib, sahifada nimani ko‘rsatishni biladi. Bu yerda ranglar yo‘q — bu faqat HTML.',
       'А рядом — её код: текст с подсказками для браузера. Браузер читает его и рисует страницу. Цветов нет — это только HTML.',
       'And next to it is its code: text with instructions for the browser. The browser reads it and draws the page. No colours: this is just HTML.'),
-    done: L3('Internetdagi har bir sayt shunday yozilgan. Bugun siz ham o‘rganasiz — oxirida sahifangiz Bobning ekranida chiqadi!',
-      'Каждый сайт в интернете написан так. Сегодня научишься и ты, а в конце твоя страница появится на экране у Боба!',
-      'Every website on the internet is written like this. Today you’ll learn how, and at the end your page will appear on Bob’s screen!'),
-    ask: L3('Bob ekranini bosing', 'Нажми на экран Боба', 'Tap Bob’s screen'),
-    askDone: L3('Bu sahifa kodi. Dars oxirida har bir qatorini tushunasiz', 'Это код страницы. К концу урока будет понятна каждая строчка', 'This is the page’s code. By the end you’ll understand every line')
+    done: L3('Internetdagi har bir sayt shunday kod bilan yozilgan. Bugun siz ham o‘rganasiz, dars oxirida esa o‘z sahifangiz Pikselning ekranida paydo bo‘ladi!',
+      'Каждый сайт в интернете написан так. Сегодня научишься и ты, а в конце твоя страница появится на экране у Пикселя!',
+      'Every website on the internet is written like this. Today you’ll learn how, and at the end your page will appear on Pixel’s screen!'),
+    ask: L3('Piksel ekranini bosing', 'Нажми на экран Пикселя', 'Tap Pixel’s screen'),
+    askDone: L3('Bu — sahifa kodi. Dars oxirigacha uning har bir qatorini tushunib olasiz', 'Это код страницы. К концу урока будет понятна каждая строчка', 'This is the page’s code. By the end you’ll understand every line')
   },
 
   m: {
-    eyebrow: L3('Bizning reja', 'Наш план', 'Our plan'),
-    say: L3('Mana rejamiz — uch qadam.', 'Вот наш план — три шага.', 'Here’s our plan: three steps.'),
+    eyebrow: L3('Dars rejasi', 'Наш план', 'Our plan'),
+    say: L3('Darsimiz uch qadamdan iborat.', 'Вот наш план — три шага.', 'Here’s our plan: three steps.'),
     steps: [
-      { icon: 'doc', text: L3('Sahifa ichiga qarash', 'Заглянуть внутрь страницы', 'Look inside a page'),
-        say: L3('Avval sahifa ichiga qarab, u qanday qismlardan iboratligini bilib olamiz.',
+      { icon: 'doc', text: L3('Sahifa ichini ko‘rish', 'Заглянуть внутрь страницы', 'Look inside a page'),
+        say: L3('Avval sahifaning ichiga qaraymiz va u qanday qismlardan iboratligini bilib olamiz.',
           'Сначала заглянем внутрь страницы и узнаем, из каких частей она состоит.',
           'First we look inside a page and find out what parts it has.') },
       { icon: 'listN', text: L3('Konstruktordek yig‘ish', 'Собрать как конструктор', 'Build it like a kit'),
-        say: L3('Keyin sahifani qismlardan konstruktordek yig‘amiz.',
+        say: L3('Keyin sahifani qismlardan, xuddi konstruktordek yig‘amiz.',
           'Потом соберём страницу из частей, как конструктор.',
           'Then we put a page together from parts, like a kit.') },
-      { icon: 'browser', text: L3('Sahifangiz — Bob ekranida', 'Твоя страница — на экране Боба', 'Your page on Bob’s screen'),
-        say: L3('Oxirida o‘z sahifangizni yasaysiz — va u Bob ekranida chiqadi!',
-          'А в конце сделаешь свою страницу — и она появится на экране у Боба!',
-          'And at the end you’ll make your own page, and it will appear on Bob’s screen!') }
+      { icon: 'browser', text: L3('Sahifangiz — Pikselning ekranida', 'Твоя страница — на экране Пикселя', 'Your page on Pixel’s screen'),
+        say: L3('Oxirida o‘z sahifangizni yaratasiz va u Pikselning ekranida paydo bo‘ladi!',
+          'А в конце сделаешь свою страницу — и она появится на экране у Пикселя!',
+          'And at the end you’ll make your own page, and it will appear on Pixel’s screen!') }
     ],
-    done: L3('Reja tayyor! Endi doim yordam beradigan ikki tugmani ko‘rsataman.',
+    done: L3('Reja tayyor! Endi sizga doim yordam beradigan ikkita tugmani ko‘rsataman.',
       'План готов! Теперь покажу две кнопки, которые всегда выручат.',
       'The plan is ready! Now let me show you two buttons that always help.'),
     coach: [
       { id: 'hint', sel: '.chrome-side .ctl-hint', icon: 'bulb',
         title: L3('«Maslahat» tugmasi', 'Кнопка «Подсказка»', 'The “Hint” button'),
-        text: L3('Nima qilishni bilmasangiz, shu yerni bosing — aytib beraman. Hoziroq bosib ko‘ring!',
+        text: L3('Nima qilishni bilmasangiz, shu tugmani bosing — men yordam beraman. Hoziroq bosib ko‘ring!',
           'Не знаешь, что делать? Жми сюда — подскажу. Попробуй прямо сейчас!',
           'Not sure what to do? Tap here and I’ll help. Try it right now!') },
       { id: 'pause', sel: '.chrome-side .ctl-btn:not(.is-exit):not(.ctl-hint)', icon: 'pause',
         title: L3('«Pauza» tugmasi', 'Кнопка «Пауза»', 'The “Pause” button'),
-        text: L3('Chalg‘ish kerakmi? «Pauza»ni bosing. Sinab ko‘ring!',
+        text: L3('Biroz tanaffus qilmoqchimisiz? «Pauza» tugmasini bosing. Hozir sinab ko‘ring!',
           'Нужно отвлечься? Жми «Паузу». Попробуй!',
           'Need a break? Tap “Pause”. Try it!'),
-        text2: L3('Dars pauzada. Yana bosing — davom etamiz.',
+        text2: L3('Dars to‘xtatildi. Davom etish uchun tugmani yana bosing.',
           'Урок на паузе. Нажми ещё раз — и продолжим.',
           'The lesson is paused. Tap again and we’ll carry on.') }
     ],
-    hintSay: L3('Mana shunday: maslahat doim nima qilishni aytadi.', 'Вот так: подсказка всегда скажет, что делать.', 'Like that: the hint always tells you what to do.'),
-    ready: L3('Zo‘r, hammasi tayyor! Ketdik!', 'Отлично, всё готово! Поехали!', 'Great, all set! Let’s go!'),
+    hintSay: L3('Ko‘rdingizmi? «Maslahat» tugmasi doim nima qilish kerakligini aytib beradi.', 'Вот так: подсказка всегда скажет, что делать.', 'Like that: the hint always tells you what to do.'),
+    ready: L3('Zo‘r, hammasi tayyor! Boshladik!', 'Отлично, всё готово! Поехали!', 'Great, all set! Let’s go!'),
     ask: L3('Rejani tinglang', 'Послушай план', 'Listen to the plan')
   },
 
   s1: {
-    eyebrow: L3('Ikki yozuv', 'Две надписи', 'Two labels'),
-    say: L3('Har bir sahifada ikkita yozuv bor: yorliqdagi nom va oynadagi matn. Istalganini o‘zgartiring!',
+    eyebrow: L3('Ikkita yozuv', 'Две надписи', 'Two labels'),
+    say: L3('Har bir sahifada ikkita yozuv bor: yorliqdagi nom va sahifadagi matn. Ulardan birini o‘zgartirib ko‘ring!',
       'У каждой страницы есть две надписи: название на вкладке и текст в окне. Поменяй любую!',
       'Every page has two labels: the name on the tab and the text in the window. Change either one!'),
-    done: L3('Ana! Sahifa o‘zgardi. Endi bu ichkaridan qanday ishlashini bilib olamiz.',
+    done: L3('Ana, sahifa o‘zgardi! Endi bu ichkarida qanday ishlashini bilib olamiz.',
       'Есть! Страница поменялась. Сейчас узнаем, как это работает изнутри.',
       'Yes! The page changed. Now let’s find out how it works inside.'),
     titles: [L3('Futbol viktorinasi', 'Футбольная викторина', 'Football quiz'), L3('Kosmos o‘yini', 'Космическая игра', 'Space game'), L3('Mening saytim', 'Мой сайт', 'My site')],
     texts: [L3('O‘yin boshlandi!', 'Игра началась!', 'The game has started!'), L3('Salom, dunyo!', 'Привет, мир!', 'Hello, world!'), L3('Kim birinchi?', 'Кто первый?', 'Who’s first?')],
     ask: L3('Nimani o‘zgartiramiz?', 'Что поменяем?', 'What shall we change?'),
-    askPick: L3('Variantni tanlang', 'Выбери вариант', 'Choose an option'),
-    askDone: L3('Yana sinab ko‘ring yoki «Keyingi»ni bosing', 'Попробуй ещё или нажми «Дальше»', 'Try another one or tap “Next”')
+    askPick: L3('Variantlardan birini tanlang', 'Выбери вариант', 'Choose an option'),
+    askDone: L3('Yana sinab ko‘ring yoki «Davom etish» tugmasini bosing', 'Попробуй ещё или нажми «Дальше»', 'Try another one or tap “Next”')
   },
 
   s2: {
-    eyebrow: L3('Nom kodda', 'Название в коде', 'The name in code'),
-    say: L3('Nom kodda mana shunday yozilgan. Qarang: qatorda uch qism bor.',
+    eyebrow: L3('Sahifa nomi kodda', 'Название в коде', 'The name in code'),
+    say: L3('Sahifa nomi kodda shunday yoziladi. Qarang: bu qatorda uchta qism bor.',
       'Вот как название записано в коде. Смотри: в строке три части.',
       'Here’s how the name is written in code. Look: the line has three parts.'),
     parts: {
-      start: L3('Bu ochuvchi teg — boshlanish. U brauzerga aytadi: shu yerda sahifa nomi boshlanadi.',
+      start: L3('Bu — ochuvchi teg. U sahifa nomi qayerdan boshlanishini bildiradi.',
         'Это открывающий тег — начало. Он говорит браузеру: здесь начинается название страницы.',
         'This is the opening tag, the start. It tells the browser: the page name starts here.'),
-      content: L3('Bu esa nomning o‘zi. U yorliqda — brauzerning eng tepasida ko‘rinadi. Qarang!',
+      content: L3('O‘rtadagi matn — mazmun, ya’ni sahifa nomining o‘zi. Brauzer uni yuqoridagi yorliqda ko‘rsatadi. Qarang!',
         'А это само название. Его видно на вкладке — в самом верху браузера. Смотри!',
         'And this is the name itself. It shows on the tab, at the very top of the browser. Look!'),
-      end: L3('Bu yopuvchi teg — oxiri. Xuddi o‘sha so‘z, faqat qiya chiziq bilan. Teglarning o‘zi sahifada ko‘rinmaydi.',
+      end: L3('Bu — yopuvchi teg. Undagi qiya chiziq nom shu yerda tugashini bildiradi. Teglarning o‘zi sahifada ko‘rinmaydi.',
         'Это закрывающий тег — конец. То же слово, только с косой чертой. Сами теги на странице не видны.',
         'This is the closing tag, the end. The same word, but with a slash. The tags themselves aren’t shown on the page.')
     },
-    quiz: L3('Endi tekshiramiz: men so‘rayman — siz bosasiz!', 'А теперь проверим: я спрашиваю — ты нажимаешь!', 'Now let’s check: I ask, you tap!'),
+    quiz: L3('Endi tekshiramiz: men so‘rayman, siz esa kerakli qismni bosasiz!', 'А теперь проверим: я спрашиваю — ты нажимаешь!', 'Now let’s check: I ask, you tap!'),
     q: {
-      start: L3('Tegning boshlanishi qayerda?', 'Где начало тега?', 'Where’s the start of the tag?'),
-      content: L3('Mazmun qayerda — yorliqda ko‘rinadigan qismi?', 'Где содержимое — то, что видно на вкладке?', 'Where’s the content, the part shown on the tab?'),
-      end: L3('Tegning oxiri qayerda?', 'А где конец тега?', 'And where’s the end of the tag?')
+      start: L3('Qaysi biri ochuvchi teg?', 'Где начало тега?', 'Where’s the start of the tag?'),
+      content: L3('Qaysi matn brauzer yorlig‘ida ko‘rinadi?', 'Где содержимое — то, что видно на вкладке?', 'Where’s the content, the part shown on the tab?'),
+      end: L3('Qaysi biri yopuvchi teg?', 'А где конец тега?', 'And where’s the end of the tag?')
     },
     ok: {
-      start: L3('Ana! Boshlanish — qiya chiziqsiz teg.', 'Есть! Начало — тег без косой черты.', 'Yes! The start is the tag without a slash.'),
-      content: L3('Aniq! Mazmun — teglar orasida.', 'Точно! Содержимое — между тегами.', 'Spot on! The content sits between the tags.'),
-      end: L3('Aynan nishonga! Oxiri — qiya chiziqli teg.', 'В точку! Конец — тег с косой чертой.', 'Nailed it! The end is the tag with a slash.')
+      start: L3('To‘g‘ri! Ochuvchi tegda qiya chiziq yo‘q.', 'Есть! Начало — тег без косой черты.', 'Yes! The start is the tag without a slash.'),
+      content: L3('Ha, aynan shu! Mazmun ikki teg orasida turadi.', 'Точно! Содержимое — между тегами.', 'Spot on! The content sits between the tags.'),
+      end: L3('Zo‘r! Yopuvchi tegda qiya chiziq bor.', 'В точку! Конец — тег с косой чертой.', 'Nailed it! The end is the tag with a slash.')
     },
     miss: {
-      start: L3('Deyarli! Bu yozuvda qiya chiziq yo‘q — bu boshlanish.', 'Почти! Здесь нет косой черты — это начало.', 'Almost! This one has no slash, so it’s the start.'),
-      content: L3('Deyarli! Bu burchaksiz matn — bu mazmun.', 'Почти! Это текст без уголков — это содержимое.', 'Almost! This is text without angle brackets, so it’s the content.'),
-      end: L3('Deyarli! Bu yozuvda qiya chiziq bor — bu oxiri.', 'Почти! Здесь есть косая черта — это конец.', 'Almost! This one has a slash, so it’s the end.')
+      start: L3('Hechqisi yo‘q. Siz bosgan qism — ochuvchi teg: unda qiya chiziq yo‘q.', 'Почти! Здесь нет косой черты — это начало.', 'Almost! This one has no slash, so it’s the start.'),
+      content: L3('Qarang: siz bosgan qism — teglar orasidagi matn, ya’ni mazmun.', 'Почти! Это текст без уголков — это содержимое.', 'Almost! This is text without angle brackets, so it’s the content.'),
+      end: L3('Yana bir qarang: siz bosgan qism — yopuvchi teg, unda qiya chiziq bor.', 'Почти! Здесь есть косая черта — это конец.', 'Almost! This one has a slash, so it’s the end.')
     },
     hint: {
-      start: L3('Boshlanish — chapdagi, qiya chiziqsiz yozuv.', 'Начало — запись слева, без косой черты.', 'The start is the one on the left, without a slash.'),
-      content: L3('Mazmun — o‘rtadagi so‘zlar.', 'Содержимое — слова посередине.', 'The content is the words in the middle.'),
-      end: L3('Oxiri — o‘ngdagi, qiya chiziqli yozuv.', 'Конец — запись справа, с косой чертой.', 'The end is the one on the right, with the slash.')
+      start: L3('Ochuvchi teg — chapdagi, qiya chiziqsiz yozuv.', 'Начало — запись слева, без косой черты.', 'The start is the one on the left, without a slash.'),
+      content: L3('Mazmun — ikki teg orasidagi so‘zlar.', 'Содержимое — слова посередине.', 'The content is the words in the middle.'),
+      end: L3('Yopuvchi teg — o‘ngdagi, qiya chiziqli yozuv.', 'Конец — запись справа, с косой чертой.', 'The end is the one on the right, with the slash.')
     },
-    done: L3('Zo‘r-ku! Boshlanish, mazmun, oxiri — sahifaning har bir qismi shunday tuzilgan.',
+    done: L3('Ajoyib! Ochuvchi teg, mazmun va yopuvchi teg — sahifaning har bir qismi shunday yoziladi.',
       'Огонь! Начало, содержимое, конец — так устроена каждая часть страницы.',
       'Awesome! Start, content, end: every part of a page is built like this.'),
     askWatch: L3('Tinglang va qatorga qarang', 'Слушай и смотри на строку', 'Listen and watch the line'),
-    follow: L3('Yana bir qator — yana javob bering!', 'Ещё одна строка — снова отвечай!', 'One more line: answer again!')
+    follow: L3('Mana yana bir qator. Yana javob bering!', 'Ещё одна строка — снова отвечай!', 'One more line: answer again!')
   },
 
   s3: {
     eyebrow: L3('Sahifa ichida', 'Внутри страницы', 'Inside the page'),
-    say: L3('Bu sahifa modeli — xuddi quti. Uni oching: qopqoqni bosing!',
+    say: L3('Bu — sahifaning modeli, u qutiga o‘xshaydi. Qutini ochish uchun qopqog‘ini bosing!',
       'Это модель страницы — как коробка. Открой её: нажми на крышку!',
       'This is a model of the page, like a box. Open it: tap the lid!'),
-    html: L3('Butun quti — bu html: unda butun sahifa. Ichida ikki bo‘lim bor.',
+    html: L3('html — butun sahifani o‘z ichiga oladigan katta quti. Uning ichida head va body bo‘limlari bor.',
       'Вся коробка — это html: в ней вся страница целиком. Внутри — два отделения.',
       'The whole box is html: the entire page is inside it. There are two sections inside.'),
-    head: L3('head — sahifa pasporti. Oynada u ko‘rinmaydi, lekin unda sahifa nomi saqlanadi.',
+    head: L3('head bo‘limida sahifa haqidagi ma’lumotlar saqlanadi — xuddi pasportdagidek. Bu bo‘lim sahifada ko‘rinmaydi, lekin unda sahifa nomi bor.',
       'head — паспорт страницы. В окне его не видно, но в нём хранится название.',
       'head is the page’s passport. You don’t see it in the window, but the name is kept in it.'),
-    title: L3('Mana u! title — yorliq uchun nom. Yorliq yorishganini ko‘rdingizmi?',
+    title: L3('Mana u! Sahifa nomi title teglari orasiga yoziladi, title esa head ichida turadi. Brauzer bu nomni yuqoridagi yorliqda ko‘rsatadi.',
       'Вот оно! title — название для вкладки. Видишь, вкладка подсветилась?',
       'There it is! title is the name for the tab. See the tab light up?'),
-    body: L3('body — sahifa tanasi: oynada ko‘rinadigan hamma narsa. Matn, rasm, tugmalar — hammasi shu yerda.',
+    body: L3('body — sahifada ko‘rinadigan hamma narsa joylashadigan bo‘lim. Matn, rasm va tugmalar shu yerda bo‘ladi.',
       'body — тело страницы: всё, что видно в окне. Текст, картинки, кнопки — всё здесь.',
       'body is the page’s body: everything you see in the window. Text, pictures, buttons: it all goes here.'),
-    doctype: L3('Bu har bir sahifaning birinchi qatori. U doim bir xil va brauzerga aytadi: bu HTML sahifa.',
+    doctype: L3('Bu — har bir sahifaning birinchi qatori. U doim bir xil bo‘ladi va brauzerga bu HTML sahifa ekanini bildiradi.',
       'Это первая строка любой страницы. Она всегда одинаковая и говорит браузеру: это HTML-страница.',
       'This is the first line of every page. It’s always the same and tells the browser: this is an HTML page.'),
-    needHead: L3('title head ichida yotadi. Avval head ni oching.', 'title лежит внутри head. Сначала открой head.', 'title lies inside head. Open head first.'),
-    done: L3('Super! html — butun sahifa, head — nom yozilgan pasport, body — oynadagi hamma narsa.',
+    needHead: L3('E’tibor bering: title head bo‘limi ichida turadi. Avval head bo‘limini oching.', 'title лежит внутри head. Сначала открой head.', 'title lies inside head. Open head first.'),
+    done: L3('Zo‘r! html — butun sahifa, head — sahifa haqidagi ma’lumotlar va nom, body — sahifada ko‘rinadigan hamma narsa.',
       'Супер! html — вся страница, head — паспорт с названием, body — всё, что в окне.',
       'Super! html is the whole page, head is the passport with the name, body is everything in the window.'),
     next: {
       html: L3('Qopqoqni bosing', 'Нажми на крышку', 'Tap the lid')
     },
-    pickOne: L3('Ulardan birini oching — head yoki body ni bosing.', 'Открой любое из них — нажми head или body.', 'Open either one: tap head or body.'),
-    other: L3('Endi ikkinchi bo‘limni oching — {x}.', 'Теперь открой другое отделение — {x}.', 'Now open the other section: {x}.'),
-    lastTitle: L3('Pasportda kartochka qoldi. title ni bosing.', 'В паспорте осталась карточка. Нажми на title.', 'There’s a card left in the passport. Tap title.'),
-    sum0: L3('Super! Takrorlaymiz: quti, kod va brauzerga qarang.', 'Супер! Повторим — смотри на коробку, код и браузер.', 'Super! Let’s recap: watch the box, the code and the browser.'),
+    pickOne: L3('Endi ichidagi bo‘limlardan birini oching: head yoki body.', 'Открой любое из них — нажми head или body.', 'Open either one: tap head or body.'),
+    other: L3('Endi ikkinchi bo‘lim — {x} bo‘limini oching.', 'Теперь открой другое отделение — {x}.', 'Now open the other section: {x}.'),
+    lastTitle: L3('head bo‘limida title kartochkasi qoldi. Uni bosing.', 'В паспорте осталась карточка. Нажми на title.', 'There’s a card left in the passport. Tap title.'),
+    sum0: L3('Zo‘r! Endi takrorlaymiz: quti, kod va brauzerga qarang.', 'Супер! Повторим — смотри на коробку, код и браузер.', 'Super! Let’s recap: watch the box, the code and the browser.'),
     sumHtml: L3('html — butun sahifa.', 'html — вся страница целиком.', 'html is the whole page.'),
-    sumHead: L3('head — sahifa pasporti, unda yorliq uchun nom bor.', 'head — паспорт страницы, в нём название для вкладки.', 'head is the page’s passport, with the name for the tab.'),
-    sumBody: L3('body — oynada ko‘rinadigan hamma narsa.', 'body — всё, что видно в окне.', 'body is everything you see in the window.'),
+    sumHead: L3('head — sahifa haqidagi ma’lumotlar bo‘limi, unda yorliqdagi nom saqlanadi.', 'head — паспорт страницы, в нём название для вкладки.', 'head is the page’s passport, with the name for the tab.'),
+    sumBody: L3('body — sahifada ko‘rinadigan hamma narsa.', 'body — всё, что видно в окне.', 'body is everything you see in the window.'),
     ask: L3('Sahifa qutisini oching', 'Открой коробку страницы', 'Open the page box'),
     askDone: L3('Hammasi ochildi! Qismlarni yana bosish mumkin', 'Всё открыто! Части можно нажимать ещё', 'All open! You can tap the parts again')
   },
 
   s4: {
     eyebrow: L3('O‘yin nomi', 'Имя игры', 'Name the game'),
-    say: L3('title ichidagi nomni o‘zgartiring: tayyorini tanlang yoki o‘zingiz yozing. Yorliqqa qarang!',
+    say: L3('title ichidagi nomni o‘zgartiring: tayyor variantni tanlang yoki o‘zingiz yozing. Yorliqqa qarang!',
       'Поменяй название внутри title: выбери готовое или напиши своё. Смотри на вкладку!',
       'Change the name inside title: pick one or type your own. Watch the tab!'),
-    done: L3('Voy, yorliq yangi nom oldi! Nom title dan olinadi, oyna esa o‘zgarmadi.',
+    done: L3('Zo‘r! Yorliqdagi nom o‘zgardi — brauzer uni title ichidan oladi. Sahifadagi matn esa avvalgidek qoldi.',
       'Вау, у вкладки новое имя! Его берут из title, а окно не изменилось.',
       'Wow, the tab has a new name! It comes from title, and the window didn’t change.'),
     opts: [L3('Mening o‘yinim', 'Моя игра', 'My game'), L3('Futbol viktorinasi', 'Футбольная викторина', 'Football quiz'), L3('Kosmos klubi', 'Клуб космоса', 'Space club')],
@@ -325,176 +326,191 @@ const C = {
 
   s5: {
     eyebrow: L3('O‘yinchilarga', 'Игрокам', 'To the players'),
-    say: L3('Endi body. Uning ichidagi hamma narsa oynada ko‘rinadi. O‘yinchilarga salom yozing: so‘zlarni bosing yoki yozing.',
+    say: L3('Endi body navbati. Uning ichidagi matn sahifada ko‘rinadi. O‘yinchilarga salom yozing: tayyor so‘zlarni bosing yoki o‘zingiz yozing.',
       'Теперь body. Всё, что внутри него, видно в окне. Напиши игрокам приветствие: нажимай слова или печатай.',
       'Now body. Everything inside it shows in the window. Write a greeting to the players: tap words or type.'),
-    done: L3('Ana! Matn oynada paydo bo‘ldi. Sahifani ochgan har kim uni ko‘radi.',
+    done: L3('Ana, matn sahifada paydo bo‘ldi! Sahifani ochgan har bir kishi uni ko‘radi.',
       'Есть! Текст появился в окне. Его увидит каждый, кто откроет страницу.',
       'Yes! The text appeared in the window. Everyone who opens the page will see it.'),
     words: [L3('Salom!', 'Привет!', 'Hi!'), L3('Bu', 'Это', 'This'), L3('mening', 'моя', 'is my'), L3('o‘yinim.', 'игра.', 'game.'), L3('Kim', 'Кто', 'Who'), L3('birinchi?', 'первый?', 'is first?'), L3('Boshladik!', 'Поехали!', 'Let’s go!')],
-    ask: L3('body ichiga sahifa matnini yozing', 'Напиши текст страницы внутри body', 'Write the page text inside body')
+    ask: L3('body ichiga sahifadagi matnni yozing', 'Напиши текст страницы внутри body', 'Write the page text inside body')
   },
 
   s6: {
-    eyebrow: L3('Oldin taxmin', 'Угадай заранее', 'Guess first'),
+    eyebrow: L3('Avval taxmin qiling', 'Угадай заранее', 'Guess first'),
     rounds: {
       title: { want: 'tab', text: L3('Sport', 'Спорт', 'Sports'), extra: L3('Musiqa', 'Музыка', 'Music'),
-        ask: L3('title ichida «{t}» bo‘ladi. Bu so‘z qayerda chiqadi?', 'В title будет «{t}». Где появится это слово?', 'title will say “{t}”. Where will this word appear?') },
+        ask: L3('title ichiga «{t}» yoziladi. Bu so‘z qayerda ko‘rinadi?', 'В title будет «{t}». Где появится это слово?', 'title will say “{t}”. Where will this word appear?') },
       body: { want: 'page', text: L3('Bugun final!', 'Сегодня финал!', 'The final is today!'), extra: L3('Men chizishni yaxshi ko‘raman.', 'Я люблю рисовать.', 'I love drawing.'),
-        ask: L3('body ichida «{t}» bo‘ladi. Bu matn qayerda chiqadi?', 'В body будет «{t}». А где появится этот текст?', 'body will say “{t}”. Where will this text appear?') }
+        ask: L3('body ichiga «{t}» yoziladi. Bu matn qayerda ko‘rinadi?', 'В body будет «{t}». А где появится этот текст?', 'body will say “{t}”. Where will this text appear?') }
     },
-    say: L3('Hozir kodga yangi so‘z tushadi. U qayerda chiqishini taxmin qiling: yorliqdami yoki oynadami? Javobni bosing — va ishga tushiramiz!',
+    say: L3('Hozir kodga yangi so‘z qo‘shiladi. U qayerda ko‘rinishini taxmin qiling: yorliqdami yoki sahifadami? Javobingizni bosing — keyin tekshirib ko‘ramiz!',
       'Сейчас в код попадёт новое слово. Угадай, где оно появится: на вкладке или в окне? Нажми свой ответ — и запустим!',
       'A new word is about to go into the code. Guess where it will appear: on the tab or in the window? Tap your answer and we’ll run it!'),
-    okTab: L3('Aniq! title yorliqni o‘zgartirdi, oynaga tegmadi.', 'Точно! title поменял вкладку, а окно не тронул.', 'Spot on! title changed the tab and left the window alone.'),
-    okPage: L3('Aynan nishonga! body dagi matn — oynada, yorliq o‘sha-o‘sha.', 'В точку! Текст из body — в окне, вкладка прежняя.', 'Nailed it! The text from body is in the window; the tab stayed the same.'),
-    missTab: L3('Qarang: so‘z yorliqqa tushdi. title — yorliq nomi. Yana bir misol!', 'Смотри: слово попало на вкладку. title — это имя вкладки. Ещё пример!', 'Look: the word went to the tab. title is the tab’s name. One more!'),
-    missPage: L3('Qarang: matn oynada chiqdi. body — oynadagi narsa. Yana bir misol!', 'Смотри: текст появился в окне. body — это то, что в окне. Ещё пример!', 'Look: the text appeared in the window. body is what’s in the window. One more!'),
-    done: L3('Aniq! title — yorliq uchun, body — oyna uchun.', 'Чётко! title — для вкладки, body — для окна.', 'Spot on! title is for the tab, body is for the window.')
+    okTab: L3('To‘g‘ri! title ichidagi nom yorliqda ko‘rinadi, sahifadagi matn esa o‘zgarmaydi.', 'Точно! title поменял вкладку, а окно не тронул.', 'Spot on! title changed the tab and left the window alone.'),
+    okPage: L3('Aynan shunday! body ichidagi matn sahifada ko‘rinadi, yorliqdagi nom esa o‘zgarmaydi.', 'В точку! Текст из body — в окне, вкладка прежняя.', 'Nailed it! The text from body is in the window; the tab stayed the same.'),
+    missTab: L3('Qarang: so‘z yorliqda paydo bo‘ldi. title ichidagi matn — bu yorliqdagi nom. Yana bir misol ko‘ramiz!', 'Смотри: слово попало на вкладку. title — это имя вкладки. Ещё пример!', 'Look: the word went to the tab. title is the tab’s name. One more!'),
+    missPage: L3('Qarang: matn sahifada paydo bo‘ldi. body ichidagi matn sahifaning o‘zida ko‘rinadi. Yana bir misol ko‘ramiz!', 'Смотри: текст появился в окне. body — это то, что в окне. Ещё пример!', 'Look: the text appeared in the window. body is what’s in the window. One more!'),
+    done: L3('Zo‘r! title ichidagi nom — yorliqda, body ichidagi matn — sahifada.', 'Чётко! title — для вкладки, body — для окна.', 'Spot on! title is for the tab, body is for the window.')
   },
 
   s7: {
     eyebrow: L3('Konstruktor', 'Конструктор', 'Build kit'),
-    say: L3('Endi sahifani konstruktordek yig‘ing: detalni tanlang, keyin uning joyini.',
+    say: L3('Endi sahifani konstruktordek yig‘ing. Avval detalni tanlang, keyin uni qo‘yadigan joyni bosing.',
       'Теперь собери страницу, как конструктор: выбери деталь, потом её место.',
       'Now build the page like a kit: choose a piece, then its place.'),
     ok: {
-      head: L3('Ana! head — html qutisida.', 'Есть! head — в коробке html.', 'Yes! head is in the html box.'),
-      body: L3('Klass! body — html ichida, head dan keyin.', 'Класс! body — в html, после head.', 'Cool! body is in html, after head.'),
-      title: L3('Aynan nishonga! title — head pasportida.', 'В точку! title — в паспорте head.', 'Nailed it! title is in the head passport.')
+      head: L3('Ana! head bo‘limi html qutisiga tushdi.', 'Есть! head — в коробке html.', 'Yes! head is in the html box.'),
+      body: L3('Klass! body ham html ichida, head bo‘limidan keyin turadi.', 'Класс! body — в html, после head.', 'Cool! body is in html, after head.'),
+      title: L3('Zo‘r! title head bo‘limiga tushdi — sahifa nomi shu yerda saqlanadi.', 'В точку! title — в паспорте head.', 'Nailed it! title is in the head passport.')
     },
-    titleBody: L3('Deyarli! Yorliq nomi oynada ko‘rinmaydi — demak, body ga emas. Pasportni qidiring — head.',
+    titleBody: L3('Hechqisi yo‘q. Yorliqdagi nom sahifada ko‘rinmaydi, demak u body ichida turmaydi. Uning joyi — head bo‘limi.',
       'Почти! Название вкладки не видно в окне — значит, не в body. Ищи паспорт — head.',
       'Almost! The tab name isn’t shown in the window, so not in body. Look for the passport: head.'),
-    titleHtml: L3('Deyarli! title qutiga to‘g‘ridan-to‘g‘ri emas, bo‘limga qo‘yiladi. Qaysi biri pasport?',
+    titleHtml: L3('Yana bir qarang: title to‘g‘ridan-to‘g‘ri qutiga emas, bo‘limlardan biriga qo‘yiladi. Sahifa nomi qaysi bo‘limda saqlanadi?',
       'Почти! title кладут не прямо в коробку, а в отделение. Какое из них — паспорт?',
       'Almost! title doesn’t go straight into the box but into a section. Which one is the passport?'),
-    bodyFirst: L3('html ichida avval head, body esa undan keyin.', 'В коробке сначала идёт head, а body — после него.', 'In the box, head comes first and body after it.'),
-    nested: L3('head va body — ikki alohida bo‘lim, ikkalasi to‘g‘ridan-to‘g‘ri html ichida.', 'head и body — два отдельных отделения, оба прямо в html.', 'head and body are two separate sections, both straight inside html.'),
-    noPlace: L3('Bu bo‘lim hali yo‘q. Avval uni qo‘ying.', 'Этого отделения пока нет. Сначала поставь его.', 'That section isn’t there yet. Put it in first.'),
+    bodyFirst: L3('E’tibor bering: html ichida avval head bo‘limi turadi, body esa undan keyin.', 'В коробке сначала идёт head, а body — после него.', 'In the box, head comes first and body after it.'),
+    nested: L3('Qarang: head va body — ikki alohida bo‘lim. Ikkalasi ham to‘g‘ridan-to‘g‘ri html ichida turadi.', 'head и body — два отдельных отделения, оба прямо в html.', 'head and body are two separate sections, both straight inside html.'),
+    noPlace: L3('E’tibor bering: bu bo‘lim hali qo‘yilmagan. Avval uni joyiga qo‘ying.', 'Этого отделения пока нет. Сначала поставь его.', 'That section isn’t there yet. Put it in first.'),
     pickFirst: L3('Avval detalni tanlang.', 'Сначала выбери деталь.', 'Choose a piece first.'),
-    done: L3('Yig‘ildi! Qoyil! Endi «Hajm» va «Kod» ni almashtirib solishtiring.',
+    done: L3('Hammasi yig‘ildi! Endi «3D ko‘rinish» va «Kod» tugmalarini bosib, ikkala ko‘rinishni solishtiring.',
       'Собрано! Вот это да! Теперь переключай «Объём» и «Код» и сравнивай.',
       'Built! Look at that! Now switch between “Volume” and “Code” and compare.'),
-    h1: L3('Qaysi bo‘lim — nomli pasport, qaysi biri oynada ko‘rinadi?', 'Какое отделение — паспорт с названием, а какое видно в окне?', 'Which section is the passport with the name, and which shows in the window?'),
-    h2: L3('head va body — html ichida (avval head). title — head ichida.', 'head и body — внутри html (сначала head). title — внутри head.', 'head and body go inside html (head first). title goes inside head.'),
-    h3: L3('Hozir: {p}', 'Сейчас: {p}', 'Now: {p}'),
-    hintAsk: L3('Qaysi bo‘lim — sahifa pasporti?', 'Какое отделение — паспорт страницы?', 'Which section is the page’s passport?'),
-    ask: L3('Detalni tanlang, keyin joyini', 'Выбери деталь, потом место', 'Choose a piece, then its place'),
-    askPlace: L3('Endi joyni tanlang', 'Теперь выбери место', 'Now choose the place'),
+    h1: L3('Qaysi bo‘limda sahifa nomi saqlanadi, qaysi bo‘lim esa sahifada ko‘rinadi?', 'Какое отделение — паспорт с названием, а какое видно в окне?', 'Which section is the passport with the name, and which shows in the window?'),
+    h2: L3('head va body html ichida turadi (avval head). title esa head ichida.', 'head и body — внутри html (сначала head). title — внутри head.', 'head and body go inside html (head first). title goes inside head.'),
+    h3: L3('Keyingi qadam: {p}', 'Сейчас: {p}', 'Now: {p}'),
+    hintAsk: L3('Sahifa nomi qaysi bo‘limda saqlanadi?', 'Какое отделение — паспорт страницы?', 'Which section is the page’s passport?'),
+    ask: L3('Detalni tanlang, keyin uning joyini bosing', 'Выбери деталь, потом место', 'Choose a piece, then its place'),
+    askPlace: L3('Endi joyni bosing', 'Теперь выбери место', 'Now choose the place'),
     askDone: L3('Qismni tanlang — u ikkala ko‘rinishda ham belgilanadi', 'Выбери часть — она выделится в обоих видах', 'Choose a part: it stays selected in both views')
   },
 
   s8: {
-    eyebrow: L3('Juftlar', 'Пары', 'Pairs'),
-    say: L3('Har bir ochuvchi tegning jufti bor — yopuvchi teg. Ochuvchini bosing, keyin uning juftini.',
+    eyebrow: L3('Teg juftlari', 'Пары', 'Pairs'),
+    say: L3('Bu darsdagi teglar juft bo‘ladi: ochuvchi va yopuvchi teg. Avval ochuvchi tegni, keyin uning juftini bosing.',
       'У каждого открывающего тега есть пара — закрывающий. Нажми открывающий, потом его пару.',
       'Every opening tag has a partner: the closing tag. Tap an opening tag, then its partner.'),
     area: {
-      html: L3('html va uning jufti orasida — butun sahifa.', 'Между html и его парой — вся страница.', 'Between html and its partner: the whole page.'),
-      head: L3('head va uning jufti orasida — sahifa pasporti.', 'Между head и его парой — паспорт страницы.', 'Between head and its partner: the page’s passport.'),
-      title: L3('title va uning jufti orasida — yorliq nomi.', 'Между title и его парой — название вкладки.', 'Between title and its partner: the tab name.'),
-      body: L3('body va uning jufti orasida — oynadagi hamma narsa.', 'Между body и его парой — всё, что видно в окне.', 'Between body and its partner: everything in the window.')
+      html: L3('html teglari orasida butun sahifa joylashgan.', 'Между html и его парой — вся страница.', 'Between html and its partner: the whole page.'),
+      head: L3('head teglari orasida sahifa haqidagi ma’lumotlar turadi.', 'Между head и его парой — паспорт страницы.', 'Between head and its partner: the page’s passport.'),
+      title: L3('title teglari orasida sahifa nomi turadi — u yorliqda ko‘rinadi.', 'Между title и его парой — название вкладки.', 'Between title and its partner: the tab name.'),
+      body: L3('body teglari orasida sahifada ko‘rinadigan hamma narsa joylashgan.', 'Между body и его парой — всё, что видно в окне.', 'Between body and its partner: everything in the window.')
     },
-    closeFirst: L3('Bu yopuvchi teg — unda qiya chiziq bor. Avval ochuvchisini bosing.', 'Это закрывающий тег — в нём косая черта. Сначала нажми открывающий.', 'That’s a closing tag: it has a slash. Tap the opening one first.'),
-    otherPair: L3('Deyarli! Bu {b}, siz esa {a} dan boshladingiz. Nomlar bir xil bo‘lishi kerak.', 'Почти! Это {b}, а начали с {a}. Имена должны совпадать.', 'Almost! That’s {b}, but you started with {a}. The names must match.'),
-    twoOpen: L3('Bu ham ochuvchi teg. Juftida qiya chiziq bo‘ladi.', 'Это тоже открывающий тег. У пары будет косая черта.', 'This is an opening tag too. Its partner has a slash.'),
+    closeFirst: L3('Qarang: bu — yopuvchi teg, unda qiya chiziq bor. Avval ochuvchi tegni bosing.', 'Это закрывающий тег — в нём косая черта. Сначала нажми открывающий.', 'That’s a closing tag: it has a slash. Tap the opening one first.'),
+    otherPair: L3('Hechqisi yo‘q. Siz {a} tegidan boshladingiz, bu esa {b}. Ikkala tegdagi nom bir xil bo‘lishi kerak.', 'Почти! Это {b}, а начали с {a}. Имена должны совпадать.', 'Almost! That’s {b}, but you started with {a}. The names must match.'),
+    twoOpen: L3('Bu ham ochuvchi teg. Uning juftida qiya chiziq bo‘ladi.', 'Это тоже открывающий тег. У пары будет косая черта.', 'This is an opening tag too. Its partner has a slash.'),
     picked: L3('Endi uning yopuvchi juftini toping', 'Теперь найди его закрывающую пару', 'Now find its closing partner'),
-    done: L3('To‘rtta juft topildi! Ko‘rdingizmi — ular qutilardek bir-birining ichida.', 'Все четыре пары найдены! Видишь — они вложены друг в друга, как коробки.', 'All four pairs found! See? They sit inside each other like boxes.'),
-    ask: L3('Ochuvchi tegni, keyin juftini bosing', 'Нажми открывающий тег, потом его пару', 'Tap an opening tag, then its partner')
+    done: L3('Barakalla, to‘rtta juftni ham topdingiz! Ochuvchi va yopuvchi teglar har bir qismning chegarasini ko‘rsatadi.', 'Все четыре пары найдены! Видишь — они вложены друг в друга, как коробки.', 'All four pairs found! See? They sit inside each other like boxes.'),
+    ask: L3('Avval ochuvchi tegni, keyin uning juftini bosing', 'Нажми открывающий тег, потом его пару', 'Tap an opening tag, then its partner')
   },
 
   s9: {
     eyebrow: L3('Kodi adashdi', 'Коди перепутал', 'Kodi mixed it up'),
-    say: L3('Voy! Nomni boshqa joyga qo‘yib qo‘yganga o‘xshayman. Yordam berasizmi?', 'Ой! Кажется, я положил название не туда. Поможешь?', 'Oops! I think I put the name in the wrong spot. Can you help?'),
-    rule: L3('title doim head ichida turadi', 'title всегда лежит внутри head', 'title always sits inside head'),
+    say: L3('Voy, adashdim! title qatorini noto‘g‘ri bo‘limga qo‘yibman. Tuzatishga yordam berasizmi?', 'Ой! Кажется, я положил название не туда. Поможешь?', 'Oops! I think I put the name in the wrong spot. Can you help?'),
+    rule: L3('title doim head bo‘limi ichida turadi', 'title всегда лежит внутри head', 'title always sits inside head'),
     pickTitle: L3('Avval title qatorini tanlang', 'Сначала выбери строку title', 'First choose the title line'),
-    pickPlace: L3('Endi head ichidagi joyni tanlang', 'Теперь выбери место внутри head', 'Now choose a place inside head'),
-    inBody: L3('Bu body — unda oynada ko‘rinadigan narsa. Nom esa pasportda yashaydi.', 'Это body — там то, что видно в окне. А название живёт в паспорте.', 'That’s body: it holds what shows in the window. The name lives in the passport.'),
-    inHtml: L3('Bu to‘g‘ridan-to‘g‘ri html qutisi. Pasport qaysi bo‘limda?', 'Это прямо коробка html. В каком отделении паспорт?', 'That’s straight in the html box. Which section is the passport?'),
-    h1: L3('Qoida paneliga qarang.', 'Посмотри на панель правила.', 'Look at the rule panel.'),
-    h2: L3('title — sahifa nomi, u head pasportida yashaydi.', 'title — название страницы, оно живёт в паспорте head.', 'title is the page name; it lives in the head passport.'),
-    h3: L3('<head> qatorini bosing — title uning ichiga o‘tadi.', 'Нажми строку <head> — title переедет внутрь.', 'Tap the <head> line: title moves inside.'),
+    pickPlace: L3('Endi head bo‘limi ichidagi joyni bosing', 'Теперь выбери место внутри head', 'Now choose a place inside head'),
+    inBody: L3('Hechqisi yo‘q. Bu — body bo‘limi, unda sahifada ko‘rinadigan matn turadi. Sahifa nomi esa head bo‘limida saqlanadi.', 'Это body — там то, что видно в окне. А название живёт в паспорте.', 'That’s body: it holds what shows in the window. The name lives in the passport.'),
+    inHtml: L3('Yana bir qarang: bu to‘g‘ridan-to‘g‘ri html qutisi. Sahifa nomi qaysi bo‘limda saqlanadi?', 'Это прямо коробка html. В каком отделении паспорт?', 'That’s straight in the html box. Which section is the passport?'),
+    h1: L3('Yuqoridagi qoidaga qarang.', 'Посмотри на панель правила.', 'Look at the rule panel.'),
+    h2: L3('Sahifa nomi title ichiga yoziladi. title esa head bo‘limida bo‘ladi.', 'title — название страницы, оно живёт в паспорте head.', 'title is the page name; it lives in the head passport.'),
+    h3: L3('<head> qatorini bosing — title qatori uning ichiga o‘tadi.', 'Нажми строку <head> — title переедет внутрь.', 'Tap the <head> line: title moves inside.'),
+    // Третья ступень, пока строка title ещё не выбрана: сначала выбрать её (узбекский — по
+    // правке текстов 17.10.2026; русский и английский совпадают с h3).
+    h3a: L3('Avval title yozilgan qatorni tanlang, keyin <head> qatorini bosing.', 'Нажми строку <head> — title переедет внутрь.', 'Tap the <head> line: title moves inside.'),
     ok: L3('Rahmat, hammasi joyida! Kod va sxema birga yangilandi.', 'Спасибо, всё на месте! Код и схема обновились вместе.', 'Thanks, everything’s in place! The code and the diagram updated together.'),
-    again: L3('Yana bir hujjat — endi navbat sizda.', 'Ещё один документ — теперь твоя очередь.', 'One more document: your turn now.'),
-    ask: L3('title ni head ga o‘tkazing', 'Перенеси title в head', 'Move title into head')
+    again: L3('Mana yana bir hujjat — bu safar o‘zingiz tuzating.', 'Ещё один документ — теперь твоя очередь.', 'One more document: your turn now.'),
+    ask: L3('title qatorini head bo‘limiga o‘tkazing', 'Перенеси title в head', 'Move title into head')
   },
 
   s10: {
-    eyebrow: L3('Oxirini yozing', 'Допиши конец', 'Write the end'),
-    say: L3('Matn tayyor. Endi body qayerda tugashini ko‘rsatamiz: yopuvchi tegni yozing.',
+    eyebrow: L3('Yopuvchi tegni yozing', 'Допиши конец', 'Write the end'),
+    say: L3('Sahifadagi matn tayyor. Endi body qayerda tugashini ko‘rsatamiz: bo‘sh joyga yopuvchi tegni yozing.',
       'Текст уже есть. Теперь покажем, где кончается body: допиши закрывающий тег.',
       'The text is there. Now let’s show where body ends: type the closing tag.'),
-    sayHead: L3('Endi head qayerda tugashini ko‘rsating.', 'Теперь покажи, где кончается head.', 'Now show where head ends.'),
-    open: L3('Bu ochuvchi teg. Bizga yopuvchisi kerak — qiya chiziq bilan.', 'Это открывающий тег. А нужен закрывающий — с косой чертой.', 'That’s an opening tag. We need the closing one, with a slash.'),
-    noSlash: L3('Deyarli! Qiya chiziq yetishmayapti.', 'Почти! Не хватает косой черты.', 'Almost! The slash is missing.'),
-    noBracket: L3('Deyarli! Burchak yetishmayapti.', 'Почти! Не хватает уголка.', 'Almost! An angle bracket is missing.'),
-    slashPlace: L3('Deyarli! Qiya chiziq boshqa joyda: u «<» dan keyin darhol turadi.', 'Почти! Косая черта стоит не там: её место сразу после «<».', 'Almost! The slash is in the wrong spot: it goes right after “<”.'),
-    otherName: L3('Bu boshqa nom. Bizga {tag} kerak.', 'Это другое имя. Нам нужен {tag}.', 'That’s a different name. We need {tag}.'),
+    sayHead: L3('Endi head bo‘limi qayerda tugashini ko‘rsating.', 'Теперь покажи, где кончается head.', 'Now show where head ends.'),
+    open: L3('E’tibor bering: bu — ochuvchi teg. Bu yerga esa yopuvchi teg kerak, unda qiya chiziq bo‘ladi.', 'Это открывающий тег. А нужен закрывающий — с косой чертой.', 'That’s an opening tag. We need the closing one, with a slash.'),
+    noSlash: L3('Yana bir qarang: qiya chiziq yetishmayapti. Yopuvchi tegda u albatta bo‘ladi.', 'Почти! Не хватает косой черты.', 'Almost! The slash is missing.'),
+    noBracket: L3('Hechqisi yo‘q. Burchakli qavs yetishmayapti: teg boshidagi «<» va oxiridagi «>» belgilarini tekshiring.', 'Почти! Не хватает уголка.', 'Almost! An angle bracket is missing.'),
+    slashPlace: L3('Qarang: qiya chiziq noto‘g‘ri joyda. U «<» belgisidan keyin yoziladi.', 'Почти! Косая черта стоит не там: её место сразу после «<».', 'Almost! The slash is in the wrong spot: it goes right after “<”.'),
+    otherName: L3('E’tibor bering: teg ichidagi nom boshqacha. Bu yerga {tag} kerak.', 'Это другое имя. Нам нужен {tag}.', 'That’s a different name. We need {tag}.'),
     h1: L3('Yuqoridagi ochuvchi tegga qarang.', 'Посмотри на открывающий тег выше.', 'Look at the opening tag above.'),
-    h2: L3('Yopuvchi teg ochuvchisiga o‘xshaydi, faqat qiya chiziq bilan.', 'Закрывающий тег похож на открывающий, только с косой чертой.', 'A closing tag looks like the opening one, only with a slash.'),
-    h3: L3('Qiya chiziq «<» dan keyin darhol turadi.', 'Косая черта стоит сразу после «<».', 'The slash comes right after “<”.'),
-    ok: L3('Bomba! body yopildi — brauzer endi uning oxirini biladi.', 'Бомба! body закрыт — теперь браузер знает, где его конец.', 'Boom! body is closed: now the browser knows where it ends.'),
-    okHead: L3('head ham yopildi! Aniq!', 'И head закрыт! Чётко!', 'head is closed too! Spot on!'),
-    ask: L3('Bo‘sh joyga body ning yopuvchi tegini yozing', 'Допиши закрывающий тег body в пустое место', 'Type the closing body tag in the empty place'),
-    askHead: L3('Bo‘sh joyga head ning yopuvchi tegini yozing', 'Допиши закрывающий тег head в пустое место', 'Type the closing head tag in the empty place')
+    h2: L3('Yopuvchi teg ochuvchi tegga o‘xshaydi, faqat unda qiya chiziq bor.', 'Закрывающий тег похож на открывающий, только с косой чертой.', 'A closing tag looks like the opening one, only with a slash.'),
+    h3: L3('Qiya chiziq «<» belgisidan keyin darhol yoziladi.', 'Косая черта стоит сразу после «<».', 'The slash comes right after “<”.'),
+    ok: L3('Zo‘r! body uchun yopuvchi tegni to‘g‘ri yozdingiz. Endi brauzer body qayerda tugashini biladi.', 'Отлично! body закрыт — теперь браузер знает, где его конец.', 'Great job! body is closed: now the browser knows where it ends.'),
+    okHead: L3('Barakalla, head bo‘limi ham yopildi!', 'И head закрыт! Чётко!', 'head is closed too! Spot on!'),
+    ask: L3('Bo‘sh joyga body uchun yopuvchi tegni yozing', 'Допиши закрывающий тег body в пустое место', 'Type the closing body tag in the empty place'),
+    askHead: L3('Bo‘sh joyga head uchun yopuvchi tegni yozing', 'Допиши закрывающий тег head в пустое место', 'Type the closing head tag in the empty place')
   },
 
   s12: {
+    // Заказ: ученик сам пишет название в title, потом текст в body (заказчик,
+    // 17.10.2026). Поля пустые; засчитывается любой осмысленный текст — без
+    // проверки на совпадение с примером, опечатки и знаки препинания.
     eyebrow: L3('O‘yinchilardan buyurtma', 'Заказ от игроков', 'An order from players'),
-    say: L3('O‘yinchilardan buyurtma keldi! Faqat so‘ralgan narsani o‘zgartiring.', 'Пришёл заказ от игроков! Поменяй только то, что просят.', 'Players sent an order! Change only what they ask for.'),
+    say: L3('O‘yinchilardan buyurtma keldi: o‘yinga yangi nom va yangi matn kerak. Ularni o‘zingiz yozasiz.',
+      'Пришёл заказ от игроков: игре нужно новое название и новый текст. Напишешь их сам.',
+      'Players sent an order: the game needs a new name and a new text. You’ll write them yourself.'),
     tasks: [
-      { id: 'title', goal: L3('Faqat yorliq nomini o‘zgartiring: «{t}»', 'Измени только название вкладки: «{t}»', 'Change only the tab name: “{t}”'),
-        t: L3('Bilimlar jangi 2', 'Битва знаний 2', 'Battle of Knowledge 2'), tB: L3('Mening uy hayvonim', 'Мой питомец', 'My pet') },
-      { id: 'text', goal: L3('Faqat oynadagi matnni o‘zgartiring: «{t}»', 'Измени только текст в окне: «{t}»', 'Change only the text in the window: “{t}”'),
-        t: L3('Final juma kuni!', 'Финал в пятницу!', 'The final is on Friday!'), tB: L3('Men chizishni yaxshi ko‘raman.', 'Я люблю рисовать.', 'I love drawing.') }
+      { id: 'title', goal: L3('O‘yinga yangi nom o‘ylab toping', 'Придумай игре новое название', 'Come up with a new name for the game'),
+        t: L3('Bilimlar jangi 2', 'Битва знаний 2', 'Battle of Knowledge 2') },
+      { id: 'text', goal: L3('O‘yinchilarga sahifa uchun matn yozing', 'Напиши игрокам текст для окна', 'Write the players a text for the window'),
+        t: L3('Final juma kuni!', 'Финал в пятницу!', 'The final is on Friday!') }
     ],
-    tag: L3('Bu teg — qism chegarasi. Tegni emas, matnni o‘zgartiramiz.', 'Это тег — граница части. Меняем текст, а не тег.', 'That’s a tag: the border of a part. We change the text, not the tag.'),
-    wrongText: L3('Bu matn boshqa joyda ko‘rinadi. Buyurtmaga qarang.', 'Этот текст виден в другом месте. Посмотри на заказ.', 'This text shows somewhere else. Look at the order.'),
-    typeIt: L3('Endi shu yerga yozing', 'Теперь напиши сюда', 'Now type it here'),
-    h1t: L3('Kodda yorliq nomi qayerda beriladi?', 'Где в коде задаётся название вкладки?', 'Where in the code is the tab name set?'),
-    h2t: L3('Yorliq nomi — title ichidagi matn.', 'Название вкладки — это текст внутри title.', 'The tab name is the text inside title.'),
-    h3t: L3('<title> va </title> orasidagi matnni bosing.', 'Нажми на текст между <title> и </title>.', 'Tap the text between <title> and </title>.'),
-    h1b: L3('Oynaning o‘zida nima ko‘rinadi?', 'Что видно в самом окне?', 'What shows in the window itself?'),
-    h2b: L3('Oynadagi matn — body ichida.', 'Текст в окне — внутри body.', 'The text in the window is inside body.'),
-    h3b: L3('<body> va </body> orasidagi matnni bosing.', 'Нажми на текст между <body> и </body>.', 'Tap the text between <body> and </body>.'),
-    ok: L3('Ana! Buyurtma bajarildi, qolganiga tegilmadi.', 'Есть! Заказ выполнен, остальное не тронуто.', 'Yes! Order done, nothing else touched.'),
-    again: L3('Super! Endi shunga o‘xshash buyurtma.', 'Супер! А теперь похожий заказ.', 'Super! Now a similar order.'),
-    done: L3('Ikkala buyurtma bajarildi! O‘yinchilar xursand.', 'Оба заказа выполнены! Игроки довольны.', 'Both orders done! The players are happy.'),
-    ask: L3('Kerakli matnni toping va o‘zgartiring', 'Найди нужный текст и измени его', 'Find the right text and change it')
+    sayGoal: {
+      title: L3('Birinchi buyurtma — o‘yinning yangi nomi. Uni title ichidagi bo‘sh joyga yozing: masalan, «{t}» yoki o‘zingiz o‘ylab toping.',
+        'Заказ первый — новое название игры. Напиши его в пустом месте внутри title: например, «{t}» или своё.',
+        'Order one: a new name for the game. Type it in the empty space inside title, for example “{t}”, or your own.'),
+      text: L3('Ikkinchi buyurtma — sahifa uchun matn. Uni body ichidagi bo‘sh joyga yozing: masalan, «{t}» yoki o‘zingiz o‘ylab toping.',
+        'Заказ второй — текст для окна. Напиши его в пустом месте внутри body: например, «{t}» или своё.',
+        'Order two: a text for the window. Type it in the empty space inside body, for example “{t}”, or your own.')
+    },
+    okTitle: L3('Ana! Yangi nom yorliqda paydo bo‘ldi.', 'Есть! Новое название уже на вкладке.', 'Yes! The new name is already on the tab.'),
+    ask: {
+      title: L3('Nomni title ichiga yozing', 'Напиши название внутри title', 'Write the name inside title'),
+      text: L3('Matnni body ichiga yozing', 'Напиши текст внутри body', 'Write the text inside body')
+    },
+    h1t: L3('Yorliqdagi nom kodning qayerida yozilgan?', 'Где в коде задаётся название вкладки?', 'Where in the code is the tab name set?'),
+    h2t: L3('Yorliqdagi nom — title ichidagi matn.', 'Название вкладки — это текст внутри title.', 'The tab name is the text inside title.'),
+    h3t: L3('<title> va </title> orasidagi bo‘sh joyni bosing va nom yozing.', 'Нажми на пустое место между <title> и </title> и напиши название.', 'Tap the empty space between <title> and </title> and type a name.'),
+    h1b: L3('Sahifaning o‘zida qaysi matn ko‘rinadi?', 'Что видно в самом окне?', 'What shows in the window itself?'),
+    h2b: L3('Sahifadagi matn — body ichida.', 'Текст в окне — внутри body.', 'The text in the window is inside body.'),
+    h3b: L3('<body> va </body> orasidagi bo‘sh joyni bosing va matn yozing.', 'Нажми на пустое место между <body> и </body> и напиши текст.', 'Tap the empty space between <body> and </body> and type a text.'),
+    done: L3('Barakalla, ikkala buyurtma ham bajarildi! Nom — yorliqda, matn — sahifada.', 'Оба заказа выполнены! Название — на вкладке, текст — в окне.', 'Both orders done! The name is on the tab, the text is in the window.')
   },
 
   s13: {
     eyebrow: L3('O‘z sahifangiz', 'Своя страница', 'Your own page'),
-    say: L3('Final yig‘ish! Qatorlarni tartib bilan qo‘ying. Birinchi qator allaqachon joyida.',
+    say: L3('Endi o‘z sahifangizni yig‘asiz. Birinchi qator tayyor — qolganlarini to‘g‘ri tartibda joylashtiring.',
       'Финальная сборка! Расставь строки по порядку. Первая строка уже на месте.',
       'Final build! Put the lines in order. The first line is already in place.'),
     rules: {
-      html: L3('Butun sahifa html ichida: u birinchi ochiladi va oxirida yopiladi.', 'Вся страница — внутри html: он открывается первым и закрывается последним.', 'The whole page is inside html: it opens first and closes last.'),
-      pair: L3('Yopuvchi teg o‘z ochuvchisidan keyin turadi.', 'Закрывающий тег стоит после своего открывающего.', 'A closing tag comes after its opening tag.'),
-      order: L3('Avval head — pasport, keyin body.', 'Сначала head — паспорт, потом body.', 'First head, the passport, then body.'),
-      headClose: L3('head body boshlanishidan oldin yopiladi.', 'head закрывается до того, как начнётся body.', 'head closes before body starts.'),
-      title: L3('title head ichida turadi.', 'title стоит внутри head.', 'title sits inside head.'),
-      text: L3('Sahifa matni body ichida turadi.', 'Текст страницы стоит внутри body.', 'The page text sits inside body.')
+      html: L3('Butun sahifa html ichida turadi: html birinchi ochiladi va eng oxirida yopiladi.', 'Вся страница — внутри html: он открывается первым и закрывается последним.', 'The whole page is inside html: it opens first and closes last.'),
+      pair: L3('Yopuvchi teg o‘z ochuvchi tegidan keyin turadi.', 'Закрывающий тег стоит после своего открывающего.', 'A closing tag comes after its opening tag.'),
+      order: L3('Avval head bo‘limi, keyin body bo‘limi keladi.', 'Сначала head — паспорт, потом body.', 'First head, the passport, then body.'),
+      headClose: L3('head bo‘limi body boshlanishidan oldin yopiladi.', 'head закрывается до того, как начнётся body.', 'head closes before body starts.'),
+      title: L3('title head bo‘limi ichida turadi.', 'title стоит внутри head.', 'title sits inside head.'),
+      text: L3('Sahifadagi matn body ichida turadi.', 'Текст страницы стоит внутри body.', 'The page text sits inside body.')
     },
-    fill: L3('Tuzilma to‘g‘ri! Endi nom va matnni o‘ylab toping.', 'Структура верная! Теперь придумай название и текст.', 'The structure is right! Now come up with a name and a text.'),
+    fill: L3('Zo‘r, qatorlar to‘g‘ri joylashdi! Endi sahifangizga nom bering va matn yozing.', 'Структура верная! Теперь придумай название и текст.', 'The structure is right! Now come up with a name and a text.'),
     done: L3('Ura! Sahifangiz tayyor!', 'Ура! Твоя страница готова!', 'Hooray! Your page is ready!'),
-    h1: L3('Tashqi qism birinchi ochiladi.', 'Внешняя часть открывается первой.', 'The outer part opens first.'),
-    h2: L3('html ichida: head (title bilan), keyin body (matn bilan).', 'Внутри html: head (с title), потом body (с текстом).', 'Inside html: head (with title), then body (with the text).'),
-    h3: L3('Belgilangan qatorlarni almashtiring.', 'Поменяй местами отмеченные строки.', 'Swap the marked lines.'),
-    ask: L3('Qatorlarni tartib bilan qo‘ying', 'Расставь строки по порядку', 'Put the lines in order'),
-    askFill: L3('Nom va matnni yozing', 'Напиши название и текст', 'Write the name and the text')
+    h1: L3('Eng tashqi qism birinchi ochiladi va oxirida yopiladi.', 'Внешняя часть открывается первой.', 'The outer part opens first.'),
+    h2: L3('html ichida avval head (ichida title), keyin body (ichida matn) turadi.', 'Внутри html: head (с title), потом body (с текстом).', 'Inside html: head (with title), then body (with the text).'),
+    h3: L3('Belgilangan qatorlarning o‘rnini almashtiring.', 'Поменяй местами отмеченные строки.', 'Swap the marked lines.'),
+    ask: L3('Qatorlarni to‘g‘ri tartibda joylashtiring', 'Расставь строки по порядку', 'Put the lines in order'),
+    askFill: L3('Sahifa nomi va matnini yozing', 'Напиши название и текст', 'Write the name and the text')
   },
 
   s14: {
-    eyebrow: L3('Sahifangiz Bob ekranida', 'Твоя страница на экране Боба', 'Your page on Bob’s screen'),
-    say: L3('Qarang — sahifangiz Bob ekranida! Bu kuchli bo‘ldi! Endi sahifani teglardan yig‘a olasiz, xuddi haqiqiy veb-dasturchi kabi.',
-      'Смотри — твоя страница на экране у Боба! Это было мощно! Теперь ты умеешь собирать страницу из тегов, как настоящий веб-программист.',
-      'Look, your page is on Bob’s screen! That was epic! Now you can build a page from tags, like a real web developer.'),
+    eyebrow: L3('Sahifangiz Pikselning ekranida', 'Твоя страница на экране Пикселя', 'Your page on Pixel’s screen'),
+    say: L3('Tabriklayman! O‘zingiz yaratgan sahifa Pikselning ekranida. Endi siz HTML teglari yordamida sahifa tuza olasiz — xuddi haqiqiy veb-dasturchi kabi!',
+      'Смотри — твоя страница на экране у Пикселя! Это было мощно! Теперь ты умеешь собирать страницу из тегов, как настоящий веб-программист.',
+      'Look, your page is on Pixel’s screen! That was epic! Now you can build a page from tags, like a real web developer.'),
     ach: {
-      place: { self: L3('Kerakli joyni o‘zingiz topdingiz', 'Место изменения — найдено без подсказок', 'Found the place to change on your own'),
-        help: L3('Kerakli joyni maslahat bilan topdingiz', 'Место изменения — найдено с подсказкой', 'Found the place to change with a hint') },
-      build: { self: L3('Tuzilmani yig‘dingiz', 'Структура страницы — собрана', 'Built the page structure'),
+      place: { self: L3('O‘zgartirish joyini maslahatsiz topdingiz', 'Место изменения — найдено без подсказок', 'Found the place to change on your own'),
+        help: L3('O‘zgartirish joyini maslahat bilan topdingiz', 'Место изменения — найдено с подсказкой', 'Found the place to change with a hint') },
+      build: { self: L3('Sahifa tuzilmasini yig‘dingiz', 'Структура страницы — собрана', 'Built the page structure'),
         help: L3('Tuzilmani maslahat bilan yig‘dingiz', 'Структура — собрана с подсказкой', 'Built the structure with a hint') },
       close: { self: L3('Yopuvchi tegni yozdingiz', 'Закрывающий тег — написан', 'Wrote a closing tag'),
         help: L3('Yopuvchi tegni maslahat bilan yozdingiz', 'Закрывающий тег — написан с подсказкой', 'Wrote a closing tag with a hint') },
@@ -580,7 +596,7 @@ function HintNote({ lv, text }) {
 }
 
 // =============================================================================
-// R1. ИЗ ЧЕГО СДЕЛАН BOB — три слоя: детали (HTML), вид (CSS), движение (JS).
+// R1. ИЗ ЧЕГО СДЕЛАН PIXEL — три слоя: детали (HTML), вид (CSS), движение (JS).
 // Пустая подставка; ученик включает слои по очереди и видит, что даёт каждый.
 // Без HTML нет ничего — поэтому урок начинается с него.
 // =============================================================================
@@ -596,7 +612,7 @@ function LayerIcon({ k }) {
 }
 const robotCls = (on) => 'fig-robot' + LAYERS.filter((k) => on[k]).map((k) => ' rb-' + k).join('');
 const ALL_LAYERS = { html: true, css: true, js: true };
-// Текст на экране Bob: заголовок и одна короткая строка.
+// Текст на экране Pixel: заголовок и одна короткая строка.
 const shortTxt = (s, n) => { const t = String(s || '').trim(); return t.length > n ? t.slice(0, n - 1).trim() + '…' : t; };
 
 function R1({ p }) {
@@ -659,7 +675,7 @@ function R1({ p }) {
 }
 
 // =============================================================================
-// R2. ЭКРАН BOB — на нём игра «Битва знаний». Нажали экран — это обычная
+// R2. ЭКРАН PIXEL — на нём игра «Битва знаний». Нажали экран — это обычная
 // веб-страница, а рядом её код. Ответ на «зачем»: так написан каждый сайт.
 // =============================================================================
 function R2({ p }) {
@@ -1741,9 +1757,10 @@ function S9({ p }) {
     if (!ln || !codeRef.current || !codeRef.current.contains(ln)) return;
     if (shown[[...ln.parentNode.children].indexOf(ln)] === 'title') startTitle(e);
   };
-  const hint = hintOf(lad.lv, [c.h1, c.h2, c.h3]);
+  const h9 = [c.h1, c.h2, picked ? c.h3 : c.h3a];
+  const hint = hintOf(lad.lv, h9);
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintOf(Math.min(3, lad.lv + 1), [c.h1, c.h2, c.h3]) || c.ask} nav={navOf(p, canGo)}>
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintOf(Math.min(3, lad.lv + 1), h9) || c.ask} nav={navOf(p, canGo)}>
       <div className={'rule-panel' + (fixed ? ' is-ok' : '')}><span className="rule-ic">{fixed ? <Icon name="check" size={13} /> : '!'}</span><span><b>{pick(UI.inspector)}:</b> {pick(c.rule)}</span></div>
       <Ask text={fixed ? c.ok : picked ? c.pickPlace : c.ask} hint={fixed ? null : (msg || hint)} n={variant === 'B' ? pick(UI.again) : null} />
       <div ref={fixRef} className="fix-row rb-rel">
@@ -1861,95 +1878,88 @@ function S10({ p }) {
 }
 
 // =============================================================================
-// 12. ЗАКАЗ ДЛЯ ТЕБЯ — перенос с уменьшенной поддержкой.
+// 12. ЗАКАЗ ОТ ИГРОКОВ — ученик сам пишет: сначала название в title, потом
+// текст в body (заказчик, 17.10.2026). Поля пустые; поле body открывается,
+// когда название написано. Засчитывается любой осмысленный текст: хотя бы две
+// буквы и без уголков — без сверки с примером, опечаток и знаков препинания.
+// Пример из заказа — только идея («например»).
 // =============================================================================
 function S12({ p }) {
   const pick = usePick();
   const log = useLog();
-  const store = useStore();
   const c = C.s12;
   const [rec, put] = useRec('s12');
   const solved = !!(rec && rec.done);
-  const start = { title: pick(SAMPLE.title), text: pick(SAMPLE.text) };
-  const [ti, setTi] = useState(solved ? 2 : 0);
-  const [variant, setVariant] = useState('A');
-  const [doc, setDoc] = useState(start);
-  const [editing, setEditing] = useState(null);     // 'title' | 'text' — какой текст ученик выбрал для правки
-  const [val, setVal] = useState('');
-  const [msg, setMsg] = useState(null);
-  const [okNow, setOkNow] = useState(false);
+  const [step, setStep] = useState(solved ? 2 : 0);          // 0 — название, 1 — текст, 2 — готово
+  const [title, setTitle] = useState(rec && rec.title ? rec.title : '');
+  const [text, setText] = useState(rec && rec.text ? rec.text : '');
   const [flash, setFlash] = useState({ tab: 0, page: 0 });
-  const [speaker, say, spoken, sayNow] = useVoice([{ text: solved ? c.done : c.say, pose: solved ? 'smile' : 'explain' }]);
+  const [wire, setWire] = useState({ n: 0, to: null });
+  const sayGoal = (k) => fillL(c.sayGoal[k], { t: pick(c.tasks[k === 'title' ? 0 : 1].t) });
+  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
+    : [{ text: c.say, pose: 'explain' }, { text: sayGoal('title'), pose: 'point' }]);
   const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved, spoken);
-  const lad = useLadder(!solved && !okNow);
-  const st = useRef({});
-  const task = c.tasks[ti] || null;
-  const S = () => st.current[task.id] || (st.current[task.id] = { tries: 0, misses: 0, followMiss: 0 });
-  const target = task ? pick(variant === 'B' ? task.tB : task.t) : '';
-  const field = task ? task.id : null;
-  const hints = task ? (task.id === 'title' ? [c.h1t, c.h2t, c.h3t] : [c.h1b, c.h2b, c.h3b]) : [];
-  const tapZone = (z) => {
-    if (!canTap || !task || okNow) return;
-    S().tries += 1;
-    const want = field === 'title' ? 'title-text' : 'body-text';
-    if (z === want) { setEditing(field); setVal(doc[field]); setMsg(null); sfx('tap', true); return; }
-    S().misses += 1;
-    if (variant === 'B') S().followMiss += 1;
-    sfx('soft', true);
-    const m = z === 'title-text' || z === 'body-text' ? c.wrongText : c.tag;
-    setMsg(m); sayNow(m, 'think');
-    if (S().misses >= 2) lad.bump();
-  };
+  const canGo = useAdvanceGate(solved || step === 2, spoken);
+  const lad = useLadder(!solved && step < 2);
+  const field = step === 0 ? 'title' : step === 1 ? 'text' : null;
+  const task = field ? c.tasks[step] : null;
+  const val = step === 0 ? title : text;
+  const led = useIdleLed(canTap && !!field && !val.trim(), step);
+  const wrapRef = useRef(null), tabRef = useRef(null), pageRef = useRef(null);
+  const zones = useRef({});
+  const regZone = (z, el) => { zones.current[z] = el; };
+  // Написал и сделал паузу — заказ выполнен. Поле остаётся открытым: можно дописывать.
   useEffect(() => {
-    if (!editing || okNow) return undefined;
-    if (!same(val, target)) return undefined;
+    if (!field || !okText(val)) return undefined;
     const t = setTimeout(() => {
-      const nd = Object.assign({}, doc, { [field]: val.trim() });
-      setDoc(nd); setEditing(null); setOkNow(true);
-      setFlash((f) => (field === 'title' ? { tab: f.tab + 1, page: f.page } : { tab: f.tab, page: f.page + 1 }));
       sfx('ok', true);
-      const s = S();
-      const helped = lad.lv >= 3;
-      if (variant === 'A' && helped) {
-        sayNow(joinL(c.ok, c.again), 'smile');
-        setTimeout(() => { setVariant('B'); setOkNow(false); setDoc(nd); lad.reset(); }, 1700);
+      if (step === 0) {
+        setFlash((f) => ({ tab: f.tab + 1, page: f.page })); setWire((w) => ({ n: w.n + 1, to: 'tab' }));
+        setStep(1); lad.reset();
+        sayNow(c.okTitle, 'smile');
+        say(sayGoal('text'), 'point');
         return;
       }
-      const indep = variant === 'A' && s.misses === 0 && lad.asked.current === 0;
-      log({ screenId: 's12.' + field, type: 'transfer', correct: true, firstTry: indep, attempts: s.tries, hints: lad.asked.current, depth: lad.lv,
-        helped: variant === 'B' || lad.lv > 0, independent: indep, followUp: variant === 'B' ? s.followMiss === 0 : null });
-      putAch(store, 'place', indep ? 'self' : 'help');
-      sayNow(c.ok, 'smile');
-      setTimeout(() => {
-        setOkNow(false); setVariant('A'); lad.reset();
-        if (ti + 1 >= c.tasks.length) { put({ done: true }); setTi(2); sayNow(c.done, 'cheer'); } else setTi(ti + 1);
-      }, 1500);
-    }, 700);
+      setFlash((f) => ({ tab: f.tab, page: f.page + 1 })); setWire((w) => ({ n: w.n + 1, to: 'page' }));
+      log({ screenId: 's12', type: 'write-title-body', correct: true, hints: lad.asked.current, depth: lad.lv });
+      put({ done: true, title: title.trim(), text: text.trim() });
+      setStep(2);
+      sayNow(c.done, 'cheer');
+    }, step === 0 ? 1300 : 1500);
     return () => clearTimeout(t);
-  }, [val]); // eslint-disable-line react-hooks/exhaustive-deps
-  const hint = hintOf(lad.lv, hints);
-  const goal = task ? fillL(task.goal, { t: target }) : c.done;
-  // Заказ Коди читает вслух (заказчик, 17.10.2026: «не понятно, что просят»):
-  // первый — после вступления, следующие — сразу, как появились.
-  const firstGoal = useRef(true);
-  useEffect(() => {
-    if (!task || solved) return;
-    if (firstGoal.current) { firstGoal.current = false; say(goal, 'explain'); } else sayNow(goal, 'explain');
-  }, [ti, variant]); // eslint-disable-line react-hooks/exhaustive-deps
-  const showT = editing === 'title' ? val : doc.title, showB = editing === 'text' ? val : doc.text;
+  }, [val, step]); // eslint-disable-line react-hooks/exhaustive-deps
+  const hints = field === 'title' ? [c.h1t, c.h2t, c.h3t] : [c.h1b, c.h2b, c.h3b];
+  const hint = field ? hintOf(lad.lv, hints) : null;
+  const askText = field ? c.ask[field] : c.done;
+  const input = (k) => (
+    <span className={'s12-in' + (led && field === k ? ' is-led' : '')}>
+      <InlineInput value={k === 'title' ? title : text} onChange={k === 'title' ? setTitle : setText}
+        label={c.ask[k]} placeholder={L3('…', '…', '…')} max={k === 'title' ? 40 : 70} />
+      <Led on={led && field === k} />
+    </span>
+  );
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintOf(Math.min(3, lad.lv + 1), hints) || goal} nav={navOf(p, canGo)}>
-      <div className={'goal-card' + (okNow ? ' is-ok' : '')}><span className="goal-l">{pick(UI.goal)} {task ? (ti + 1) + '/2' : ''}{variant === 'B' ? ' · ' + pick(UI.again) : ''}</span><b>{pick(goal)}</b></div>
-      <Ask text={!task ? c.done : editing ? c.typeIt : c.ask} hint={okNow || !task ? null : (msg || hint)} />
-      <div className="work pr">
-        <MiniBrowser title={okText(showT) ? showT : ''} page={okText(showB) ? showB : ''} flashTab={flash.tab} flashPage={flash.page} />
-        <CodeLines lines={buildLines(FULL_DOC, doc)} className="cv-pr"
-          renderText={(t) => (editing && t.z === (editing === 'title' ? 'title-text' : 'body-text')
-            ? <InlineInput value={val} onChange={setVal} label={goal} max={60} />
-            : <span className="tk-text">{t.v}</span>)}
-          zone={(z, t) => (z && !editing && task && !okNow ? { tap: true, disabled: !canTap, led: lad.lv >= 3 && z === (field === 'title' ? 'title-text' : 'body-text') } : null)}
-          onZone={(z) => tapZone(z)} />
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo}
+      hint={field ? (hintOf(Math.min(3, lad.lv + 1), hints) || sayGoal(field)) : c.done} nav={navOf(p, canGo)}>
+      <div className={'goal-card' + (!task ? ' is-ok' : '')}>
+        <span className="goal-l">{pick(UI.goal)} {task ? (step + 1) + '/2' : '2/2'}</span>
+        {task ? (
+          <span className="goal-row"><b>{pick(task.goal)}</b>
+            <span className="goal-eg">{pick(UI.forExample)}: <i translate="no">{pick(task.t)}</i></span></span>
+        ) : <b>{pick(c.done)}</b>}
+      </div>
+      {task ? <Ask text={askText} hint={hasTags(val) ? UI.noTags : hint} /> : null}
+      <div className="work pr" ref={wrapRef}>
+        <MiniBrowser title={okText(title) ? title : ''} page={okText(text) ? text : ''} tabRef={tabRef} pageRef={pageRef}
+          flashTab={flash.tab} flashPage={flash.page} hl={field === 'title' ? 'title' : field === 'text' ? 'body' : null} />
+        <CodeLines lines={buildLines(FULL_DOC, { title, text })} className="cv-ed s12-code" regZone={regZone}
+          hl={field === 'title' ? 'title' : field === 'text' ? 'body' : null}
+          renderText={(t) => (t.z === 'title-text' ? input('title')
+            : t.z === 'body-text' ? (step >= 1 ? input('text') : <span className="s12-locked" aria-hidden="true">…</span>)
+              : <span className="tk-text">{t.v}</span>)} />
+        <Wire wrapRef={wrapRef} on={wire.n > 0} nonce={wire.n} color={wire.to === 'tab' ? TAGC.title : TAGC.body}
+          from={() => zones.current[wire.to === 'tab' ? 'title-text' : 'body-text']}
+          to={() => (wire.to === 'tab' ? tabRef.current : pageRef.current)} />
       </div>
     </Stage>
   );
@@ -2145,11 +2155,11 @@ function S13({ p }) {
 }
 
 // =============================================================================
-// 14. ТВОЯ СТРАНИЦА НА ЭКРАНЕ BOB — финал: Bob со всеми слоями показывает
+// 14. ТВОЯ СТРАНИЦА НА ЭКРАНЕ PIXEL — финал: Pixel со всеми слоями показывает
 // страницу ученика, рядом её код; подтверждённые достижения.
 // =============================================================================
 function S14({ p }) {
-  // Финал без перегруза (заказчик, 17.10.2026): крупный Боб со страницей ученика
+  // Финал без перегруза (заказчик, 17.10.2026): крупный Пиксель со страницей ученика
   // на экране, короткий список того, что получилось, и следующий урок. Код и
   // браузер здесь больше не дублируются — они были на всех экранах урока.
   const pick = usePick();
@@ -2165,7 +2175,7 @@ function S14({ p }) {
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask}
       nav={<><BackBtn onPrev={p.prev} /><NextBtn disabled={!canGo} onClick={p.finish} label={c.btn} /></>}>
       <div className="rb-fin">
-        <div className="rb-fin-bob">
+        <div className="rb-fin-pixel">
           <Fig fig={RFIG_BUST} cls="fig-robot rb-html rb-css rb-js" texts={{ scr1: mine.title, scr2: shortTxt(mine.text, 22) }} label={UI.robot} />
         </div>
         <div className="rb-fin-side">

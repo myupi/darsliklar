@@ -496,8 +496,10 @@ function KodiWaves({ on, amp = 1 }) {
     const rnd = (a, b) => a + Math.random() * (b - a);
     const layers = Array.prototype.slice.call(svg.querySelectorAll('.kodi-wave')).map((p, i) => ({
       p, rot: rnd(0, TAU), spin: rnd(-0.6, 0.6), gain: [1, 0.86, 0.94][i] || 0.8,
-      comps: [0, 1, 2].map(() => ({ k: 2 + Math.floor(rnd(0, 5)), ph: rnd(0, TAU),
-        sp: rnd(0.8, 2.6) * (Math.random() < 0.5 ? -1 : 1), a: 0, at: rnd(0.3, 1) }))
+      comps: [0, 1, 2].map(() => {
+        const sp = rnd(0.8, 2.6) * (Math.random() < 0.5 ? -1 : 1);
+        return { k: 2 + Math.floor(rnd(0, 5)), ph: rnd(0, TAU), sp, v: sp, a: 0, at: rnd(0.3, 1), swap: false };
+      })
     }));
     const f1 = (v) => v.toFixed(1);
     const draw = (l, amp) => {
@@ -506,7 +508,7 @@ function KodiWaves({ on, amp = 1 }) {
         const t = (j / N) * TAU;
         let sum = 0, w = 0;
         l.comps.forEach((c) => { sum += c.a * Math.sin(c.k * t + c.ph); w += c.a; });
-        const f = w > 0.001 ? 0.5 + 0.5 * (sum / w) : 0.5;
+        const f = 0.5 + 0.5 * (sum / Math.max(w, 0.5));   // без деления на почти ноль, когда гармоники гаснут
         const r = R - 1 + amp * (0.15 + 0.85 * f);
         pts.push([r * Math.cos(t + l.rot), r * Math.sin(t + l.rot)]);
       }
@@ -518,26 +520,39 @@ function KodiWaves({ on, amp = 1 }) {
       }
       l.p.setAttribute('d', d + 'Z');
     };
-    let energy = 0, target = 0, nextAt = 0, last = 0, raf = 0;
+    // ПЛАВНОСТЬ (заказчик, 17.10.2026: «волны как будто дёргаются»). Рывки
+    // давали три вещи: цель размаха менялась каждые 0,1–0,3 с и догонялась за
+    // 0,07 с; число горбов (k) у гармоники менялось мгновенно; направление бега
+    // разворачивалось на месте. Теперь размах идёт через два сглаживания, k
+    // меняется только у затухшей гармоники (swap: гаснет — меняется —
+    // разгорается), скорость бега (v) плавно догоняет новую (sp).
+    let energy = 0, ease = 0, target = 0, nextAt = 0, last = 0, raf = 0;
     const tick = (now) => {
       const dt = last ? Math.min(0.05, (now - last) / 1000) : 1 / 60;
       last = now;
       const talking = !!onRef.current;
       if (now >= nextAt) {
-        target = talking ? rnd(0.3, 1) : 0;
-        nextAt = now + rnd(90, 320);
+        target = talking ? rnd(0.45, 1) : 0;
+        nextAt = now + rnd(260, 560);
         layers.forEach((l) => l.comps.forEach((c) => {
-          c.at = rnd(0.15, 1);
-          if (Math.random() < 0.3) c.k = 2 + Math.floor(rnd(0, 5));
-          if (Math.random() < 0.2) c.sp = -c.sp;
+          if (!c.swap) c.at = rnd(0.25, 1);
+          if (!c.swap && Math.random() < 0.18) { c.swap = true; c.at = 0; }
+          if (Math.random() < 0.15) c.sp = -c.sp;
         }));
       }
-      energy += (target - energy) * (1 - Math.exp(-dt / (target > energy ? 0.07 : 0.22)));
+      const follow = (x, to, tau) => x + (to - x) * (1 - Math.exp(-dt / tau));
+      ease = follow(ease, target, target > ease ? 0.18 : 0.32);
+      energy = follow(energy, ease, 0.12);
       // Кружок спрятан (голос в шапке, клавиатура) — считаем, но не рисуем.
       const shown = svg.getClientRects().length > 0;
       layers.forEach((l) => {
         l.rot += l.spin * dt * (0.4 + 1.6 * energy);
-        l.comps.forEach((c) => { c.ph += c.sp * dt * (0.6 + 2.4 * energy); c.a += (c.at - c.a) * (1 - Math.exp(-dt / 0.16)); });
+        l.comps.forEach((c) => {
+          c.v = follow(c.v, c.sp, 0.7);
+          c.ph += c.v * dt * (0.6 + 2.4 * energy);
+          c.a = follow(c.a, c.at, 0.35);
+          if (c.swap && c.a < 0.03) { c.k = 2 + Math.floor(rnd(0, 5)); c.swap = false; c.at = rnd(0.25, 1); }
+        });
         if (shown) draw(l, 26 * ampRef.current * energy * l.gain);
       });
       if (!talking && energy < 0.004) { raf = 0; last = 0; layers.forEach((l) => draw(l, 0)); return; }
@@ -876,16 +891,19 @@ const LANG_MARK = {
 //   у двух похвал из трёх); «почти», подсказка → [reassuring]; привет →
 //   [cheerful]; прощание → [warmly]; вопрос → [curious]; с «!» → [upbeat];
 //   остальное (рассказ, объяснение) → [friendly].
+// Узбекский (правка текстов урока 1, 17.10.2026): финал «Tabriklayman!» —
+// большая победа; спокойные начала разбора ошибки «Yana bir qarang:» и
+// «E’tibor bering:» — [reassuring], как «Qarang:» и «Hechqisi yo‘q».
 const TTS_EMOTION = true;
 const EMO_W = (words) => new RegExp('^(?:' + words.join('|') + ')(?=[\\s!,.?…:;]|$)', 'i');
 const EMO = {
   oops: { ru: /^(?:ой|упс)(?=[\s!,.]|$)|кажется, я /i, uz: /o‘xshayman|adashdim|chalkashtirdim/i, en: /^(?:oops|uh-oh)(?=[\s!,.]|$)|i think i (?:put|mixed|made)/i },
-  big: { ru: EMO_W(['ура', 'это было мощно', 'вот это да']), uz: EMO_W(['ura', 'bu kuchli', 'qoyil']), en: EMO_W(['hooray', 'that was epic', 'look at that']) },
+  big: { ru: EMO_W(['ура', 'это было мощно', 'вот это да']), uz: EMO_W(['ura', 'bu kuchli', 'qoyil', 'tabriklayman']), en: EMO_W(['hooray', 'that was epic', 'look at that']) },
   wow: { ru: EMO_W(['ого', 'ух ты', 'вот оно']), uz: /^(?:voy,|ajab|mana u!)/i, en: EMO_W(['whoa', 'there it is']) },
   win: { ru: EMO_W(['есть', 'огонь', 'супер', 'вау', 'класс', 'бомба', 'чётко', 'четко', 'точно', 'в точку', 'получилось', 'отлично', 'круто', 'красота', 'идеально', 'готово', 'собрано', 'спасибо', 'дожали', 'верно', 'да', 'нашлось', 'сработало', 'правильно', 'вот так', 'работает']),
     uz: EMO_W(['ana', 'zo‘r', 'zo‘r-ku', 'super', 'voy', 'klass', 'bomba', 'aniq', 'aynan nishonga', 'aynan', 'chiqdi', 'mukammal', 'ajoyib', 'tayyor', 'yig‘ildi', 'rahmat', 'barakalla', 'ofarin', 'to‘g‘ri', 'ha', 'topildi', 'ishladi', 'ishlayapti']),
     en: EMO_W(['yes', 'awesome', 'super', 'wow', 'cool', 'boom', 'spot on', 'nailed it', 'perfect', 'great', 'built', 'thanks', 'got it', 'done', 'right', 'nice', 'found it', 'it works', 'correct']) },
-  soft: { ru: EMO_W(['почти', 'ничего', 'смотри:', 'хорошая попытка', 'уже близко', 'не страшно']), uz: EMO_W(['deyarli', 'hechqisi', 'qarang:', 'yaxshi urinish', 'yaqin qoldi']),
+  soft: { ru: EMO_W(['почти', 'ничего', 'смотри:', 'хорошая попытка', 'уже близко', 'не страшно']), uz: EMO_W(['deyarli', 'hechqisi', 'qarang:', 'yana bir qarang:', 'e’tibor bering:', 'yaxshi urinish', 'yaqin qoldi']),
     en: EMO_W(['almost', 'no worries', 'look:', 'good try', "you're close", 'so close']) },
   hello: { ru: EMO_W(['привет']), uz: EMO_W(['salom']), en: EMO_W(['hi', 'hello']) },
   bye: { ru: /до встречи|до скорого/i, uz: /ko‘rishguncha|xayr/i, en: /see you|goodbye/i }
