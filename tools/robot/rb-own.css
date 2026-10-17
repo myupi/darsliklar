@@ -1,0 +1,116 @@
+/* ══ РОБОТ BOB — слои «детали · вид · движение» ═══════════════════════ */
+/* Раскраска слоя «вид» (CSS) генерируется сборкой по data-paint — см.
+   robot.build.mjs. Здесь — появление, движение и элементы экранов. */
+.fig-robot { --fig-h: min(34dvh, 330px); background: radial-gradient(120% 90% at 50% 18%, #ffffff 0%, #f3f4f7 70%, #eceef3 100%); }
+.fig-robot .iso-fill, .fig-robot .iso-shade, .fig-robot .iso-top { transition: fill .6s ease; }
+.fig-robot .iso-line { transition: stroke .6s ease; }
+.fig-robot .iso-face-text { transition: fill .6s ease, opacity .4s ease; }
+/* Слой «детали» выключен — робота нет, стоит пустая подставка. Включили —
+   детали опускаются на подставку. */
+.fig-robot .rb-body { transition: opacity .5s ease, transform .6s cubic-bezier(.2,.8,.2,1.2); }
+.fig-robot:not(.rb-html) .rb-body { opacity: 0; transform: translateY(-22px); }
+.fig-robot:not(.rb-html) [data-sel="plate"], .fig-robot:not(.rb-html) [data-cls="plate"] { opacity: .55; }
+/* Тексты на экране и табличке — цветом слоя «вид». */
+.fig-robot.rb-css [data-cls="scr1"] { fill: #FFD166; font-weight: 700; }
+.fig-robot.rb-css [data-cls="scr2"] { fill: #FFFFFF; }
+.fig-robot.rb-css [data-cls="ans"] { fill: #10213F; font-weight: 700; }
+.fig-robot.rb-css [data-cls="plate"] { fill: #24345E; font-weight: 800; }
+.fig-robot [data-cls="scr1"], .fig-robot [data-cls="scr2"] { font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif; letter-spacing: 0; }
+/* Слой «движение» (JavaScript): машет рукой, моргает, мигает антенна и курсор. */
+.fig-robot .rb-arm-r, .fig-robot .rb-eye, .fig-robot .rb-ant { transform-box: view-box; }
+.fig-robot.rb-js.rb-html .rb-body { animation: rbBob 2.6s ease-in-out infinite; }
+.fig-robot.rb-js .rb-arm-r { animation: rbWave 3.4s ease-in-out infinite; }
+.fig-robot.rb-js .rb-eye { animation: rbBlink 3.8s ease-in-out infinite; }
+.fig-robot.rb-js .rb-ant { animation: rbAnt 1.5s ease-in-out infinite; }
+.fig-robot.rb-js .rb-caret { animation: rbCaret 1s steps(1, end) infinite; }
+.fig-robot.rb-js .rb-ans { animation: rbAns 2.2s ease-in-out infinite; }
+@keyframes rbBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2.5px); } }
+@keyframes rbWave { 0%, 12%, 88%, 100% { transform: rotate(0deg); } 26% { transform: rotate(-128deg); } 38% { transform: rotate(-104deg); }
+  50% { transform: rotate(-128deg); } 62% { transform: rotate(-104deg); } 74% { transform: rotate(-128deg); } }
+@keyframes rbBlink { 0%, 90%, 100% { transform: scaleY(1); } 94% { transform: scaleY(.12); } }
+@keyframes rbAnt { 0%, 100% { filter: drop-shadow(0 0 0 rgba(255,183,3,0)); } 50% { filter: drop-shadow(0 0 6px rgba(255,183,3,.95)); } }
+@keyframes rbCaret { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+@keyframes rbAns { 0%, 100% { opacity: 1; } 50% { opacity: .62; } }
+@media (prefers-reduced-motion: reduce) {
+  .fig-robot *, .fig-robot.rb-js.rb-html .rb-body { animation: none !important; transition: none !important; }
+}
+
+/* R1. Переключатели слоёв */
+.rb-stage { display: flex; flex-direction: column; gap: var(--gap-stack); width: 100%; min-height: 0; }
+.stack > .rb-stage { flex: 0 1 auto; min-height: 0; }
+.rb-layers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; }
+.rb-layer { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 92px; padding: 10px 6px 8px;
+  border: none; border-radius: 18px; background: #fff; color: ${T.ink}; cursor: pointer; font: 800 15px/1.15 'Manrope', sans-serif; text-align: center;
+  box-shadow: inset 0 0 0 2px rgba(${T.shadowBase},0.10), 0 3px 0 rgba(${T.shadowBase},0.08), 0 14px 26px -18px rgba(${T.shadowBase},0.5);
+  transition: box-shadow .25s, transform .12s, background .25s, opacity .25s; }
+.rb-layer:active:not(:disabled) { transform: translateY(2px); }
+.rb-layer:disabled { cursor: default; }
+.rb-layer:disabled:not(.is-on) { opacity: .5; }
+.rb-layer.is-on { background: color-mix(in srgb, var(--c) 10%, #fff); box-shadow: inset 0 0 0 2.5px var(--c), 0 3px 0 color-mix(in srgb, var(--c) 30%, transparent); }
+.rb-l-ic { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; background: color-mix(in srgb, var(--c) 14%, #fff); color: var(--c); }
+.rb-l-txt { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; }
+.rb-l-name { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 14px; color: var(--c); }
+.rb-l-sub { font-size: 13px; font-weight: 700; color: ${T.ink2}; }
+.rb-sw { position: relative; width: 34px; height: 18px; margin-top: 2px; border-radius: 99px; background: #d9dbe0; transition: background .25s; }
+.rb-sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .25s; }
+.rb-layer.is-on .rb-sw { background: var(--c); }
+.rb-layer.is-on .rb-sw::after { transform: translateX(16px); }
+
+/* R2. Экран Bob → страница и её код */
+.rb-zoom { animation: rbZoom .55s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes rbZoom { from { opacity: 0; transform: scale(.82) translateY(10px); } to { opacity: 1; transform: none; } }
+.rb-game { display: flex; flex-direction: column; gap: 4px; }
+.rb-game b { font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { .rb-zoom { animation: none; } }
+
+/* 3. Пройденная часть — светлая заливка её цвета (счётчик — в строке задания). */
+.chip.is-seen:not(.is-sel) { background: color-mix(in srgb, var(--c) 9%, #fff); }
+/* 2. Вкладка, на которую попадает название */
+.s2-tab { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; padding: 7px 14px 7px 10px; border-radius: 10px 10px 0 0; background: #fff;
+  color: ${T.ink}; font: 600 15px 'Manrope', sans-serif; box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.12), 0 6px 14px -10px rgba(${T.shadowBase},0.45); }
+.s2-tab.is-flash { animation: rbTab .9s ease-out; }
+@keyframes rbTab { 0% { box-shadow: inset 0 0 0 2.5px #9F4471, 0 0 0 0 rgba(159,68,113,.45); } 100% { box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.12), 0 0 0 12px rgba(159,68,113,0); } }
+/* R2. Пока Коди говорит про код — код в рамке. */
+.rb-open .rb-code { transition: box-shadow .3s; }
+.rb-open.is-code .rb-code { box-shadow: 0 0 0 3px #586A83, 0 14px 30px -18px rgba(${T.shadowBase},0.6); }
+.rb-tapfig { cursor: pointer; border-radius: 18px; -webkit-tap-highlight-color: transparent; }
+.rb-acts { display: flex; justify-content: center; }
+.rb-open-b { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 10px 20px; }
+
+/* Финал: страница ученика на экране Bob */
+.rb-fin { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; width: 100%; }
+.rb-fin .fig-robot { --fig-h: min(30dvh, 300px); }
+.rb-fin-code { display: none; }
+.rb-fin-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.rb-fin.is-code .rb-fin-code { display: block; }
+.rb-fin.is-code .rb-fin-bob { display: none; }
+
+@media (max-width: 899px) {
+  .rb-layer { min-height: 78px; padding: 8px 4px 6px; }
+  .rb-l-ic { width: 28px; height: 28px; border-radius: 9px; }
+  .rb-l-sub { font-size: 12px; }
+}
+@media (max-height: 700px) and (max-width: 899px) {
+  .fig-robot { --fig-h: min(30dvh, 240px); }
+  .rb-fin .fig-robot { --fig-h: min(24dvh, 200px); }
+  .rb-fin-side { gap: 6px; }
+  .rb-fin-side .ach { gap: 4px; }
+  .rb-fin-side .ach-i { padding-block: 3px; font-size: 13px; }
+  .rb-fin-side .final-note { font-size: 12px; }
+  .rb-layer { min-height: 66px; gap: 2px; }
+  .rb-l-ic { display: none; }
+}
+@media (min-width: 900px) {
+  .rb-stage { flex-direction: row; align-items: center; gap: 20px; }
+  .rb-stage > .fig-robot { flex: 1 1 58%; --fig-h: min(46dvh, 420px); }
+  .rb-stage > .rb-layers { flex: 1 1 42%; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .rb-stage .rb-layer { flex-direction: row; justify-content: flex-start; gap: 12px; min-height: 64px; padding: 10px 16px; text-align: left; }
+  .rb-stage .rb-l-txt { align-items: flex-start; gap: 2px; flex: 1 1 auto; }
+  .rb-stage .rb-sw { margin: 0; }
+  .rb-fin { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) minmax(0, .95fr); align-items: center; gap: 16px; }
+  .rb-fin .rb-fin-code, .rb-fin.is-code .rb-fin-bob { display: block; }
+  .rb-fin .fig-robot { --fig-h: min(52dvh, 380px); }
+  .rb-fin-code { display: flex; flex-direction: column; gap: 8px; }
+  .rb-fin-side .ach { flex-direction: column; align-items: stretch; }
+  .rb-fin-side .final-note { font-size: 12px; }
+}

@@ -22,5 +22,7 @@ export default {
       topics: ['ul', 'ol', 'li'] },
     { n: 6, slug: 'ssylki-i-atributy', title: 'Ссылки и атрибуты — урок 4 курса HTML (проба)',
       topics: ['a', 'href'] },
+    { n: 7, slug: 'struktura-robot', title: 'Структура HTML-документа — урок 1 (проба: робот Bob)',
+      topics: ['html', 'head', 'title', 'body', 'HTML · CSS · JavaScript'] },
   ],
 };
