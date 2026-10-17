@@ -1646,44 +1646,56 @@ function celebrate() {
   sfx('cheer', true);
   _celebSubs.forEach((f) => { try { f(); } catch (e) { /* no-op */ } });
 }
-const CELEB_COLORS = ['#FF4F28', '#FFB703', '#1171A0', '#6F57AB', '#227882', '#97368A', '#2F6FB0', '#F4A261'];
+// КУРС HTML: КОНФЕТТИ (заказчик, 17.10.2026: «хлопушки очень некрасивые —
+// переделай полностью»). Без нарисованных конусов: из нижних углов экрана
+// вылетают конфетти — дугой вверх и к середине, тормозят в воздухе и плавно
+// падают, кружась и переворачиваясь. Четыре вложенных слоя на кусочек: по X
+// (полёт с торможением), по Y (вверх — потом падение с ускорением), лёгкое
+// покачивание и сам кусочек, который вертится в 3D. Всё — CSS, кусочки
+// посчитаны заранее (одинаковые при каждом показе), касаний слой не ловит.
+const CELEB_COLORS = ['#FF4F28', '#FFB703', '#4CC9F0', '#7C5CFF', '#2EC4B6', '#FF7AA2', '#FFD166', '#06D6A0'];
+const CELEB_SHAPES = [[8, 13, 2], [9, 9, 2], [8, 8, 50], [5, 18, 3], [10, 6, 2]];
 const CELEB_BITS = (() => {
   const out = [];
   const r = (k, m) => { const x = Math.sin(k * 12.9898 + m * 78.233) * 43758.5453; return x - Math.floor(x); };
-  for (let k = 0; k < 40; k += 1) {
+  for (let k = 0; k < 64; k += 1) {
     const side = k % 2;
-    out.push({ side, c: CELEB_COLORS[k % CELEB_COLORS.length], shape: k % 3,
-      dx: (side ? -1 : 1) * Math.round(40 + r(k, 1) * 220), dy: -Math.round(240 + r(k, 2) * 300),
-      rot: Math.round(r(k, 3) * 720 - 360), delay: +(r(k, 4) * 0.18).toFixed(2), dur: +(1.3 + r(k, 5) * 0.6).toFixed(2) });
+    const sh = CELEB_SHAPES[Math.floor(r(k, 7) * CELEB_SHAPES.length)];
+    out.push({ side, c: CELEB_COLORS[Math.floor(r(k, 6) * CELEB_COLORS.length)], w: sh[0], h: sh[1], br: sh[2],
+      x: (side ? -1 : 1) * Math.round(14 + r(k, 1) * 62),          // vw: насколько залетит к середине
+      up: -Math.round(46 + r(k, 2) * 38),                           // vh: высота дуги
+      d: +(2.3 + r(k, 3) * 1.1).toFixed(2), delay: +(r(k, 4) * 0.28).toFixed(2),
+      spin: +(0.7 + r(k, 5) * 0.9).toFixed(2), rz: Math.round(r(k, 8) * 360), sway: +(0.7 + r(k, 9) * 0.6).toFixed(2) });
   }
   return out;
 })();
 const CELEB_CSS = `
-.celeb { position: fixed; inset: 0; z-index: 70; pointer-events: none; overflow: hidden; }
-.celeb-pop { position: absolute; bottom: 18px; width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent;
-  border-bottom: 46px solid #FFB703; filter: drop-shadow(0 2px 0 rgba(58,53,48,.15)); animation: celebPop 1.1s ease-out both; }
-.celeb-pop::after { content: ''; position: absolute; left: -9px; top: 14px; width: 18px; height: 6px; background: #FF4F28; border-radius: 2px; }
-.celeb-pop.is-l { left: 22px; transform-origin: 50% 100%; --rz: 32deg; }
-.celeb-pop.is-r { right: 22px; transform-origin: 50% 100%; --rz: -32deg; }
-@keyframes celebPop { 0% { transform: rotate(var(--rz)) scale(.4); opacity: 0; } 15% { transform: rotate(var(--rz)) scale(1.15); opacity: 1; }
-  30% { transform: rotate(var(--rz)) scale(1); } 80% { opacity: 1; } 100% { transform: rotate(var(--rz)) scale(.9); opacity: 0; } }
-.celeb-bit { position: absolute; bottom: 60px; width: 9px; height: 14px; background: var(--c); border-radius: 2px; opacity: 0;
-  animation: celebFly var(--dur) cubic-bezier(.2,.7,.4,1) both; }
-.celeb-bit.is-l { left: 36px; }
-.celeb-bit.is-r { right: 36px; }
-.celeb-bit.sh-1 { width: 10px; height: 10px; border-radius: 50%; }
-.celeb-bit.sh-2 { width: 6px; height: 16px; border-radius: 3px; }
-@keyframes celebFly {
-  0% { transform: translate(0, 0) rotate(0); opacity: 1; }
-  45% { transform: translate(calc(var(--dx) * .8), var(--dy)) rotate(calc(var(--rot) * .5)); opacity: 1; }
-  100% { transform: translate(var(--dx), calc(var(--dy) + 360px)) rotate(var(--rot)); opacity: 0; } }
+.celeb { position: fixed; inset: 0; z-index: 70; pointer-events: none; overflow: hidden; perspective: 600px; }
+.cf { position: absolute; bottom: 4vh; will-change: transform, opacity;
+  animation: cfX var(--d) cubic-bezier(.1,.62,.28,1) var(--dl) both, cfFade var(--d) linear var(--dl) both; }
+.cf.is-l { left: -10px; }
+.cf.is-r { right: -10px; }
+.cf-y { animation: cfY var(--d) linear var(--dl) both; }
+.cf-s { animation: cfSway var(--sw) ease-in-out var(--dl) infinite alternate; }
+.cf-p { display: block; width: var(--w); height: var(--h); border-radius: var(--br); background: var(--c);
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,.12); transform-style: preserve-3d;
+  animation: cfFlip var(--sp) linear var(--dl) infinite; }
+@keyframes cfX { from { transform: translateX(0); } to { transform: translateX(var(--x)); } }
+@keyframes cfY {
+  0% { transform: translateY(0); animation-timing-function: cubic-bezier(.18,.82,.4,1); }
+  30% { transform: translateY(var(--up)); animation-timing-function: cubic-bezier(.55,0,.9,.55); }
+  100% { transform: translateY(12vh); } }
+@keyframes cfSway { from { transform: translateX(-7px) rotate(-8deg); } to { transform: translateX(7px) rotate(8deg); } }
+@keyframes cfFlip { from { transform: rotateZ(var(--rz)) rotateX(0) rotateY(0); }
+  to { transform: rotateZ(calc(var(--rz) + 360deg)) rotateX(720deg) rotateY(360deg); } }
+@keyframes cfFade { 0%, 82% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .celeb { display: none; } }
 `;
 function CelebrateLayer() {
   const [burst, setBurst] = useState(0);
   useEffect(() => {
     let t = null;
-    const f = () => { setBurst((v) => v + 1); clearTimeout(t); t = setTimeout(() => setBurst(0), 2200); };
+    const f = () => { setBurst((v) => v + 1); clearTimeout(t); t = setTimeout(() => setBurst(0), 3900); };
     _celebSubs.add(f);
     return () => { _celebSubs.delete(f); clearTimeout(t); };
   }, []);
@@ -1691,11 +1703,15 @@ function CelebrateLayer() {
   return (
     <div className="celeb" key={burst} aria-hidden="true">
       <style>{CELEB_CSS}</style>
-      <span className="celeb-pop is-l" />
-      <span className="celeb-pop is-r" />
       {CELEB_BITS.map((b, k) => (
-        <i key={k} className={'celeb-bit is-' + (b.side ? 'r' : 'l') + ' sh-' + b.shape}
-          style={{ '--c': b.c, '--dx': b.dx + 'px', '--dy': b.dy + 'px', '--rot': b.rot + 'deg', '--dur': b.dur + 's', animationDelay: b.delay + 's' }} />
+        <i key={k} className={'cf is-' + (b.side ? 'r' : 'l')}
+          style={{ '--x': b.x + 'vw', '--up': b.up + 'vh', '--d': b.d + 's', '--dl': b.delay + 's' }}>
+          <i className="cf-y" style={{ display: 'block' }}>
+            <i className="cf-s" style={{ display: 'block', '--sw': b.sway + 's' }}>
+              <i className="cf-p" style={{ '--w': b.w + 'px', '--h': b.h + 'px', '--br': b.br + (b.br === 50 ? '%' : 'px'), '--c': b.c, '--sp': b.spin + 's', '--rz': b.rz + 'deg' }} />
+            </i>
+          </i>
+        </i>
       ))}
     </div>
   );
