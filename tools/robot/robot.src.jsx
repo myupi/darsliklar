@@ -110,7 +110,8 @@ const UI = {
   gameQ: L3('1-savol: o‘rgimchakning nechta oyog‘i bor?', 'Вопрос 1: сколько ног у паука?', 'Question 1: how many legs does a spider have?'),
   openScreen: L3('Ekranni ochish', 'Открыть экран', 'Open the screen'),
   passport: L3('Pasport: sahifa nomi va boshqa ma’lumotlar', 'Паспорт: название и настройки страницы', 'Passport: the page name and settings'),
-  tabPin: L3('← yorliq', '← вкладка', '← tab')
+  tabPin: L3('← yorliq', '← вкладка', '← tab'),
+  tagWord: L3('teg', 'тег', 'tag')
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -232,6 +233,11 @@ const C = {
 
   s2: {
     eyebrow: L3('Sahifa nomi kodda', 'Название в коде', 'The name in code'),
+    // Что такое тег — словами, до разбора строки (заказчик, 17.10.2026). Пока звучит,
+    // в строке подсвечены оба тега с подписью «тег».
+    tagDef: L3('Avval yangi so‘z — teg. Teg — burchakli qavslar ichidagi so‘z, mana bu yerdagi title kabi. U brauzer uchun yorliq: sahifaning qaysi qismi ekanini aytadi. Tegning o‘zi sahifada ko‘rinmaydi.',
+      'Сначала новое слово — тег. Тег — это слово в угловых скобках, как здесь title. Это ярлык для браузера: он говорит, что это за часть страницы. Сам тег на странице не виден.',
+      'First, a new word: tag. A tag is a word in angle brackets, like title here. It is a label for the browser: it says what part of the page this is. The tag itself is not shown on the page.'),
     say: L3('Sahifa nomi kodda shunday yoziladi. Qarang: bu qatorda uchta qism bor.',
       'Вот как название записано в коде. Смотри: в строке три части.',
       'Here’s how the name is written in code. Look: the line has three parts.'),
@@ -242,9 +248,9 @@ const C = {
       content: L3('O‘rtadagi matn — mazmun, ya’ni sahifa nomining o‘zi. Brauzer uni yuqoridagi yorliqda ko‘rsatadi. Qarang!',
         'А это само название. Его видно на вкладке — в самом верху браузера. Смотри!',
         'And this is the name itself. It shows on the tab, at the very top of the browser. Look!'),
-      end: L3('Bu — yopuvchi teg. Undagi qiya chiziq nom shu yerda tugashini bildiradi. Teglarning o‘zi sahifada ko‘rinmaydi.',
-        'Это закрывающий тег — конец. То же слово, только с косой чертой. Сами теги на странице не видны.',
-        'This is the closing tag, the end. The same word, but with a slash. The tags themselves aren’t shown on the page.')
+      end: L3('Bu — yopuvchi teg. Undagi qiya chiziq nom shu yerda tugashini bildiradi.',
+        'Это закрывающий тег — конец. То же слово, только с косой чертой.',
+        'This is the closing tag, the end. The same word, but with a slash.')
     },
     quiz: L3('Endi tekshiramiz: men so‘rayman, siz esa kerakli qismni bosasiz!', 'А теперь проверим: я спрашиваю — ты нажимаешь!', 'Now let’s check: I ask, you tap!'),
     q: {
@@ -879,6 +885,9 @@ const PARTS3 = ['start', 'content', 'end'];
 // подпись, остальные приглушены (заказчик, 17.10.2026: «говорит „это начало“ —
 // а не показывает»).
 function BigLine({ tag, text, sel, found, onPart, disabled, led, now }) {
+  // now — часть или список частей (определение тега: оба тега сразу, подпись «тег»).
+  const isNow = (k) => (Array.isArray(now) ? now.indexOf(k) >= 0 : now === k);
+  const nowLabel = (k) => (Array.isArray(now) ? UI.tagWord : UI.labels[k]);
   const pick = usePick();
   const parts = [
     { k: 'start', node: <Tag tag={tag} big /> },
@@ -889,10 +898,10 @@ function BigLine({ tag, text, sel, found, onPart, disabled, led, now }) {
     <div className={'pv-bl' + (now !== undefined ? ' is-watch' : '')} translate="no">
       {parts.map((pt) => (
         <button key={pt.k} type="button" disabled={disabled} onClick={() => onPart(pt.k)}
-          className={'bl-part bl-' + pt.k + (sel === pt.k ? ' is-sel' : '') + (now === pt.k ? ' is-now' : '') + (found && found[pt.k] ? ' is-found' : '')}
+          className={'bl-part bl-' + pt.k + (sel === pt.k ? ' is-sel' : '') + (isNow(pt.k) ? ' is-now' : '') + (found && found[pt.k] ? ' is-found' : '')}
           aria-label={found && found[pt.k] ? pick(UI.labels[pt.k]) : undefined}>
           {pt.node}
-          {now === pt.k ? <span className="bl-lbl is-now">{pick(UI.labels[pt.k])}</span>
+          {isNow(pt.k) ? <span className="bl-lbl is-now">{pick(nowLabel(pt.k))}</span>
             : found && found[pt.k] ? <span className="bl-lbl">{pick(UI.labels[pt.k])}</span> : null}
           <Led on={!!led && led.indexOf(pt.k) >= 0} />
         </button>
@@ -918,14 +927,14 @@ function S2({ p }) {
   const [tabFlash, setTabFlash] = useState(0);
   const [shake, wobble] = useShake();
   const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
-    : [{ text: c.say, pose: 'point' }, { text: c.parts.start, pose: 'point' }, { text: c.parts.content, pose: 'point' },
+    : [{ text: c.tagDef, pose: 'explain' }, { text: c.say, pose: 'point' }, { text: c.parts.start, pose: 'point' }, { text: c.parts.content, pose: 'point' },
       { text: c.parts.end, pose: 'point' }, { text: c.quiz, pose: 'explain' }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved, spoken);
   const st = useRef({ tries: 0, misses: 0, miss1: 0, follow: null, followMiss: 0, helped: false });
   const order = phase === 'follow' ? S2_ORDER.b : S2_ORDER.a;
   const target = phase === 'quiz' || phase === 'follow' ? order[qi] : null;
-  const cur = phase === 'watch' ? (speaker.text === c.parts.start ? 'start' : speaker.text === c.parts.content ? 'content' : speaker.text === c.parts.end ? 'end' : null) : null;
+  const cur = phase === 'watch' ? (speaker.text === c.tagDef ? ['start', 'end'] : speaker.text === c.parts.start ? 'start' : speaker.text === c.parts.content ? 'content' : speaker.text === c.parts.end ? 'end' : null) : null;
   useEffect(() => { if (cur === 'content') setTabFlash((n) => n + 1); }, [cur]);
   // Рассказ договорён — первый вопрос.
   useEffect(() => {
