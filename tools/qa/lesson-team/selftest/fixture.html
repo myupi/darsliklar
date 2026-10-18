@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QA fixture</title>
+<!--
+  Изолированная страница для самопроверки QA-инструментов (не урок, вне папки lessons/).
+  Ведёт себя как плеер: шлёт родителю события в формате src/runtime/bridge.js.
+  Режим ?mode=: ok — нормальная работа; error — исключение после загрузки;
+  double — onFinished дважды; noready — ничего не рисует и не сообщает.
+-->
+<style>
+  body { margin: 0; font: 16px/1.4 system-ui, sans-serif; }
+  main { padding: 16px; }
+  button { min-height: 44px; padding: 8px 16px; font-size: 16px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var mode = q.get('mode') || 'ok';
+  var post = function (type, data) {
+    if (window.parent !== window) window.parent.postMessage({ source: 'darsliklar-player', type: type, data: data, t: Date.now() }, location.origin);
+  };
+  if (mode === 'noready') return;
+  var count = 0;
+  var finish = function () {
+    count += 1;
+    post('finished', { payload: { lessonId: 'qa-fixture', lang: q.get('lang'), answers: [{ screenId: 's1', type: 'click', correct: true }] }, count: count });
+  };
+  document.getElementById('app').innerHTML =
+    '<main><h1 id="title">QA fixture</h1><p id="msg">Нажми кнопку</p><button id="done" type="button">Готово</button></main>';
+  document.getElementById('done').addEventListener('click', function () {
+    document.getElementById('msg').textContent = 'Готово!';
+    finish();
+    if (mode === 'double') finish();
+  });
+  post('loaded', { file: 'selftest/fixture', ms: 1, component: 'Fixture', props: [] });
+  if (mode === 'error') setTimeout(function () { throw new Error('qa-fixture: намеренное исключение'); }, 200);
+})();
+</script>
+</body>
+</html>

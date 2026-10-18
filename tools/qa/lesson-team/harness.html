@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lesson-team QA</title>
+<!--
+  Страница-обвязка QA команды уроков. Открывается раннером tools/qa/lesson-team/run.mjs
+  через dev-сервер Vite (тот же адрес, что у плеера), чтобы:
+    · держать урок в iframe существующего плеера (/player.html?…) на весь экран;
+    · принимать события плеера (loaded, tts, finished, error) — плеер шлёт их
+      родителю через postMessage только своему origin (src/runtime/bridge.js);
+    · дать сценариям проверки общий набор действий window.__ltqa.
+  Урок и плеер здесь не меняются.
+-->
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #fff; }
+  #lesson { display: block; width: 100%; height: 100%; border: 0; }
+</style>
+</head>
+<body>
+<iframe id="lesson" title="lesson"></iframe>
+<script>
+(function () {
+  var params = new URLSearchParams(location.search);
+  var src = params.get('src') || 'about:blank';
+  var frame = document.getElementById('lesson');
+  var state = { events: [], errors: [], loads: 0 };
+  var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+
+  // События плеера: { source: 'darsliklar-player', type, data, t }.
+  window.addEventListener('message', function (e) {
+    if (e.origin !== location.origin) return;
+    var d = e.data;
+    if (d && d.source === 'darsliklar-player') state.events.push({ type: d.type, data: d.data, t: d.t || Date.now() });
+  });
+  frame.addEventListener('load', function () {
+    state.loads += 1;
+    try {
+      var w = frame.contentWindow;
+      w.addEventListener('error', function (ev) { state.errors.push({ kind: 'error', message: String(ev.message || ev.error), t: Date.now() }); });
+      w.addEventListener('unhandledrejection', function (ev) {
+        var r = ev.reason; state.errors.push({ kind: 'unhandledrejection', message: String((r && r.message) || r), t: Date.now() });
+      });
+    } catch (err) { state.errors.push({ kind: 'harness', message: 'Нет доступа к iframe: ' + err.message, t: Date.now() }); }
+  });
+
+  var QA = {
+    src: src,
+    state: state,
+    notes: [],
+    shots: [],
+    data: null,
+    lang: params.get('lang') || null,
+    platform: null,
+    frame: frame,
+    sleep: sleep,
+    doc: function () { try { return frame.contentDocument; } catch (e) { return null; } },
+    win: function () { return frame.contentWindow; },
+    q: function (s) { var d = QA.doc(); return d ? d.querySelector(s) : null; },
+    qa: function (s) { var d = QA.doc(); return d ? Array.prototype.slice.call(d.querySelectorAll(s)) : []; },
+    el: function (x) { return typeof x === 'string' ? QA.q(x) : x; },
+    waitFor: async function (fn, timeout, label) {
+      var t0 = Date.now(), lim = timeout || 15000;
+      while (Date.now() - t0 < lim) {
+        try { if (fn()) return true; } catch (e) { /* ещё рано */ }
+        await sleep(150);
+      }
+      throw new Error('Не дождались за ' + Math.round(lim / 1000) + ' с: ' + (label || 'условие'));
+    },
+    // Нажатие как касание ученика: pointerdown → pointerup → click (канон по pointerdown
+    // понимает, что ученик действует). Логику урока не обходит. Возвращает промис:
+    // «await qa.click(…)» даёт React обновиться перед следующим зависимым действием.
+    click: function (x, label) {
+      var el = QA.el(x);
+      if (!el) throw new Error('Нет элемента: ' + (label || x));
+      if (el.disabled) throw new Error('Элемент выключен: ' + (label || x));
+      var w = el.ownerDocument.defaultView;
+      var r = el.getBoundingClientRect();
+      var opt = { bubbles: true, cancelable: true, composed: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1, isPrimary: true, button: 0 };
+      try {
+        el.dispatchEvent(new w.PointerEvent('pointerdown', opt));
+        el.dispatchEvent(new w.PointerEvent('pointerup', opt));
+      } catch (e) { /* старый браузер без PointerEvent — только click */ }
+      el.click();
+      return sleep(150);
+    },
+    // Ввод в поле React: нативный сеттер + событие input (так же, как печать).
+    type: function (x, value, label) {
+      var el = QA.el(x);
+      if (!el) throw new Error('Нет поля ввода: ' + (label || x));
+      var w = el.ownerDocument.defaultView;
+      var proto = el.tagName === 'TEXTAREA' ? w.HTMLTextAreaElement.prototype : w.HTMLInputElement.prototype;
+      Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, value);
+      el.dispatchEvent(new w.Event('input', { bubbles: true }));
+      return el;
+    },
+    // Нажать элемент из списка по точному тексту (удобно для кода вроде «<h2>»: не зависит от языка урока).
+    clickText: function (sel, text, label) {
+      var el = QA.qa(sel).filter(function (x) { return x.textContent.replace(/\s+/g, ' ').trim() === text && !x.disabled; })[0];
+      return QA.click(el, label || (sel + ' «' + text + '»'));
+    },
+    // Нажать n-й элемент списка (с нуля; отрицательный — с конца).
+    clickNth: function (sel, n, label) {
+      var list = QA.qa(sel);
+      return QA.click(list[n < 0 ? list.length + n : n], label || (sel + ' №' + n));
+    },
+    text: function (x) { var el = QA.el(x); return el ? el.textContent.trim() : null; },
+    visible: function (x) {
+      var el = QA.el(x); if (!el) return false;
+      var r = el.getBoundingClientRect(), w = QA.win();
+      return r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < w.innerHeight && r.left < w.innerWidth;
+    },
+    // Проверка условия: провал останавливает шаг с понятным сообщением; успех — запись в доказательства.
+    expect: function (cond, message, details) {
+      if (!cond) {
+        var e = new Error(message);
+        e.expectation = true;
+        e.details = details === undefined ? null : details;
+        throw e;
+      }
+      QA.notes.push('✓ ' + message);
+      return true;
+    },
+    note: function (m) { QA.notes.push(String(m)); },
+    shot: function (name) { QA.shots.push(String(name)); },
+    events: function (type) { return state.events.filter(function (e) { return !type || e.type === type; }); },
+    finished: function () { return QA.events('finished'); },
+    payload: function () { var f = QA.finished(); return f.length ? f[f.length - 1].data.payload : null; },
+    loaded: function () { return QA.events('loaded').length > 0; }
+  };
+  window.__ltqa = QA;
+  frame.src = src;
+})();
+</script>
+</body>
+</html>
