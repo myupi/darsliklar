@@ -1,0 +1,185 @@
+/* ══ ТУРНИР ПИКСЕЛЯ — свои стили (префикс tr-) ═════════════════════════ */
+
+/* Робот Пиксель (фигура урока 07): контейнер и слои «вид · движение». */
+.tr-fig { position: relative; width: min(100%, calc(var(--fh, 30dvh) * var(--ar, 1))); aspect-ratio: var(--ar, 1); margin: 0 auto; flex: 0 0 auto;
+  border-radius: 18px; overflow: hidden; background: radial-gradient(120% 90% at 50% 18%, #ffffff 0%, #f3f4f7 70%, #eceef3 100%);
+  box-shadow: 0 2px 0 rgba(${T.shadowBase},0.05), 0 12px 26px -18px rgba(${T.shadowBase},0.45), inset 0 0 0 1.5px rgba(${T.shadowBase},0.06); }
+.tr-fig > svg { width: 100%; height: 100%; display: block; padding: 4px; box-sizing: border-box; }
+.tr-fig.iso[data-theme="light"] { --anatomy-paper: #fbfbfa; --anatomy-lit: ${T.ink}; }
+.fig-robot.rb-css [data-cls="scr1"] { fill: #FFD166; font-weight: 700; }
+.fig-robot.rb-css [data-cls="scr2"] { fill: #FFFFFF; }
+.fig-robot.rb-css [data-cls="ans"] { fill: #10213F; font-weight: 700; }
+.fig-robot.rb-css [data-cls="plate"] { fill: #24345E; font-weight: 800; }
+.fig-robot [data-cls="scr1"], .fig-robot [data-cls="scr2"] { font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif; letter-spacing: 0; }
+.fig-robot .rb-eye, .fig-robot .rb-ant { transform-box: view-box; }
+.fig-robot.rb-js.rb-html .rb-body { animation: rbBob 2.6s ease-in-out infinite; }
+.fig-robot.rb-js .rb-eye { animation: rbBlink 3.8s ease-in-out infinite; }
+.fig-robot.rb-js .rb-ant { animation: rbAnt 1.5s ease-in-out infinite; }
+.fig-robot.rb-js .rb-caret { animation: rbCaret 1s steps(1, end) infinite; }
+.fig-robot.rb-js .rb-ans { animation: rbAns 2.2s ease-in-out infinite; }
+@keyframes rbBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2.5px); } }
+@keyframes rbBlink { 0%, 90%, 100% { transform: scaleY(1); } 94% { transform: scaleY(.12); } }
+@keyframes rbAnt { 0%, 100% { filter: drop-shadow(0 0 0 rgba(255,183,3,0)); } 50% { filter: drop-shadow(0 0 6px rgba(255,183,3,.95)); } }
+@keyframes rbCaret { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+@keyframes rbAns { 0%, 100% { opacity: 1; } 50% { opacity: .62; } }
+
+/* Крючок: Пиксель и переключатель «Сейчас / Как надо». */
+.tr-hook { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; }
+.tr-fig-sm { --fh: min(19dvh, 170px); margin: 0; }
+.tr-seg { position: relative; border-radius: 14px; }
+.tr-seg .seg2 { min-width: 0; }
+.tr-mb .mb-page { max-height: 38dvh; overflow-y: auto; scrollbar-width: thin; }
+
+/* Реплика Коди текстом, когда голоса нет (телефон, экраны voiceTop). */
+.tr-say { display: block; width: 100%; margin: 0; padding: 6px 12px; border: none; border-radius: 12px; background: ${T.paper}; color: ${T.ink};
+  font: 600 13.5px/1.35 'Manrope', sans-serif; box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.1); text-align: left; cursor: pointer; }
+.tr-say.is-fold { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: ${T.ink2}; }
+.tr-say-k { color: ${T.uiDk}; font-weight: 800; }
+
+/* Рабочая область. */
+.tr-work .work-b { min-width: 0; }
+.tr-src .tk.is-hl { background: color-mix(in srgb, ${T.ui} 16%, #fff); box-shadow: 0 0 0 2px color-mix(in srgb, ${T.ui} 55%, transparent); }
+.tr-src .src-line.tr-in .tk-tag { animation: trTagIn .5s cubic-bezier(.34,1.45,.5,1) both; }
+@keyframes trTagIn { 0% { opacity: 0; transform: scale(.4); } 100% { opacity: 1; transform: none; } }
+.tr-src .src-line.tr-fixed { background: color-mix(in srgb, ${T.success} 10%, transparent); }
+.tr-src .src-line.tr-typing { background: color-mix(in srgb, ${T.ui} 6%, transparent); }
+.tr-src .src-line.tr-enter { color: ${T.ink2}; }
+.tr-src .src-line.tr-ghost { outline: 2px dashed color-mix(in srgb, ${T.ui} 60%, transparent); outline-offset: -2px; background: color-mix(in srgb, ${T.ui} 5%, transparent); }
+.tr-src .tk-input { font-size: 16px; }
+.tr-shake { animation: shake .4s; }
+.tr-slot-tag { display: inline-flex; align-items: center; padding: 0 6px; margin-right: 6px; border-radius: 6px; border: 1.5px dashed ${TAGC.h};
+  color: ${TAGC.h}; font-weight: 800; line-height: 1.35; }
+.tr-role-ph { color: ${T.ink3}; font-style: italic; font-weight: 600; }
+
+/* Кнопки тегов и варианты ответа. */
+.tr-tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.tr-tag { position: relative; display: inline-flex; align-items: center; justify-content: center; min-width: 64px; min-height: 46px; padding: 6px 14px;
+  border: none; border-radius: 12px; background: #fff; cursor: pointer; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 16px;
+  box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.16), 0 3px 0 rgba(${T.shadowBase},0.08); transition: opacity .25s, transform .08s; }
+.tr-tag:active:not(:disabled) { transform: scale(.95); }
+.tr-tag.is-off { opacity: .35; }
+.tr-tag.is-glow { box-shadow: inset 0 0 0 2.5px ${T.success}, 0 0 0 4px color-mix(in srgb, ${T.success} 20%, transparent); }
+.tr-tag:disabled:not(.is-off) { opacity: .6; cursor: default; }
+.tr-opts { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+@media (min-width: 720px) { .tr-opts { flex-direction: row; flex-wrap: wrap; justify-content: center; } .tr-opt { flex: 1 1 200px; max-width: 360px; } }
+.tr-opt { position: relative; display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 8px 14px; border: none; border-radius: 14px;
+  background: #fff; color: ${T.ink}; cursor: pointer; text-align: left; font: 700 15px/1.3 'Manrope', sans-serif;
+  box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.14), 0 3px 0 rgba(${T.shadowBase},0.07); }
+.tr-opt:disabled { cursor: default; opacity: 1; }
+.tr-opt:disabled:not(.is-ok):not(.is-no):not(.is-real):not(.is-off) { opacity: .6; }
+.tr-opt.is-ok { box-shadow: inset 0 0 0 2.5px ${T.success}; background: ${T.successSoft}; }
+.tr-opt.is-no { box-shadow: inset 0 0 0 2px ${T.hint}; background: ${T.hintSoft}; }
+.tr-opt.is-real { box-shadow: inset 0 0 0 2.5px ${T.success}; }
+.tr-opt.is-off { opacity: .4; }
+.tr-opt.is-glow { box-shadow: inset 0 0 0 2.5px ${T.success}, 0 0 0 4px color-mix(in srgb, ${T.success} 20%, transparent); }
+.tr-opt-ic { flex: 0 0 auto; min-width: 2.2em; padding: 2px 6px; border-radius: 8px; background: ${T.uiSoft}; color: ${T.uiDk}; font-size: 13px; text-align: center; }
+.tr-next { display: flex; justify-content: center; }
+.tr-verdict { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; border-radius: 14px; background: #fff; width: 100%;
+  box-shadow: inset 0 0 0 2px ${T.success}; animation: zgUpTr .3s ease both; }
+.tr-verdict.is-no { box-shadow: inset 0 0 0 2px ${T.hint}; background: ${T.hintSoft}; }
+.tr-verdict-ic { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: ${T.success}; color: #fff; }
+.tr-verdict.is-no .tr-verdict-ic { background: ${T.hint}; }
+.tr-verdict-t { flex: 1 1 auto; min-width: 0; font: 700 14px/1.3 'Manrope', sans-serif; color: ${T.ink}; }
+.tr-verdict .tr-next-b { flex: 0 0 auto; min-height: 42px; padding: 8px 14px; font-size: 14px; }
+@keyframes zgUpTr { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: none; } }
+.tr-next-b { gap: 8px; }
+
+/* Заголовок-деталь для вставки (экран 6) и места между строками. */
+.tr-chip-row { display: flex; justify-content: center; }
+.tr-chip { display: inline-flex; align-items: center; gap: 2px; padding: 6px 12px; border-radius: 12px; background: #fff; font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: calc(var(--cv-fs) * 1.05); box-shadow: inset 0 0 0 2px ${TAGC.h}, 0 6px 16px -10px ${TAGC.h}; animation: trFloat 2.4s ease-in-out infinite; }
+@keyframes trFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.tr-src .src-line.tr-slot { min-height: 1.6em; color: ${T.uiDk}; font: 800 12.5px/1.6 'Manrope', sans-serif; letter-spacing: .02em;
+  background: repeating-linear-gradient(90deg, color-mix(in srgb, ${T.ui} 22%, transparent) 0 6px, transparent 6px 11px) left 50% / 100% 2px no-repeat;
+  animation: trSlotIn .4s ease both; }
+.tr-src .src-line.tr-slot .src-code { background: ${T.paper}; padding: 0 6px; border-radius: 6px; }
+.tr-src .src-line.tr-slot .src-n { visibility: hidden; }
+@keyframes trSlotIn { 0% { opacity: 0; transform: translateX(-6px); } 100% { opacity: 1; transform: none; } }
+
+/* Строка-кнопка «поставь заголовок перед ней» (экран 6). */
+.tr-src .src-line.tr-pickline { box-shadow: inset 0 -1.5px 0 color-mix(in srgb, ${T.ui} 25%, transparent); }
+
+/* Шесть уровней: смысл уровня рядом со строкой. */
+.tr-mean { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 99px; background: color-mix(in srgb, ${TAGC.h} 10%, #fff);
+  color: ${TAGC.h}; font: 700 11.5px/1.5 'Manrope', sans-serif; vertical-align: middle; }
+.tr-src-lv .src-line.is-seen .src-n { color: ${TAGC.h}; }
+
+/* Роли строк (экран 8). */
+.tr-role { display: inline-block; margin-left: 6px; padding: 0 7px; font-size: 10.5px !important; border-radius: 99px; background: ${T.hintSoft}; color: #7A5600;
+  font: 700 11.5px/1.5 'Manrope', sans-serif; vertical-align: middle; }
+.tr-role.is-ok { background: ${T.successSoft}; color: ${T.success}; }
+
+/* Починка строк (экран 12). */
+.tr-fixline { display: inline; line-height: 2; }
+.tr-w.is-i { font-style: italic; }
+.tr-ins { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 26px; margin: 0 1px; padding: 0 3px; vertical-align: middle;
+  border: none; border-radius: 7px; background: color-mix(in srgb, ${T.ui} 10%, #fff); color: ${T.uiDk}; cursor: pointer; font-size: 11px; }
+.tr-ins.is-here { background: #fff; box-shadow: inset 0 0 0 1.5px ${TAGC.em}; }
+.tr-ins.is-glow { box-shadow: inset 0 0 0 2px ${T.success}; }
+.tr-ins:disabled { cursor: default; }
+.tr-tagbtn { display: inline-flex; padding: 2px 3px; margin: 0 1px; border: none; border-radius: 7px; background: transparent; cursor: pointer; vertical-align: middle;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, ${T.ui} 30%, transparent); }
+.tr-tagbtn.is-glow { box-shadow: inset 0 0 0 2px ${T.ui}; background: ${T.uiSoft}; }
+.tr-tagbtn:disabled { cursor: default; box-shadow: none; }
+
+/* Своя страница (экран 13). */
+.tr-code { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.tr-edit { display: inline-grid; place-items: center; width: 26px; height: 26px; margin-left: 6px; vertical-align: middle; border: none; border-radius: 8px;
+  background: ${T.uiSoft}; color: ${T.uiDk}; cursor: pointer; }
+.tr-pending { color: ${T.ink2}; }
+.tr-src-own .tk-input { max-width: calc(100% - 4.5em); }
+.tr-src-own .src-line.tr-static { display: flex; align-items: center; }
+.tr-src-own .src-line.tr-static .src-code { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tr-src-own .src-line.tr-static .src-code, .tr-src-own .src-line.tr-static .src-code * { white-space: nowrap !important; }
+.tr-src-own .src-line.tr-static .tr-edit { flex: 0 0 auto; width: 24px; height: 22px; margin-left: 4px; }
+
+/* Финал. */
+.tr-fin { display: grid; gap: 12px; width: 100%; }
+.tr-fin-show { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 10px; align-items: center; }
+.tr-fig-fin { --fh: min(24dvh, 260px); }
+.tr-mb-fin .mb-page { max-height: 24dvh; }
+.tr-fin-side { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+@media (min-width: 900px) { .tr-fin { grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr); align-items: center; } .tr-fig-fin { --fh: min(44dvh, 380px); } .tr-mb-fin .mb-page { max-height: 44dvh; } }
+.ach { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.ach-i { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px 4px 5px; border-radius: 99px; background: #fff; color: ${T.ink};
+  font: 700 12.5px 'Manrope', sans-serif; box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.14); }
+.ach-m { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: ${T.ink3}; color: #fff; }
+.ach-i.is-self { box-shadow: inset 0 0 0 1.5px ${T.success}; }
+.ach-i.is-self .ach-m { background: ${T.success}; }
+.tr-ach { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; width: 100%; max-width: 520px; }
+.tr-ach .ach-i { min-width: 0; font-size: 12px; line-height: 1.25; padding: 5px 8px 5px 5px; }
+.tr-ach-legend { display: flex; gap: 14px; justify-content: center; color: ${T.ink2}; font: 600 12px/1.4 'Manrope', sans-serif; }
+.tr-ach-legend > span { display: inline-flex; align-items: center; gap: 5px; }
+.tr-ach-legend .ach-m { width: 16px; height: 16px; }
+.ach-m.is-self { background: ${T.success}; }
+.bye-next.next-card { width: 100%; max-width: 420px; align-self: center; background: ${T.paper}; color: ${T.ink};
+  box-shadow: 0 2px 0 rgba(${T.shadowBase},0.05), 0 12px 26px -16px rgba(${T.shadowBase},0.5), inset 0 0 0 1.5px ${T.uiSoft}; }
+.next-card .bye-next-ic { background: ${T.uiSoft}; color: ${T.uiDk}; border: none; }
+.next-card .bye-next-t span { color: ${T.ink2}; }
+.next-card .bye-next-t b { color: ${T.ink}; }
+.next-tags { margin-left: auto; padding-left: 8px; color: ${T.uiDk}; font-size: 14px; font-weight: 700; white-space: nowrap; }
+
+/* Телефон: компактнее браузер и подсказки. */
+@media (max-width: 719px) {
+  .tr-work .mb-page { max-height: 24dvh; overflow-y: auto; }
+  .tr-work-own .mb-page { max-height: 20dvh; }
+  .tr-opt { min-height: 44px; padding: 7px 12px; font-size: 14.5px; }
+}
+@media (max-height: 700px) {
+  .tr-fig-sm { --fh: min(16dvh, 130px); }
+  .tr-work .mb-page { max-height: 18dvh; }
+  .tr-work .mb-top { height: 28px; }
+  .tr-work-own .mb-page { max-height: 14dvh; }
+  .tr-fig-fin { --fh: min(19dvh, 200px); }
+  .tr-mb-fin .mb-page { max-height: 17dvh; }
+  .tr-fin { gap: 8px; }
+}
+/* Открытая клавиатура: остаются задание и строка ввода. */
+.is-kbd .tr-work .work-b, .is-kbd .tr-chip-row, .is-kbd .goal { display: none; }
+.is-kbd .stage .ask.tr-ask { display: block; font-size: 14px; line-height: 1.3; }
+.is-kbd .tr-src .src-line:not(.tr-typing):not(.is-hl) { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fig-robot *, .fig-robot.rb-js.rb-html .rb-body { animation: none !important; transition: none !important; }
+  .tr-src .src-line.tr-in .tk-tag, .tr-chip, .tr-src .src-line.tr-slot, .tr-shake { animation: none; }
+}
