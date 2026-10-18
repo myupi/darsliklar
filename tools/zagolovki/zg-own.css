@@ -1,0 +1,162 @@
+/* ══ МОНИТОР (навык anatomy) ══════════════════════════════════════════
+   Корпус — SVG фигуры; экран — мини-браузер, развёрнутый матрицей по стеклу.
+   --zg-mh — сколько монитор может занять по высоте; ширина — по пропорции. */
+.zg-mon { position: relative; width: min(100%, calc(var(--zg-mh, 40dvh) * var(--ar, 1.24))); aspect-ratio: var(--ar, 1.24);
+  margin: 0 auto; flex: 0 0 auto; -webkit-tap-highlight-color: transparent; background: transparent; }
+.zg-mon-svg, .zg-mon-svg > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.zg-mon-svg > svg { overflow: hidden; }   /* кадр без подставки обрезает рисунок по viewBox */
+.zg-mon .mon-glass { fill: #10141b; transition: fill .6s; }
+.zg-mon.is-on .mon-glass { fill: #fff; }
+.zg-mon .mon-glare { fill: #fff; opacity: .07; }
+.zg-mon.is-on .mon-glare { opacity: 0; }
+.zg-mon .mon-bezel { fill: #12161c; }
+.zg-mon .mon-hole, .zg-mon .mon-slot { fill: #0e1116; opacity: .7; }
+.zg-mon .mon-cam { fill: #07090c; }
+.zg-mon .mon-led { fill: #5d6573; transition: fill .4s; }
+.zg-mon.is-on .mon-led { fill: #36d17a; filter: drop-shadow(0 0 2.5px #36d17a); }
+.zg-mon .iso-halo { opacity: .5; }
+.zg-mon.is-tap { cursor: pointer; }
+.zg-mon.is-tap:focus-visible { outline: 3px solid ${T.ui}; outline-offset: 4px; border-radius: 14px; }
+.zg-mon.is-led .zg-mon-svg { animation: zgMonLed 1.3s ease-in-out infinite; }
+@keyframes zgMonLed { 0%, 100% { filter: drop-shadow(0 0 0 rgba(255,79,40,0)); } 50% { filter: drop-shadow(0 0 7px rgba(255,79,40,.85)); } }
+
+/* Экран: слой в плоскости стекла. */
+.zg-scr { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; }
+.zg-scr-in { position: relative; width: 100%; height: 100%; opacity: 0; transition: opacity .35s ease; transform-origin: 50% 50%; }
+.zg-mon.is-on .zg-scr-in { opacity: 1; }
+.zg-mon:not(.is-on) .zg-scr { pointer-events: none; }
+.zg-mon.is-boot .zg-scr-in { animation: zgBoot 1.15s cubic-bezier(.2,.8,.3,1) both; }
+@keyframes zgBoot {
+  0% { opacity: 0; transform: scaleY(.015); filter: brightness(4); }
+  28% { opacity: 1; transform: scaleY(.015); filter: brightness(4); }
+  55% { transform: scaleY(1); filter: brightness(1.7); }
+  100% { transform: none; filter: none; }
+}
+.zg-mb.mb { height: 100%; display: flex; flex-direction: column; border-radius: 0; box-shadow: none; }
+.zg-mb .mb-top { height: 24px; flex: 0 0 auto; gap: 6px; padding: 0 8px; }
+.zg-mb .mb-tab { font-size: 11.5px; height: 80%; padding: 0 8px; }
+.zg-mb .mb-win i { width: 20px; }
+.zg-mb .mb-page { flex: 1 1 auto; min-height: 0 !important; padding: 6px 12px 8px; overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: rgba(0,0,0,.22) transparent; }
+.zg-mb .mb-page::-webkit-scrollbar { width: 4px; }
+.zg-mb .mb-page::-webkit-scrollbar-thumb { background: rgba(0,0,0,.22); border-radius: 4px; }
+.zg-mb .mb-doc { font-size: 14px; line-height: 1.25; }
+.zg-badge { position: absolute; right: 8px; bottom: 8px; z-index: 2; padding: 3px 10px; border-radius: 99px;
+  background: rgba(14,14,16,.8); color: #fff; font: 700 11px/1.4 'Manrope', sans-serif; pointer-events: none;
+  animation: zgBadge 1.8s ease both; }
+@keyframes zgBadge { 0% { opacity: 0; transform: translateY(4px); } 12%, 75% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+
+/* Раскладки: крючок и финал — монитор целиком; рабочие экраны — монитор + код. */
+.zg-hall { display: flex; justify-content: center; width: 100%; }
+.zg-mon-hero { --zg-mh: min(46dvh, 440px); }
+@media (min-width: 720px) { .zg-mon-hero { --zg-mh: min(40dvh, 420px); } }
+.zg-acts { display: flex; justify-content: center; min-height: 52px; }
+.zg-act { position: relative; gap: 8px; }
+.zg-work { --zg-mh: min(29dvh, 300px); }
+.zg-work .work-b { display: flex; justify-content: center; min-width: 0; }
+.zg-work-sm { --zg-mh: min(25dvh, 260px); }
+@media (min-width: 720px) {
+  .zg-work { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); --zg-mh: min(46dvh, 440px); }
+  .zg-work-sm { --zg-mh: min(40dvh, 400px); }
+}
+.zg-code { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.zg-src .src-line.zg-gap .src-code::after { content: '↵'; color: ${T.ink3}; opacity: .55; margin-left: 2px; }
+.zg-src .src-line.zg-in .tk-tag { animation: zgTagIn .55s cubic-bezier(.34,1.45,.5,1) both; }
+@keyframes zgTagIn { 0% { opacity: 0; transform: scale(.4); } 100% { opacity: 1; transform: none; } }
+.zg-src .src-line.zg-loose .tk-tx { text-decoration: underline dashed color-mix(in srgb, ${TAGC.p} 70%, transparent); text-underline-offset: 3px; }
+.zg-src .src-line.zg-fixed { background: color-mix(in srgb, ${T.success} 10%, transparent); }
+.zg-src .src-line.zg-typing { background: color-mix(in srgb, ${T.ui} 6%, transparent); }
+.zg-src .tk-input { font-size: 16px; }
+.zg-src .tk-input.zg-in-tag { min-width: 6ch; }
+.zg-code .keys { gap: 5px; }
+
+/* Клавиша Enter (эксперимент): в правом нижнем углу кода — строки короткие. */
+.zg-code-enter { position: relative; }
+.zg-code-enter .zg-enter { position: absolute; right: 10px; bottom: 10px; }
+.zg-src .src-line.zg-gap { min-height: .9em; }
+.zg-enter { position: relative; align-self: center; display: inline-flex; align-items: center; gap: 12px; min-height: 50px; padding: 8px 26px;
+  border-radius: 12px; border: none; background: #fff; color: ${T.ink}; cursor: pointer; font: 800 17px/1 'Manrope', sans-serif;
+  box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.18), 0 4px 0 rgba(${T.shadowBase},0.22); transition: transform .08s, box-shadow .08s; }
+.zg-enter:active:not(:disabled) { transform: translateY(3px); box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.18), 0 1px 0 rgba(${T.shadowBase},0.22); }
+.zg-enter:disabled { opacity: .55; cursor: default; }
+.zg-enter-a { font-size: 22px; color: ${T.uiDk}; }
+
+/* Слот уровня заголовка. */
+.zg-slot { position: relative; display: inline-flex; align-items: center; padding: 0 6px; margin-right: 4px; border-radius: 6px;
+  border: 1.5px dashed ${TAGC.h}; color: ${TAGC.h}; font-weight: 800; line-height: 1.35; }
+.zg-slot.is-on { background: color-mix(in srgb, ${TAGC.h} 12%, #fff); }
+
+/* План турнира: рядом с кодом. */
+.zg-s6 { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: start; }
+.zg-src-nonum { --gut: .95em; --ind: .9em; }
+.zg-plan { display: flex; flex-direction: column; gap: 1px; padding: 7px 12px 8px; border-radius: 14px; background: ${T.paper};
+  box-shadow: 0 2px 0 rgba(${T.shadowBase},0.05), inset 0 0 0 1.5px rgba(${T.shadowBase},0.08); }
+.zg-plan-l { font: 800 10.5px/1.4 'Manrope', sans-serif; letter-spacing: .08em; text-transform: uppercase; color: ${T.ink2}; }
+.zg-plan-r { position: relative; display: flex; align-items: center; gap: 8px; padding-left: calc(var(--d) * 20px);
+  font: 700 14px/1.4 'Manrope', sans-serif; color: ${T.ink}; }
+.zg-plan-r.d1::before, .zg-plan-r.d2::before { content: '└'; position: absolute; left: calc(var(--d) * 20px - 14px);
+  color: ${T.ink3}; font-weight: 400; }
+.zg-plan-r.is-cur .zg-plan-t { color: ${TAGC.h}; text-decoration: underline 2px; text-underline-offset: 3px; }
+.zg-plan-h { padding: 0 6px; border-radius: 6px; background: color-mix(in srgb, ${TAGC.h} 12%, #fff); color: ${TAGC.h}; font-size: 12px; font-weight: 800; }
+
+/* Кнопки b / i. */
+.zg-marks { display: flex; justify-content: center; gap: 8px; }
+.zg-mark { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 6px 16px; border-radius: 12px;
+  border: none; background: #fff; color: ${T.ink}; cursor: pointer; font: 600 15px/1 'Manrope', sans-serif;
+  box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.16); }
+.zg-mark .tk-tag { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 14px; }
+.zg-mark.is-ready { box-shadow: inset 0 0 0 2px ${TAGC.em}; }
+.zg-mark:disabled { opacity: .55; cursor: default; }
+
+/* Исправления (проверка). */
+@media (max-width: 719px) {
+  .zg-insp .insp-h { display: none; }
+  .zg-insp .insp-r { font-size: 12.5px; padding: 3px 9px 3px 4px; }
+}
+.zg-fixes { display: flex; flex-wrap: nowrap; justify-content: center; gap: 8px; animation: zgUp .3s ease both; }
+.zg-fix { flex: 0 1 auto; min-height: 46px; padding: 8px 14px; border-radius: 12px; border: none; background: #fff; color: ${T.ink}; cursor: pointer;
+  font: 700 15px/1.2 'Manrope', sans-serif; box-shadow: inset 0 0 0 1.5px ${T.ui}, 0 3px 0 ${T.uiSoft}; }
+.zg-fix:disabled { opacity: .55; cursor: default; }
+@keyframes zgUp { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: none; } }
+
+/* Ввод. */
+.zg-shake { animation: shake .4s; }
+.zg-src .tk-input.zg-in-line { max-width: 100%; }
+.zg-go { display: flex; justify-content: center; }
+.zg-go .key-go { min-height: 44px; gap: 6px; }
+.zg-edit { display: inline-grid; place-items: center; width: 28px; height: 28px; margin-left: 6px; vertical-align: middle; border-radius: 8px;
+  border: none; background: ${T.uiSoft}; color: ${T.uiDk}; cursor: pointer; }
+
+/* Финал. */
+.zg-fin { display: grid; gap: 12px; width: 100%; }
+.zg-fin-side { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+@media (min-width: 900px) { .zg-fin { grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); align-items: center; } }
+.zg-fin .zg-mon-hero { --zg-mh: min(42dvh, 430px); }
+.ach { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.ach-i { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px 5px 6px; border-radius: 99px; background: #fff; color: ${T.ink};
+  font: 700 13px 'Manrope', sans-serif; box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.14); }
+.ach-m { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: ${T.ink3}; color: #fff; }
+.ach-i.is-self { box-shadow: inset 0 0 0 1.5px ${T.success}; }
+.ach-i.is-self .ach-m { background: ${T.success}; }
+.bye-next.next-card { width: 100%; max-width: 420px; align-self: center; background: ${T.paper}; color: ${T.ink};
+  box-shadow: 0 2px 0 rgba(${T.shadowBase},0.05), 0 12px 26px -16px rgba(${T.shadowBase},0.5), inset 0 0 0 1.5px ${T.uiSoft}; }
+.next-card .bye-next-ic { background: ${T.uiSoft}; color: ${T.uiDk}; border: none; }
+.next-card .bye-next-t span { color: ${T.ink2}; }
+.next-card .bye-next-t b { color: ${T.ink}; }
+.next-tags { margin-left: auto; padding-left: 8px; color: ${T.uiDk}; font-size: 14px; font-weight: 700; white-space: nowrap; }
+
+/* Низкие экраны: монитор уступает место коду. */
+@media (max-height: 700px) {
+  .zg-work { --zg-mh: min(25dvh, 240px); }
+  .zg-work-sm { --zg-mh: min(21dvh, 210px); }
+  .zg-mon-hero { --zg-mh: min(40dvh, 360px); }
+}
+/* Открытая клавиатура: остаются задание, строка ввода и клавиши. */
+.is-kbd .zg-work .work-b, .is-kbd .zg-plan, .is-kbd .zg-conds, .is-kbd .goal { display: none; }
+.is-kbd .stage .ask.zg-ask { display: block; font-size: 14px; line-height: 1.3; }
+.is-kbd .zg-src .src-line:not(.zg-typing):not(.is-hl):not(.zg-keep) { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .zg-mon.is-boot .zg-scr-in, .zg-src .src-line.zg-in .tk-tag, .zg-badge, .zg-fixes, .zg-mon.is-led .zg-mon-svg { animation: none; }
+  .zg-scr-in, .zg-mon .mon-glass { transition: none; }
+}

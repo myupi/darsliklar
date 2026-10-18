@@ -26,5 +26,7 @@ export default {
       topics: ['html', 'head', 'title', 'body', 'HTML · CSS · JavaScript'] },
     { n: 8, slug: 'robot-pixel', title: 'Из чего сделан сайт: робот Пиксель (проба)',
       topics: ['HTML · CSS · JavaScript', 'веб-страница и её код'] },
+    { n: 9, slug: 'zagolovki-monitor', title: 'Заголовки и текст — урок 2 (проба: монитор турнира)',
+      topics: ['h1–h6', 'p', 'b', 'i', 'anatomy: монитор'] },
   ],
 };
