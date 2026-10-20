@@ -1,8 +1,10 @@
-# Урок 1 · «Структура HTML-документа: робот Pixel» · курс HTML — тестовая версия
+# Урок 1 · «Структура HTML-документа: робот Pixel» · курс HTML — эталон курса
 
-Режим: тестовый (заказчик, 17.10.2026): переделать урок 1 по отзывам учеников, не трогая `lessons/html/01-struktura-dokumenta.jsx`. Робот показан навыком anatomy. Где отзывы и навык `/novyy-urok` расходятся, верх берут отзывы.
+**С 19.10.2026 — урок 1 курса и главный эталон** (заказчик): файл `lessons/html/01-struktura-dokumenta.jsx`, полное описание — `docs/urok-01-opisanie.md`. Ниже — исходный сценарий тестовой версии.
 
-Файл `lessons/test/07-struktura-robot.jsx`, исходник `tools/robot/`:
+Режим (17.10.2026): тестовый — переделать прежний урок 1 по отзывам учеников. Робот показан навыком anatomy. Где отзывы и навык `/novyy-urok` расходятся, верх берут отзывы.
+
+Файл `lessons/html/01-struktura-dokumenta.jsx` (до 19.10.2026 — `lessons/test/07-struktura-robot.jsx`), исходник `tools/robot/`:
 - `robot.src.jsx`;
 - `rb-ui.jsx`;
 - `rb-own.css`;

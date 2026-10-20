@@ -110,6 +110,8 @@ swapVoiceTop();
 swapCelebrate();
 swapKodiHead();
 swapEmotion();
+swapUzPace();
+swapAnswerSafety();
 
 swap("  ui: '#1E88E5',", "  // КУРС HTML: интерфейс — #FF4F28 (заказчик, 12.10.2026), а не голубой.\n  ui: '#FF4F28',");
 swap("  uiSoft: '#E3F2FD',", "  uiSoft: '#FFE8E1',");
@@ -168,6 +170,9 @@ writeFileSync(root + 'canon/html/canon-v1.jsx', text);
 console.log('canon/html/canon-v1.jsx —', out.length, 'строк');
 
 function swapTts() {
+  // Голос героя — мужской (заказчик, 19.10.2026): и запрос к сервису, и запасной
+  // голос браузера берут пол отсюда.
+  swap(`const VOICE = { bot: 'f' };`, `const VOICE = { bot: 'm' };   // КУРС HTML: мужской голос (заказчик, 19.10.2026)`);
   swap(`  uz: "[O'zbekcha talaffuz] ",`, `  uz: "[O'zbekcha tallaffuz] ",   // КУРС HTML: так, как требует сервис озвучки`);
   // АДРЕС ЗАПРОСА — КАК У ЭТАЛОНА МАТЕМАТИКИ (Dars01), который озвучивается в LMS.
   // URLSearchParams кодировал пробелы знаком «+»: сервис, раскодирующий текст
@@ -187,7 +192,9 @@ const setLmsVoice = (g) => { LMS_VOICE = g === 'm' || g === 'f' ? g : null; };
 const ttsEnc = (s) => encodeURIComponent(String(s)).replace(/%5B/g, '[').replace(/%5D/g, ']');
 const buildTtsUrl = (base, text, gender, lang) => {
   if (!base) return '';
-  const g = (LMS_VOICE || gender) === 'm' ? 'm' : 'f';
+  // Мужской голос во всех уроках курса (заказчик, 19.10.2026: «голос пацана»);
+  // voiceGender от LMS голос курса не меняет.
+  const g = 'm';
   let url = base.replace(/\\/+$/, '') + '/api/tts?text=' + ttsEnc(String(text).slice(0, 1000)) + '&g=' + g;
   const meta = typeof META !== 'undefined' && META ? META : null;
   if (meta && meta.lessonId) {
@@ -745,10 +752,73 @@ const emoTag = (text, lang) => {
   if (/!$/.test(s)) return '[upbeat] ';
   return '[friendly] ';
 };
+// КУРС HTML: УЗБЕКСКИЙ ГОЛОС (заказчик, 19.10.2026: «с озвучкой проблемы»). Как в
+// уроках с хорошей узбекской озвучкой (11-класс, 1-класс): обычный апостроф в oʻ, gʻ
+// и tutuq belgisi — ‘ ’ ʻ ʼ уходят в сервис как '. Теги эмоций остаются (заказчик).
+// Текст на экране не меняется; прогрев и реплика идут одной строкой.
+const ttsApos = (s, lang) => (lang === 'uz' ? s.replace(/[‘’ʻʼ]/g, "'") : s);
 const markLang = (text, lang) => {
-  const s = String(text || '');
+  const s = ttsApos(String(text || ''), lang);
   if (!s) return s;
-  return (LANG_MARK[lang] || LANG_MARK.ru) + (TTS_EMOTION ? emoTag(s, lang) : '') + s;
+  return (LANG_MARK[lang] || LANG_MARK.ru) + (TTS_EMOTION ? emoTag(String(text || ''), lang) : '') + s;
 };`);
 }
 
+// УЗБЕКСКИЙ ТЕМП (заказчик, 19.10.2026: «слишком быстро говорит, как будто без
+// пауз»). Только для узбекского, текст на экране и эмоции не меняются:
+//   А. тире в реплике уходит в сервис точкой, а не запятой — голос делает
+//      остановку («html — butun sahifa» звучит как две фразы);
+//   Б. после реплики пауза 800 мс вместо 400.
+// Скорость самого голоса задаёт сервер платформы — её из урока не поставить.
+function swapUzPace() {
+  swap(`const sanitizeForTts = (text) =>
+  String(text || '')
+    .replace(/\\*\\*/g, '')
+    .replace(/[«»"“”]/g, '')
+    .replace(/\\s*→\\s*/g, ', ')
+    .replace(/\\s*—\\s*/g, ', ')`, `const sanitizeForTts = (text, lang) =>
+  String(text || '')
+    .replace(/\\*\\*/g, '')
+    .replace(/[«»"“”]/g, '')
+    .replace(/\\s*→\\s*/g, ', ')
+    // КУРС HTML: в узбекском тире — остановка (точка), иначе голос не делает паузы.
+    .replace(/\\s*—\\s*/g, lang === 'uz' ? '. ' : ', ')`);
+  swap(`    const clean = sanitizeForTts(text);`, `    const clean = sanitizeForTts(text, lang);`);
+  swap(`      const clean = sanitizeForTts(t);`, `      const clean = sanitizeForTts(t, lang);`);
+  swap(`      await sleep(400);`, `      // КУРС HTML: узбекскому — пауза после реплики длиннее (заказчик, 19.10.2026).
+      await sleep(lang === 'uz' ? 800 : 400);`);
+}
+
+// ПРЕДОХРАНИТЕЛЬ ОТВЕТОВ СЧИТАЕТ ТИШИНУ (заказчик, 19.10.2026) — см. комментарий в функции.
+function swapAnswerSafety() {
+  swap(`function useCanAnswer(ready) {
+  const audio = useAudio();
+  const busy = ready !== undefined ? !ready : !!(audio && audio.playing);
+  const [safety, setSafety] = useState(false);
+  useEffect(() => {
+    if (!busy) { setSafety(false); return undefined; }
+    const id = setTimeout(() => setSafety(true), ANSWER_SAFETY_MS);
+    return () => clearTimeout(id);
+  }, [busy]);
+  return !busy || safety;
+}`, `function useCanAnswer(ready) {
+  const audio = useAudio();
+  const busy = ready !== undefined ? !ready : !!(audio && audio.playing);
+  // КУРС HTML (заказчик, 19.10.2026: «на узбекском кнопки включаются до того,
+  // как Коди заговорит»). Предохранитель считает только ТИШИНУ: пока голос
+  // звучит или урок на паузе, отсчёт стоит, каждая новая реплика начинает его
+  // заново. Раньше 9 с шли на всю очередь реплик сразу, и длинные узбекские
+  // фразы (плюс время, пока сервис их озвучивает) открывали кнопки посреди
+  // рассказа. Если озвучка умерла молча, через 9 с тишины кнопки откроются.
+  const playing = !!(audio && audio.playing);
+  const paused = !!(audio && audio.paused);
+  const [safety, setSafety] = useState(false);
+  useEffect(() => {
+    if (!busy) { setSafety(false); return undefined; }
+    if (playing || paused) { setSafety(false); return undefined; }
+    const id = setTimeout(() => setSafety(true), ANSWER_SAFETY_MS);
+    return () => clearTimeout(id);
+  }, [busy, playing, paused]);
+  return !busy || safety;
+}`);
+}

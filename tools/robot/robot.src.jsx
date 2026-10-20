@@ -1,5 +1,5 @@
 // =============================================================================
-// == ТЕСТОВЫЙ УРОК · «Структура HTML-документа — робот Pixel» (проба урока 1) ===
+// == УРОК 1 КУРСА HTML · «Структура HTML-документа» (робот Пиксель) — эталон курса =
 //
 // Переделка урока 1 курса HTML по отзывам учеников (17.10.2026). Отзывы стоят
 // выше навыка /novyy-urok:
@@ -34,12 +34,12 @@
 // =============================================================================
 
 const META = {
-  lessonId: 'test-html-struktura-robot',
+  lessonId: 'html-01-struktura-dokumenta',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: 'HTML hujjat tuzilishi: robot Piksel',
-    ru: 'Структура HTML-документа: робот Пиксель',
-    en: 'HTML document structure: robot Pixel'
+    uz: '1-dars. HTML hujjat tuzilishi',
+    ru: 'Урок 1. Структура HTML-документа',
+    en: 'Lesson 1. HTML document structure'
   }
 };
 

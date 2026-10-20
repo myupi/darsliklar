@@ -1,5 +1,6 @@
-// Сборка тестового урока «Структура HTML-документа — робот Pixel».
-//   node tools/robot/robot.build.mjs → lessons/test/07-struktura-robot.jsx
+// Сборка урока 1 курса HTML «Структура HTML-документа» (робот Pixel) — эталон курса
+// с 19.10.2026 (до этого — тестовый урок 07).
+//   node tools/robot/robot.build.mjs → lessons/html/01-struktura-dokumenta.jsx
 // Файл урока = шапка + канон курса HTML (дословно, не правится) + пометка
 // «УРОК» + robot.src.jsx, куда встают: помощники урока 1 (../anatomy/zh-helpers.jsx),
 // части интерфейса (rb-ui.jsx), две фигуры — шкаф документа
@@ -76,9 +77,10 @@ put('/*@FIG_CSS@*/', read('../anatomy/pv-base.css').trim());
 put('/*@OWN_CSS@*/', read('../anatomy/pv-own.css').trim() + '\n' + read('./rb-own.css').trim() + '\n' + paintCss + '\n' + armCss());
 
 const head = `// =============================================================================
-// ТЕСТОВЫЕ УРОКИ · «Структура HTML-документа — робот Pixel» (проба урока 1)
-// Переделка урока 1 курса HTML по отзывам учеников: зачем HTML, робот Pixel из
-// трёх слоёв (навык anatomy), каждый тег объясняется там, где появляется.
+// КУРС «HTML» · Модуль 1 «Основы разметки» · Урок 1 — «Структура HTML-документа»
+// Эталон курса (заказчик, 19.10.2026). Переделка прежнего урока 1 по отзывам
+// учеников: зачем HTML, робот Pixel из трёх слоёв (навык anatomy), каждый тег
+// объясняется там, где появляется. Прежний вариант — lessons/test/09-struktura-dokumenta-kodi.jsx.
 // Один самодостаточный JSX: канон курса HTML (до пометки «УРОК») + урок.
 //
 // Пропсы: { studentName, lang, ttsApiBase, voiceGender, onFinished } — весь список.
@@ -87,6 +89,6 @@ const head = `// ===============================================================
 // =============================================================================
 `;
 const out = head + '\n' + canon + '\n' + '// ==============================  У Р О К  =====================================\n' + src;
-const dest = here('../../lessons/test/07-struktura-robot.jsx');
+const dest = here('../../lessons/html/01-struktura-dokumenta.jsx');
 writeFileSync(dest, out);
 console.log('wrote', dest, Math.round(out.length / 1024) + ' KB');
