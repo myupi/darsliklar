@@ -1,0 +1,458 @@
+// =============================================================================
+// БУМАЖНЫЙ НАБОР. Вырезка (Cut): внешний слой — движение и тень, внутренний —
+// бумага с рваным краем (clip-path) и фактурой. Рваный край считается один раз
+// по зерну (seed): одна и та же вырезка всегда одинаковая.
+// =============================================================================
+const KZ = { kraft: '#D8C4A1', paper: '#EFE7D6', cream: '#FBF6EA', coral: '#E0643F', mustard: '#F0B13F', teal: '#2A8C7E', ink: '#1F2A44' };
+const kzRnd = (seed) => { let s = (Math.abs(seed) * 7919 + 104729) % 2147483647 || 1; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; };
+const TORN = {};
+// Рваный прямоугольник: зубцы по четырём сторонам; amp — глубина зубца в % по
+// короткой стороне, asp — ширина/высота вырезки (чтобы зубцы были одинаковыми).
+function torn(seed, n, amp, asp) {
+  const k = seed + ':' + n + ':' + amp + ':' + asp;
+  if (TORN[k]) return TORN[k];
+  const r = kzRnd(seed);
+  const a = asp || 1;
+  const ay = a >= 1 ? amp : amp * a, ax = a >= 1 ? amp / a : amp;
+  const f = (v) => v.toFixed(2) + '%';
+  const nx = Math.max(4, Math.round(n * Math.max(1, a))), ny = Math.max(4, Math.round(n / Math.min(1, a)));
+  const p = [];
+  for (let i = 0; i < nx; i += 1) p.push(f((i / nx) * 100) + ' ' + f(r() * ay));
+  for (let i = 0; i < ny; i += 1) p.push(f(100 - r() * ax) + ' ' + f((i / ny) * 100));
+  for (let i = 0; i < nx; i += 1) p.push(f(100 - (i / nx) * 100) + ' ' + f(100 - r() * ay));
+  for (let i = 0; i < ny; i += 1) p.push(f(r() * ax) + ' ' + f(100 - (i / ny) * 100));
+  TORN[k] = 'polygon(' + p.join(', ') + ')';
+  return TORN[k];
+}
+// Рваный круг (голова, круг в углу листа).
+function tornRound(seed, n, amp) {
+  const k = 'o' + seed + ':' + n + ':' + amp;
+  if (TORN[k]) return TORN[k];
+  const r = kzRnd(seed);
+  const p = [];
+  for (let i = 0; i < n; i += 1) {
+    const t = (i / n) * Math.PI * 2;
+    const rad = 50 - r() * amp;
+    p.push((50 + Math.cos(t) * rad).toFixed(2) + '% ' + (50 + Math.sin(t) * rad).toFixed(2) + '%');
+  }
+  TORN[k] = 'polygon(' + p.join(', ') + ')';
+  return TORN[k];
+}
+const TRI = 'polygon(4% 2%, 30% 12%, 62% 22%, 98% 38%, 70% 58%, 44% 76%, 14% 98%, 9% 62%, 6% 30%)';
+
+function Cut({ c, seed = 1, n = 10, amp = 3, asp = 1, round, clip, x, y, w, h, r = 0, anim, dl, cls, hl, hlc, boil, onClick, label, children, style, dp }) {
+  const st = Object.assign({}, x !== undefined ? { left: x + '%', top: y + '%', width: w + '%', height: h + '%' } : {},
+    { '--r': r + 'deg', '--dl': (dl || 0) + 's', '--bd': ((seed % 7) * 0.17).toFixed(2) + 's' }, hlc ? { '--hl': hlc } : {}, dp ? { '--dp': dp } : {}, style || {});
+  const cp = clip || (round ? tornRound(seed, n * 3, amp) : torn(seed, n, amp, asp));
+  const tap = !!onClick;
+  return (
+    <span className={'kz-cut' + (anim ? ' kz-a-' + anim : '') + (hl ? ' is-hl' : '') + (boil ? ' kz-boil' : '') + (tap ? ' is-tap' : '') + (cls ? ' ' + cls : '')}
+      style={st} onClick={onClick} role={tap ? 'button' : undefined} tabIndex={tap ? 0 : undefined} aria-label={label}
+      onKeyDown={tap ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(e); } } : undefined}>
+      <span className="kz-cut-in" style={{ background: c, clipPath: cp, WebkitClipPath: cp }}>{children}</span>
+    </span>
+  );
+}
+
+// Лист на крафтовом столе + вырезки по углам (скотч, треугольник, круг) —
+// они сдвигаются за пальцем на разную глубину (параллакс).
+function Sheet({ children, cls }) {
+  const cp = torn(5, 30, 1.1, 1.6);
+  return (
+    <div className={'kz-sheet' + (cls ? ' ' + cls : '')}>
+      <div className="kz-sheet-wrap"><div className="kz-sheet-in" style={{ clipPath: cp, WebkitClipPath: cp }} /></div>
+      <Cut c={KZ.mustard} seed={11} n={8} amp={10} asp={5} r={-32} cls="kz-deco kz-deco-tape" dp={9} />
+      <Cut c={KZ.coral} clip={TRI} r={8} cls="kz-deco kz-deco-tri" dp={12} />
+      <Cut c={KZ.teal} round seed={13} n={8} amp={5} cls="kz-deco kz-deco-dot" dp={7} />
+      <div className="kz-sheet-body">{children}</div>
+    </div>
+  );
+}
+
+// Строка задания — бумажная полоска; ступень подсказки встаёт на её место.
+function KzAsk({ text, hint, n }) {
+  const pick = usePick();
+  return (
+    <div className="kz-ask-wrap">
+      <p className={'kz-ask' + (hint ? ' is-hint' : '')} aria-live="polite">
+        {n ? <span className="kz-ask-n">{n}</span> : null}{pick(hint || text)}
+      </p>
+    </div>
+  );
+}
+
+// Тег: коралловые уголки и черта, имя чернилами.
+function TagK({ t, close }) {
+  return <span className="kz-tag" translate="no"><span className="kz-tk-b">{'<'}</span>{close ? <span className="kz-tk-b">/</span> : null}<span className="kz-tk-n">{t}</span><span className="kz-tk-b">{'>'}</span></span>;
+}
+const tagText = (t, close) => '<' + (close ? '/' : '') + t + '>';
+
+// Бирка на скотче.
+function KzLabel({ t, close, raw, cls, style, onClick, led, on, hl, flow, anim, dl, disabled }) {
+  const inner = (
+    <>
+      <span className="kz-label-tape" aria-hidden="true" />
+      <span className="kz-label-paper">{raw ? <span translate="no">{raw}</span> : <TagK t={t} close={close} />}</span>
+      <Led on={!!led} />
+    </>
+  );
+  const c = 'kz-label' + (flow ? ' kz-flow' : '') + (onClick ? ' is-tap' : '') + (led ? ' is-led' : '') + (on ? ' is-on' : '') + (hl ? ' is-hl' : '') + (anim ? ' kz-a-' + anim : '') + (cls ? ' ' + cls : '');
+  const st = Object.assign({ '--dl': (dl || 0) + 's' }, style || {});
+  if (onClick) return <button type="button" className={c} style={Object.assign({ border: 'none', background: 'none', padding: 0 }, st)} onClick={onClick} disabled={disabled}>{inner}</button>;
+  return <span className={c} style={st}>{inner}</span>;
+}
+
+// Код — бумажные полоски. Строка: { k, d, parts: [узлы], cls, onTap, led, disabled }.
+function KzCode({ lines, cls }) {
+  return (
+    <div className={'kz-code' + (cls ? ' ' + cls : '')} translate="no">
+      {lines.map((ln, i) => {
+        const st = { '--d': ln.d || 0, '--r': ((i % 2 ? 1 : -1) * (0.25 + (i % 3) * 0.12)).toFixed(2) + 'deg' };
+        const c = 'kz-line' + (ln.cls ? ' ' + ln.cls : '');
+        if (ln.onTap) {
+          return (
+            <button key={ln.k || i} type="button" className={c + ' kz-tap'} style={st} disabled={!!ln.disabled} onClick={ln.onTap} data-place={ln.place}>
+              {React.Children.toArray(ln.parts)}<Led on={!!ln.led} />
+            </button>
+          );
+        }
+        return <div key={ln.k || i} className={c} style={st} data-place={ln.place}>{React.Children.toArray(ln.parts)}<Led on={!!ln.led} /></div>;
+      })}
+    </div>
+  );
+}
+const T_ = (t, close) => <TagK t={t} close={close} />;
+const W_ = (s) => <span className="kz-txt">{s}</span>;
+
+// БУМАЖНЫЙ ЧЕЛОВЕЧЕК. Части по порядку сборки: тело, голова, руки, ноги, лицо.
+// build — сколько частей уже на листе (каждая влетает своим движением).
+// out — части разлетаются (превращение в страницу).
+const MAN_PARTS = ['body', 'head', 'armL', 'armR', 'legL', 'legR', 'face'];
+function PaperMan({ build = 7, out, headOpen, hl, onHead, onBody, onTitle, titleText, titleGone, anim = true, wave }) {
+  const has = (k) => MAN_PARTS.indexOf(k) < build;
+  const A = (a, d) => (out ? { anim: 'out', dl: d * 0.07 } : anim ? { anim: a, dl: d } : {});
+  return (
+    <div className="kz-man">
+      {has('legL') ? <Cut c={KZ.ink} seed={41} n={4} amp={9} asp={0.3} x={38} y={64} w={7.5} h={27} r={-2} {...A('rise', 0.1)} /> : null}
+      {has('legR') ? <Cut c={KZ.ink} seed={42} n={4} amp={9} asp={0.3} x={54.5} y={64} w={7.5} h={27} r={2} {...A('rise', 0.2)} /> : null}
+      {has('armL') ? <Cut c={KZ.ink} seed={43} n={5} amp={12} asp={5} x={4} y={37} w={26} h={5.5} r={22} cls={wave ? 'kz-wave-l' : ''} {...A('left', 0)} /> : null}
+      {has('armR') ? <Cut c={KZ.ink} seed={44} n={5} amp={12} asp={5} x={70} y={37} w={26} h={5.5} r={-22} cls={wave ? 'kz-wave-r' : ''} {...A('right', 0.08)} /> : null}
+      {has('body') ? (
+        <Cut c={KZ.teal} seed={45} n={9} amp={3} asp={1.15} x={27} y={29} w={46} h={38} r={-1} {...A('drop', 0)} boil hl={hl === 'body'} hlc={KZ.teal}
+          onClick={onBody} label="body" />
+      ) : null}
+      {titleText && !titleGone ? (
+        <Cut c={KZ.cream} seed={46} n={6} amp={8} asp={3} x={24} y={10} w={52} h={12} r={-3} cls="kz-man-title" anim="pop" onClick={onTitle} label="title">
+          <span className="kz-man-title-t">{titleText}</span>
+        </Cut>
+      ) : null}
+      {has('head') ? (
+        <Cut c={KZ.mustard} round seed={47} n={9} amp={4} x={31} y={0} w={38} h={33} {...A('drop', 0.18)} boil hl={hl === 'head'} hlc={KZ.mustard}
+          onClick={onHead} label="head" style={{ translate: headOpen ? '0 -38%' : '0 0', transition: 'translate .42s steps(5, end)' }}>
+          {has('face') ? (
+            <span className={'kz-face' + (out ? '' : anim ? ' kz-a-pop' : '')} style={{ '--dl': '0.55s' }} aria-hidden="true">
+              <i className="kz-eye" style={{ left: '33%' }} /><i className="kz-eye" style={{ left: '60%' }} /><i className="kz-smile" />
+            </span>
+          ) : null}
+        </Cut>
+      ) : null}
+    </div>
+  );
+}
+
+// Рамка html — четыре коралловые полоски; любую можно убрать (s4).
+function Frame({ sides, anim, hl }) {
+  const S = sides || { top: 1, right: 1, bottom: 1, left: 1 };
+  return (
+    <>
+      {S.top ? <Cut c={KZ.coral} seed={51} n={12} amp={22} asp={22} x={0} y={0} w={100} h={4.2} r={-0.4} anim={anim ? 'drop' : null} hl={hl} /> : null}
+      {S.right ? <Cut c={KZ.coral} seed={52} n={12} amp={22} asp={0.045} x={95.6} y={0} w={4.4} h={100} r={0.3} anim={anim ? 'right' : null} dl={0.1} hl={hl} /> : null}
+      {S.bottom ? <Cut c={KZ.coral} seed={53} n={12} amp={22} asp={22} x={0} y={95.8} w={100} h={4.2} r={0.4} anim={anim === 'all' ? 'rise' : S.bottom === 'new' ? 'left' : null} dl={0.2} hl={hl} /> : null}
+      {S.left ? <Cut c={KZ.coral} seed={54} n={12} amp={22} asp={0.045} x={0} y={0} w={4.4} h={100} r={-0.3} anim={anim ? 'left' : null} dl={0.15} hl={hl} /> : null}
+    </>
+  );
+}
+
+// Сцена «человечек в рамке»: рамка по краю, человечек внутри.
+function ManBox({ frame, frameSides, frameAnim, frameHl, labels, man, cls, children }) {
+  return (
+    <div className={'kz-stagebox' + (cls ? ' ' + cls : '')}>
+      {frame ? <Frame sides={frameSides} anim={frameAnim} hl={frameHl} /> : null}
+      <div className="kz-manbox">{man}</div>
+      {labels}
+      {children}
+    </div>
+  );
+}
+
+// БУМАЖНЫЙ БРАУЗЕР — узнаваемый Chrome в Windows, только из бумаги: тёмная
+// полоса вкладок (вкладка с значком, именем и крестиком, «+»), кнопки окна
+// «– □ ×», полоса со стрелками и адресной строкой, под ней страница.
+function PaperBrowser({ title, children, tabHl, pageHl, stamp, short, cls, tabRef, pageRef }) {
+  const t = title != null && String(title).trim() !== '' ? String(title) : '';
+  return (
+    <div className={'kz-br' + (short ? ' is-short' : '') + (pageHl ? ' is-hl-page' : '') + (cls ? ' ' + cls : '')}>
+      <Cut c={KZ.ink} seed={31} n={16} amp={1.4} asp={1.6} cls="kz-br-frame" />
+      <div className="kz-br-bar">
+        <span ref={tabRef} key={'tab' + (stamp || 0)} className={'kz-br-tab' + (tabHl ? ' is-hl' : '') + (stamp ? ' kz-a-stamp' : '')}>
+          <i className="kz-br-fav" aria-hidden="true" />
+          <span className={'kz-br-tab-t' + (t ? '' : ' is-file')}>{t || 'index.html'}</span>
+          <i className="kz-br-x" aria-hidden="true" />
+        </span>
+        <span className="kz-br-plus" aria-hidden="true" />
+        <span className="kz-br-win" aria-hidden="true"><i className="kz-w-min" /><i className="kz-w-max" /><i className="kz-w-close" /></span>
+      </div>
+      <div className="kz-br-tool">
+        <Cut c="#E6DCC6" seed={33} n={12} amp={6} asp={12} cls="kz-br-tool-bg" />
+        <span className="kz-br-arrows" aria-hidden="true"><i className="kz-ar-l" /><i className="kz-ar-r" /></span>
+        <span className="kz-br-url"><i className="kz-br-lock" aria-hidden="true" /><span>index.html</span></span>
+      </div>
+      <div className="kz-br-body">
+        <Cut c={KZ.cream} seed={32} n={16} amp={1.1} asp={1.6} cls="kz-br-paper" />
+        <div ref={pageRef} className="kz-br-page">{children}</div>
+      </div>
+    </div>
+  );
+}
+// Содержимое страницы — бумажные вырезки: строки текста, картинка, кнопка.
+function PageBits({ text, bits, anim }) {
+  const pick = usePick();
+  return (
+    <div className="kz-bits">
+      {text ? <div className={'kz-br-text' + (anim ? ' kz-a-drop' : '')}>{text}</div> : null}
+      {bits ? (
+        <div className="kz-bits-row">
+          <span className="kz-bit-lines">
+            {[0, 1, 2].map((i) => <Cut key={i} c={KZ.ink} seed={60 + i} n={6} amp={14} asp={9} cls="kz-bit-line" anim={anim ? 'left' : null} dl={0.1 * i} style={{ width: (88 - i * 18) + '%' }} />)}
+          </span>
+          <Cut c={KZ.teal} seed={64} n={6} amp={5} cls="kz-bit-pic" anim={anim ? 'pop' : null} dl={0.35}>
+            <span className="kz-pic-sun" /><span className="kz-pic-mnt" />
+          </Cut>
+          <Cut c={KZ.coral} seed={65} n={5} amp={8} asp={3} cls="kz-bit-btn" anim={anim ? 'rise' : null} dl={0.5}><span>{pick(UI.play)}</span></Cut>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// Мини-страница в разрезе (как финальный кадр ролика): рамка html, голова head
+// с title, тело body с текстом — с бирками.
+function PageCollage({ title, text, show, hl, anim }) {
+  const S = show || { doc: 1, html: 1, head: 1, title: 1, body: 1, text: 1 };
+  const pick = usePick();
+  const H = (k) => (Array.isArray(hl) ? hl.indexOf(k) >= 0 : hl === k);   // подсветка: одна часть или несколько
+  return (
+    <div className="kz-collage">
+      {S.doc ? <KzLabel raw="<!DOCTYPE html>" cls={'kz-col-doc' + (H('doc') ? ' is-on' : '')} anim={anim ? 'drop' : null} /> : null}
+      {S.html ? (
+        <Cut c={KZ.coral} seed={71} n={14} amp={1.8} asp={1.3} cls="kz-col-html" anim={anim ? 'drop' : null} hl={H('html')} hlc={KZ.coral}>
+          <span className="kz-col-in">
+            {S.head ? (
+              <Cut c={KZ.mustard} seed={72} n={12} amp={4} asp={4} cls="kz-col-head" anim={anim ? 'left' : null} hl={H('head') || H('title')} hlc={KZ.mustard}>
+                {S.title ? <span className={'kz-col-title' + (anim ? ' kz-a-pop' : '')}><TagK t="title" />{title || pick(UI.mySite)}<TagK t="title" close /></span> : null}
+              </Cut>
+            ) : null}
+            {S.body ? (
+              <Cut c={KZ.teal} seed={73} n={12} amp={3} asp={1.8} cls="kz-col-body" anim={anim ? 'rise' : null} hl={H('body')} hlc={KZ.teal}>
+                {S.text ? <span className={'kz-col-text' + (anim ? ' kz-a-pop' : '')}>{text}</span> : null}
+              </Cut>
+            ) : null}
+          </span>
+        </Cut>
+      ) : null}
+      {S.html ? <KzLabel t="html" cls="kz-col-lbl kz-col-lbl-html" /> : null}
+      {S.html && S.head ? <KzLabel t="head" cls="kz-col-lbl kz-col-lbl-head" /> : null}
+      {S.html && S.body ? <KzLabel t="body" cls="kz-col-lbl kz-col-lbl-body" /> : null}
+    </div>
+  );
+}
+
+// ЛЕСЕНКА ПОДСКАЗОК: ступень поднимает лампочка в шапке или затруднение.
+function useKzLadder(active) {
+  const [lv, setLv] = useState(0);
+  const asked = useRef(0);
+  const pulse = useHintPulse();
+  const p0 = useRef(pulse);
+  const act = useRef(active);
+  act.current = active;
+  useEffect(() => {
+    if (pulse === p0.current) return;
+    p0.current = pulse;
+    if (!act.current) return;
+    asked.current += 1;
+    setLv((l) => Math.min(3, l + 1));
+  }, [pulse]);
+  const bump = useCallback(() => setLv((l) => Math.min(3, l + 1)), []);
+  const reset = useCallback(() => { setLv(0); asked.current = 0; }, []);
+  return { lv, bump, reset, asked };
+}
+const hintAt = (lv, hints) => (lv > 0 && hints && hints[lv - 1] ? hints[lv - 1] : null);
+const navOf = (p, canGo) => <><BackBtn onPrev={p.prev} /><NextBtn disabled={!canGo} onClick={p.next} /></>;
+
+// ПЕРЕТАСКИВАНИЕ: деталь тянется за пальцем; место — [data-place] под пальцем
+// при отпускании. Короткое касание остаётся нажатием («выбери, потом место»).
+// ПЕРЕТАСКИВАНИЕ вырезок: взятая вырезка на столе становится пунктирным
+// следом (is-lifted), за пальцем летит её бумажная копия — приподнятая (тень
+// больше), чуть наклоняется по ходу движения; место под ней подсвечивается.
+// Не туда или мимо (onDrop вернул false или места нет) — копия ступенчато
+// возвращается на своё место. Нажатие без сдвига остаётся обычным касанием.
+function useKzDrag(onDrop) {
+  const drag = useRef(null);
+  const dropRef = useRef(onDrop);
+  dropRef.current = onDrop;
+  const [ghost, setGhost] = useState(null);
+  const [hover, setHover] = useState(null);
+  const backT = useRef(0);
+  const start = (e, payload, label) => {
+    if (e.button > 0) return;
+    const el = e.currentTarget;
+    drag.current = { payload, label, x: e.clientX, y: e.clientY, lx: e.clientX, rot: 0, moved: false, el, touch: e.pointerType === 'touch' };
+  };
+  useEffect(() => {
+    const placeAt1 = (x, y) => { const el = document.elementFromPoint(x, y); const z = el && el.closest && el.closest('[data-place]'); return z ? z.getAttribute('data-place') : null; };
+    // Копия летит выше пальца (на телефоне — заметно выше), и ученик целится ею:
+    // место ищется сначала под центром копии, потом под пальцем.
+    const placeAt = (x, y, touch) => placeAt1(x, y - (touch ? 40 : 14)) || placeAt1(x, y);
+    const lift = (d, on) => { if (d && d.el && d.el.classList) d.el.classList.toggle('is-lifted', on); };
+    const move = (e) => {
+      const d = drag.current;
+      if (!d) return;
+      if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 7) { d.moved = true; lift(d, true); clearTimeout(backT.current); }
+      if (!d.moved) return;
+      // Наклон по ходу движения, ступеньками по 3° — как бумажка в пальцах.
+      d.rot = Math.max(-14, Math.min(14, d.rot * 0.7 + (e.clientX - d.lx) * 0.9));
+      d.lx = e.clientX;
+      setGhost({ label: d.label, x: e.clientX, y: e.clientY, rot: Math.round(d.rot / 3) * 3, touch: d.touch });
+      setHover(placeAt(e.clientX, e.clientY, d.touch));
+    };
+    const up = (e) => {
+      const d = drag.current;
+      drag.current = null;
+      setHover(null);
+      if (!d || !d.moved) { setGhost(null); return; }
+      const where = placeAt(e.clientX, e.clientY, d.touch);
+      const res = where ? dropRef.current(d.payload, where, document.elementFromPoint(e.clientX, e.clientY)) : false;
+      if (res !== false || !d.el || !d.el.isConnected || reduceMotion()) { setGhost(null); lift(d, false); return; }
+      const r = d.el.getBoundingClientRect();
+      setGhost({ label: d.label, x: r.left + r.width / 2, y: r.top + r.height / 2, rot: 0, back: true, touch: false });
+      clearTimeout(backT.current);
+      backT.current = setTimeout(() => { setGhost(null); lift(d, false); }, 300);
+    };
+    const cancel = () => { lift(drag.current, false); drag.current = null; setGhost(null); setHover(null); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', cancel);
+    return () => { clearTimeout(backT.current); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', cancel); };
+  }, []);
+  return { start, ghost, hover, active: !!ghost && !ghost.back };
+}
+function KzGhost({ ghost }) {
+  if (!ghost) return null;
+  return (
+    <div className={'kz-ghost' + (ghost.back ? ' is-back' : '') + (ghost.touch ? ' is-touch' : '')} aria-hidden="true"
+      style={{ left: ghost.x, top: ghost.y, '--gr': (ghost.rot || 0) + 'deg' }}>
+      <span className="kz-ghost-in" translate="no">{ghost.label}</span>
+    </div>
+  );
+}
+
+// ПЕРЕЛЁТ вырезки к месту (stop-motion): ступенчато, с уменьшением до размера
+// цели; в конце гаснет. Возвращает false, если лететь нечему.
+function kzFly(el, to, ms) {
+  if (!el || !to) return false;
+  const d = ((ms || 780) / 1000).toFixed(2);
+  const a = el.getBoundingClientRect(), b = to.getBoundingClientRect();
+  const dx = b.left + b.width / 2 - (a.left + a.width / 2), dy = b.top + b.height / 2 - (a.top + a.height / 2);
+  const k = Math.max(0.15, Math.min(b.width / a.width, b.height / a.height, 1.2));
+  el.style.animation = 'none';
+  el.style.zIndex = '60';
+  el.style.transition = 'translate ' + d + 's steps(9, end), scale ' + d + 's steps(9, end), opacity .16s linear ' + (d - 0.1).toFixed(2) + 's';
+  el.style.translate = dx.toFixed(1) + 'px ' + dy.toFixed(1) + 'px';
+  el.style.scale = k.toFixed(3);
+  el.style.opacity = '0';
+  return true;
+}
+
+// РУКА-ПОКАЗ (по образцу DemoHand эталона, только бумажная): рука нажимает
+// первую цель и, не отпуская, ведёт её копию ко второй — так показывается
+// перетаскивание. Повторяет дважды, исчезает от первого касания ученика, на
+// паузе стоит. Позиции — внутри листа (.kz-sheet-body).
+function KzHand({ targets, run, label }) {
+  const audio = useAudio();
+  const pausedRef = useRef(false);
+  pausedRef.current = !!(audio && audio.paused);
+  const [pos, setPos] = useState(null);
+  const [tap, setTap] = useState(false);
+  const [carry, setCarry] = useState(false);
+  const [gone, setGone] = useState(false);
+  useEffect(() => {
+    if (!run || gone) return undefined;
+    const off = () => setGone(true);
+    window.addEventListener('pointerdown', off, true);
+    return () => window.removeEventListener('pointerdown', off, true);
+  }, [run, gone]);
+  useEffect(() => {
+    if (!run || gone) { setPos(null); return undefined; }
+    let dead = false;
+    const tm = [];
+    const at = (i) => {
+      const el = targets[i] && targets[i]();
+      const w = el && el.closest('.kz-sheet-body');
+      if (!w) return null;
+      const W = w.getBoundingClientRect(), R = el.getBoundingClientRect();
+      return { x: R.left + R.width / 2 - W.left, y: R.top + R.height / 2 - W.top };
+    };
+    const later = (ms, f) => { tm.push(setTimeout(() => { if (!dead) f(); }, ms)); };
+    let loop = 0;
+    const cycle = () => {
+      if (dead) return;
+      if (pausedRef.current) { later(400, cycle); return; }
+      if (loop >= 2) { setPos(null); return; }
+      loop += 1;
+      const a = at(0);
+      if (!a) { later(400, cycle); return; }
+      setTap(false); setCarry(false); setPos(a);
+      if (reduceMotion()) return;
+      // Взятая вырезка на столе — пунктирный след, как при настоящем перетаскивании.
+      const src = () => targets[0] && targets[0]();
+      const lift = (on) => { const el = src(); if (el && el.classList) el.classList.toggle('is-lifted', on); };
+      later(800, () => { setTap(true); setCarry(true); lift(true); });
+      later(1150, () => { const b = at(1); if (b) setPos(b); });
+      later(2500, () => { setTap(false); setCarry(false); lift(false); });
+      later(3300, cycle);
+    };
+    later(500, cycle);
+    return () => {
+      dead = true; tm.forEach(clearTimeout);
+      const el = targets[0] && targets[0]();
+      if (el && el.classList) el.classList.remove('is-lifted');
+    };
+  }, [run, gone]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!pos || !run || gone) return null;
+  return (
+    <span className="kz-hand-layer" aria-hidden="true">
+    <span className={'kz-hand' + (tap ? ' is-tap' : '') + (carry ? ' is-carry' : '')} style={{ transform: `translate(${pos.x}px, ${pos.y}px)` }}>
+      {carry && label ? <span className="kz-hand-ghost" translate="no">{label}</span> : null}
+      <span className="kz-hand-ring" />
+      <svg viewBox="0 0 40 48" width="38" height="46">
+        <path d="M14 6a4 4 0 0 1 8 0v15a4 4 0 0 1 7 1 4 4 0 0 1 7 2v10c0 7-5 12-13 12h-3c-5 0-8-2-11-6l-6-9a3.6 3.6 0 0 1 5.6-4.4L14 30z"
+          fill="#FBF6EA" stroke={KZ.ink} strokeWidth="2.6" strokeLinejoin="round" />
+      </svg>
+    </span>
+    </span>
+  );
+}
+
+// Текст ученика (или образец) — сквозной для экранов 7–15.
+const okText = (s) => hasLetters(s) && !hasTags(s);
+const useMine = () => {
+  const store = useStore();
+  const pick = usePick();
+  return { title: store.get('myTitle') || pick(UI.mySite), text: store.get('myText') || pick(UI.hello) };
+};
+function makeArtifact(store) {
+  const t = store.get('myTitle'), x = store.get('myText');
+  if (!t && !x) return null;
+  return { type: 'html-page', title: t || '', text: x || '',
+    html: ['<!DOCTYPE html>', '<html>', '  <head>', '    <title>' + escHtml(t || '') + '</title>', '  </head>', '  <body>', '    ' + escHtml(x || ''), '  </body>', '</html>'].join('\n') };
+}

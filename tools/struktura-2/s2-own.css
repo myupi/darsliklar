@@ -1,0 +1,105 @@
+/* ── Урок 1, вариант 2: свои части (префикс v2-) ─────────────────────────── */
+/* Колонка «браузер + чат игрока». */
+.v2-bcol { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.v2-chat { display: flex; align-items: flex-start; gap: 8px; align-self: flex-start; max-width: 100%;
+  animation: v2Pop .35s cubic-bezier(.34,1.4,.64,1); }
+.v2-chat-av { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  background: #E9F1FB; color: #1171A0; box-shadow: inset 0 0 0 1.5px rgba(17,113,160,.25); }
+.v2-chat-b { display: flex; flex-direction: column; gap: 1px; padding: 7px 12px; border-radius: 4px 14px 14px 14px; background: #fff;
+  box-shadow: 0 6px 18px -10px rgba(${T.shadowBase},0.45), inset 0 0 0 1px rgba(${T.shadowBase},0.08);
+  font: 600 14px/1.35 'Manrope', sans-serif; color: ${T.ink}; }
+.v2-chat-b b { font-size: 11.5px; color: #1171A0; letter-spacing: .02em; }
+@keyframes v2Pop { from { transform: translateY(6px) scale(.96); opacity: .4; } to { transform: none; opacity: 1; } }
+
+/* r2: окно сломанной страницы — текст одной строкой, как у браузера. */
+.v2-broken .mb-page { min-height: clamp(52px, 9dvh, 90px); }
+
+/* s1: строка с названием — кнопка; после починки — крупная строка частей. */
+.v2-s1-code { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.v2-tapline { border-radius: 10px; box-shadow: inset 0 0 0 1.5px rgba(255,79,40,.35); background: #FFF6F2; }
+.v2-s1 .pv-bl { flex-wrap: nowrap; font-size: clamp(15px, 4.4vw, 26px); max-width: 100%; }
+.v2-s1 .bl-part { min-height: clamp(66px, 9.5dvh, 84px); padding: 6px clamp(5px, 1.6vw, 10px) 22px; flex: 0 0 auto; }
+.v2-s1 .bl-content { flex: 0 1 auto; min-width: 0; }
+.v2-s1 .bl-text { white-space: normal; text-align: center; }
+.v2-s1 .bl-lbl { position: absolute; left: 50%; bottom: 5px; transform: translateX(-50%); margin: 0; white-space: nowrap; }
+
+/* s2: надписи, которые меняются местами. */
+.v2-s2code .tk-btn.v2-swap { border-radius: 8px; padding: 1px 6px; box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.18); background: #fff; touch-action: none; cursor: grab; }
+.v2-s2code .tk-btn.v2-swap.is-sel { box-shadow: inset 0 0 0 2.5px ${T.ui}; background: #FFF0E8; }
+.v2-s2code .tk-btn.v2-tagtap { background: transparent; box-shadow: none; }
+.v2-s2code .tk-text { font-weight: 700; }
+
+/* s6: код читается строка за строкой; три макета браузера. */
+.v2-predcode .cv-line.is-read { background: #FFF0E8; box-shadow: inset 3px 0 0 ${T.ui}; transition: background .2s; }
+.v2-mocks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(6px, 1.4vw, 12px); width: 100%; }
+.v2-mock { position: relative; display: flex; flex-direction: column; min-width: 0; padding: 0; border: none; border-radius: 12px; overflow: hidden; cursor: pointer;
+  background: #fff; text-align: left; box-shadow: 0 6px 16px -12px rgba(${T.shadowBase},0.6), inset 0 0 0 1.5px rgba(${T.shadowBase},0.12);
+  transition: transform .15s, box-shadow .2s; }
+.v2-mock:disabled { cursor: default; }
+.v2-mock-l { position: absolute; right: 6px; bottom: 5px; font: 800 12px 'JetBrains Mono', monospace; color: ${T.ink3}; }
+.v2-mock-top { display: flex; align-items: flex-end; height: 24px; padding: 0 5px; background: #DEE1E6; }
+.v2-mock-tab { max-width: 92%; height: 19px; padding: 0 7px; border-radius: 6px 6px 0 0; background: #fff; font: 700 11px/19px 'Manrope', sans-serif;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: ${T.ink}; }
+.v2-mock-tab.is-file { color: ${T.ink3}; font-style: italic; font-weight: 600; }
+.v2-mock-page { min-height: 46px; padding: 6px 8px 18px; font: 13px/1.3 'Times New Roman', Times, serif; color: #000; overflow-wrap: anywhere; }
+.v2-mock.is-sel { box-shadow: inset 0 0 0 2.5px ${T.ui}, 0 10px 20px -12px rgba(255,79,40,.6); transform: translateY(-2px); }
+.v2-mock.is-ok { box-shadow: inset 0 0 0 2.5px ${T.success}; background: ${T.successSoft}; }
+.v2-mock.is-miss { opacity: .55; }
+.v2-mock.is-real { box-shadow: inset 0 0 0 2.5px ${T.success}; }
+.v2-run-row { display: flex; justify-content: center; }
+.v2-run { position: relative; display: inline-flex; align-items: center; gap: 8px; }
+
+/* s8: что сейчас на вкладке — полностью, моноширинно. */
+.v2-tabnote { margin: 0; padding: 6px 10px; border-radius: 10px; background: #fff; font: 600 12.5px/1.35 'Manrope', sans-serif; color: ${T.ink2};
+  box-shadow: inset 0 0 0 1.5px rgba(159,68,113,.28); overflow-wrap: anywhere; }
+.v2-tabnote b { color: #9F4471; }
+.v2-tabnote .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; color: ${T.ink}; }
+
+/* s9: лишняя строка — обычный вид, но после сборки остаётся в лотке приглушённой. */
+.v2-pool-left .pool-chip { opacity: .5; }
+
+/* s10: поля тегов своей страницы и клавиши слов. */
+.v2-gap .tk-input { min-width: 4.6em; }
+.v2-gap.is-act .tk-input { box-shadow: 0 0 0 2px ${T.ui}; }
+.v2-keys .key-w { min-width: 0; padding: 0 10px; font-size: 15px; color: var(--c); }
+.v2-own .cv-line { min-height: 1.75em; }
+
+/* s11: вопросы Пикселя. */
+.v2-quiz { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+.v2-qpix .fig-robot { --fig-h: min(22dvh, 190px); }
+.v2-qopts { display: grid; gap: 8px; width: min(100%, 520px); }
+.v2-qopt { position: relative; min-height: 48px; padding: 10px 16px; border: none; border-radius: 14px; background: #fff; cursor: pointer;
+  font: 700 16px 'Manrope', sans-serif; color: ${T.ink}; text-align: left;
+  box-shadow: 0 6px 16px -12px rgba(${T.shadowBase},0.6), inset 0 0 0 1.5px rgba(${T.shadowBase},0.12); transition: opacity .25s, box-shadow .2s; }
+.v2-qopt.is-off { opacity: .35; }
+.v2-qopt.is-ok { box-shadow: inset 0 0 0 2.5px ${T.success}; background: ${T.successSoft}; }
+.v2-qopt.is-glow { box-shadow: inset 0 0 0 2.5px ${T.success}; }
+.v2-qsum { display: grid; gap: 6px; width: min(100%, 520px); }
+.v2-qsum-i { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 12px; background: #fff; font: 600 14px 'Manrope', sans-serif;
+  box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.1); }
+.v2-qsum-i svg { color: ${T.success}; flex: none; }
+.v2-qsum-i b { font-weight: 800; }
+@media (min-width: 760px) {
+  .v2-quiz { flex-direction: row; justify-content: center; gap: 28px; }
+  .v2-qpix .fig-robot { --fig-h: min(40dvh, 300px); }
+}
+
+/* Финал: ответ игрока над достижениями. */
+.rb-fin-side .v2-chat { align-self: stretch; }
+
+/* Телефон: компактнее. В s8 видны строки рядом с пустым местом (±2). */
+@media (max-width: 759px) {
+  .v2-s8 .cv-10 .cv-line.is-far { display: none; }
+  .v2-tabnote { padding: 4px 8px; font-size: 11.5px; }
+  .v2-tabnote .mono { font-size: 11px; }
+  .v2-mock-page { min-height: 40px; font-size: 12px; padding: 5px 6px 16px; }
+  .v2-mock-top { height: 21px; }
+  .v2-mock-tab { height: 17px; line-height: 17px; font-size: 10.5px; padding: 0 5px; }
+  .v2-chat-b { font-size: 13px; padding: 6px 10px; }
+  .v2-keys { gap: 6px; }
+  .v2-keys .key-b { min-width: 42px; min-height: 42px; font-size: 17px; }
+  .v2-keys .key-w { font-size: 13px; padding: 0 8px; }
+}
+.is-kbd .v2-chat, .is-kbd .v2-tabnote { display: none; }
+.is-kbd .v2-own .mb { display: none; }
+@media (prefers-reduced-motion: reduce) { .v2-chat { animation: none; } .v2-mock.is-sel { transform: none; } }
