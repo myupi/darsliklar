@@ -72,11 +72,16 @@ export async function launchChrome({ autoplay = true } = {}) {
   }
   let version = null;
   try { version = (await (await fetch(`http://127.0.0.1:${port}/json/version`)).json()).Browser; } catch { /* no-op */ }
+  // Браузер не должен пережить прогон: при любом завершении процесса (в том числе по тайм-ауту
+  // или сигналу) он закрывается. Иначе остаются «осиротевшие» headless Chrome (19.10.2026 их было 8).
+  const kill = () => { try { chrome.kill('SIGKILL'); } catch { /* no-op */ } try { rmSync(profile, { recursive: true, force: true }); } catch { /* no-op */ } };
+  process.once('exit', kill);
+  for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.once(sig, () => { kill(); process.exit(128 + 2); });
   return {
     port, binary, version,
     close() {
-      chrome.kill('SIGKILL');
-      try { rmSync(profile, { recursive: true, force: true }); } catch { /* no-op */ }
+      kill();
+      process.removeListener('exit', kill);
     },
   };
 }

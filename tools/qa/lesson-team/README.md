@@ -1,12 +1,22 @@
 # QA команды уроков (`tools/qa/lesson-team/`)
 
-Воспроизводимые проверки урока в headless Chrome через **существующий плеер** (`/player.html`). Нужен запущенный dev-сервер (`npm run dev`, порт 5173). Зависимостей нет: Node ≥ 22 и установленный Chrome (или путь в `CHROME_PATH`).
+Воспроизводимые проверки урока в headless Chrome через **существующий плеер** (`/player.html`). Сервер: либо общий dev-сервер (`npm run dev`, порт 5173), либо **свой на каждый прогон** — флаг `--serve` (свободный порт, без HMR; запись других уроков не перезагружает плеер). Для уроков в отдельных рабочих копиях (`wt.mjs`) — только `--serve`, запуск из папки копии. Зависимостей нет: Node ≥ 22 и установленный Chrome (или путь в `CHROME_PATH`).
 
 ## Быстрый старт
 
+**Короткая техническая проверка** — стандартная проверка команды (`/lesson-team`), 5–10 минут: загрузка, основной путь на русском в быстром режиме, основной ввод и его сохранение в payload, однократный `onFinished`, неизменность файлов.
+
 ```bash
 node tools/qa/lesson-team/run.mjs --file test/10-zagolovki-i-tekst-turnir-pixel \
-  --scenario tools/qa/lesson-team/scenarios/test-10-zagolovki-i-tekst-turnir-pixel.qa.mjs --langs uz,ru,en
+  --scenario tools/qa/lesson-team/scenarios/test-10-zagolovki-i-tekst-turnir-pixel.qa.mjs \
+  --serve --checks load,scenario --flows main --langs ru --voice fast
+```
+
+**Полный QA** — только по прямой просьбе пользователя (по умолчанию полную матрицу устройств, языков, ошибок и состояний проверяет QA-команда заказчика). Без `--checks`, `--langs`, `--sizes`, `--flows` раннер делает всё: 4 размера × языки сценария, все ветки, клавиатура, озвучка:
+
+```bash
+node tools/qa/lesson-team/run.mjs --file test/10-zagolovki-i-tekst-turnir-pixel \
+  --scenario tools/qa/lesson-team/scenarios/test-10-zagolovki-i-tekst-turnir-pixel.qa.mjs --serve --langs uz,ru,en
 ```
 
 Только общие проверки, без сценария (сценарий получит `not-run`):
@@ -22,6 +32,22 @@ node tools/qa/lesson-team/selftest/run-selftest.mjs
 ```
 
 Все параметры: `node tools/qa/lesson-team/run.mjs --help`.
+
+## Несколько уроков сразу: рабочие копии
+
+Один урок делается в основной копии. Когда параллельно идут несколько уроков, у каждого своя копия и свой сервер:
+
+```
+node tools/qa/lesson-team/wt.mjs create --run <run-id>      # .claude/worktrees/lt-<run-id>/
+cd .claude/worktrees/lt-<run-id>
+node tools/qa/lesson-team/run.mjs --scenario tools/qa/lesson-team/scenarios/test-12-x.qa.mjs --serve --checks load,scenario --flows main --langs ru --voice fast --out ../../../work/lesson-team/<run-id>/qa/short
+cd ../../..
+node tools/qa/lesson-team/wt.mjs status --run <run-id>
+node tools/qa/lesson-team/wt.mjs sync --run <run-id> --changed  # перенос в основную копию
+node tools/qa/lesson-team/wt.mjs remove --run <run-id>
+```
+
+`--flows` — ветки сценария по тегу (`main`, `f1`, …) или части имени. Ветка `main` — основной путь с основным вводом и завершением: по ней идёт короткая проверка. Исполнитель гоняет только дымовой прогон (`--checks load --langs ru`) и отладку изменённых веток.
 
 ## Как устроено
 
@@ -110,3 +136,4 @@ export default {
 - Голос `fast` / `simulate` — тишина нужной длины: качество живой озвучки не проверяется.
 - По умолчанию звук разрешён без касания (`--autoplay-policy`) и выключен (`--mute-audio`). Путь «до первого касания» проверяется с `--no-autoplay`.
 - `screens` проверяет начальные состояния экранов. Состояния по ходу задания проверяет сценарий.
+- Короткая проверка не покрывает другие языки, размеры, ветки ошибок и клавиатуру — это полная матрица QA-команды заказчика (или полный QA по прямой просьбе).

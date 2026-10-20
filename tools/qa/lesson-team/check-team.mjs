@@ -115,7 +115,7 @@ else {
 }
 
 // ── Документы
-for (const f of ['README.md', 'pravila-komandy.md', 'obshchie-trebovaniya.md', 'format-otchyotov.md', 'shablon-postanovki.md', 'moduli/_shablon.md', 'moduli/html.md']) {
+for (const f of ['README.md', 'pravila-komandy.md', 'obshchie-trebovaniya.md', 'format-otchyotov.md', 'shablon-postanovki.md', 'shablon-peredachi.md', 'moduli/_shablon.md', 'moduli/html.md']) {
   const p = resolve(ROOT, 'docs/lesson-team', f);
   if (!existsSync(p)) { P('нет docs/lesson-team/' + f); continue; }
   const n = checkRefs('docs/lesson-team/' + f, readFileSync(p, 'utf8'), 'docs/lesson-team/' + f.split('/').slice(0, -1).join('/'));

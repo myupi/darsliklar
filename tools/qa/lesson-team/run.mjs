@@ -28,6 +28,9 @@ const HELP = `QA урока через плеер (нужен dev-сервер: 
   --run-id <id>              писать в work/lesson-team/<id>/qa/<урок>
   --hash <файл,…>            дополнительные файлы версии (исходники урока)
   --base <url>               адрес dev-сервера (по умолчанию http://localhost:5173)
+  --serve                    поднять свой dev-сервер этой рабочей копии на свободном порту, без HMR
+                             (запись других уроков не перезагружает плеер; так проверяют урок в своей рабочей копии)
+  --flows main,f2,…          прогнать только эти ветки сценария (тег main/fN или часть имени ветки)
   --step-timeout <мс>        предел одного шага сценария (по умолчанию 120000)
   --ready-timeout <мс>       предел загрузки урока (по умолчанию 30000)
   --reduced                  prefers-reduced-motion: reduce
@@ -41,7 +44,7 @@ const DEFAULT_SIZES = ['360x640', '375x740', '1280x720', '1440x900'];
 function parseArgs(argv) {
   const o = { file: null, page: null, scenario: null, checks: null, langs: null, sizes: null, voice: null, adapter: null,
     screens: null, kbdScreens: null, kbdSize: '360x640', base: 'http://localhost:5173', out: null, runId: null, hash: [],
-    stepTimeout: 120000, readyTimeout: 30000, reduced: false, autoplay: true, name: '' };
+    stepTimeout: 120000, readyTimeout: 30000, reduced: false, autoplay: true, name: '', serve: false, flows: null };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     const v = () => { const x = argv[++i]; if (x === undefined) throw new Error('Нет значения для ' + a); return x; };
@@ -63,6 +66,8 @@ function parseArgs(argv) {
     else if (a === '--step-timeout') o.stepTimeout = Number(v());
     else if (a === '--ready-timeout') o.readyTimeout = Number(v());
     else if (a === '--reduced') o.reduced = true;
+    else if (a === '--serve') o.serve = true;
+    else if (a === '--flows') o.flows = v().split(',').map((x) => x.trim()).filter(Boolean);
     else if (a === '--no-autoplay') o.autoplay = false;
     else if (a === '--name') o.name = v();
     else if (a === '-h' || a === '--help') o.help = true;
@@ -135,7 +140,7 @@ async function main() {
     tool: 'lesson-team-qa', format: 1,
     startedAt: new Date().toISOString(), finishedAt: null,
     target: { file, page, label: file ? `lessons/${file}.jsx` : page },
-    options: { adapter, voice, langs, sizes, scenarioSize, checks, kbdScreens, kbdSize: o.kbdSize, base: o.base, reduced: o.reduced, autoplay: o.autoplay },
+    options: { adapter, voice, langs, sizes, scenarioSize, checks, kbdScreens, kbdSize: o.kbdSize, base: o.base, reduced: o.reduced, autoplay: o.autoplay, serve: o.serve, flows: o.flows },
     scenario: scenarioInfo,
     versions: { start: vStart, end: null, changed: false },
     environment: { node: process.version, base: o.base, chrome: null },
@@ -166,6 +171,24 @@ async function main() {
 
   if (!file && !page) { add(check('target', { title: 'Цель проверки', status: 'blocked', reason: 'не указан --file или --page (и в сценарии нет file)' })); finish(); }
   if (file && !existsSync(resolve(ROOT, `lessons/${file}.jsx`))) report.notes.push(`Файла lessons/${file}.jsx нет — плеер сообщит «Файл урока не найден»`);
+
+  // ── Свой dev-сервер (--serve): рабочая копия этого раннера, свободный порт, без HMR.
+  // Процесс сервера живёт, пока идёт прогон, и завершается вместе с ним.
+  if (o.serve) {
+    try {
+      const { createServer } = await import(pathToFileURL(join(ROOT, 'node_modules/vite/dist/node/index.js')).href);
+      const srv = await createServer({ root: ROOT, configFile: join(ROOT, 'vite.config.js'), logLevel: 'error', clearScreen: false,
+        server: { port: 0, strictPort: false, hmr: false, open: false } });
+      await srv.listen();
+      const url = (srv.resolvedUrls && srv.resolvedUrls.local && srv.resolvedUrls.local[0]) || `http://localhost:${srv.httpServer.address().port}/`;
+      o.base = url.replace(/\/$/, '');
+      report.options.base = o.base;
+      report.environment.base = o.base;
+      report.notes.push(`свой dev-сервер ${o.base} (рабочая копия ${ROOT}, без HMR)`);
+    } catch (e) {
+      return blockAll('свой dev-сервер не запустился: ' + e.message);
+    }
+  }
 
   // ── Окружение: dev-сервер и Chrome.
   try {
@@ -339,6 +362,7 @@ async function main() {
             const flow = flows[fi];
             if (flow.langs && !flow.langs.includes(lang)) continue;
             const tag = fi === 0 ? 'main' : 'f' + fi;   // латиницей: для имён файлов
+            if (o.flows && !o.flows.some((f) => f === tag || (flow.name && flow.name.includes(f)))) continue;
             const ctx = { check: 'scenario', lang, size: scenarioSize, flow: flow.name };
             const title = flow.name === 'main' ? 'Сценарий: основной проход' : 'Сценарий: ' + flow.name;
             const repro = `node tools/qa/lesson-team/run.mjs ${file ? '--file ' + file : '--page "' + page + '"'} --scenario ${scenarioInfo.path} --checks scenario --langs ${lang}`;
