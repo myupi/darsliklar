@@ -42,6 +42,21 @@ helpers = helpers
 const uzMarks = "lt: 'ochuvchi burchak', gt: 'yopuvchi burchak'";
 if (helpers.indexOf(uzMarks) < 0) throw new Error('нет узбекских названий < и > в zh-helpers.jsx');
 helpers = helpers.replace(uzMarks, "lt: 'chap burchakli qavs', gt: 'o‘ng burchakli qavs'");
+// Озвучка (правка 21.10.2026). 1) Узбекский закрывающий тег — «yopuvchi title tegi»
+// (порядок слов узбекского), а не «yopuvchi teg title». 2) Знак в кавычках, который
+// стоит рядом со своим названием («chap «<» qavsdan», «уголка «<»», «the bracket “<”»),
+// в речь не идёт — название уже звучит; знак без названия читается словами.
+const closeRe = "s = s.replace(/<\\s*\\/\\s*([a-z][a-z0-9]*)\\s*>/gi, (all, t) => m.close + ' ' + word(t));";
+if (helpers.indexOf(closeRe) < 0) throw new Error('нет замены закрывающего тега в zh-helpers.jsx');
+helpers = helpers.replace(closeRe, String.raw`// Знак рядом со своим названием — только название; знак без названия — словами.
+  const SIGN_WORD = '(?:qavs|chiziq|скобк|уголк|черт|bracket|slash)[^\\s,.!?:;]*';
+  s = s.replace(new RegExp('(' + SIGN_WORD + ')\\s*[«“"]\\s*[<>/\\\\]\\s*[»”"]', 'gi'), '$1');
+  s = s.replace(new RegExp('[«“"]\\s*[<>/\\\\]\\s*[»”"]\\s*(' + SIGN_WORD + ')', 'gi'), '$1');
+  s = s.replace(/[«“"]\s*([<>/\\])\s*[»”"]/g, (all, c) => ' ' + (c === '<' ? m.lt : c === '>' ? m.gt : m.slash) + ' ');
+  s = s.replace(/<\s*\/\s*([a-z][a-z0-9]*)\s*>/gi, (all, t) => (m.closeOf ? m.closeOf(word(t)) : m.close + ' ' + word(t)));`);
+const uzClose = "close: 'yopuvchi teg', lt: 'chap burchakli qavs'";
+if (helpers.indexOf(uzClose) < 0) throw new Error('нет узбекского close в zh-helpers.jsx');
+helpers = helpers.replace(uzClose, "close: 'yopuvchi teg', closeOf: (w) => 'yopuvchi ' + w + ' tegi', lt: 'chap burchakli qavs'");
 
 // Раскраска слоя «вид»: у каждой группы data-paint свой цвет; грани — светлее
 // и темнее его, рёбра — темнее (на тёмных деталях — светлее).
