@@ -1,6 +1,8 @@
 // Сборка урока 1 курса HTML «Структура HTML-документа» (робот Pixel) — эталон курса
 // с 19.10.2026 (до этого — тестовый урок 07).
-//   node tools/robot/robot.build.mjs → lessons/html/01-struktura-dokumenta.jsx
+//   node tools/robot/robot.build.mjs → lessons/test/13-struktura-robot.jsx
+// (22.10.2026 заказчик: урок 1 курса — «Бумажная страница» из tools/kollazh/; робот
+// перенесён в тестовые уроки.)
 // Файл урока = шапка + канон курса HTML (дословно, не правится) + пометка
 // «УРОК» + robot.src.jsx, куда встают: помощники урока 1 (../anatomy/zh-helpers.jsx),
 // части интерфейса (rb-ui.jsx), две фигуры — шкаф документа
@@ -104,6 +106,6 @@ const head = `// ===============================================================
 // =============================================================================
 `;
 const out = head + '\n' + canon + '\n' + '// ==============================  У Р О К  =====================================\n' + src;
-const dest = here('../../lessons/html/01-struktura-dokumenta.jsx');
+const dest = here('../../lessons/test/13-struktura-robot.jsx');
 writeFileSync(dest, out);
 console.log('wrote', dest, Math.round(out.length / 1024) + ' KB');

@@ -35,12 +35,12 @@
 // =============================================================================
 
 const META = {
-  lessonId: 'html-01-struktura-dokumenta',
+  lessonId: 'test-13-struktura-robot',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: '1-dars. HTML hujjat tuzilishi',
-    ru: 'Урок 1. Структура HTML-документа',
-    en: 'Lesson 1. HTML document structure'
+    uz: 'Robot Piksel. HTML hujjat tuzilishi (sinov)',
+    ru: 'Робот Пиксель. Структура HTML-документа (проба)',
+    en: 'Robot Pixel. HTML document structure (trial)'
   }
 };
 

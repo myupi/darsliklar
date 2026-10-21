@@ -1063,27 +1063,6 @@ const SCREENS = [
 const SCREEN_RESET = { s1: ['s1'], s2: ['s2'], s3: ['s3'], s4: ['s4'], s5: ['s5'], s6: ['s6'], s7: ['s7'], s8: ['s8'], s9: ['s9'],
   s10: ['s10'], s11: ['s11'], s12: ['s12'], s13: ['s13'], s14: ['s14'] };
 
-// Параллакс слоёв: палец или мышь сдвигают вырезки по углам листа на разную
-// глубину. Значения — ступеньками (как кадры stop-motion), без лишних перерисовок.
-function useParallax() {
-  useEffect(() => {
-    if (typeof window === 'undefined' || reduceMotion()) return undefined;
-    const root = document.documentElement;
-    let last = '';
-    const onMove = (e) => {
-      const x = Math.round(((e.clientX / window.innerWidth) * 2 - 1) * 4) / 4;
-      const y = Math.round(((e.clientY / window.innerHeight) * 2 - 1) * 4) / 4;
-      const k = x + ',' + y;
-      if (k === last) return;
-      last = k;
-      root.style.setProperty('--kzx', String(x));
-      root.style.setProperty('--kzy', String(y));
-    };
-    window.addEventListener('pointermove', onMove);
-    return () => window.removeEventListener('pointermove', onMove);
-  }, []);
-}
-
 export default function HtmlKollazh({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({

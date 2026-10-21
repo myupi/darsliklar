@@ -1,6 +1,9 @@
 // =============================================================================
-// ТЕСТОВЫЕ УРОКИ · Урок 1 курса HTML, вариант «Бумажная страница» — структура документа
-// Дети 11–14. Один самодостаточный JSX: канон курса (до пометки «УРОК») + урок.
+// КУРС «HTML» · Модуль 1 «Основы разметки» · Урок 1 — «Структура HTML-документа»
+// («Бумажная страница», ЭТАЛОН КУРСА с 22.10.2026). Дети 10–14, проходят сами.
+// Один самодостаточный JSX: канон курса (до пометки «УРОК») + урок.
+// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/kollazh/kollazh.src.jsx lessons/html/01-struktura-dokumenta.jsx
+// (звук бумаги: node tools/kollazh/paper-data.mjs → kollazh-paper-data.jsx, потом сборка).
 // =============================================================================
 // =============================================================================
 // КУРС «HTML» — КАНОН УРОКОВ v1 · дети 8–10 лет · UZ / RU / EN
@@ -892,7 +895,9 @@ const LANG_MARK = {
 const TTS_EMOTION = true;
 const EMO_W = (words) => new RegExp('^(?:' + words.join('|') + ')(?=[\\s!,.?…:;]|$)', 'i');
 const EMO = {
-  oops: { ru: /^(?:ой|упс)(?=[\s!,.]|$)|кажется, я /i, uz: /o‘xshayman|adashdim|chalkashtirdim/i, en: /^(?:oops|uh-oh)(?=[\s!,.]|$)|i think i (?:put|mixed|made)/i },
+  oops: { ru: /^(?:ой|упс)(?=[\s!,.]|$)|кажется, я |перепутал/i, uz: /o‘xshayman|adashdim|adashibman|chalkashtirdim|xato qilibman/i, en: /^(?:oops|uh-oh)(?=[\s!,.]|$)|i think i (?:put|mixed|made)/i },
+  // Разбор ошибки ученика — по словам внутри фразы (не только по началу).
+  fix: { ru: /не хватает|стоит не там|это другое|это открывающий тег|не страшно|кладут не/i, uz: /yetishmayapti|noto‘g‘ri joy|bu ochuvchi teg|boshqa\. bu yerga|hechqisi|demak u body ichida emas/i, en: /is missing|wrong place|that’s an opening tag|different word|no worries|not straight into/i },
   big: { ru: EMO_W(['ура', 'это было мощно', 'вот это да']), uz: EMO_W(['ura', 'bu kuchli', 'qoyil', 'tabriklayman']), en: EMO_W(['hooray', 'that was epic', 'look at that']) },
   wow: { ru: EMO_W(['ого', 'ух ты', 'вот оно']), uz: /^(?:voy,|ajab|mana u!)/i, en: EMO_W(['whoa', 'there it is']) },
   win: { ru: EMO_W(['есть', 'огонь', 'супер', 'вау', 'класс', 'бомба', 'чётко', 'четко', 'точно', 'в точку', 'получилось', 'отлично', 'круто', 'красота', 'идеально', 'готово', 'собрано', 'спасибо', 'дожали', 'верно', 'да', 'нашлось', 'сработало', 'правильно', 'вот так', 'работает']),
@@ -909,14 +914,13 @@ const emoTag = (text, lang) => {
   const L = EMO.win[lang] ? lang : 'ru';
   const is = (k) => EMO[k][L].test(s);
   if (is('oops')) return '[embarrassed] ';
-  if (is('big')) return '[very excited] [laughs] ';
-  if (is('wow')) return '[gasps] [amazed] ';
-  if (is('win')) { const r = emoHash(s) % 3; return '[excited] ' + (r === 0 ? '[laughs] ' : r === 1 ? '[chuckles] ' : ''); }
-  if (is('soft')) return '[reassuring] ';
+  if (is('soft') || is('fix')) return '[reassuring] ';
+  if (is('big')) return '[excited] ';
+  if (is('wow')) return '[amazed] ';
+  if (is('win')) return '[happy] ';
   if (is('hello')) return '[cheerful] ';
   if (is('bye')) return '[warmly] ';
   if (/\?$/.test(s)) return '[curious] ';
-  if (/!$/.test(s)) return '[upbeat] ';
   return '[friendly] ';
 };
 // КУРС HTML: УЗБЕКСКИЙ ГОЛОС (заказчик, 19.10.2026: «с озвучкой проблемы»). Как в
@@ -2638,7 +2642,7 @@ function useIdleCoach(active, speaking) {
   return lv;
 }
 
-const HINT_BTN = { uz: 'Maslahat', ru: 'Подсказка', en: 'Hint' };
+const HINT_BTN = { uz: 'Yordam', ru: 'Подсказка', en: 'Hint' };
 
 // Кнопка подсказки в шапке: есть на каждом экране, работает всегда.
 const HintChromeBtn = () => {
@@ -6661,40 +6665,42 @@ const CANON_LIB_CSS = `
 const CANON_SCREEN_CSS = CANON_SCREEN_CSS_BASE + CANON_MECH_CSS + CANON_DZ_CSS + CANON_CRT_CSS + CANON_LIB_CSS;
 // ==============================  У Р О К  =====================================
 // =============================================================================
-// ===== УРОК 1 (тест) · «Бумажная страница» · модуль html-m1-osnovy =====
+// ===== УРОК 1 · «Бумажная страница» · модуль html-m1-osnovy =====
 //
 // ЗАМЫСЕЛ. Стилистика ролика html.mp4 (заказчик, 20.10.2026): бумажный коллаж —
 // вырезки из цветной бумаги с рваным краем и фактурой, мягкая тень слой на слой,
-// движение вырезками по столу со ступенчатостью stop-motion и параллаксом. На
-// листе живёт бумажный человечек; любая страница устроена так же: рамка (html),
-// голова, где страница помнит своё имя (head, внутри title), и тело — всё, что
-// видно в окне (body). Ученик собирает человечка-страницу, а в конце — свою.
+// движение вырезками по столу со ступенчатостью stop-motion, шорох бумаги, переход
+// между экранами «разбор и сборка». На листе живёт бумажный человечек: голова —
+// как часть head, тело — как часть body. Образ — только опора: каждый раз за ним
+// Коди называет настоящую связь кода с браузером. В конце ученик собирает свою страницу.
 //
 // ДУГА. s1 крючок · s2 план · тройки «объяснение → сам делаешь → закрепление»:
 // тег и html (s3–s5), head и title (s6–s8), body (s9–s11), весь документ
-// (s12–s14) · s15 вывод. Сценарий — docs/scenarij-12-struktura-kollazh.md.
+// (s12–s14) · s15 вывод. Полное описание — docs/urok-01-opisanie.md; правила
+// эталона для следующих уроков — навык novyy-urok, references/etalon-bumazhnaya.md.
 //
 // ОСОБЫЕ ПРАВИЛА УРОКА
-//   · Цвета частей — как в ролике: html коралл, head горчица, body бирюза;
-//     теги — полоски на скотче: уголки коралловые, имя чернилами.
-//   · head — «голова» человечка (метафора ролика), а не «паспорт» урока 1.
+//   · Подсветка идёт за речью Коди: одна реплика — одна подсвеченная вещь
+//     (длинную фразу делим на реплики, чтобы подсветка совпадала со словами).
 //   · Конфетти только в финале: похвалы экранов — поза smile.
-//   · Честный браузер: текст без ярлыков — в окно, вкладка index.html; без
+//   · Честный браузер: текст без тегов — в окно, вкладка index.html; без
 //     </title> всё, что дальше, уходит во вкладку.
 //
-// СИСТЕМА СЛОВ. Тег — слово в угловых скобках, подсказка браузеру (не «бирка»: в узбекском «yorliq» — это вкладка); html — рамка всей страницы; head —
-// голова: то, что страница знает о себе; title — имя страницы на вкладке;
-// body — тело: всё, что видно в окне.
+// СИСТЕМА СЛОВ. Тег — слово в угловых скобках, показывает браузеру, где часть
+// начинается и где кончается; html — объединяет все части страницы (рамка на
+// рисунке — только наглядность); head — сведения о странице; title внутри head —
+// название страницы на вкладке; body — всё, что видно в окне. UZ: teg, yorliq —
+// только вкладка, oyna — окно, sahifa nomi — название.
 //
 // ОБРАЩЕНИЕ: UZ — Siz, RU — «ты» без рода, EN — «you».
 // =============================================================================
 const META = {
-  lessonId: 'test-12-struktura-kollazh',
+  lessonId: 'html-01-struktura-dokumenta',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: '1-dars (qog‘oz). HTML hujjat tuzilishi',
-    ru: 'Урок 1 (бумажный). Структура HTML-документа',
-    en: 'Lesson 1 (paper). HTML document structure'
+    uz: '1-dars. HTML hujjat tuzilishi',
+    ru: 'Урок 1. Структура HTML-документа',
+    en: 'Lesson 1. HTML document structure'
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -6735,7 +6741,7 @@ const UI = {
   slot: L3('joy', 'место', 'place'),
   noTags: L3('Bu yerga faqat so‘z yozing, burchakli qavslarsiz.', 'Здесь нужны только слова, без угловых скобок.', 'Only words here, no angle brackets.'),
   again: L3('yangi misol', 'новый пример', 'new example'),
-  hintN: L3('Maslahat', 'Подсказка', 'Hint'),
+  hintN: L3('Yordam', 'Подсказка', 'Hint'),
   up: L3('Yuqoriga', 'Вверх', 'Up'),
   down: L3('Pastga', 'Вниз', 'Down'),
   swap: L3('Ikki qatorni bosing — ular joy almashadi.', 'Нажми две полоски — они поменяются местами.', 'Tap two strips: they swap places.'),
@@ -6818,10 +6824,10 @@ const C = {
       needSlash: L3('Bu ochuvchi teg. Yopuvchi tegda html so‘zidan oldin qiya chiziq turadi.',
       'Это открывающий тег. В закрывающем перед словом html стоит косая черта.',
       'That’s the opening tag. The closing tag has a slash before html.'),
-      needLt: L3('Teg burchakli qavs bilan boshlanadi: «<». Uni boshiga qo‘shing.',
+      needLt: L3('Teg chap «<» qavs bilan boshlanadi. Uni boshiga qo‘shing.',
       'Тег начинается с угловой скобки «<». Добавь её в начало.',
       'A tag starts with the angle bracket “<”. Add it at the start.'),
-      needGt: L3('Teg oxirida burchakli qavs turadi: «>». Uni oxiriga qo‘shing.',
+      needGt: L3('Teg oxirida o‘ng «>» qavs turadi. Uni oxiriga qo‘shing.',
       'В конце тега нужна угловая скобка «>». Добавь её в конец.',
       'A tag ends with the angle bracket “>”. Add it at the end.'),
       wrongName: L3('Teg ichida boshqa so‘z yozilgan. Bu yerda html kerak.',
@@ -7776,14 +7782,6 @@ function GoalCard({ goal, n, total, done, doneText }) {
   );
 }
 
-// Знак в кавычках («<», «/», “>”) нужен глазам: в реплике он уже назван словами
-// («угловая скобка», «косая черта»). В озвучку он не идёт — иначе сервис читает
-// сырой символ, а «<» превращается в «уголок» не в том падеже.
-const KZ_QUOTED_SIGN = /[\s:—–-]*[«“"]\s*[<>\/\\]\s*[»”"]/g;
-const spokenHtmlL2 = spokenHtml;
-// eslint-disable-next-line no-func-assign
-spokenHtml = (text, lang) => spokenHtmlL2(String(text || '').replace(KZ_QUOTED_SIGN, ''), lang);
-
 // Ключи реплик урока — для прогрева озвучки (heroLines).
 Object.assign(SPOKEN, { magic: 1, magicWin: 1, sayTag: 1, order1: 1, order2: 1, order3: 1, sayAsk: 1, top: 1, bottom: 1, bottomAsk: 1, msgs: 1, opened: 1, flew: 1, out: 1, doctype: 1, back: 1, cards: 1, items: 1 });
 Object.assign(NOT_SPOKEN_IN, { cards: { title: 1 }, items: { id: 1, want: 1 } });
@@ -7894,6 +7892,47 @@ function usePaperSound() {
 // бумага с рваным краем (clip-path) и фактурой. Рваный край считается один раз
 // по зерну (seed): одна и та же вырезка всегда одинаковая.
 // =============================================================================
+// ОЗВУЧКА ЗНАКОВ И ТЕГОВ (общая для уроков на бумажном наборе). Знак в кавычках
+// («<», «/», “>”) нужен глазам: в реплике он назван словами рядом («chap «<» qavsdan»,
+// «уголка «<»»). В речь знак не идёт — иначе сервис читает сырой символ; знак без
+// названия читается словами. Узбекский закрывающий тег — «yopuvchi title tegi»
+// (порядок слов узбекского), а не «yopuvchi teg title».
+const KZ_SIGN_WORD = '(?:qavs|chiziq|скобк|уголк|черт|bracket|slash)[^\\s,.!?:;]*';
+const KZ_SIGN_NAME = { uz: { '<': 'chap burchakli qavs', '>': 'o‘ng burchakli qavs', '/': 'qiya chiziq' },
+  ru: { '<': 'левый уголок', '>': 'правый уголок', '/': 'косая черта' }, en: { '<': 'less-than sign', '>': 'greater-than sign', '/': 'slash' } };
+const spokenHtmlL2 = spokenHtml;
+// eslint-disable-next-line no-func-assign
+spokenHtml = (text, lang) => {
+  let s = String(text || '');
+  s = s.replace(new RegExp('(' + KZ_SIGN_WORD + ')[\\s:—–-]*[«“"]\\s*[<>/\\\\]\\s*[»”"]', 'gi'), '$1');
+  s = s.replace(new RegExp('[«“"]\\s*[<>/\\\\]\\s*[»”"]\\s*(' + KZ_SIGN_WORD + ')', 'gi'), '$1');
+  const nm = KZ_SIGN_NAME[lang] || KZ_SIGN_NAME.ru;
+  s = s.replace(/[«“"]\s*([<>/\\])\s*[»”"]/g, (all, c) => ' ' + (nm[c] || nm['/']) + ' ');
+  if (lang === 'uz') s = s.replace(/<\s*\/\s*([a-z][a-z0-9]*)\s*>/gi, (all, t) => 'yopuvchi ' + t + ' tegi');
+  return spokenHtmlL2(s, lang);
+};
+
+// Параллакс слоёв: палец или мышь сдвигают вырезки по углам листа на разную
+// глубину. Значения — ступеньками (как кадры stop-motion), без лишних перерисовок.
+function useParallax() {
+  useEffect(() => {
+    if (typeof window === 'undefined' || reduceMotion()) return undefined;
+    const root = document.documentElement;
+    let last = '';
+    const onMove = (e) => {
+      const x = Math.round(((e.clientX / window.innerWidth) * 2 - 1) * 4) / 4;
+      const y = Math.round(((e.clientY / window.innerHeight) * 2 - 1) * 4) / 4;
+      const k = x + ',' + y;
+      if (k === last) return;
+      last = k;
+      root.style.setProperty('--kzx', String(x));
+      root.style.setProperty('--kzy', String(y));
+    };
+    window.addEventListener('pointermove', onMove);
+    return () => window.removeEventListener('pointermove', onMove);
+  }, []);
+}
+
 const KZ = { kraft: '#D8C4A1', paper: '#EFE7D6', face: '#F2D7BC', cream: '#FBF6EA', coral: '#E0643F', mustard: '#F0B13F', teal: '#2A8C7E', ink: '#1F2A44' };
 const kzRnd = (seed) => { let s = (Math.abs(seed) * 7919 + 104729) % 2147483647 || 1; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; };
 const TORN = {};
@@ -9538,27 +9577,6 @@ const SCREENS = [
 const SCREEN_RESET = { s1: ['s1'], s2: ['s2'], s3: ['s3'], s4: ['s4'], s5: ['s5'], s6: ['s6'], s7: ['s7'], s8: ['s8'], s9: ['s9'],
   s10: ['s10'], s11: ['s11'], s12: ['s12'], s13: ['s13'], s14: ['s14'] };
 
-// Параллакс слоёв: палец или мышь сдвигают вырезки по углам листа на разную
-// глубину. Значения — ступеньками (как кадры stop-motion), без лишних перерисовок.
-function useParallax() {
-  useEffect(() => {
-    if (typeof window === 'undefined' || reduceMotion()) return undefined;
-    const root = document.documentElement;
-    let last = '';
-    const onMove = (e) => {
-      const x = Math.round(((e.clientX / window.innerWidth) * 2 - 1) * 4) / 4;
-      const y = Math.round(((e.clientY / window.innerHeight) * 2 - 1) * 4) / 4;
-      const k = x + ',' + y;
-      if (k === last) return;
-      last = k;
-      root.style.setProperty('--kzx', String(x));
-      root.style.setProperty('--kzy', String(y));
-    };
-    window.addEventListener('pointermove', onMove);
-    return () => window.removeEventListener('pointermove', onMove);
-  }, []);
-}
-
 export default function HtmlKollazh({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
@@ -10641,7 +10659,7 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .prj-tools .mark-row.is-compact { flex-wrap: nowrap; gap: 6px; }
 .mark-row.is-compact .mark-b { padding: 0 12px; min-height: 42px; }
 .prj-tools:has(.mark-row) { flex-wrap: nowrap; }
-/* ── БУМАЖНЫЙ КОЛЛАЖ (тестовый урок 12, по ролику html.mp4) ─────────────────
+/* ── БУМАЖНЫЙ КОЛЛАЖ (урок 1 курса HTML — эталон, по ролику html.mp4) ─────────────────
    Стол — фон курса (как в остальных уроках, заказчик 20.10.2026; раньше был
    крафт #D8C4A1), лист — кремовая бумага с рваным краем, вырезки — цветная
    бумага с фактурой и мягкой тенью на нижний слой. Движение ступенчатое,

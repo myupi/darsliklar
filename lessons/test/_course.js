@@ -28,7 +28,7 @@ export default {
       topics: ['html', 'head', 'title', 'body'] },
     { n: 11, slug: 'struktura-dokumenta-2', title: 'Структура HTML-документа — урок 1, вариант 2: страница Пикселя сломалась',
       topics: ['html', 'head', 'title', 'body'] },
-    { n: 12, slug: 'struktura-kollazh', title: 'Структура HTML-документа — урок 1, вариант «Бумажная страница» (коллаж)',
+    { n: 13, slug: 'struktura-robot', title: 'Структура HTML-документа — робот Пиксель (прежний урок 1 курса до 22.10.2026)',
       topics: ['html', 'head', 'title', 'body'] },
   ],
 };

@@ -3,6 +3,47 @@
 // бумага с рваным краем (clip-path) и фактурой. Рваный край считается один раз
 // по зерну (seed): одна и та же вырезка всегда одинаковая.
 // =============================================================================
+// ОЗВУЧКА ЗНАКОВ И ТЕГОВ (общая для уроков на бумажном наборе). Знак в кавычках
+// («<», «/», “>”) нужен глазам: в реплике он назван словами рядом («chap «<» qavsdan»,
+// «уголка «<»»). В речь знак не идёт — иначе сервис читает сырой символ; знак без
+// названия читается словами. Узбекский закрывающий тег — «yopuvchi title tegi»
+// (порядок слов узбекского), а не «yopuvchi teg title».
+const KZ_SIGN_WORD = '(?:qavs|chiziq|скобк|уголк|черт|bracket|slash)[^\\s,.!?:;]*';
+const KZ_SIGN_NAME = { uz: { '<': 'chap burchakli qavs', '>': 'o‘ng burchakli qavs', '/': 'qiya chiziq' },
+  ru: { '<': 'левый уголок', '>': 'правый уголок', '/': 'косая черта' }, en: { '<': 'less-than sign', '>': 'greater-than sign', '/': 'slash' } };
+const spokenHtmlL2 = spokenHtml;
+// eslint-disable-next-line no-func-assign
+spokenHtml = (text, lang) => {
+  let s = String(text || '');
+  s = s.replace(new RegExp('(' + KZ_SIGN_WORD + ')[\\s:—–-]*[«“"]\\s*[<>/\\\\]\\s*[»”"]', 'gi'), '$1');
+  s = s.replace(new RegExp('[«“"]\\s*[<>/\\\\]\\s*[»”"]\\s*(' + KZ_SIGN_WORD + ')', 'gi'), '$1');
+  const nm = KZ_SIGN_NAME[lang] || KZ_SIGN_NAME.ru;
+  s = s.replace(/[«“"]\s*([<>/\\])\s*[»”"]/g, (all, c) => ' ' + (nm[c] || nm['/']) + ' ');
+  if (lang === 'uz') s = s.replace(/<\s*\/\s*([a-z][a-z0-9]*)\s*>/gi, (all, t) => 'yopuvchi ' + t + ' tegi');
+  return spokenHtmlL2(s, lang);
+};
+
+// Параллакс слоёв: палец или мышь сдвигают вырезки по углам листа на разную
+// глубину. Значения — ступеньками (как кадры stop-motion), без лишних перерисовок.
+function useParallax() {
+  useEffect(() => {
+    if (typeof window === 'undefined' || reduceMotion()) return undefined;
+    const root = document.documentElement;
+    let last = '';
+    const onMove = (e) => {
+      const x = Math.round(((e.clientX / window.innerWidth) * 2 - 1) * 4) / 4;
+      const y = Math.round(((e.clientY / window.innerHeight) * 2 - 1) * 4) / 4;
+      const k = x + ',' + y;
+      if (k === last) return;
+      last = k;
+      root.style.setProperty('--kzx', String(x));
+      root.style.setProperty('--kzy', String(y));
+    };
+    window.addEventListener('pointermove', onMove);
+    return () => window.removeEventListener('pointermove', onMove);
+  }, []);
+}
+
 const KZ = { kraft: '#D8C4A1', paper: '#EFE7D6', face: '#F2D7BC', cream: '#FBF6EA', coral: '#E0643F', mustard: '#F0B13F', teal: '#2A8C7E', ink: '#1F2A44' };
 const kzRnd = (seed) => { let s = (Math.abs(seed) * 7919 + 104729) % 2147483647 || 1; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; };
 const TORN = {};

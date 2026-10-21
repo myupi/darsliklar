@@ -172,8 +172,8 @@ const STEPS = [
 ];
 
 export default {
-  title: 'Урок 1 «Структура HTML-документа: робот Пиксель»',
-  file: 'html/01-struktura-dokumenta',
+  title: 'Тестовый урок 13 «Робот Пиксель» (прежний урок 1 курса)',
+  file: 'test/13-struktura-robot',
   adapter: 'canon-html',
   langs: ['ru'],
   size: '1280x720',

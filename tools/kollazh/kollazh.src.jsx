@@ -1,43 +1,48 @@
 // =============================================================================
-// ТЕСТОВЫЕ УРОКИ · Урок 1 курса HTML, вариант «Бумажная страница» — структура документа
-// Дети 11–14. Один самодостаточный JSX: канон курса (до пометки «УРОК») + урок.
+// КУРС «HTML» · Модуль 1 «Основы разметки» · Урок 1 — «Структура HTML-документа»
+// («Бумажная страница», ЭТАЛОН КУРСА с 22.10.2026). Дети 10–14, проходят сами.
+// Один самодостаточный JSX: канон курса (до пометки «УРОК») + урок.
+// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/kollazh/kollazh.src.jsx lessons/html/01-struktura-dokumenta.jsx
+// (звук бумаги: node tools/kollazh/paper-data.mjs → kollazh-paper-data.jsx, потом сборка).
 // =============================================================================
 /*@CANON@*/
 // =============================================================================
-// ===== УРОК 1 (тест) · «Бумажная страница» · модуль html-m1-osnovy =====
+// ===== УРОК 1 · «Бумажная страница» · модуль html-m1-osnovy =====
 //
 // ЗАМЫСЕЛ. Стилистика ролика html.mp4 (заказчик, 20.10.2026): бумажный коллаж —
 // вырезки из цветной бумаги с рваным краем и фактурой, мягкая тень слой на слой,
-// движение вырезками по столу со ступенчатостью stop-motion и параллаксом. На
-// листе живёт бумажный человечек; любая страница устроена так же: рамка (html),
-// голова, где страница помнит своё имя (head, внутри title), и тело — всё, что
-// видно в окне (body). Ученик собирает человечка-страницу, а в конце — свою.
+// движение вырезками по столу со ступенчатостью stop-motion, шорох бумаги, переход
+// между экранами «разбор и сборка». На листе живёт бумажный человечек: голова —
+// как часть head, тело — как часть body. Образ — только опора: каждый раз за ним
+// Коди называет настоящую связь кода с браузером. В конце ученик собирает свою страницу.
 //
 // ДУГА. s1 крючок · s2 план · тройки «объяснение → сам делаешь → закрепление»:
 // тег и html (s3–s5), head и title (s6–s8), body (s9–s11), весь документ
-// (s12–s14) · s15 вывод. Сценарий — docs/scenarij-12-struktura-kollazh.md.
+// (s12–s14) · s15 вывод. Полное описание — docs/urok-01-opisanie.md; правила
+// эталона для следующих уроков — навык novyy-urok, references/etalon-bumazhnaya.md.
 //
 // ОСОБЫЕ ПРАВИЛА УРОКА
-//   · Цвета частей — как в ролике: html коралл, head горчица, body бирюза;
-//     теги — полоски на скотче: уголки коралловые, имя чернилами.
-//   · head — «голова» человечка (метафора ролика), а не «паспорт» урока 1.
+//   · Подсветка идёт за речью Коди: одна реплика — одна подсвеченная вещь
+//     (длинную фразу делим на реплики, чтобы подсветка совпадала со словами).
 //   · Конфетти только в финале: похвалы экранов — поза smile.
-//   · Честный браузер: текст без ярлыков — в окно, вкладка index.html; без
+//   · Честный браузер: текст без тегов — в окно, вкладка index.html; без
 //     </title> всё, что дальше, уходит во вкладку.
 //
-// СИСТЕМА СЛОВ. Тег — слово в угловых скобках, подсказка браузеру (не «бирка»: в узбекском «yorliq» — это вкладка); html — рамка всей страницы; head —
-// голова: то, что страница знает о себе; title — имя страницы на вкладке;
-// body — тело: всё, что видно в окне.
+// СИСТЕМА СЛОВ. Тег — слово в угловых скобках, показывает браузеру, где часть
+// начинается и где кончается; html — объединяет все части страницы (рамка на
+// рисунке — только наглядность); head — сведения о странице; title внутри head —
+// название страницы на вкладке; body — всё, что видно в окне. UZ: teg, yorliq —
+// только вкладка, oyna — окно, sahifa nomi — название.
 //
 // ОБРАЩЕНИЕ: UZ — Siz, RU — «ты» без рода, EN — «you».
 // =============================================================================
 const META = {
-  lessonId: 'test-12-struktura-kollazh',
+  lessonId: 'html-01-struktura-dokumenta',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: '1-dars (qog‘oz). HTML hujjat tuzilishi',
-    ru: 'Урок 1 (бумажный). Структура HTML-документа',
-    en: 'Lesson 1 (paper). HTML document structure'
+    uz: '1-dars. HTML hujjat tuzilishi',
+    ru: 'Урок 1. Структура HTML-документа',
+    en: 'Lesson 1. HTML document structure'
   }
 };
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
@@ -78,7 +83,7 @@ const UI = {
   slot: L3('joy', 'место', 'place'),
   noTags: L3('Bu yerga faqat so‘z yozing, burchakli qavslarsiz.', 'Здесь нужны только слова, без угловых скобок.', 'Only words here, no angle brackets.'),
   again: L3('yangi misol', 'новый пример', 'new example'),
-  hintN: L3('Maslahat', 'Подсказка', 'Hint'),
+  hintN: L3('Yordam', 'Подсказка', 'Hint'),
   up: L3('Yuqoriga', 'Вверх', 'Up'),
   down: L3('Pastga', 'Вниз', 'Down'),
   swap: L3('Ikki qatorni bosing — ular joy almashadi.', 'Нажми две полоски — они поменяются местами.', 'Tap two strips: they swap places.'),
@@ -161,10 +166,10 @@ const C = {
       needSlash: L3('Bu ochuvchi teg. Yopuvchi tegda html so‘zidan oldin qiya chiziq turadi.',
       'Это открывающий тег. В закрывающем перед словом html стоит косая черта.',
       'That’s the opening tag. The closing tag has a slash before html.'),
-      needLt: L3('Teg burchakli qavs bilan boshlanadi: «<». Uni boshiga qo‘shing.',
+      needLt: L3('Teg chap «<» qavs bilan boshlanadi. Uni boshiga qo‘shing.',
       'Тег начинается с угловой скобки «<». Добавь её в начало.',
       'A tag starts with the angle bracket “<”. Add it at the start.'),
-      needGt: L3('Teg oxirida burchakli qavs turadi: «>». Uni oxiriga qo‘shing.',
+      needGt: L3('Teg oxirida o‘ng «>» qavs turadi. Uni oxiriga qo‘shing.',
       'В конце тега нужна угловая скобка «>». Добавь её в конец.',
       'A tag ends with the angle bracket “>”. Add it at the end.'),
       wrongName: L3('Teg ichida boshqa so‘z yozilgan. Bu yerda html kerak.',
@@ -415,14 +420,6 @@ const C = {
 };
 
 /*@L2_HELPERS@*/
-
-// Знак в кавычках («<», «/», “>”) нужен глазам: в реплике он уже назван словами
-// («угловая скобка», «косая черта»). В озвучку он не идёт — иначе сервис читает
-// сырой символ, а «<» превращается в «уголок» не в том падеже.
-const KZ_QUOTED_SIGN = /[\s:—–-]*[«“"]\s*[<>\/\\]\s*[»”"]/g;
-const spokenHtmlL2 = spokenHtml;
-// eslint-disable-next-line no-func-assign
-spokenHtml = (text, lang) => spokenHtmlL2(String(text || '').replace(KZ_QUOTED_SIGN, ''), lang);
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
 Object.assign(SPOKEN, { magic: 1, magicWin: 1, sayTag: 1, order1: 1, order2: 1, order3: 1, sayAsk: 1, top: 1, bottom: 1, bottomAsk: 1, msgs: 1, opened: 1, flew: 1, out: 1, doctype: 1, back: 1, cards: 1, items: 1 });
