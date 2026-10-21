@@ -1,166 +1,120 @@
-// Сценарий проверки урока 1 курса HTML lessons/html/01-struktura-dokumenta.jsx
-// («Структура HTML-документа: робот Пиксель», эталон курса).
-// Основной путь: все 15 экранов действиями ученика (снимок каждого экрана — в решённом
-// виде, до «Дальше»): слои робота, экран Пикселя, план с кнопкой «Подсказка», две надписи,
-// части строки title, шкаф документа, своё название и текст, прогноз, конструктор, пары,
-// исправление вложенности, поломка без </title> и её починка, своя страница из 8 строк, финал с чтением
-// страницы вслух; onFinished один раз, артефакт со своим названием и текстом.
-// Ветки: ошибка в частях тега; промах в прогнозе → дополнительный раунд; title не в тот
-// ящик; title не в тот тег при исправлении; открывающий вместо закрывающего.
-// Шаги выполняются в странице: только аргумент qa. Нажатия — по классам и тегам, без
-// текстов на языке урока, поэтому сценарий одинаков для uz/ru/en.
+// Сценарий проверки урока lessons/test/12-struktura-kollazh.jsx («Бумажная страница»).
+// Основной путь: все 15 экранов действиями ученика (снимок каждого экрана — в решённом виде, до «Дальше»), своё имя (s7) и привет (s10),
+// каркас (s13), починка </title> (s14), onFinished один раз, артефакт со своим именем.
+// Ветки: неверный закрывающий тег; промах в прогнозе → дополнительный раунд;
+// имя страницы в теле → объяснение, без засчёта.
+// Функции шагов выполняются в странице: только аргумент qa.
 
 const STEPS = [
-  { name: 'Экран 1 (r1): включить слои HTML, CSS, JavaScript', shot: 'e01-done', run: async (qa) => {
+  { name: 's1: превратить человечка в страницу', shot: 's1-done', run: async (qa) => {
+    await qa.platform.ready();
+    await qa.click('.kz-btn.is-coral', 'Превратить');
+    await qa.waitFor(() => qa.q('.kz-br'), 5000, 'бумажный браузер');
     await qa.platform.ready(30000);
-    for (let i = 0; i < 3; i += 1) {
-      await qa.waitFor(() => { const b = qa.qa('.rb-layer')[i]; return b && !b.disabled; }, 30000, 'слой ' + (i + 1) + ' доступен');
-      await qa.clickNth('.rb-layer', i, 'слой ' + (i + 1));
+  } },
+  { name: 's2: карточки плана открываются сами', shot: 's2-done', run: async (qa) => {
+    await qa.platform.next();
+    await qa.waitFor(() => qa.platform.nextEnabled(), 40000, 'план рассказан');
+    qa.expect(qa.qa('.kz-card.is-open').length === 4, 'все четыре карточки открыты');
+  } },
+  { name: 's3: бирки рамки', shot: 's3-done', run: async (qa) => {
+    await qa.platform.next();
+    await qa.platform.ready(30000);
+    await qa.click('.kz-frame-lbl-top', 'верхняя бирка'); await qa.platform.ready(30000);
+    await qa.click('.kz-frame-lbl-bot', 'нижняя бирка'); await qa.platform.ready(30000);
+  } },
+  { name: 's4: набрать </html>', shot: 's4-done', run: async (qa) => {
+    await qa.platform.next();
+    await qa.platform.ready();
+    qa.type('.kz-line textarea', '</html>', 'закрывающий тег');
+    await qa.click('.key-go', 'Проверить');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано');
+  } },
+  { name: 's5: бирки по местам, лишняя остаётся', shot: 's5-done', run: async (qa) => {
+    await qa.platform.next();
+    await qa.platform.ready();
+    await qa.clickText('.kz-scrap', '<html>'); await qa.click('.kz-slot-top', 'верхнее место'); await qa.sleep(300);
+    await qa.clickText('.kz-scrap', '</html>'); await qa.click('.kz-slot-bot', 'нижнее место');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано');
+    qa.expect(qa.qa('.kz-tray .kz-scrap').length === 1, 'лишняя бирка осталась');
+  } },
+  { name: 's6: голова → карточка title → имя на вкладке', shot: 's6-done', run: async (qa) => {
+    await qa.platform.next();
+    await qa.platform.ready();
+    await qa.click('.kz-man [aria-label="head"]', 'голова'); await qa.platform.ready(20000);
+    await qa.click('.kz-man [aria-label="title"]', 'карточка title');
+    await qa.waitFor(() => qa.text('.kz-br-tab-t') === qa.data.site, 4000, 'имя на вкладке');
+    await qa.platform.ready(30000);
+  } },
+  { name: 's7: своё имя в title', shot: 's7-done', run: async (qa) => {
+    await qa.platform.next();
+    await qa.platform.ready();
+    qa.type('.kz-line textarea', qa.data.myTitle, 'имя');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано');
+    qa.expect(qa.text('.kz-br-tab-t') === qa.data.myTitle, 'вкладка = своё имя');
+  } },
+  { name: 's8: вкладка или окно', shot: 's8-done', run: async (qa) => {
+    await qa.platform.next();
+    for (let r = 0; r < 6 && qa.q('.kz-pick'); r += 1) {
+      await qa.platform.ready(30000);
+      const slip = qa.text('.kz-slip');
+      await qa.clickNth('.kz-pick .kz-btn', slip.indexOf('<title>') >= 0 ? 0 : 1, 'ответ');
+      await qa.waitFor(() => !qa.q('.kz-pick') || qa.qa('.kz-pick .kz-btn').every((b) => !b.disabled) || qa.platform.nextEnabled(), 30000, 'следующий раунд');
       await qa.sleep(400);
     }
-    await qa.waitFor(() => qa.platform.nextEnabled(), 45000, 'три слоя включены');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 30000, 'все раунды');
   } },
-  { name: 'Экран 2 (r2): открыть экран Пикселя', shot: 'e02-done', run: async (qa) => {
+  { name: 's9: тело → содержимое в окне', shot: 's9-done', run: async (qa) => {
     await qa.platform.next();
-    await qa.platform.ready(30000);
-    await qa.waitFor(() => qa.q('.rb-open-b') && !qa.q('.rb-open-b').disabled, 20000, 'кнопка «Открыть экран»');
-    await qa.click('.rb-open-b', 'Открыть экран');
-    await qa.waitFor(() => qa.q('.rb-open'), 5000, 'мини-браузер и код');
-    await qa.waitFor(() => qa.platform.nextEnabled(), 60000, 'рассказ про страницу');
+    await qa.platform.ready();
+    await qa.click('.kz-man [aria-label="body"]', 'тело');
+    await qa.waitFor(() => qa.q('.kz-bit-pic'), 4000, 'картинка в окне');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 30000, 'засчитано');
   } },
-  { name: 'Экран 3 (m): план и кнопка «Подсказка»', shot: 'e03-done', run: async (qa) => {
+  { name: 's10: привет в body', shot: 's10-done', run: async (qa) => {
     await qa.platform.next();
-    await qa.waitFor(() => qa.q('.coach-card'), 40000, 'обучение кнопке «Подсказка»');
-    await qa.sleep(600);
-    qa.platform.hint();
-    await qa.waitFor(() => qa.platform.nextEnabled(), 40000, 'план готов');
-    qa.expect(!qa.q('.coach-card'), 'шаг «Пауза» убран: обучение закончилось после «Подсказки»');
+    await qa.platform.ready();
+    qa.type('.kz-line textarea', qa.data.myText, 'привет');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано');
+    qa.expect(qa.text('.kz-br-text') === qa.data.myText, 'окно = свой текст');
   } },
-  { name: 'Экран 4 (s1): поменять название', shot: 'e04-done', run: async (qa) => {
+  { name: 's11: разложить вырезки', shot: 's11-done', run: async (qa) => {
     await qa.platform.next();
-    await qa.platform.ready(30000);
-    await qa.waitFor(() => qa.q('.act-card') && !qa.q('.act-card').disabled, 20000, 'карточки');
-    await qa.clickNth('.act-card', 0, 'Поменять название');
-    await qa.waitFor(() => qa.q('.opt-chip'), 4000, 'варианты');
-    await qa.clickNth('.opt-chip', 0, 'первый вариант');
-    await qa.waitFor(() => qa.platform.nextEnabled(), 30000, 'страница поменялась');
+    await qa.platform.ready();
+    const put = async (t, where) => { await qa.clickText('.kz-scrap', t); await qa.click('.kz-zone[data-place="' + where + '"]', where); await qa.sleep(300); };
+    await put('<title>' + qa.data.myTitle + '</title>', 'head'); await put(qa.data.hello, 'body'); await put(qa.data.pic, 'body'); await put(qa.data.play, 'body');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано');
   } },
-  { name: 'Экран 5 (s2): части строки — конец, начало, содержимое', shot: 'e05-done', run: async (qa) => {
+  { name: 's12: читать как браузер', shot: 's12-done', run: async (qa) => {
     await qa.platform.next();
-    const part = async (sel, label) => {
-      await qa.waitFor(() => qa.q(sel) && !qa.q(sel).disabled && !qa.q('.stage.is-speaking'), 60000, label + ' доступно');
-      await qa.click(sel, label);
-      await qa.sleep(500);
-    };
-    await part('.bl-end', 'конец');
-    await part('.bl-start', 'начало');
-    await part('.bl-content', 'содержимое');
-    await qa.waitFor(() => qa.platform.nextEnabled(), 30000, 'все вопросы');
+    await qa.platform.ready();
+    await qa.click('.kz-btn.is-coral', 'Читать как браузер');
+    await qa.waitFor(() => qa.q('.kz-col-text'), 12000, 'страница собрана');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 40000, 'засчитано');
   } },
-  { name: 'Экран 6 (s3): шкаф — html, head, title, body', shot: 'e06-done', run: async (qa) => {
+  { name: 's13: собрать каркас', shot: 's13-done', run: async (qa) => {
     await qa.platform.next();
-    await qa.platform.ready(30000);
-    const chip = (t) => qa.qa('.chip').find((b) => b.textContent.trim() === t);
-    for (const t of ['html', 'head', 'title', 'body']) {
-      await qa.waitFor(() => chip(t) && !chip(t).disabled && !qa.q('.stage.is-speaking'), 40000, 'чип ' + t);
-      await qa.click(chip(t), 'чип ' + t);
-      await qa.sleep(500);
+    await qa.platform.ready();
+    for (const t of ['<html>', '<head>', '<title>…</title>', '</head>', '<body>', qa.data.myText, '</body>', '</html>']) {
+      const b = qa.qa('.kz-pool .kz-scrap').find((x) => x.textContent.replace(/\s+/g, '') === t.replace(/\s+/g, ''));
+      await qa.click(b, 'полоска ' + t); await qa.sleep(150);
     }
-    await qa.waitFor(() => qa.platform.nextEnabled(), 60000, 'четыре части открыты');
+    await qa.click('.kz-build-side .kz-btn', 'Проверить');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'каркас верный');
   } },
-  { name: 'Экран 7 (s4): своё название в title', shot: 'e07-done', run: async (qa) => {
+  { name: 's14: вкладка съела страницу — </title>', shot: 's14-done', run: async (qa) => {
     await qa.platform.next();
-    await qa.platform.ready(30000);
-    qa.type('.tk-input', qa.data.myTitle, 'название');
-    await qa.waitFor(() => qa.platform.nextEnabled(), 30000, 'название засчитано');
+    await qa.platform.ready();
+    qa.expect(qa.text('.kz-br-tab-t').indexOf('</head>') > 0, 'вкладка съела страницу');
+    await qa.clickText('.kz-scrap', '</title>');
+    await qa.waitFor(() => qa.text('.kz-br-tab-t') === qa.data.myTitle, 4000, 'вкладка = имя');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано');
   } },
-  { name: 'Экран 8 (s5): свой текст в body', shot: 'e08-done', run: async (qa) => {
+  { name: 's15: вывод', shot: 's15-done', run: async (qa) => {
     await qa.platform.next();
-    await qa.platform.ready(30000);
-    qa.type('.tk-input', qa.data.myText, 'текст');
-    await qa.waitFor(() => qa.platform.nextEnabled(), 30000, 'текст засчитан');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 45000, '«Завершить урок»');
   } },
-  { name: 'Экран 9 (s6): вкладка или окно', shot: 'e09-done', run: async (qa) => {
-    await qa.platform.next();
-    for (let r = 0; r < 4 && !qa.platform.nextEnabled(); r += 1) {
-      await qa.waitFor(() => qa.platform.nextEnabled() || (qa.q('.where-b') && qa.qa('.where-b').every((b) => !b.disabled) && !qa.q('.stage.is-speaking')), 40000, 'раунд ' + (r + 1));
-      if (qa.platform.nextEnabled()) break;
-      const isTitle = qa.qa('.cv-line.is-in').some((l) => l.textContent.indexOf('<title>') >= 0);
-      await qa.clickNth('.where-b', isTitle ? 0 : 1, isTitle ? 'Вкладка' : 'Окно');
-      await qa.sleep(800);
-    }
-    await qa.waitFor(() => qa.platform.nextEnabled(), 40000, 'все раунды');
-  } },
-  { name: 'Экран 10 (s7): конструктор — head и body в html, title в head', shot: 'e10-done', run: async (qa) => {
-    await qa.platform.next();
-    await qa.platform.ready(30000);
-    const piece = (t) => qa.qa('.piece').find((b) => b.textContent.replace(/\s+/g, '') === t);
-    for (const [t, place] of [['<head>…</head>', 'html'], ['<body>…</body>', 'html'], ['<title>…</title>', 'head']]) {
-      await qa.waitFor(() => piece(t) && !piece(t).disabled && !qa.q('.stage.is-speaking'), 30000, 'деталь ' + t);
-      await qa.click(piece(t), 'деталь ' + t);
-      await qa.waitFor(() => qa.q('.drop-zone[data-place="' + place + '"]'), 4000, 'место внутрь ' + place);
-      await qa.click('.drop-zone[data-place="' + place + '"]', 'внутрь ' + place);
-      await qa.sleep(600);
-    }
-    await qa.waitFor(() => qa.platform.nextEnabled(), 40000, 'шкаф собран');
-  } },
-  { name: 'Экран 11 (s8): четыре пары тегов', shot: 'e11-done', run: async (qa) => {
-    await qa.platform.next();
-    await qa.platform.ready(30000);
-    const tk = (t) => qa.qa('.tk-btn').find((b) => b.textContent.trim() === t);
-    for (const n of ['html', 'head', 'title', 'body']) {
-      await qa.waitFor(() => tk('<' + n + '>') && !tk('<' + n + '>').disabled && !qa.q('.stage.is-speaking'), 30000, 'тег <' + n + '>');
-      await qa.click(tk('<' + n + '>'), '<' + n + '>');
-      await qa.sleep(250);
-      await qa.click(tk('</' + n + '>'), '</' + n + '>');
-      await qa.sleep(600);
-    }
-    await qa.waitFor(() => qa.platform.nextEnabled(), 40000, 'все пары');
-  } },
-  { name: 'Экран 12 (s9): перенести title в head', shot: 'e12-done', run: async (qa) => {
-    await qa.platform.next();
-    await qa.platform.ready(30000);
-    await qa.waitFor(() => qa.q('.cv-line.is-draggable') && !qa.q('.cv-line.is-draggable').disabled, 20000, 'строка title');
-    await qa.click('.cv-line.is-draggable', 'строка title');
-    await qa.sleep(300);
-    const headLine = qa.qa('.cv-line.cv-tap').find((l) => l.textContent.replace(/^\d+/, '').trim() === '<head>');
-    await qa.click(headLine, 'строка <head>');
-    await qa.waitFor(() => qa.platform.nextEnabled(), 40000, 'title в head');
-  } },
-  { name: 'Экран 13 (s10): поломка — дописать </title>', shot: 'e13-done', run: async (qa) => {
-    await qa.platform.next();
-    await qa.platform.ready(30000);
-    qa.expect(qa.text('.mb-tab-t').indexOf('</head>') > 0 && !qa.text('.mb-doc'), 'поломка: текст страницы на вкладке, окно пустое');
-    qa.type('.tk-input', '</title>', 'закрывающий тег');
-    await qa.waitFor(() => qa.q('.key-check') && !qa.q('.key-check').disabled, 10000, '«Проверить»');
-    await qa.click('.key-check', 'Проверить');
-    await qa.waitFor(() => qa.platform.nextEnabled(), 30000, 'тег засчитан');
-    qa.expect(qa.text('.mb-tab-t') === qa.data.myTitle && qa.text('.mb-doc') === qa.data.myText, 'починено: название на вкладке, текст в окне');
-  } },
-  { name: 'Экран 14 (s13): своя страница — 8 строк и свои тексты', shot: 'e14-done', run: async (qa) => {
-    await qa.platform.next();
-    await qa.platform.ready(30000);
-    const chip = (t) => qa.qa('.pool-chip').find((b) => b.textContent.replace(/\s+/g, '') === t);
-    for (const t of ['<html>', '<head>', '<title>…</title>', '</head>', '<body>', 'TEXT', '</body>', '</html>']) {
-      const b = t === 'TEXT' ? qa.qa('.pool-chip').find((x) => !/[<>]/.test(x.textContent)) : chip(t);
-      await qa.click(b, 'строка ' + t);
-      await qa.sleep(200);
-    }
-    await qa.waitFor(() => qa.q('.bigbtn') && !qa.q('.bigbtn').disabled, 20000, '«Проверить»');
-    await qa.click('.bigbtn', 'Проверить');
-    await qa.waitFor(() => qa.qa('.tk-input').length >= 2, 20000, 'поля своих текстов');
-    await qa.platform.ready(30000);
-    const f = qa.qa('.tk-input');
-    qa.type(f[0], qa.data.myTitle, 'своё название');
-    qa.type(f[1], qa.data.myText, 'свой текст');
-    await qa.waitFor(() => qa.platform.nextEnabled(), 40000, 'страница готова');
-  } },
-  { name: 'Экран 15 (s14): финал — Пиксель читает страницу', shot: 'e15-done', run: async (qa) => {
-    await qa.platform.next();
-    await qa.waitFor(() => qa.q('.fig-robot.is-reading'), 40000, 'Пиксель читает страницу вслух');
-    await qa.waitFor(() => qa.platform.nextEnabled(), 40000, '«Завершить урок»');
-  } },
-  { name: 'Завершение один раз', run: async (qa) => {
+  { name: 's15: завершение один раз', run: async (qa) => {
     await qa.platform.next();
     await qa.waitFor(() => qa.finished().length >= 1, 10000, 'onFinished');
     await qa.sleep(1200);
@@ -172,61 +126,41 @@ const STEPS = [
 ];
 
 export default {
-  title: 'Урок 1 «Структура HTML-документа: робот Пиксель»',
-  file: 'html/01-struktura-dokumenta',
+  title: 'Урок 1, вариант «Бумажная страница»',
+  file: 'test/12-struktura-kollazh',
   adapter: 'canon-html',
   langs: ['ru'],
   size: '1280x720',
   voice: 'fast',
   screens: 15,
-  inputScreens: [7, 8, 13, 14],
+  inputScreens: [4, 7, 10],
   expectFinish: true,
   data: {
-    ru: { myTitle: 'Шахматы', myText: 'Сыграем партию?' },
-    uz: { myTitle: 'Shaxmat', myText: 'Bir o‘yin o‘ynaymizmi?' },
-    en: { myTitle: 'Chess', myText: 'Shall we play a game?' }
+    ru: { site: 'Мой сайт', myTitle: 'Шахматы', myText: 'Сыграем партию?', hello: 'Привет, мир!', pic: 'картинка', play: 'Играть' },
+    uz: { site: 'Mening saytim', myTitle: 'Shaxmat', myText: 'Bir o‘yin o‘ynaymizmi?', hello: 'Salom, dunyo!', pic: 'rasm', play: 'O‘ynash' },
+    en: { site: 'My site', myTitle: 'Chess', myText: 'Shall we play a game?', hello: 'Hello, world!', pic: 'picture', play: 'Play' }
   },
   steps: STEPS,
   flows: [
-    { name: 'экран 5: неверная часть тега', start: 4, langs: ['ru'], steps: [{ name: 'на «конец» нажато «начало»', run: async (qa) => {
-      await qa.waitFor(() => qa.q('.bl-start') && !qa.q('.bl-start').disabled && !qa.q('.stage.is-speaking'), 60000, 'вопросы');
-      await qa.click('.bl-start', 'начало вместо конца');
-      await qa.waitFor(() => qa.q('.ask.ask-hint') || qa.q('.stage.is-speaking'), 4000, 'объяснение');
+    { name: 's4: открывающий вместо закрывающего', start: 3, langs: ['ru'], steps: [{ name: '<html> → причина, без засчёта', run: async (qa) => {
+      await qa.platform.ready();
+      qa.type('.kz-line textarea', '<html>', 'открывающий');
+      await qa.click('.key-go', 'Проверить');
+      await qa.waitFor(() => qa.q('.kz-ask.is-hint'), 3000, 'причина на месте задания');
       qa.expect(!qa.platform.nextEnabled(), '«Дальше» закрыта');
     } }] },
-    { name: 'экран 9: промах → дополнительный раунд', start: 8, langs: ['ru'], steps: [{ name: 'неверный ответ', run: async (qa) => {
-      await qa.waitFor(() => qa.q('.where-b') && qa.qa('.where-b').every((b) => !b.disabled) && !qa.q('.stage.is-speaking'), 40000, 'кнопки');
-      const isTitle = qa.qa('.cv-line.is-in').some((l) => l.textContent.indexOf('<title>') >= 0);
-      await qa.clickNth('.where-b', isTitle ? 1 : 0, 'неверный ответ');
-      await qa.waitFor(() => /\/3/.test(qa.text('.ask-n') || ''), 30000, 'раундов стало три');
+    { name: 's8: промах → дополнительный раунд', start: 7, langs: ['ru'], steps: [{ name: 'неверный ответ', run: async (qa) => {
+      await qa.platform.ready();
+      const slip = qa.text('.kz-slip');
+      await qa.clickNth('.kz-pick .kz-btn', slip.indexOf('<title>') >= 0 ? 1 : 0, 'неверный ответ');
+      await qa.waitFor(() => /\/4/.test(qa.text('.kz-ask-n')), 30000, 'раундов стало четыре');
     } }] },
-    { name: 'экран 10: title не в тот ящик', start: 9, langs: ['ru'], steps: [{ name: 'title прямо в html', run: async (qa) => {
-      await qa.platform.ready(30000);
-      const piece = (t) => qa.qa('.piece').find((b) => b.textContent.replace(/\s+/g, '') === t);
-      await qa.waitFor(() => piece('<title>…</title>') && !piece('<title>…</title>').disabled, 30000, 'деталь title');
-      await qa.click(piece('<title>…</title>'), 'деталь title');
-      await qa.waitFor(() => qa.q('.drop-zone[data-place="html"]'), 4000, 'место внутрь html');
-      await qa.click('.drop-zone[data-place="html"]', 'внутрь html');
-      await qa.waitFor(() => qa.q('.ask.ask-hint'), 4000, 'объяснение на месте задания');
-      qa.expect(!!piece('<title>…</title>'), 'деталь не легла');
-    } }] },
-    { name: 'экран 12: title не в head', start: 11, langs: ['ru'], steps: [{ name: 'title в body', run: async (qa) => {
-      await qa.platform.ready(30000);
-      await qa.waitFor(() => qa.q('.cv-line.is-draggable') && !qa.q('.cv-line.is-draggable').disabled, 20000, 'строка title');
-      await qa.click('.cv-line.is-draggable', 'строка title');
-      await qa.sleep(300);
-      const bodyLine = qa.qa('.cv-line.cv-tap').find((l) => l.textContent.replace(/^\d+/, '').trim() === '<body>');
-      await qa.click(bodyLine, 'строка <body>');
-      await qa.waitFor(() => qa.q('.ask.ask-hint') || qa.q('.stage.is-speaking'), 4000, 'объяснение');
-      qa.expect(!qa.platform.nextEnabled(), '«Дальше» закрыта');
-    } }] },
-    { name: 'экран 13: открывающий вместо закрывающего', start: 12, langs: ['ru'], steps: [{ name: '<title> → причина', run: async (qa) => {
-      await qa.platform.ready(30000);
-      qa.type('.tk-input', '<title>', 'открывающий');
-      await qa.waitFor(() => qa.q('.key-check') && !qa.q('.key-check').disabled, 10000, '«Проверить»');
-      await qa.click('.key-check', 'Проверить');
-      await qa.waitFor(() => qa.q('.ask.ask-hint'), 4000, 'причина на месте задания');
-      qa.expect(!qa.platform.nextEnabled(), '«Дальше» закрыта');
+    { name: 's11: имя в тело — объяснение', start: 10, langs: ['ru'], steps: [{ name: 'имя → body', run: async (qa) => {
+      await qa.platform.ready();
+      await qa.clickText('.kz-scrap', '<title>' + qa.data.site + '</title>');
+      await qa.click('.kz-zone[data-place="body"]', 'тело');
+      await qa.waitFor(() => qa.q('.kz-ask.is-hint'), 3000, 'объяснение на месте задания');
+      qa.expect(qa.qa('.kz-tray .kz-scrap').length === 4, 'вырезка не легла');
     } }] }
   ]
 };
