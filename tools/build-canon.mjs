@@ -112,6 +112,7 @@ swapKodiHead();
 swapEmotion();
 swapUzPace();
 swapAnswerSafety();
+swapCalmVoice();
 
 swap("  ui: '#1E88E5',", "  // КУРС HTML: интерфейс — #FF4F28 (заказчик, 12.10.2026), а не голубой.\n  ui: '#FF4F28',");
 swap("  uiSoft: '#E3F2FD',", "  uiSoft: '#FFE8E1',");
@@ -821,4 +822,40 @@ function swapAnswerSafety() {
   }, [busy, playing, paused]);
   return !busy || safety;
 }`);
+}
+
+// СПОКОЙНЕЕ И ТОЧНЕЕ ПО СМЫСЛУ (заказчик, 21.10.2026: правка текстов и озвучки урока 1
+// для узбекоязычных детей). Эмоции остаются (заказчик, 19.10.2026), но:
+//   · без автоматического смеха и вздохов: похвала — [happy], «ого» — [amazed],
+//     большая победа (финал) — [excited], без [laughs] / [chuckles] / [gasps];
+//   · по смыслу, а не только по первому слову: разбор ошибки ученика узнаётся и по
+//     словам внутри фразы («yetishmayapti», «noto‘g‘ri joy», «не хватает», «is missing» …)
+//     и звучит спокойно — [reassuring]; признание собственной ошибки Коди («adashdim»,
+//     «adashibman», «перепутал», «I put … wrong») — [embarrassed], а не восторг;
+//   · «!» в конце инструкции больше не делает её бодро-восторженной — [friendly].
+// Кнопка помощи по-узбекски — «Yordam» (понятнее ребёнку, чем «Maslahat»).
+function swapCalmVoice() {
+  swap(`  oops: { ru: /^(?:ой|упс)(?=[\\s!,.]|$)|кажется, я /i, uz: /o‘xshayman|adashdim|chalkashtirdim/i, en: /^(?:oops|uh-oh)(?=[\\s!,.]|$)|i think i (?:put|mixed|made)/i },`,
+    `  oops: { ru: /^(?:ой|упс)(?=[\\s!,.]|$)|кажется, я |перепутал/i, uz: /o‘xshayman|adashdim|adashibman|chalkashtirdim|xato qilibman/i, en: /^(?:oops|uh-oh)(?=[\\s!,.]|$)|i think i (?:put|mixed|made)/i },
+  // Разбор ошибки ученика — по словам внутри фразы (не только по началу).
+  fix: { ru: /не хватает|стоит не там|это другое|это открывающий тег|не страшно|кладут не/i, uz: /yetishmayapti|noto‘g‘ri joy|bu ochuvchi teg|boshqa\\. bu yerga|hechqisi|demak u body ichida emas/i, en: /is missing|wrong place|that’s an opening tag|different word|no worries|not straight into/i },`);
+  swap(`  if (is('oops')) return '[embarrassed] ';
+  if (is('big')) return '[very excited] [laughs] ';
+  if (is('wow')) return '[gasps] [amazed] ';
+  if (is('win')) { const r = emoHash(s) % 3; return '[excited] ' + (r === 0 ? '[laughs] ' : r === 1 ? '[chuckles] ' : ''); }
+  if (is('soft')) return '[reassuring] ';
+  if (is('hello')) return '[cheerful] ';
+  if (is('bye')) return '[warmly] ';
+  if (/\\?$/.test(s)) return '[curious] ';
+  if (/!$/.test(s)) return '[upbeat] ';
+  return '[friendly] ';`, `  if (is('oops')) return '[embarrassed] ';
+  if (is('soft') || is('fix')) return '[reassuring] ';
+  if (is('big')) return '[excited] ';
+  if (is('wow')) return '[amazed] ';
+  if (is('win')) return '[happy] ';
+  if (is('hello')) return '[cheerful] ';
+  if (is('bye')) return '[warmly] ';
+  if (/\\?$/.test(s)) return '[curious] ';
+  return '[friendly] ';`);
+  swap(`const HINT_BTN = { uz: 'Maslahat', ru: 'Подсказка', en: 'Hint' };`, `const HINT_BTN = { uz: 'Yordam', ru: 'Подсказка', en: 'Hint' };`);
 }

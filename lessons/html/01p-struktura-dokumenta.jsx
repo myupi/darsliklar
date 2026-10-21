@@ -908,7 +908,9 @@ const LANG_MARK = {
 const TTS_EMOTION = true;
 const EMO_W = (words) => new RegExp('^(?:' + words.join('|') + ')(?=[\\s!,.?…:;]|$)', 'i');
 const EMO = {
-  oops: { ru: /^(?:ой|упс)(?=[\s!,.]|$)|кажется, я /i, uz: /o‘xshayman|adashdim|chalkashtirdim/i, en: /^(?:oops|uh-oh)(?=[\s!,.]|$)|i think i (?:put|mixed|made)/i },
+  oops: { ru: /^(?:ой|упс)(?=[\s!,.]|$)|кажется, я |перепутал/i, uz: /o‘xshayman|adashdim|adashibman|chalkashtirdim|xato qilibman/i, en: /^(?:oops|uh-oh)(?=[\s!,.]|$)|i think i (?:put|mixed|made)/i },
+  // Разбор ошибки ученика — по словам внутри фразы (не только по началу).
+  fix: { ru: /не хватает|стоит не там|это другое|это открывающий тег|не страшно|кладут не/i, uz: /yetishmayapti|noto‘g‘ri joy|bu ochuvchi teg|boshqa\. bu yerga|hechqisi|demak u body ichida emas/i, en: /is missing|wrong place|that’s an opening tag|different word|no worries|not straight into/i },
   big: { ru: EMO_W(['ура', 'это было мощно', 'вот это да']), uz: EMO_W(['ura', 'bu kuchli', 'qoyil', 'tabriklayman']), en: EMO_W(['hooray', 'that was epic', 'look at that']) },
   wow: { ru: EMO_W(['ого', 'ух ты', 'вот оно']), uz: /^(?:voy,|ajab|mana u!)/i, en: EMO_W(['whoa', 'there it is']) },
   win: { ru: EMO_W(['есть', 'огонь', 'супер', 'вау', 'класс', 'бомба', 'чётко', 'четко', 'точно', 'в точку', 'получилось', 'отлично', 'круто', 'красота', 'идеально', 'готово', 'собрано', 'спасибо', 'дожали', 'верно', 'да', 'нашлось', 'сработало', 'правильно', 'вот так', 'работает']),
@@ -925,14 +927,13 @@ const emoTag = (text, lang) => {
   const L = EMO.win[lang] ? lang : 'ru';
   const is = (k) => EMO[k][L].test(s);
   if (is('oops')) return '[embarrassed] ';
-  if (is('big')) return '[very excited] [laughs] ';
-  if (is('wow')) return '[gasps] [amazed] ';
-  if (is('win')) { const r = emoHash(s) % 3; return '[excited] ' + (r === 0 ? '[laughs] ' : r === 1 ? '[chuckles] ' : ''); }
-  if (is('soft')) return '[reassuring] ';
+  if (is('soft') || is('fix')) return '[reassuring] ';
+  if (is('big')) return '[excited] ';
+  if (is('wow')) return '[amazed] ';
+  if (is('win')) return '[happy] ';
   if (is('hello')) return '[cheerful] ';
   if (is('bye')) return '[warmly] ';
   if (/\?$/.test(s)) return '[curious] ';
-  if (/!$/.test(s)) return '[upbeat] ';
   return '[friendly] ';
 };
 // КУРС HTML: УЗБЕКСКИЙ ГОЛОС (заказчик, 19.10.2026: «с озвучкой проблемы»). Как в
@@ -2654,7 +2655,7 @@ function useIdleCoach(active, speaking) {
   return lv;
 }
 
-const HINT_BTN = { uz: 'Maslahat', ru: 'Подсказка', en: 'Hint' };
+const HINT_BTN = { uz: 'Yordam', ru: 'Подсказка', en: 'Hint' };
 
 // Кнопка подсказки в шапке: есть на каждом экране, работает всегда.
 const HintChromeBtn = () => {
