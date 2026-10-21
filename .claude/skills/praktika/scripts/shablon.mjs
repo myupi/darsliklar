@@ -1,39 +1,38 @@
-// Шаблон исходника новой практики из эталона 01p.
+// Исходник новой практики — копия исходника эталона 01p «Бумажная улица» (tools/praktika-01/).
 //
-//   node .claude/skills/praktika/scripts/shablon.mjs <исходник.jsx> [эталон.jsx]
+//   node .claude/skills/praktika/scripts/shablon.mjs tools/praktika-<NN> [эталон-папка]
 //
-// Пишет в исходник: шапку файла, метку /*@CANON@*/ и всю урочную часть эталона
-// (всё ниже пометки «УРОК»). Эталон по умолчанию — lessons/html/01p-struktura-dokumenta.jsx.
+// Копирует p01.src.jsx, p01-engine.jsx, p01-screens.jsx, p01.css в новую папку под
+// именами pNN.* и правит в исходнике пути на свои файлы. Бумажный набор урока 1
+// (tools/kollazh/) не копируется — исходник подключает его как есть.
 // Дальше исходник правится под тему (см. references/karkas.md навыка praktika),
-// а файл практики собирается: node .claude/skills/novyy-urok/scripts/sobrat.mjs <исходник> <файл>.
-// Существующий исходник не перезаписывается.
+// а файл практики собирается: node .claude/skills/novyy-urok/scripts/sobrat.mjs <папка>/pNN.src.jsx <файл>.
+// Существующая папка с исходником не перезаписывается.
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { resolve, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const [outArg, refArg] = process.argv.slice(2);
-if (!outArg) { console.log('Использование: node shablon.mjs <исходник.jsx> [эталон.jsx]'); process.exit(1); }
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
-const out = resolve(outArg);
-if (existsSync(out)) { console.log('Исходник уже есть, не перезаписываю: ' + outArg); process.exit(1); }
-const ref = resolve(root, refArg || 'lessons/html/01p-struktura-dokumenta.jsx');
-const src = readFileSync(ref, 'utf8');
-const canon = readFileSync(resolve(root, 'canon/html/canon-v1.jsx'), 'utf8').replace(/\n+$/, '');
-const at = src.indexOf(canon);
-if (at < 0) throw new Error('В эталоне нет канона дословно: ' + ref);
-const MARK = '// ==============================  У Р О К  =====================================';
-const m = src.indexOf(MARK, at + canon.length);
-if (m < 0) throw new Error('В эталоне нет пометки «УРОК» после канона');
-const lesson = src.slice(m + MARK.length);
-const head = [
-  '// =============================================================================',
-  '// КУРС «HTML» · Практика к уроку N — «Название операции»  ← заполнить',
-  '// Дети 11–14. Один самодостаточный JSX: канон курса (до пометки «УРОК») + практика.',
-  '// =============================================================================',
-  '/*@CANON@*/'
-].join('\n');
-mkdirSync(dirname(out), { recursive: true });
-writeFileSync(out, head + lesson);
-console.log('Шаблон практики: ' + outArg + ' (' + lesson.split('\n').length + ' строк урочной части из ' + (refArg || '01p') + ').');
+if (!outArg) { console.log('Использование: node shablon.mjs tools/praktika-<NN> [эталон-папка]'); process.exit(1); }
+const root = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../../..');
+const out = resolve(root, outArg);
+const ref = resolve(root, refArg || 'tools/praktika-01');
+const m = /(\d+)\s*$/.exec(basename(out));
+const nn = m ? m[1].padStart(2, '0') : 'NN';
+const name = (f) => f.replace(/^p01/, 'p' + nn);
+const files = ['p01.src.jsx', 'p01-engine.jsx', 'p01-screens.jsx', 'p01.css'];
+if (existsSync(resolve(out, name(files[0])))) { console.log('Исходник уже есть, не перезаписываю: ' + outArg); process.exit(1); }
+mkdirSync(out, { recursive: true });
+files.forEach((f) => {
+  let s = readFileSync(resolve(ref, f), 'utf8');
+  if (f === 'p01.src.jsx') {
+    s = s.replace(/\/\*@FILE:p01-engine\.jsx@\*\//, '/*@FILE:' + name('p01-engine.jsx') + '@*/')
+      .replace(/\/\*@FILE:p01-screens\.jsx@\*\//, '/*@FILE:' + name('p01-screens.jsx') + '@*/')
+      .replace(/\/\*@FILE:p01\.css@\*\//, '/*@FILE:' + name('p01.css') + '@*/')
+      .replace(/tools\/praktika-01\/p01\.src\.jsx lessons\/html\/01p-struktura-dokumenta\.jsx/, outArg.replace(/\/$/, '') + '/' + name('p01.src.jsx') + ' lessons/<курс>/<NN>p-<slug>.jsx  ← заполнить');
+  }
+  writeFileSync(resolve(out, name(f)), s);
+});
+console.log('Исходник практики: ' + outArg + ' (' + files.map(name).join(', ') + ') — копия ' + (refArg || 'tools/praktika-01') + '.');
 console.log('Дальше: переписать под тему разделы «под тему» из references/karkas.md, затем собрать sobrat.mjs.');

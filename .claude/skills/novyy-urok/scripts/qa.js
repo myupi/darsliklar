@@ -94,9 +94,21 @@ const Q = {
     const kbd = d.documentElement.classList.contains('is-kbd');
     const H = kbd ? parseFloat(getComputedStyle(d.documentElement).getPropertyValue('--vvh')) || w.innerHeight : w.innerHeight;
     const W = w.innerWidth;
+    // Строки, прокрученные внутри своего блока (редактор кода с overflow: auto),
+    // не вылезают за окно — их обрезает сам блок; такие элементы не считаем.
+    const clipped = (e) => {
+      for (let p = e.parentElement; p && p !== c; p = p.parentElement) {
+        const ov = w.getComputedStyle(p).overflowY;
+        if (ov === 'auto' || ov === 'scroll' || ov === 'hidden') {
+          const r = e.getBoundingClientRect(), b = p.getBoundingClientRect();
+          if (r.top >= b.bottom - 1 || r.bottom > b.bottom + 1) return b.bottom <= H + 1;
+        }
+      }
+      return false;
+    };
     const out = [...d.querySelectorAll('.stage-content *')].filter((e) => {
       const r = e.getBoundingClientRect();
-      return r.width > 0 && r.height > 0 && (r.right > W + 1 || r.left < -1 || r.bottom > H + 1);
+      return r.width > 0 && r.height > 0 && (r.right > W + 1 || r.left < -1 || r.bottom > H + 1) && !clipped(e);
     }).slice(0, 4).map((e) => (typeof e.className === 'string' && e.className) || e.tagName);
     return { over: c ? c.scrollHeight - c.clientHeight : null, hscroll: d.documentElement.scrollWidth - W, out };
   },
