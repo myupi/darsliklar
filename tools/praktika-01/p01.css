@@ -1,0 +1,364 @@
+/* ── ПРАКТИКА К УРОКУ 1 «Бумажная улица» — бумажный вид урока 1 ─────────────
+   Лист, вырезки и бумажный браузер — из набора kollazh; здесь только то, что
+   есть у практики: редактор на бумажной подложке, заметки-листки, кнопки,
+   улица из бумажных домов. Префикс pp- (и классы каркаса 01p: ed-, cv-, op-). */
+.lesson-root { --cv-fs: clamp(12.5px, 3.4vw, 15px); --ed-fs: 16px; --gw: 46px; }
+@media (min-width: 760px) and (min-height: 700px) {
+  .lesson-root { --cv-fs: clamp(14px, 1.45vw, 16px); --ed-fs: 17px; }
+}
+
+/* ══ ЛИСТ ПРАКТИКИ ═══════════════════════════════════════════════════════ */
+.pp-sheet .kz-sheet-body { gap: clamp(6px, 1.2dvh, 12px); padding: clamp(10px, 1.8dvh, 18px) clamp(10px, 2vw, 22px); }
+.pp-sheet-intro .kz-sheet-body, .pp-sheet-fin .kz-sheet-body { justify-content: center; }
+.pp-sheet-fin .kz-sheet-body { justify-content: flex-start; overflow: auto; scrollbar-width: thin; }
+.kz-cut.pp-pad-bg, .kz-cut.pp-road { inset: 0; }
+.pp-pad { position: relative; }
+.pp-pad > :not(.pp-pad-bg) { position: relative; z-index: 1; }
+
+/* Строка задания — полоска урока 1. */
+.pp-ask-wrap { flex: 0 0 auto; }
+.kz-ask.pp-ask { font-size: clamp(14.5px, 2dvh, 17.5px); padding: 7px 14px 8px; }
+.pp-drill-tag { display: inline-block; margin-right: 8px; padding: 1px 8px; background: #2A8C7E; color: #FBF6EA; vertical-align: 1px;
+  font: 800 11.5px/18px 'Manrope', sans-serif; letter-spacing: .04em; text-transform: uppercase;
+  clip-path: polygon(0 10%, 8% 0, 92% 8%, 100% 0, 97% 55%, 100% 100%, 50% 92%, 4% 100%, 0 50%); }
+.pp-extra { flex: 0 0 auto; display: flex; justify-content: center; }
+
+/* ══ РАБОЧАЯ ОБЛАСТЬ: браузер слева, редактор справа (на телефоне — в колонку) ═ */
+.kz-sheet-body > .op-work { flex: 0 1 auto; min-height: 0; }
+.kz-sheet-body > .pp-note { flex: 0 1 auto; min-height: 44px; overflow: auto; scrollbar-width: thin; }
+.op-work { display: flex; flex-direction: column; gap: clamp(6px, 1.2dvh, 12px); width: 100%; min-height: 0; }
+.op-side { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; min-width: 0; }
+.op-main { display: flex; flex-direction: column; gap: 8px; flex: 0 1 auto; min-height: 0; min-width: 0; }
+.op-main > .pp-edpad { flex: 0 1 auto; min-height: 64px; display: flex; flex-direction: column; }
+.pp-edpad > .ed, .pp-edpad > .cv { flex: 0 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+/* Свой дом с нуля: рабочая область забирает свободную высоту, поле — всю рамку. */
+.kz-sheet-body > .op-work.is-big { flex: 1 1 auto; }
+.op-work.is-big .op-main { flex: 1 1 auto; }
+.op-work.is-big .op-main > .pp-edpad { flex: 1 1 auto; }
+.op-work.is-big .pp-edpad > .ed { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 8em; }
+.op-work.is-big .ed-edit { flex: 1 1 auto; }
+@media (min-width: 720px) {
+  .op-work { flex-direction: row; align-items: stretch; gap: 20px; }
+  .op-side { flex: .9 1 0; min-height: 0; overflow: auto; }
+  .op-main { flex: 1.1 1 0; }
+  /* Ноутбук: лист шире — крупнее задание, браузер и улица; содержимое по центру листа. */
+  .pp-sheet .kz-sheet-body { justify-content: safe center; padding: clamp(14px, 2.4dvh, 26px) clamp(40px, 4.5vw, 64px); }
+  .kz-ask.pp-ask { font-size: clamp(15.5px, 2.5dvh, 20px); padding: 8px 18px 9px; }
+  .pp-strip { padding: 0 6px; }
+  .pp-strip .pp-house.is-s { --hw: clamp(28px, 4.4dvh, 38px); }
+  .pp-page { min-height: 4.2em; max-height: 9em; font-size: clamp(15px, 2.3dvh, 19px); }
+  .pp-br .kz-br-page { margin: 10px 14px 12px; }
+  .pp-note-body { font-size: clamp(15px, 2.3dvh, 18px); }
+}
+
+/* ══ БУМАЖНЫЙ БРАУЗЕР В ПРАКТИКЕ — высота по содержимому ══════════════════ */
+.kz-br.pp-br { aspect-ratio: auto; max-width: none; flex: 0 0 auto; }
+.pp-br .kz-br-body { flex: 0 0 auto; }
+.pp-br .kz-br-page { position: relative; inset: auto; margin: 7px 10px 9px; }
+.pp-page { min-height: 1.5em; max-height: 5.6em; overflow: auto; overflow-wrap: anywhere; scrollbar-width: thin; }
+.pp-page.is-empty { color: #9C9384; font-style: italic; font-family: 'Manrope', sans-serif; font-weight: 600; font-size: .86em; }
+.pp-br .kz-br-tab { max-width: 74%; }
+.pp-br.is-hl-page .kz-br-page { outline-offset: 2px; }
+
+/* ══ КОД С ПОЛЯМИ (t1, t2) ══════════════════════════════════════════════ */
+.cv { position: relative; width: 100%; min-width: 0; text-align: left; padding: 8px 8px 8px 0;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: var(--cv-fs); line-height: 1.55; color: #1F2A44; }
+.cv-line { position: relative; display: flex; align-items: center; min-height: 1.55em; width: 100%;
+  padding-left: calc(2.3em + var(--d) * 1.2em); padding-right: 4px; white-space: nowrap; transition: opacity .3s, background .3s; }
+.cv-n { position: absolute; left: 0; width: 1.9em; text-align: right; color: #A39A88; font-size: .78em; }
+.cv-bar { position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--c); opacity: .7;
+  left: calc(2.3em - .55em + var(--lv) * 1.2em); }
+.cv-bar.is-first { top: 50%; } .cv-bar.is-last { bottom: 50%; }
+.cv-code { display: flex; align-items: center; flex-wrap: nowrap; min-width: 0; flex: 1 1 auto; font-weight: 600; }
+.cv-code > .kz-tag { flex-shrink: 0; }
+.cv-line.is-out { opacity: .35; }
+.cv-line.is-in { background: #FFF1C9; }
+.pp-doc { color: #6E6758; }
+.pp-text { font: 700 1.02em/1.3 'Manrope', sans-serif; padding: 0 4px; white-space: normal; min-width: 0; overflow-wrap: anywhere; }
+/* Поле прямо в строке кода — как в уроке 1. 16 px — меньше нельзя: iOS увеличит страницу. */
+.tk-input { display: block; flex: 0 1 auto; min-width: 4.5ch; max-width: 100%; margin: 2px 3px; padding: 2px 7px; resize: none; overflow: hidden;
+  white-space: pre-wrap; overflow-wrap: anywhere; border: none; border-bottom: 2px dashed #E0643F; border-radius: 4px; outline: none;
+  background: #FFF8EC; color: #1F2A44; font: 700 16px/1.3 'Manrope', sans-serif; }
+.tk-input::placeholder { color: #A39A88; font-weight: 600; }
+.tk-input:focus { background: #fff; border-bottom-color: #1F2A44; }
+.tk-input.is-led-in { animation: kzLed 1.2s ease-in-out infinite; }
+
+/* ══ РЕДАКТОР ════════════════════════════════════════════════════════════
+   Прозрачная textarea лежит над подсвеченными строками. У обоих слоёв один
+   шрифт, кегль, межстрочный, отступы и правила переноса — иначе курсор
+   разойдётся с буквами. Лигатуры выключены по той же причине. */
+.ed { position: relative; width: 100%; min-width: 0; text-align: left; padding: 8px 0;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; font-size: var(--ed-fs); font-weight: 500;
+  line-height: 1.45; font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; color: #1F2A44; tab-size: 2; }
+.ed-line { position: relative; min-height: 1.45em; padding: 0 10px 0 var(--gw); white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; }
+.ed-line.is-static { color: #5B5446; }
+.ed-n { position: absolute; left: 0; top: 0; width: 24px; text-align: right; color: #A39A88; font-size: .72em; line-height: 2.01em; user-select: none; }
+.ed-br { color: #D2522C; }
+.ed-nm { color: #1F2A44; }
+.ed-line.is-static .ed-nm { color: #3D4559; }
+.ed-doc, .ed-unk { color: #5B5446; }
+.ed-edit { position: relative; display: grid; border-radius: 6px; transition: box-shadow .2s, background .2s; }
+.ed-edit.is-framed { background: #FFF1C9; box-shadow: inset 0 0 0 1.5px rgba(224, 100, 63, .45); }
+.ed-edit:focus-within { background: #fff; box-shadow: inset 0 0 0 2px #E0643F; }
+.ed-edit.is-led-in { animation: kzLed 1.2s ease-in-out infinite; }
+.ed-hl, .ed-ta { grid-area: 1 / 1; min-width: 0; }
+.ed-hl { pointer-events: none; }
+.ed-edit .ed-line { padding-left: calc(var(--gw) + var(--edi, 0ch)); }
+.ed-ta { position: relative; z-index: 1; display: block; width: 100%; height: 100%; min-height: 1.45em; margin: 0;
+  border: 0; border-radius: 6px; resize: none; overflow: hidden; outline: none;
+  padding: 0 10px 0 calc(var(--gw) + var(--edi, 0ch)); background: transparent;
+  color: transparent; -webkit-text-fill-color: transparent; caret-color: #1F2A44;
+  font: inherit; line-height: inherit; letter-spacing: inherit; tab-size: 2;
+  font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0;
+  white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; }
+.ed-ta::selection { background: rgba(224, 100, 63, .28); }
+/* Полоски вложенности: сплошная — часть закрыта, пунктир — не закрыта.
+   Цвет — цвет части в уроке 1, но смысл несёт форма. */
+.ed-bar { position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--c); opacity: .85;
+  left: calc(28px + var(--lv) * 6px); }
+.ed-bar.is-first { top: .45em; } .ed-bar.is-last { bottom: .45em; }
+.ed-bar.is-open { width: 0; background: none; border-left: 3px dashed var(--c); border-radius: 0; opacity: 1; }
+/* Строка, на которую указывает подсказка. */
+.ed-line.is-mark { background: #FFE4D8; box-shadow: inset 4px 0 0 #E0643F; }
+
+/* Места между строками (t6): нажимаешь щель — там раскрывается строка ввода. */
+.pp-gap { display: block; position: relative; width: calc(100% - var(--gw) + 10px); height: 18px; margin: -4px 0 -4px calc(var(--gw) - 10px);
+  padding: 0; border: none; background: none; cursor: pointer; z-index: 2; }
+.pp-gap-line { position: absolute; left: 0; right: 26px; top: 50%; height: 0; border-top: 2px dashed #E2D8C3; transition: border-color .15s; }
+.pp-gap::after { content: '+'; position: absolute; right: 6px; top: 50%; translate: 0 -52%; width: 15px; height: 15px; border-radius: 50%;
+  background: #FBF6EA; color: #B1A891; font: 800 13px/15px 'Manrope', sans-serif; text-align: center; box-shadow: inset 0 0 0 1.5px #D8CDB6; }
+.pp-gap:hover .pp-gap-line, .pp-gap:focus-visible .pp-gap-line { border-top-color: #E0643F; }
+.pp-gap:hover::after, .pp-gap:focus-visible::after { color: #E0643F; box-shadow: inset 0 0 0 1.5px #E0643F; }
+.pp-gap:focus-visible { outline: none; }
+.pp-gap.is-led .pp-gap-line { border-top-color: #E0643F; border-top-width: 3px; }
+.pp-gap.is-led { animation: kzLed 1.2s ease-in-out infinite; }
+
+/* Образец и код готовой страницы. */
+.sample { display: flex; flex-direction: column; gap: 4px; padding: 6px 10px; text-align: left; }
+.sample-lbl { font: 800 11.5px 'Manrope', sans-serif; letter-spacing: .05em; text-transform: uppercase; color: #8A6A1A; }
+.sample-code { font: 500 14px/1.4 'JetBrains Mono', ui-monospace, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; color: #1F2A44; }
+
+/* ══ КНОПКИ: символы и «Проверить» — бумажные ═══════════════════════════ */
+.op-tools { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.pp-sym { display: flex; gap: 5px; }
+.pp-key { min-width: 44px; min-height: 44px; padding: 0 8px; border: none; cursor: pointer; background: #FBF6EA; color: #1F2A44;
+  font: 800 20px/1 'JetBrains Mono', ui-monospace, monospace;
+  clip-path: polygon(0 8%, 10% 0, 50% 6%, 92% 0, 100% 10%, 96% 52%, 100% 92%, 90% 100%, 50% 94%, 8% 100%, 0 90%, 4% 48%);
+  box-shadow: inset 0 0 0 2px #E6DCC6; transition: transform .1s steps(2, end); }
+.pp-key:active { transform: translateY(2px) rotate(-2deg); }
+.pp-go { flex: 1 1 auto; max-width: 260px; margin-left: auto; min-height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 0 16px; border: none; cursor: pointer; background: #E0643F; color: #fff; font: 800 16px 'Manrope', sans-serif; rotate: -.6deg;
+  clip-path: polygon(0 8%, 6% 0, 50% 5%, 95% 0, 100% 10%, 98% 55%, 100% 92%, 94% 100%, 48% 95%, 5% 100%, 0 90%, 2% 45%); }
+.pp-go:active { transform: translateY(2px); }
+.pp-key:focus-visible, .pp-go:focus-visible { outline: 3px solid #1F2A44; outline-offset: 2px; }
+@media (max-width: 479px) {
+  .pp-key { min-width: 38px; }
+  .pp-go { padding: 0 10px; min-width: 96px; }
+}
+
+/* ══ ЗАМЕТКА ПОД РАБОТОЙ — бумажный листок ══════════════════════════════════
+   Разбор проверки — кремовый с коралловой кромкой (это не «ошибка»),
+   подсказка — жёлтый, похвала — бирюзовый. */
+.pp-note { padding: 8px 14px 9px; color: #1F2A44; text-align: left; rotate: -.3deg;
+  clip-path: polygon(0 5%, 4% 0, 32% 4%, 63% 0, 97% 3%, 100% 0, 99.4% 50%, 100% 100%, 70% 96%, 36% 100%, 3% 97%, 0 100%, .6% 50%);
+  animation: kzPop .45s steps(1, end) both; }
+.pp-note.is-fb { background: #FBF6EA; box-shadow: inset 4px 0 0 #E0643F, inset 0 0 0 1.5px #EADFC9; }
+.pp-note.is-hint { background: #FFF1C9; box-shadow: inset 4px 0 0 #F0B13F; }
+.pp-note.is-ok { background: #DCEFE8; box-shadow: inset 4px 0 0 #2A8C7E; }
+.pp-note-lbl { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; font: 800 11.5px 'Manrope', sans-serif;
+  letter-spacing: .05em; text-transform: uppercase; color: #8C5A2A; }
+.pp-note.is-hint .pp-note-lbl { color: #8A6A1A; }
+.pp-note.is-ok .pp-note-lbl { color: #1E6B5F; }
+.pp-note-step { margin-left: 2px; font-family: 'JetBrains Mono', monospace; }
+.pp-note-sub { margin-left: 4px; padding: 1px 7px; background: #FFE4D8; color: #8C3A1E; font-size: 10.5px; text-transform: none; letter-spacing: 0; border-radius: 3px; }
+.pp-note-fb { margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px dashed rgba(141, 94, 0, .3);
+  font: 600 clamp(13.5px, 1.7vw, 15px)/1.35 'Manrope', sans-serif; color: #8C3A1E; }
+.pp-note-body { font: 700 clamp(14.5px, 2dvh, 17px)/1.35 'Manrope', sans-serif; }
+.pp-note-extra { margin-top: 6px; background: rgba(255, 255, 255, .72); box-shadow: inset 0 0 0 1.5px rgba(141, 94, 0, .22); }
+
+/* ══ НАГЛЯДНАЯ ПОМОЩЬ ══════════════════════════════════════════════════════ */
+.pp-slots { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.pp-slot { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px 5px; background: #FBF6EA; color: #1F2A44;
+  font: 700 13.5px 'Manrope', sans-serif; box-shadow: inset 0 0 0 1.5px #E6DCC6;
+  clip-path: polygon(0 10%, 6% 0, 94% 8%, 100% 0, 97% 55%, 100% 100%, 50% 92%, 4% 100%, 0 50%); }
+.pp-slot b { display: inline-grid; place-items: center; width: 18px; height: 18px; background: #1F2A44; color: #FBF6EA; font: 800 11px 'JetBrains Mono', monospace; border-radius: 4px; }
+.pp-slot.is-name, .pp-slot.is-text { background: #FFF1C9; }
+.pp-left { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px 5px; background: #FFE4D8; color: #8C3A1E;
+  font: 800 13.5px 'Manrope', sans-serif; clip-path: polygon(0 10%, 6% 0, 94% 8%, 100% 0, 97% 55%, 100% 100%, 50% 92%, 4% 100%, 0 50%); }
+.pp-left.is-ok { background: #DCEFE8; color: #1E6B5F; }
+.pp-bp { display: flex; align-items: center; gap: 12px; padding: 6px 14px 7px; background: #FBF6EA; box-shadow: inset 0 0 0 1.5px #E6DCC6;
+  clip-path: polygon(0 6%, 4% 0, 96% 5%, 100% 0, 99% 50%, 100% 100%, 50% 95%, 0 100%, 1% 50%); }
+.pp-bp-step { flex: none; padding: 2px 9px; background: #1F2A44; color: #FBF6EA; font: 800 12px 'Manrope', sans-serif; border-radius: 4px; }
+.pp-bp-tree { font: 600 13.5px/1.4 'JetBrains Mono', ui-monospace, monospace; color: #1F2A44; }
+.pp-bp-row { display: flex; align-items: center; gap: 4px; opacity: .55; }
+.pp-bp-row.is-cur, .pp-bp-row.is-done { opacity: 1; }
+.pp-bp-row.is-cur .pp-bp-tag { background: #FFF1C9; box-shadow: inset 0 -2px 0 var(--c); }
+.pp-bp-pre { white-space: pre; color: #A39A88; }
+.pp-bp-tag { padding: 0 4px; font-weight: 800; border-radius: 3px; }
+.pp-bp-note { font: 600 12.5px 'Manrope', sans-serif; color: #5B5446; }
+.pp-bp-ok { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; background: #2A8C7E; color: #fff; margin-left: 3px; }
+
+/* ══ БУМАЖНАЯ УЛИЦА ═════════════════════════════════════════════════════════
+   Дом — вырезки: крыша, стена, окно, дверь. Ждёт — выцветший, окно тёмное;
+   готов — свой цвет, окно светится, галочка. Свой дом до постройки — пунктир. */
+.pp-house { position: relative; display: inline-flex; flex-direction: column; align-items: center; gap: 3px; vertical-align: bottom; }
+.pp-h-art { position: relative; display: block; width: var(--hw, 30px); height: calc(var(--hw, 30px) * 1.04); }
+.pp-house.is-s { --hw: 26px; }
+.pp-house.is-l { --hw: clamp(46px, 12.5vw, 66px); }
+.kz-cut.pp-h-roof { left: -8%; top: 0; width: 116%; height: 46%; z-index: 2; }
+.kz-cut.pp-h-wall { left: 6%; top: 38%; width: 88%; height: 62%; z-index: 1; }
+.kz-cut.pp-h-win { left: 18%; top: 52%; width: 30%; height: 24%; z-index: 3; }
+.kz-cut.pp-h-door { left: 58%; top: 62%; width: 24%; height: 38%; z-index: 3; }
+.pp-h-winplan { position: absolute; left: 18%; top: 52%; width: 30%; height: 24%; z-index: 3; border: 1.5px dashed #B1A891; border-radius: 2px; }
+.pp-h-plan { position: absolute; inset: 8% 6% 0; border: 2px dashed #B1A891; border-radius: 3px;
+  clip-path: polygon(50% 0, 100% 38%, 100% 100%, 0 100%, 0 38%); background: rgba(216, 205, 182, .25); }
+.pp-house.is-lit .kz-cut.pp-h-win { filter: drop-shadow(0 0 4px rgba(255, 196, 70, .95)) drop-shadow(0 1px 1px rgba(74, 48, 18, .3)); }
+/* Ждёт — выцвел и покосился от ветра; починили — свой цвет и стоит ровно (ступеньками). */
+.pp-h-art { transition: rotate .5s steps(5, end), filter .5s steps(5, end); }
+.pp-house.is-wait .pp-h-art { rotate: var(--tilt, 0deg); filter: grayscale(.8) opacity(.78); }
+.pp-h-ok { position: absolute; top: -4px; right: -6px; z-index: 5; display: grid; place-items: center; width: 15px; height: 15px; border-radius: 50%;
+  background: #2A8C7E; color: #fff; box-shadow: 0 0 0 2px #FBF6EA; }
+.pp-house.is-cur .pp-h-art::after { content: ''; position: absolute; left: 50%; bottom: -7px; translate: -50% 0; width: 70%; height: 3px; background: #E0643F; border-radius: 2px; }
+.pp-h-name { max-width: calc(var(--hw) * 1.7); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center;
+  font: 800 clamp(10.5px, 1.5dvh, 12.5px)/1.2 'Manrope', sans-serif; color: #1F2A44; }
+.pp-house:not(.is-lit) .pp-h-name { color: #8C8476; }
+
+.pp-strip { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 0 0 auto; }
+.pp-strip-row { display: flex; align-items: flex-end; gap: clamp(6px, 1.2vw, 12px); }
+.pp-strip-cap { display: flex; flex-direction: column; align-items: flex-end; font: 700 12.5px/1.25 'Manrope', sans-serif; color: #5B5446; text-align: right; }
+.pp-strip-cap b { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: #8C8476; }
+.pp-strip-cap span { font-size: 14px; color: #1F2A44; font-weight: 800; }
+.pp-strip.is-mini .pp-strip-row { gap: 10px; }
+.pp-strip.is-mini .pp-house.is-s { --hw: 24px; }
+
+.pp-street { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(10px, 2dvh, 18px) 8px; align-items: end;
+  justify-items: center; padding: 6px 10px 14px; flex: 0 0 auto; width: 100%; max-width: 860px; align-self: center; }
+.pp-street .pp-road { z-index: 0; top: auto !important; bottom: 0; height: 12px; }
+.pp-street-h { position: relative; z-index: 1; animation: kzDrop .66s steps(1, end) both; animation-delay: var(--dl, 0s); }
+.pp-street.is-glow .pp-house.is-lit .pp-h-art { animation: kzStamp .5s steps(1, end) both; animation-delay: var(--dl, 0s); }
+@media (min-width: 720px) {
+  .pp-house.is-l { --hw: clamp(64px, 13dvh, 112px); }
+  .pp-sheet-fin .pp-house.is-l { --hw: clamp(48px, 8dvh, 76px); }
+}
+/* Хук: ветер сдувает с домов бумажки-вывески (stop-motion, с шорохом — kzOut). */
+.kz-cut.pp-scrap { left: 30%; top: 2%; width: 44%; height: 16%; z-index: 6; animation: kzOut .9s steps(1, end) both; animation-delay: calc(var(--i, 0) * .09s); }
+.pp-street.is-blown .pp-h-art { animation: kzShake .5s steps(1, end) both; animation-delay: calc(var(--i, 0) * .07s); }
+.pp-wind-row { display: flex; justify-content: center; flex: 0 0 auto; }
+.kz-btn.pp-wind { min-width: 180px; font-size: 18px; }
+@media (prefers-reduced-motion: reduce) { .kz-cut.pp-scrap { display: none; } .pp-street.is-blown .pp-h-art { animation: none; } }
+.pp-intro-note { margin: 0; align-self: center; max-width: 560px; padding: 6px 14px; background: #FFF1C9; color: #5B4300; text-align: center;
+  font: 700 clamp(13.5px, 1.9dvh, 15.5px)/1.35 'Manrope', sans-serif;
+  clip-path: polygon(0 6%, 4% 0, 96% 5%, 100% 0, 99% 50%, 100% 100%, 50% 95%, 0 100%, 1% 50%); }
+
+/* ══ ФИНАЛ ═══════════════════════════════════════════════════════════════ */
+.pp-fin { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 980px; align-self: center; }
+.pp-fin-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.pp-stamp { display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; background: #2A8C7E; color: #fff; font: 800 16px 'Manrope', sans-serif; rotate: -2deg;
+  clip-path: polygon(0 8%, 6% 0, 50% 5%, 95% 0, 100% 10%, 98% 55%, 100% 92%, 94% 100%, 48% 95%, 5% 100%, 0 90%, 2% 45%); animation: kzStamp .5s steps(1, end) .6s both; }
+.pp-fin-pair { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.pp-fin-c .sample-code { max-height: 30dvh; overflow: auto; }
+.pp-fin-c .pp-pad { padding: 4px 2px; }
+.pp-skills { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.pp-skill { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: #FBF6EA; color: #1F2A44; font: 700 14px 'Manrope', sans-serif;
+  clip-path: polygon(0 8%, 5% 0, 60% 6%, 98% 0, 100% 50%, 98% 100%, 40% 94%, 2% 100%, 0 50%); box-shadow: inset 0 0 0 1.5px #E6DCC6;
+  animation: kzLeft .6s steps(1, end) both; animation-delay: var(--dl, 0s); }
+.pp-skill .ic { color: #2A8C7E; flex: none; }
+.pp-seg { display: inline-flex; padding: 3px; gap: 3px; background: #E6DCC6; }
+.pp-seg-b { min-height: 40px; padding: 0 16px; border: none; background: transparent; cursor: pointer; font: 700 14px 'Manrope', sans-serif; color: #5B5446; }
+.pp-seg-b.is-on { background: #FBF6EA; color: #1F2A44; }
+.pp-only-narrow { display: flex; justify-content: center; }
+@media (min-width: 720px) {
+  .pp-only-narrow { display: none !important; }
+  .pp-fin-pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .pp-skills { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 719px) {
+  .pp-fin-pair.view-page .pp-fin-c, .pp-fin-pair.view-code .pp-fin-b { display: none; }
+  .pp-sheet-fin .pp-skills { display: none; }
+}
+
+/* ══ ШАПКА ПРАКТИКИ (PStage) ═════════════════════════════════════════════
+   Коди нет: о голосе говорит кружок с полосками. Телефон — три колонки:
+   голос и лампочка | три дома улицы | пауза и счётчик. */
+.p-top, .p-voice-l { display: none; }
+.p-voice-r { display: contents; }
+.p-voice.is-on { animation: pVoiceRing 1.6s ease-out infinite; }
+@keyframes pVoiceRing { 0% { box-shadow: 0 0 0 0 rgba(224, 100, 63, .32); } 100% { box-shadow: 0 0 0 10px rgba(224, 100, 63, 0); } }
+.p-hidden-hero { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 719px) {
+  .p-stage .chrome { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+  .p-stage .p-voice-l { display: flex; align-items: center; gap: clamp(4px, 1.2vw, 9px); grid-column: 1; justify-self: start; }
+  .p-stage .p-voice-r { display: none; }
+  .p-stage .p-top { display: flex; grid-column: 2; justify-self: center; min-width: 0; }
+  .p-stage .chrome-side { grid-column: 3; justify-self: end; }
+  .p-stage .chrome > .eyebrow { display: none; }
+  .p-stage .kz-sheet .pp-strip:not(.is-mini) { display: none; }
+}
+
+/* ══ ТЕЛЕФОН: главный — редактор ═══════════════════════════════════════════
+   Если места мало, первой ужимается колонка браузера с помощью
+   (прокручивается внутри), а редактор с кнопками держат высоту, при которой
+   видно строку ввода и «Проверить». */
+@media (max-width: 719px) {
+  /* Кружок в углу листа налезал бы на кнопки < / >: на телефоне в заданиях его нет. */
+  .pp-sheet:not(.pp-sheet-intro):not(.pp-sheet-fin) .kz-deco-dot { display: none; }
+  .pp-sheet .kz-sheet-body { padding: 10px 10px 12px; gap: 7px; }
+  .kz-sheet-body > .op-work { min-height: 168px; }
+  .op-side { flex: 0 1 auto; min-height: 46px; overflow: auto; scrollbar-width: none; }
+  .op-side::-webkit-scrollbar { display: none; }
+  .op-main { flex: 1 1 auto; min-height: 116px; }
+  .pp-page { max-height: 3.9em; }
+  .pp-br .kz-br-page { margin: 5px 9px 7px; }
+  .ed-line.is-static { font-size: .9em; }
+  .ed-line.is-static .ed-n { font-size: .8em; line-height: 2.01em; }
+  .pp-bp { padding: 4px 10px; gap: 8px; }
+  .pp-bp-tree { font-size: 12.5px; line-height: 1.32; }
+  .pp-slot { font-size: 12.5px; padding: 3px 9px 4px; }
+  .pp-slots { gap: 4px; }
+}
+@media (max-width: 400px) {
+  .pp-slot { font-size: 11.5px; padding: 2px 7px 3px; gap: 4px; }
+  .pp-slot b { width: 15px; height: 15px; font-size: 10px; }
+}
+@media (max-height: 700px) {
+  .lesson-root { --cv-fs: clamp(11.5px, 3.2vw, 13.5px); }
+  .cv { line-height: 1.42; }
+  .kz-ask.pp-ask { font-size: 14.5px; padding: 5px 12px 6px; }
+}
+/* Совсем маленький телефон (320×568 и ниже). */
+@media (max-height: 600px) {
+  .lesson-root { --cv-fs: 11px; }
+  .lesson-root .kz-ask.pp-ask { font-size: 14px; line-height: 1.25; }
+  .lesson-root .pp-key, .lesson-root .pp-go { min-height: 40px; }
+  .lesson-root .pp-note { padding: 5px 10px; }
+  .lesson-root .pp-note-body { font-size: 14px; }
+  .lesson-root .cv { line-height: 1.3; padding-block: 4px; }
+  .lesson-root .ed { padding-block: 4px; }
+  .lesson-root .pp-bp-note { display: none; }
+}
+
+/* ══ КЛАВИАТУРА ТЕЛЕФОНА ОТКРЫТА ═══════════════════════════════════════════
+   Видимой высоты — около половины экрана. Пока ученик печатает, на листе
+   только браузер, редактор, кнопки и заметка: улица, задание и помощь,
+   «Назад / Дальше» на это время уходят (задание есть в голосе и вернётся). */
+.is-kbd .stage-nav, .is-kbd .kz-sheet .pp-strip, .is-kbd .pp-extra, .is-kbd .kz-deco, .is-kbd .pp-drill-tag { display: none; }
+.is-kbd .pp-sheet .kz-sheet-body { padding: 6px 8px; gap: 5px; }
+/* Задание остаётся на виду (требование к практике) — одной-двумя короткими строками. */
+.is-kbd .kz-ask.pp-ask { font-size: 13px; line-height: 1.25; padding: 3px 10px 4px; }
+.is-kbd .kz-br-bar { height: 22px; }
+.is-kbd .kz-br-tool { display: none; }
+.is-kbd .pp-br .kz-br-page { margin: 3px 8px 4px; }
+.is-kbd .pp-page { min-height: 1.3em; max-height: 1.4em; font-size: 14px; line-height: 1.3; }
+.is-kbd .op-main > .pp-edpad { min-height: 84px; }
+.is-kbd .kz-sheet-body > .pp-note { max-height: 34%; }
+.is-kbd .op-work { gap: 5px; }
+.is-kbd .pp-key, .is-kbd .pp-go { min-height: 40px; }
+.is-kbd .pp-note { padding: 4px 10px; }
+.is-kbd .pp-note-lbl, .is-kbd .pp-note-fb { display: none; }
+.is-kbd .pp-note-body { font-size: 14px; }
+.is-kbd .stage-content { padding-bottom: 2px; }
+
+/* Меньше движения: смысл остаётся, движение уходит. */
+@media (prefers-reduced-motion: reduce) {
+  .pp-note, .pp-street-h, .pp-street.is-glow .pp-h-art, .pp-stamp, .pp-skill, .pp-gap.is-led, .ed-edit.is-led-in, .tk-input.is-led-in, .p-voice.is-on { animation: none !important; }
+}

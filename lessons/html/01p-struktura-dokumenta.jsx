@@ -1,23 +1,8 @@
 // =============================================================================
-// КУРС «HTML» · Модуль 1 «Основы разметки» · Практика к уроку 1 —
-// «Операция: оживить базу Коди»
-// Связка между уроком 1 и самостоятельной практикой: ребёнок больше пишет сам —
-// от замены текста до целого документа по чертежу.
+// КУРС «HTML» · Модуль 1 · Практика к уроку 1 — «Бумажная улица». Дети 10–14, проходят сами.
 // Один самодостаточный JSX: канон курса (до пометки «УРОК») + практика.
-//
-// Пропсы: { studentName, lang, ttsApiBase, voiceGender, onFinished } — весь список.
-//   lang        'uz' | 'ru' | 'en' (неизвестное — откат на 'ru')
-//   ttsApiBase  база сервиса озвучки. Пусто — урок говорит голосом браузера,
-//               а если нет и его — печатает реплики текстом
-//   voiceGender 'f' | 'm' — голос озвучки от LMS; нет — женский
-//   onFinished  вызывается РОВНО один раз, payload без оценки
-// Дев-пропсы (в проде не передавать): startAt — открыть урок на экране N;
-// onExit — кнопка выхода на витрине.
-//
-// 9 экранов: вступление, 7 заданий, финал. Герой — Коди. Единственная
-// зависимость — React. Особые правила — см. абзац под пометкой «УРОК».
+// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/praktika-01/p01.src.jsx lessons/html/01p-struktura-dokumenta.jsx
 // =============================================================================
-
 // =============================================================================
 // КУРС «HTML» — КАНОН УРОКОВ v1 · дети 8–10 лет · UZ / RU / EN
 //
@@ -6676,56 +6661,48 @@ const CANON_LIB_CSS = `
 // Канонное оформление одной строкой: экраны формулы, механики, гнёзда, монитор
 // и библиотека заданий второй части.
 const CANON_SCREEN_CSS = CANON_SCREEN_CSS_BASE + CANON_MECH_CSS + CANON_DZ_CSS + CANON_CRT_CSS + CANON_LIB_CSS;
-
 // ==============================  У Р О К  =====================================
 // =============================================================================
-// ===== ПРАКТИКА К УРОКУ 1 · «Операция: оживить базу Коди» =====
+// ===== ПРАКТИКА К УРОКУ 1 · «Бумажная улица» · модуль html-m1-osnovy =====
 //
-// ЗАМЫСЕЛ. Связка между первым уроком (там ребёнок в основном нажимал и
-// переставлял готовое) и самостоятельной практикой. Коди нашёл заброшенную
-// базу роботов: терминалы работают, но их страницы потеряли названия,
-// сообщения и куски кода. Ребёнок чинит шесть систем базы и строит страницу
-// своей комнаты. Карта базы — индикатор продвижения: объект загорается после
-// своего задания, последний получает название, которое придумал ученик.
+// ЗАМЫСЕЛ (22.10.2026, переделка по эталону — урок 1 «Бумажная страница»).
+// Стиль урока 1: бумажный коллаж — лист с рваным краем, вырезки с фактурой и
+// тенью, stop-motion, шорох бумаги, переход «разбор и сборка», бумажный браузер.
+// Сюжет: бумажная улица, каждый дом на ней — веб-страница. Ветер (одно касание
+// в хуке) разметал её: у домов пропали названия, тексты и куски кода. Ученик
+// чинит четыре дома кодом, а пятый — свой — строит сам. Улица — индикатор
+// продвижения: дом загорается, когда его страница готова.
 //
-// ДУГА. Готовый код → изменение содержимого (1, 2) → своя строка title (3) →
-// свой блок body (4) → тексты на свои места (5) → дописать закрывающие теги
-// (6) → весь документ по чертежу (7). Только материал урока 1: DOCTYPE, html,
-// head, title, body, пары тегов, текст, вложенность.
+// СЕМЬ СЛАЙДОВ (заказчик, 22.10.2026): хук · пять заданий от самого лёгкого к
+// сложному, без выхода за грань понимания 10–14 лет · вывод.
+//   t1 пекарня — своё название между готовыми тегами title (поле в строке)
+//   t2 почта — дописать </title>: без него весь текст честно уезжает на вкладку
+//   t3 кинотеатр — блок body со своим текстом (три строки)
+//   t4 школа — нажать место, где кончается head, и вписать </head>
+//   t5 свой дом — внутри готового html написать head с title и body с текстом
 //
-// ОСОБЫЕ ПРАВИЛА УРОКА
-//   · РЕБЁНОК ПИШЕТ САМ. Задания 1, 2, 5 — поля прямо в строках кода; 3, 4, 6, 7
-//     — настоящий редактор: прозрачная textarea поверх подсвеченного кода
-//     (курсор, выделение, удаление, переносы, вставка — как в обычном поле).
-//     Кнопки < / > только вставляют символ в место курсора и не уводят фокус.
-//   · ПРОВЕРКА — ТОЛЬКО ПО КНОПКЕ «Проверить». Пока ребёнок печатает, замечаний
-//     нет; мини-браузер обновляется сразу. Разбор кода свой (lexDoc,
-//     analyzeDoc): пробелы и переносы не важны, важны теги, порядок и
-//     вложенность. За раз называется одна, самая полезная проблема.
-//   · ПОДСКАЗКИ — ПО ПРОСЬБЕ. Три ступени (направление → место или правило →
-//     образец с другим содержимым) открываются кнопкой «Подсказка» в задании
-//     или лампочкой в шапке. Код при этом не трогается. После образца третьей
-//     ступени — короткая задача с новым содержимым (drill).
-//   · БЕЗОПАСНЫЙ БРАУЗЕР. Код ученика никогда не исполняется и не вставляется
-//     как HTML: из него извлекаются название и текст, и React рисует их как
-//     обычный текст.
-//   · ТЕГИ ПРОИЗНОСЯТСЯ СЛОВАМИ (SpokenTags, как в уроке 1).
-//   · ЖУРНАЛ. Строка на задание: число проверок (attempts), с первой ли
-//     проверки (firstTry), высшая ступень подсказки (hintMax), итог
-//     дополнительной задачи (drill). Журнал канона принимает любые поля строки.
-//   · АРТЕФАКТ — страница комнаты из задания 7: { type: 'html-page', title,
-//     text, html }, уходит в payload через extraPayload.
-//
-// ОБРАЩЕНИЕ: UZ — Siz, RU — «ты», EN — «you».
+// ОСОБЫЕ ПРАВИЛА ПРАКТИКИ (требования заказчика — навык praktika)
+//   · Коди не рисуется: в шапке только кружок голоса и лампочка; задание всегда
+//     написано строкой-полоской на листе.
+//   · Пишет ученик; кнопки < / > только вставляют символ в место курсора.
+//   · Проверка — только по «Проверить»; браузер обновляется сразу и показывает
+//     честно (текст из незакрытого title уходит на вкладку вместе с тегами).
+//   · Неудача — одна причина; со второй неудачи подряд — ещё и ступень
+//     подсказки; лампочка открывает ступени по просьбе; после образца третьей
+//     ступени — короткая дополнительная задача с новым содержимым.
+//   · Код ученика не исполняется: из него извлекается только текст.
+//   · Тон — как в эталоне: коротко, спокойно, узбекский как живая речь
+//     (Siz; yorliq — вкладка, oyna — окно, sahifa nomi — название).
+//   · Конфетти — только в финале.
 // =============================================================================
 
 const META = {
-  lessonId: 'html-01p-operaciya-baza',
+  lessonId: 'html-01p-bumazhnaya-ulica',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: '1-dars amaliyoti. Operatsiya: Kodi bazasini jonlantirish',
-    ru: 'Практика к уроку 1. Операция: оживить базу Коди',
-    en: 'Lesson 1 practice. Operation: revive Kodi’s base'
+    uz: '1-dars amaliyoti. Qog‘oz ko‘cha',
+    ru: 'Практика к уроку 1. Бумажная улица',
+    en: 'Lesson 1 practice. Paper Street'
   }
 };
 
@@ -6748,349 +6725,1051 @@ const fillL = (node, vars) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// КАРТА БАЗЫ — семь объектов. Задание n зажигает объект n.
+// БУМАЖНАЯ УЛИЦА — пять домов. Задание n чинит дом n; последний — свой дом ученика.
 // ─────────────────────────────────────────────────────────────────────────────
-const STATIONS = [
-  { id: 'gate',   icon: 'door',    name: L3('Kirish', 'Вход', 'Entrance') },
-  { id: 'hello',  icon: 'monitor', name: L3('Salomlashish terminali', 'Терминал приветствия', 'Welcome terminal') },
-  { id: 'store',  icon: 'box',     name: L3('Detallar ombori', 'Склад деталей', 'Parts storage') },
-  { id: 'radio',  icon: 'antenna', name: L3('Aloqa terminali', 'Терминал связи', 'Comms terminal') },
-  { id: 'rest',   icon: 'cup',     name: L3('Dam olish xonasi', 'Комната отдыха', 'Rest room') },
-  { id: 'shield', icon: 'shield',  name: L3('Himoya bo‘limi', 'Защитный отсек', 'Defense bay') },
-  { id: 'room',   icon: 'home',    name: L3('Sizning xonangiz', 'Твоя комната', 'Your room') }
+const STREET = [
+  { id: 'bakery', c: '#E0643F', name: L3('Novvoyxona', 'Пекарня', 'Bakery') },
+  { id: 'post',   c: '#F0B13F', name: L3('Pochta', 'Почта', 'Post office') },
+  { id: 'cinema', c: '#1F2A44', name: L3('Kinoteatr', 'Кинотеатр', 'Cinema') },
+  { id: 'school', c: '#2A8C7E', name: L3('Maktab', 'Школа', 'School') },
+  { id: 'home',   c: '#5E8FB8', name: L3('Sizning uyingiz', 'Твой дом', 'Your house') }
 ];
+const HOME = STREET.length - 1;
 
-// Содержимое, которое повторяется в нескольких местах урока.
+// Содержимое страниц домов и дополнительных задач.
 const TXT = {
-  untitled: L3('Nomsiz', 'Без названия', 'Untitled'),
-  greeting: L3('Xush kelibsiz! Bu yerda robotlar yashaydi.', 'Добро пожаловать! Здесь живут роботы.', 'Welcome! Robots live here.'),
-  baseDefault: L3('Kodi bazasi', 'База Коди', 'Kodi’s base'),
-  dots: '…',
-  storeText: L3('Bu yerda robotlar uchun detallar saqlanadi.', 'Здесь хранятся детали для роботов.', 'Robot parts are kept here.'),
-  comms: L3('Aloqa', 'Связь', 'Comms'),
-  welcomeBase: L3('Bazaga xush kelibsiz!', 'Добро пожаловать на базу!', 'Welcome to the base!'),
-  shieldText: L3('Robotlar ishga tushishga tayyor.', 'Роботы готовы к запуску.', 'The robots are ready to launch.'),
-  sampleMap: L3('Xarita', 'Карта', 'Map'),
-  workshop: L3('Ustaxona', 'Мастерская', 'Workshop'),
-  workshopText: L3('Bu yerda robotlar tuzatiladi.', 'Здесь чинят роботов.', 'Robots get fixed here.'),
-  helloRobots: L3('Salom, robotlar!', 'Привет, роботы!', 'Hello, robots!'),
-  beacon: L3('Mayoq', 'Маяк', 'Beacon'),
-  partsText: L3('Detallar shu yerda.', 'Детали тут.', 'The parts are here.'),
-  storeShort: L3('Ombor', 'Склад', 'Storage')
+  bakeryText: L3('Har kuni ertalab issiq non.', 'Свежий хлеб каждое утро.', 'Fresh bread every morning.'),
+  bikeText: L3('Bu yerda velosipedlar tuzatiladi.', 'Здесь чинят велосипеды.', 'Bikes get fixed here.'),
+  postText: L3('Xatlar va posilkalar shu yerda.', 'Здесь письма и посылки.', 'Letters and parcels are here.'),
+  stop: L3('Bekat', 'Остановка', 'Bus stop'),
+  stopText: L3('Avtobus tez-tez keladi.', 'Автобус приходит часто.', 'The bus comes often.'),
+  pool: L3('Basseyn', 'Бассейн', 'Pool'),
+  schoolText: L3('Darslar ertalab boshlanadi.', 'Уроки начинаются утром.', 'Lessons start in the morning.'),
+  cafe: L3('Kafe', 'Кафе', 'Cafe'),
+  cafeText: L3('Choy va pirog.', 'Чай и пирог.', 'Tea and pie.'),
+  workshop: L3('Ustaxona', 'Мастерская', 'Workshop')
 };
 
-// Подписи интерфейса урока.
+// Подписи интерфейса практики. up, down, mySite, hello, play нужны бумажному набору.
 const UI = {
   task: L3('{n}-topshiriq', 'Задание {n}', 'Task {n}'),
-  stationOf: L3('{n}/7-obyekt', 'Объект {n} из 7', 'Place {n} of 7'),
-  map: L3('Baza xaritasi', 'Карта базы', 'Base map'),
-  works: L3('ishlayapti', 'работает', 'working'),
-  off: L3('o‘chiq', 'выключен', 'off'),
+  houseOf: L3('{n}/5-uy', 'Дом {n} из 5', 'House {n} of 5'),
+  map: L3('Ko‘cha xaritasi', 'Карта улицы', 'Street map'),
+  works: L3('tayyor', 'готов', 'ready'),
+  off: L3('kutmoqda', 'ждёт', 'waiting'),
   now: L3('hozir shu yerda', 'сейчас здесь', 'you are here'),
   check: L3('Tekshirish', 'Проверить', 'Check'),
-  hint: L3('Maslahat', 'Подсказка', 'Hint'),
   keys: L3('Teg belgilari', 'Символы для тегов', 'Tag symbols'),
   editor: L3('Kod muharriri', 'Редактор кода', 'Code editor'),
-  writeHere: L3('shu yerga yozing', 'пиши здесь', 'write here'),
-  tab: L3('title', 'Вкладка', 'Tab'),
   page: L3('Sahifa', 'Страница', 'Page'),
   code: L3('Kod', 'Код', 'Code'),
   fb: L3('Tekshiruv', 'Проверка', 'Check'),
-  incomplete: L3('hujjat to‘liq yig‘ilmagan', 'документ собран не полностью', 'the document is not complete yet'),
-  ok: L3('Bajarildi', 'Готово', 'Done'),
-  titleField: L3('title', 'Название вкладки', 'Tab name'),
-  bodyField: L3('Sahifa matni', 'Текст страницы', 'Page text'),
+  incomplete: L3('hujjat hali to‘liq emas', 'документ собран не полностью', 'the document is not complete yet'),
+  ok: L3('Tayyor', 'Готово', 'Done'),
+  titleField: L3('title ichidagi nom', 'Название в title', 'Name in title'),
+  bodyField: L3('body ichidagi matn', 'Текст в body', 'Text in body'),
   sample: L3('Namuna', 'Образец', 'Sample'),
   start: L3('Boshlash', 'Начать', 'Start'),
   finish: L3('Yakunlash', 'Завершить', 'Finish'),
   ready: L3('Ish tayyor', 'Работа готова', 'Work is ready'),
-  author: L3('Muallif', 'Автор', 'Author'),
-  drill: L3('Yana bitta vazifa', 'Ещё одна задача', 'One more task'),
+  drill: L3('Yana bitta', 'Ещё одна', 'One more'),
+  gapHere: L3('shu yerda tugaydimi?', 'здесь кончается?', 'ends here?'),
+  wind: L3('Shamol!', 'Ветер!', 'Wind!'),
+  given: L3('tayyor', 'уже есть', 'given'),
+  bpTitle: L3('uy nomi', 'название дома', 'house name'),
+  bpBody: L3('oynadagi matn', 'текст в окне', 'text in the window'),
+  nextLesson: L3('Keyingi dars', 'Следующий урок', 'Next lesson'),
+  next: L3('Katta sarlavha va xatboshilar', 'Большой заголовок и абзацы', 'A big heading and paragraphs'),
   part: {
-    open: L3('Ochuvchi teg', 'Открывающий тег', 'Opening tag'),
-    content: L3('Xabaringiz', 'Твоё сообщение', 'Your message'),
-    close: L3('Yopuvchi teg', 'Закрывающий тег', 'Closing tag')
-  }
+    open: L3('ochuvchi teg', 'открывающий тег', 'opening tag'),
+    name: L3('nom', 'название', 'name'),
+    text: L3('matn', 'текст', 'text'),
+    close: L3('yopuvchi teg', 'закрывающий тег', 'closing tag')
+  },
+  up: L3('Yuqoriga', 'Вверх', 'Up'),
+  down: L3('Pastga', 'Вниз', 'Down'),
+  mySite: L3('Mening saytim', 'Мой сайт', 'My site'),
+  hello: L3('Salom, dunyo!', 'Привет, мир!', 'Hello, world!'),
+  play: L3('O‘ynash', 'Играть', 'Play')
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ОБРАТНАЯ СВЯЗЬ ПРОВЕРКИ. Одна проблема — одна короткая фраза. Слов «ошибка»
-// и «неправильно» нет: проверка называет, что сделать дальше. Говорим о
-// правилах нашего учебного документа, а не обо всех элементах HTML.
+// ОБРАТНАЯ СВЯЗЬ ПРОВЕРКИ. Одна проблема — одна короткая фраза: что не так и
+// что сделать. Без «ошибка», «неправильно», «xato», «noto‘g‘ri». Говорим о
+// правилах нашей страницы, а не обо всём HTML. Знак — с названием рядом.
 // ─────────────────────────────────────────────────────────────────────────────
 const FB = {
   // Запись тега
-  noGt: L3('{tag} tegida yopuvchi burchak > yetishmayapti.', 'У тега {tag} не хватает закрывающего уголка >.', 'The {tag} tag is missing its closing bracket >.'),
-  noLt: L3('{tag} oldida < burchagi yetishmayapti.', 'Перед {tag} не хватает уголка <.', 'There is a < missing before {tag}.'),
-  unknown: L3('«{raw}» tegi xato yozilgan. Harflarni tekshiring: {tag} kerak.', 'Тег «{raw}» написан с ошибкой. Проверь буквы: нужно {tag}.', 'The tag “{raw}” is misspelled. Check the letters: it should be {tag}.'),
-  unknownFar: L3('«{raw}» tegini bilmaymiz. Hujjatimizda faqat html, head, title va body bor.', 'Тег «{raw}» нам не знаком. В нашем документе только html, head, title и body.', 'We do not know the tag “{raw}”. Our document has only html, head, title and body.'),
-  slashEnd: L3('Qiya chiziq noto‘g‘ri joyda. Yopuvchi tegda u < dan keyin keladi: </{tag}>.', 'Косая черта стоит не там. В закрывающем теге она идёт сразу после <: </{tag}>.', 'The slash is in the wrong place. In a closing tag it goes right after <: </{tag}>.'),
-  junk: L3('Burchaklar ichiga faqat teg nomini yozamiz, matnni esa tashqariga.', 'Внутри уголков пишем только имя тега, а текст — снаружи.', 'Inside the brackets we write only the tag name; text goes outside.'),
-  emptyTag: L3('Bu yerda bo‘sh burchaklar <>. Ichida teg nomi bo‘lishi kerak.', 'Здесь пустые уголки <>. Внутри должно быть имя тега.', 'There are empty brackets <> here. A tag name goes inside.'),
+  noGt: L3('{tag} tegi oxirida o‘ng «>» qavs yetishmayapti.', 'У тега {tag} в конце не хватает уголка «>».', 'The {tag} tag is missing the bracket “>” at the end.'),
+  noLt: L3('{tag} oldida chap «<» qavs yetishmayapti.', 'Перед {tag} не хватает уголка «<».', 'The bracket “<” is missing before {tag}.'),
+  unknown: L3('«{raw}» tegida harflar adashgan: {tag} kerak.', 'В теге «{raw}» перепутаны буквы: нужно {tag}.', 'The letters in “{raw}” are mixed up: it should be {tag}.'),
+  unknownFar: L3('«{raw}» tegi bizga notanish. Sahifamizda faqat html, head, title va body bor.', 'Тег «{raw}» нам не знаком. На нашей странице только html, head, title и body.', 'We don’t know the tag “{raw}”. Our page has only html, head, title and body.'),
+  slashEnd: L3('Qiya chiziq boshqa joyda turibdi. Yopuvchi tegda u chap «<» qavsdan keyin keladi: </{tag}>.', 'Косая черта стоит не там. В закрывающем теге она идёт сразу после уголка «<»: </{tag}>.', 'The slash is in the wrong spot. In a closing tag it goes right after the bracket “<”: </{tag}>.'),
+  backslash: L3('Yopuvchi tegda qiya chiziq «/» turadi, bu yerda esa teskari «\\» chiziq.', 'В закрывающем теге нужна косая черта «/», а здесь обратная «\\».', 'A closing tag needs a slash “/”, but here it is a backslash “\\”.'),
+  junk: L3('Qavslar ichiga faqat teg nomini yozamiz, matn esa tashqarida turadi.', 'Внутри уголков пишем только имя тега, а текст — снаружи.', 'Inside the brackets we write only the tag name; the text goes outside.'),
+  emptyTag: L3('Bu yerda bo‘sh qavslar. Ichida teg nomi bo‘lishi kerak.', 'Здесь пустые уголки. Внутри должно быть имя тега.', 'These brackets are empty. A tag name goes inside.'),
   // Пары и вложенность
-  openAgain: L3('Bu yerda ochuvchi {tag} yozilgan. Yopuvchi juftga qiya chiziq kerak.', 'Здесь написан открывающий {tag}. Для закрывающей пары нужна косая черта.', 'This is an opening {tag}. The closing pair needs a slash.'),
-  notClosedOpen: L3('{tag} hali tugamadi, {next} esa allaqachon boshlanyapti.', '{tag} ещё не закончился, а {next} уже начинается.', '{tag} has not ended yet, but {next} is already starting.'),
-  notClosedClose: L3('{tag} hali tugamadi, {next} esa allaqachon yopilyapti. {tag} nima bilan tugashini tekshiring.', '{tag} ещё не закончился, а {next} уже закрывается. Проверь, чем заканчивается {tag}.', '{tag} has not ended yet, but {next} is already closing. Check how {tag} ends.'),
-  unclosedEnd: L3('{tag} nima bilan tugashini tekshiring: yopuvchi juft yo‘q.', 'Проверь, чем заканчивается {tag}: закрывающей пары нет.', 'Check how {tag} ends: there is no closing pair.'),
-  unclosedHtmlOk: L3('Nom va xabar tayyor. html nima bilan tugashini tekshiring.', 'Название и сообщение готовы. Проверь, чем заканчивается html.', 'The name and the message are ready. Check how html ends.'),
-  twice: L3('{tag} yuqorida allaqachon ochilgan. Hujjatimizda u bitta.', '{tag} уже открыт выше. В нашем документе он один.', '{tag} is already opened above. Our document has only one.'),
+  openAgain: L3('Bu yerda ochuvchi {tag} yozilgan. Yopuvchi tegga qiya chiziq kerak.', 'Здесь написан открывающий {tag}. Закрывающему тегу нужна косая черта.', 'This is an opening {tag}. The closing tag needs a slash.'),
+  notClosedOpen: L3('{tag} hali tugamadi, {next} esa allaqachon boshlanyapti.', '{tag} ещё не закончился, а {next} уже начинается.', '{tag} hasn’t ended yet, but {next} is already starting.'),
+  notClosedClose: L3('{tag} hali tugamadi, {next} esa allaqachon yopilyapti. {tag} nima bilan tugashini tekshiring.', '{tag} ещё не закончился, а {next} уже закрывается. Проверь, чем заканчивается {tag}.', '{tag} hasn’t ended yet, but {next} is already closing. Check how {tag} ends.'),
+  unclosedEnd: L3('{tag} nima bilan tugashini tekshiring: yopuvchi teg yo‘q.', 'Проверь, чем заканчивается {tag}: закрывающего тега нет.', 'Check how {tag} ends: there is no closing tag.'),
+  unclosedHtmlOk: L3('Nom ham, matn ham tayyor. html nima bilan tugashini tekshiring.', 'Название и текст готовы. Проверь, чем заканчивается html.', 'The name and the text are ready. Check how html ends.'),
+  twice: L3('{tag} yuqorida allaqachon ochilgan. Sahifamizda u bitta.', '{tag} уже открыт выше. На нашей странице он один.', '{tag} is already opened above. Our page has only one.'),
   closeWithoutOpen: L3('Bu yerda yopuvchi {tag} bor, ochuvchisi esa yo‘q.', 'Здесь закрывающий {tag}, а открывающего нет.', 'There is a closing {tag} here, but no opening one.'),
-  closeTwice: L3('{tag} ikki marta yopilgan. Ortiqcha yopuvchi tegni olib tashlang.', '{tag} закрыт два раза. Лишний закрывающий тег убери.', '{tag} is closed twice. Remove the extra closing tag.'),
+  closeTwice: L3('{tag} ikki marta yopilgan. Ortiqcha yopuvchi tegni o‘chiring.', '{tag} закрыт два раза. Лишний закрывающий тег сотри.', '{tag} is closed twice. Delete the extra closing tag.'),
   titleOutsideHead: L3('title ni head ichiga yozamiz: bu sahifa haqidagi ma’lumot.', 'title пишем внутри head: это сведения о странице.', 'title goes inside head: it is information about the page.'),
-  noHtmlOpen: L3('Katta konteynerdan boshlang: birinchi qatordan keyin ochuvchi html kerak.', 'Начни с большого контейнера: после первой строки нужен открывающий html.', 'Start with the big container: after the first line you need an opening html.'),
+  noHtmlOpen: L3('html dan boshlang: birinchi qatordan keyin ochuvchi html kerak.', 'Начни с html: после первой строки нужен открывающий html.', 'Start with html: after the first line you need an opening html.'),
   afterHtml: L3('{tag} yopuvchi html dan keyin turibdi. Hammasini html ichiga yozamiz.', '{tag} стоит после закрывающего html. Всё пишем внутри html.', '{tag} comes after the closing html. Everything goes inside html.'),
-  htmlInside: L3('html — eng katta konteyner, u hammasidan tashqarida turadi.', 'html — самый большой контейнер, он стоит снаружи всех.', 'html is the biggest container; it goes outside everything.'),
-  headAfterBody: L3('head body dan oldin turishi kerak: avval sahifa haqida ma’lumot, keyin ko‘rinadigan qism.', 'head должен стоять перед body: сначала сведения о странице, потом видимая часть.', 'head must come before body: first the page information, then the visible part.'),
-  textOutNone: L3('Matn html dan tashqarida turibdi. Ko‘rinadigan matnni body ichiga yozamiz.', 'Текст стоит снаружи html. Видимый текст пишем внутри body.', 'The text is outside html. Visible text goes inside body.'),
-  textOutHtml: L3('Matn body dan tashqarida. Ko‘rinadigan matnni body ichiga yozamiz.', 'Текст стоит вне body. Видимый текст пишем внутри body.', 'The text is outside body. Visible text goes inside body.'),
+  htmlInside: L3('html hamma qismlarni o‘z ichiga oladi, shuning uchun u hammasidan tashqarida turadi.', 'html объединяет все части, поэтому он стоит снаружи всех.', 'html holds all the parts, so it goes outside everything.'),
+  headAfterBody: L3('head body dan oldin turadi: avval sahifa haqida ma’lumot, keyin oynada ko‘rinadigan qism.', 'head стоит перед body: сначала сведения о странице, потом то, что видно в окне.', 'head comes before body: first the page information, then what you see in the window.'),
+  textOutNone: L3('Matn html dan tashqarida turibdi. Oynada ko‘rinadigan matnni body ichiga yozamiz.', 'Текст стоит снаружи html. Текст для окна пишем внутри body.', 'The text is outside html. Text for the window goes inside body.'),
+  textOutHtml: L3('Matn body dan tashqarida. Oynada ko‘rinadigan matnni body ichiga yozamiz.', 'Текст стоит вне body. Текст для окна пишем внутри body.', 'The text is outside body. Text for the window goes inside body.'),
   textOutHead: L3('head ichida matnni faqat title ichiga yozamiz.', 'В head текст пишем только внутри title.', 'Inside head, text goes only inside title.'),
-  missHtml: L3('html konteyneri yo‘q. U birinchi qatordan keyin ochiladi va eng oxirida yopiladi.', 'Нет контейнера html. Он открывается после первой строки и закрывается в самом конце.', 'There is no html container. It opens after the first line and closes at the very end.'),
-  missHead: L3('head qismi yo‘q. U html ichida body dan oldin turadi va unda title yashaydi.', 'Нет части head. Она стоит в html перед body, и в ней живёт title.', 'There is no head part. It goes in html before body, and title lives in it.'),
-  missTitle: L3('head ichiga nom bilan title qo‘yish kerak.', 'В head нужно поместить title с названием.', 'Put a title with a name inside head.'),
-  missBody: L3('Ko‘rinadigan body qismi yo‘q. U head dan keyin keladi.', 'Нет видимой части body. Она идёт после head.', 'There is no visible body part. It comes after head.'),
+  missHtml: L3('html jufti yo‘q. U birinchi qatordan keyin ochiladi va eng oxirida yopiladi.', 'Нет пары html. Она открывается после первой строки и закрывается в самом конце.', 'There is no html pair. It opens after the first line and closes at the very end.'),
+  missHead: L3('head qismi yo‘q. U html ichida, body dan oldin turadi. Unda title bo‘ladi.', 'Нет части head. Она стоит внутри html перед body, в ней — title.', 'There is no head part. It goes inside html before body, and title lives in it.'),
+  missTitle: L3('head ichiga nomli title qo‘ying.', 'В head нужен title с названием.', 'head needs a title with a name.'),
+  missBody: L3('body qismi yo‘q. U head dan keyin keladi.', 'Нет части body. Она идёт после head.', 'There is no body part. It comes after head.'),
   titleEmpty: L3('title joyida, lekin bo‘sh. Teglar orasiga nom yozing.', 'title на месте, но пустой. Напиши название между тегами.', 'title is there, but it is empty. Write a name between the tags.'),
-  bodyEmpty: L3('body teglari joyida, ichi esa bo‘sh. Xabar yozing.', 'Теги body на месте, а внутри пусто. Напиши текст.', 'The body tags are in place, but it is empty inside. Write the text.'),
+  bodyEmpty: L3('body teglari joyida, ichi esa bo‘sh. Matn yozing.', 'Теги body на месте, а внутри пусто. Напиши текст.', 'The body tags are in place, but it is empty inside. Write the text.'),
   noDoctype: L3('Birinchi qator yo‘qoldi. Boshiga <!DOCTYPE html> ni qaytaring.', 'Первая строка пропала. Верни <!DOCTYPE html> в начало.', 'The first line is gone. Put <!DOCTYPE html> back at the start.'),
-  textOnly: L3('Matn bor, lekin teglar yo‘q. Hujjat teglardan quriladi: html dan boshlang.', 'Текст есть, а тегов нет. Документ строится из тегов: начни с html.', 'There is text but no tags. A document is built from tags: start with html.'),
+  textOnly: L3('Matn bor, lekin teglar yo‘q. Sahifa teglardan quriladi: html dan boshlang.', 'Текст есть, а тегов нет. Страница строится из тегов: начни с html.', 'There is text but no tags. A page is built from tags: start with html.'),
   docEmpty: L3('Hozircha faqat birinchi qator bor. Ochuvchi html dan boshlang.', 'Пока есть только первая строка. Начни с открывающего html.', 'There is only the first line so far. Start with an opening html.'),
-  // Поля (задания 1, 2, 5)
-  fieldTags: L3('Teglar o‘z joyida turibdi. Bu yerga faqat so‘z yozamiz.', 'Теги уже стоят на месте. Здесь пишем только слова.', 'The tags are already in place. Write only words here.'),
-  fieldLetters: L3('Nomni harflar bilan yozing — kamida bitta so‘z.', 'Напиши название буквами — хотя бы одно слово.', 'Write the name in letters, at least one word.'),
-  titleBlank: L3('title bo‘sh qoldi. Nomni title teglari orasiga yozing.', 'Вкладка осталась пустой. Напиши название между тегами title.', 'The tab is empty. Write a name between the title tags.'),
-  // Строка (задание 3)
+  // Поля в строках (t1, t2)
+  fieldTags: L3('Teglar o‘z joyida turibdi. Bu yerga faqat so‘z yozing, qavslarsiz.', 'Теги уже стоят на месте. Здесь нужны только слова, без уголков.', 'The tags are already in place. Only words here, no brackets.'),
+  titleBlank: L3('title hozircha bo‘sh. Nomni title teglari orasiga yozing.', 'title пока пустой. Напиши название между тегами title.', 'title is empty so far. Write a name between the title tags.'),
+  fieldLetters: L3('Nomni harflar bilan yozing: kamida bitta so‘z.', 'Напиши название буквами — хотя бы одно слово.', 'Write the name in letters, at least one word.'),
+  // Строка title (t3, t4)
   lineEmpty: L3('Qator hozircha bo‘sh. Unga title tegi, nom va yopuvchi tegni yozing.', 'Строка пока пустая. Напиши в ней тег title, название и закрывающий тег.', 'The line is empty so far. Write the title tag, the name and the closing tag.'),
-  lineTextOnly: L3('Hozircha bu yerda faqat matn. Sahifa nomi title teglari orasida turishi kerak.', 'Пока здесь только текст. Название вкладки должно стоять между тегами title.', 'There is only text here so far. The tab name must stand between title tags.'),
-  lineWrongTag: L3('Sahifa nomi title ichiga yoziladi, bu yerda esa {tag} turibdi.', 'Название вкладки пишется в title, а здесь стоит {tag}.', 'The tab name goes in title, but here you have {tag}.'),
+  lineTextOnly: L3('Hozircha bu yerda faqat matn. Sahifa nomi title teglari orasida turadi.', 'Пока здесь только текст. Название страницы стоит между тегами title.', 'There is only text here so far. The page name stands between title tags.'),
+  lineWrongTag: L3('Sahifa nomi title ichida yoziladi, bu yerda esa {tag} turibdi.', 'Название страницы пишут в title, а здесь стоит {tag}.', 'The page name goes in title, but here you have {tag}.'),
   lineNoOpen: L3('Nomdan oldin ochuvchi title yo‘q.', 'Перед названием нет открывающего title.', 'There is no opening title before the name.'),
   lineNoClose: L3('Nom bor. Endi uni yoping: nomdan keyin yopuvchi title kerak.', 'Название есть. Теперь закрой его: после названия нужен закрывающий title.', 'The name is there. Now close it: put a closing title after the name.'),
-  lineTextOutside: L3('Matnning bir qismi teglardan tashqarida. Nomni title va yopuvchi title orasiga yozamiz.', 'Часть текста стоит снаружи тегов. Название пишем между title и закрывающим title.', 'Part of the text is outside the tags. The name goes between title and the closing title.'),
-  lineOrder: L3('Avval ochuvchi title, keyin nom, keyin yopuvchi.', 'Сначала открывающий title, потом название, потом закрывающий.', 'First the opening title, then the name, then the closing one.'),
-  lineNoName: L3('Teglar joyida, orasi esa bo‘sh. Sahifa nomini yozing.', 'Теги на месте, а между ними пусто. Напиши название вкладки.', 'The tags are in place, but there is nothing between them. Write the tab name.'),
-  lineWrongName: L3('Teglar to‘g‘ri! Nomni tekshiring: «{name}» kerak.', 'Теги верные! Проверь название: нужно «{name}».', 'The tags are right! Check the name: it should be “{name}”.'),
-  // Блок (задание 4)
-  blockEmpty: L3('Bu yer hozircha bo‘sh. Xabar bilan body qismini yozing.', 'Здесь пока пусто. Напиши часть body с сообщением.', 'It is empty here so far. Write a body part with a message.'),
-  blockTextOnly: L3('Xabar bor, lekin unga hujjatning o‘z qismi kerak. Uni body ichiga qo‘ying.', 'Сообщение есть, но ему нужна своя часть документа. Поставь его внутрь body.', 'The message is there, but it needs its own part of the document. Put it inside body.'),
-  blockWrongTag: L3('Ko‘rinadigan matnni body ichiga yozamiz, bu yerda esa {tag} turibdi.', 'Видимый текст пишем в body, а здесь стоит {tag}.', 'Visible text goes in body, but here you have {tag}.'),
-  blockOrder: L3('Avval ochuvchi body, keyin xabar, keyin yopuvchi body.', 'Сначала открывающий body, потом сообщение, потом закрывающий body.', 'First the opening body, then the message, then the closing body.')
+  lineTextOutside: L3('Matnning bir qismi teglardan tashqarida. Nomni ochuvchi va yopuvchi title orasiga yozamiz.', 'Часть текста стоит снаружи тегов. Название пишем между открывающим и закрывающим title.', 'Part of the text is outside the tags. The name goes between the opening and the closing title.'),
+  lineOrder: L3('Avval ochuvchi title, keyin nom, keyin yopuvchi title.', 'Сначала открывающий title, потом название, потом закрывающий.', 'First the opening title, then the name, then the closing one.'),
+  lineNoName: L3('Teglar joyida, orasi esa bo‘sh. Sahifa nomini yozing.', 'Теги на месте, а между ними пусто. Напиши название страницы.', 'The tags are in place, but there is nothing between them. Write the page name.'),
+  lineWrongName: L3('Teglar joyida! Nomni tekshiring: «{name}» kerak.', 'Теги на месте! Проверь название: нужно «{name}».', 'The tags are right! Check the name: it should be “{name}”.'),
+  // Блок body (t5)
+  blockEmpty: L3('Bu yer hozircha bo‘sh. Matnli body qismini yozing.', 'Здесь пока пусто. Напиши часть body с текстом.', 'It is empty here so far. Write a body part with text.'),
+  blockTextOnly: L3('Matn bor, lekin unga o‘z qismi kerak. Uni body ichiga qo‘ying.', 'Текст есть, но ему нужна своя часть. Поставь его внутрь body.', 'The text is there, but it needs its own part. Put it inside body.'),
+  blockWrongTag: L3('Oynadagi matnni body ichiga yozamiz, bu yerda esa {tag} turibdi.', 'Текст для окна пишем в body, а здесь стоит {tag}.', 'Text for the window goes in body, but here you have {tag}.'),
+  blockOrder: L3('Avval ochuvchi body, keyin matn, keyin yopuvchi body.', 'Сначала открывающий body, потом текст, потом закрывающий body.', 'First the opening body, then the text, then the closing body.'),
+  // Один закрывающий тег (t6)
+  pickFirst: L3('Avval {tag} qayerda tugashi kerakligini bosing.', 'Сначала нажми место, где должен закончиться {tag}.', 'First tap the place where {tag} should end.'),
+  closeEmpty: L3('Qator hozircha bo‘sh. Bu yerga yopuvchi {tag} tegini yozing.', 'Строка пока пустая. Напиши здесь закрывающий тег {tag}.', 'The line is empty so far. Type the closing {tag} tag here.'),
+  closeOther: L3('Bu yerda {tag} tugaydi, shuning uchun yopuvchi {tag} kerak.', 'Здесь заканчивается {tag}, поэтому нужен закрывающий {tag}.', '{tag} ends here, so you need a closing {tag}.'),
+  closeText: L3('Bu qatorga faqat teg yoziladi, matn kerak emas.', 'В этой строке нужен только тег, без текста.', 'This line needs only the tag, no text.'),
+  closeOne: L3('Bitta yopuvchi {tag} yetarli.', 'Достаточно одного закрывающего {tag}.', 'One closing {tag} is enough.')
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ВСЕ ТЕКСТЫ ЭКРАНОВ. Реплики героя (say, cast, hints, praise, done …) звучат;
-// подписи (eyebrow, order …) только печатаются.
+// ВСЕ ТЕКСТЫ ЭКРАНОВ. Реплики (say, cast, hints, praise, done, msgs …) звучат;
+// подписи (eyebrow, order, plan …) только печатаются.
 // ─────────────────────────────────────────────────────────────────────────────
 const C = {
+  // Хук: улица целая → касание «Ветер!» → дома выцветают и косятся, вывески улетают.
   intro: {
-    eyebrow: L3('Operatsiya: Kodi bazasi', 'Операция: база Коди', 'Operation: Kodi’s base'),
-    cast: [
-      { pose: 'hello', text: L3('Qarang, men tashlab ketilgan robotlar bazasini topdim!',
-        'Смотри, я нашёл заброшенную базу роботов!',
-        'Look, I found an abandoned robot base!') },
-      { pose: 'think', text: L3('Terminallar ishlayapti, lekin sahifalari nomlarini, xabarlarini va kod qismlarini yo‘qotgan.',
-        'Терминалы работают, но их страницы потеряли названия, сообщения и части кода.',
-        'The terminals work, but their pages lost their names, messages and pieces of code.') },
-      { pose: 'point', text: L3('Oltita tizimni tuzatamiz, keyin xonangiz sahifasini yaratamiz. Kodni o‘zingiz yozasiz!',
-        'Починим шесть систем, а потом сделаем страницу твоей комнаты. Код будешь писать сам!',
-        'We will fix six systems and then make a page for your room. You will write the code yourself!') }
-    ],
-    order: L3('Obyekt topshiriq bajarilgach yonadi. Kod xatosi uchun jarima yo‘q — xohlagancha tekshiring.',
-      'Объект загорается, когда задание готово. Штрафов нет — проверяй сколько хочешь.',
-      'A place lights up when its task is done. No penalties — check as often as you like.')
+    eyebrow: L3('Qog‘oz ko‘cha', 'Бумажная улица', 'Paper Street'),
+    say: L3('Bu qog‘oz ko‘cha. Undagi har bir uy veb-sahifa: yorliqda nomi, oynada matni.',
+      'Это бумажная улица. Каждый дом на ней — веб-страница: на вкладке название, в окне текст.',
+      'This is Paper Street. Every house on it is a web page: the name on the tab, the text in the window.'),
+    blown: L3('Voy, qarang! Shamol uylarning nomlari, matnlari va kod bo‘laklarini uchirib ketdi.',
+      'Ой! Ветер унёс у домов названия, тексты и куски кода.',
+      'Oh no! The wind blew away the houses’ names, texts and pieces of code.'),
+    plan: L3('To‘rtta uyni kod bilan tuzatamiz, beshinchisini esa o‘zingiz qurasiz. Har bir topshiriq oldingisidan biroz qiyinroq.',
+      'Починим четыре дома кодом, а пятый ты построишь сам. Каждое задание чуть сложнее прошлого.',
+      'We’ll fix four houses with code, and you’ll build the fifth yourself. Each task is a bit harder than the last.'),
+    ask: L3('«Shamol!» tugmasini bosing', 'Нажми «Ветер!»', 'Tap “Wind!”'),
+    order: L3('To‘rtta uyni tuzating, beshinchisini o‘zingiz quring. Kodni siz yozasiz.',
+      'Почини четыре дома, а пятый построй сам. Код пишешь ты.',
+      'Fix four houses and build the fifth yourself. You write the code.'),
+    note: L3('Sahifasi tayyor bo‘lgan uy yonadi. Jarima yo‘q: xohlagancha tekshiring.',
+      'Дом загорается, когда его страница готова. Штрафов нет — проверяй сколько хочешь.',
+      'A house lights up when its page is ready. No penalties: check as often as you like.')
   },
 
+  // 1 · самое лёгкое: слово между готовыми тегами.
   t1: {
-    order: L3('Bazaga nom bering. O‘z nomingizni o‘ylab toping va u title ichida tursin.',
-      'Назови базу. Придумай своё название и сделай так, чтобы оно появилось на вкладке.',
-      'Name the base. Make up your own name and make it appear on the tab.'),
-    say: L3('Bu bazaga kirish. title ichida «Nomsiz» deb yozilgan. Bazaga o‘z nomingizni bering!',
-      'Это вход на базу. На вкладке написано «Без названия». Придумай базе своё имя!',
-      'This is the base entrance. The tab says “Untitled”. Give the base your own name!'),
+    order: L3('Novvoyxonaga nom o‘ylab toping va uni title ichiga yozing',
+      'Придумай пекарне название и напиши его внутри title',
+      'Make up a name for the bakery and type it inside title'),
+    say: L3('Bu novvoyxona sahifasi. Yorliqda faqat index.html turibdi, chunki sahifaning nomi yo‘q. Nom o‘ylab toping va uni title ichiga yozing.',
+      'Это страница пекарни. На вкладке только index.html: у страницы нет названия. Придумай его и напиши внутри title.',
+      'This is the bakery’s page. The tab only says index.html: the page has no name. Make one up and type it inside title.'),
     hints: [
-      L3('Sahifa nomini o‘zgartirishimiz kerak. Qaysi teg unga javob berishini eslang.',
-        'Нам нужно изменить надпись на вкладке. Вспомни, какой тег за неё отвечает.',
-        'We need to change the text on the tab. Remember which tag is in charge of it.'),
-      L3('Sahifa nomi shu yerda — head ichida saqlanadi.', 'Название вкладки хранится здесь — в head.', 'The tab name is kept here, in head.'),
-      L3('title teglari orasidagi matnni o‘z nomingiz bilan almashtiring.', 'Замени текст между тегами title своим названием.', 'Replace the text between the title tags with your own name.')
+      L3('Sahifa nomi brauzer yorlig‘ida ko‘rinadi. Qaysi teg bunga javob beradi?',
+        'Название страницы видно на вкладке браузера. Какой тег за него отвечает?',
+        'The page name shows on the browser tab. Which tag is in charge of it?'),
+      L3('head ichiga qarang: u yerda title qatori bor.', 'Посмотри внутрь head: там есть строка title.', 'Look inside head: there is a title line.'),
+      L3('title teglari orasidagi bo‘sh joyni bosing va nom yozing. Masalan: Issiq non.',
+        'Нажми на пустое место между тегами title и напиши название. Например: Тёплый хлеб.',
+        'Tap the empty space between the title tags and type a name. For example: Warm Bread.')
     ],
-    sameTitle: L3('title hali eski nomda. O‘z nomingizni o‘ylab toping.', 'Вкладка пока называется по-старому. Придумай своё название.', 'The tab still has the old name. Make up your own name.'),
-    wrongPlace: L3('Nom hozircha sahifada chiqdi. Bizga title ichidagi nomni o‘zgartirish kerak.', 'Название пока появилось на странице. Нам нужно изменить вкладку.', 'The name showed up on the page for now. We need to change the tab.'),
-    greetingGone: L3('Salomlashuv sahifadan yo‘qoldi. Uni body ichida qoldiring.', 'Приветствие пропало со страницы. Оставь его в body.', 'The greeting is gone from the page. Keep it in body.'),
-    praise: L3('Voy, zo‘r! Sahifaning yangi nomi bor — bazaga kirish ochildi!', 'Вау, классно! У вкладки новое имя — вход на базу открыт!', 'Wow, awesome! The tab has a new name, and the base entrance is open!'),
-    done: L3('Bazaga kirish ishlayapti.', 'Вход на базу уже работает.', 'The base entrance is already working.'),
-    drill: L3('Ustaxona sahifasiga title ichida o‘zingiz nom bering.', 'Назови вкладку мастерской своим названием.', 'Give the workshop tab your own name.')
+    praise: L3('To‘g‘ri! Nom yorliqda chiqdi. Novvoyxona ochildi.', 'Есть! Название на вкладке — пекарня открылась.', 'Yes! The name is on the tab, and the bakery is open.'),
+    done: L3('Novvoyxonaning nomi bor.', 'У пекарни уже есть название.', 'The bakery already has a name.'),
+    drill: L3('Bu sahifaga ham nom bering: uni title ichiga yozing.', 'Дай название и этой странице: напиши его внутри title.', 'Name this page too: type the name inside title.')
   },
 
+  // 2 · один тег: дописать </title>.
   t2: {
-    order: L3('Robotlar bazaga birinchi marta uchib kelmoqda. Salomlashuv yozing va bu yerda nima qilish mumkinligini aytib bering.',
-      'Роботы прилетают на базу впервые. Напиши приветствие и расскажи, что здесь можно делать.',
-      'Robots are arriving at the base for the first time. Write a greeting and tell them what they can do here.'),
-    say: L3('Robotlar kelmoqda, sahifada esa faqat nuqtalar. Ular uchun xabar yozing!',
-      'Роботы прилетают, а на странице только точки. Напиши для них сообщение!',
-      'The robots are arriving, and the page has only dots. Write them a message!'),
+    order: L3('Qator oxiriga yopuvchi title tegini yozing', 'Допиши в конце строки закрывающий тег title', 'Add the closing title tag at the end of the line'),
+    say: L3('Qarang: pochta sahifasining hamma matni yorliqqa chiqib ketdi. title boshlangan, lekin yopilmagan. Qator oxiriga yopuvchi title tegini yozing.',
+      'Смотри: весь текст почты уехал на вкладку. title начался, но не закрылся. Допиши в конце строки закрывающий тег title.',
+      'Look: all the post office text ended up on the tab. title started but never closed. Add the closing title tag at the end of the line.'),
     hints: [
-      L3('Bu xabarni sahifaning o‘zida ko‘rishlari kerak.', 'Это сообщение должны увидеть на самой странице.', 'This message must be seen on the page itself.'),
-      L3('body ichida nima borligiga qarang.', 'Посмотри, что находится внутри body.', 'Look at what is inside body.'),
-      L3('Shu yerga salomlashuv va baza haqida bitta gap yozing.', 'Напиши здесь приветствие и одно предложение о базе.', 'Write a greeting and one sentence about the base here.')
+      L3('Nom boshlandi, lekin tugamadi. Qator oxirida nima yetishmayapti?',
+        'Название началось, но не закончилось. Чего не хватает в конце строки?',
+        'The name started but didn’t end. What is missing at the end of the line?'),
+      L3('Yopuvchi teg ochuvchisi bilan bir xil so‘z. Faqat chap «<» qavsdan keyin qiya chiziq «/» turadi.',
+        'Закрывающий тег — то же слово, только после уголка «<» стоит косая черта «/».',
+        'A closing tag is the same word, just with a slash “/” after the bracket “<”.'),
+      L3('Mana boshqa teg qanday yopiladi. title ni ham shunday yoping.', 'Вот как закрывается другой тег. title закрой так же.', 'Here is how another tag closes. Close title the same way.')
     ],
-    dotsLeft: L3('Sahifada hozircha faqat nuqtalar. Ularning o‘rniga xabar yozing.', 'На странице пока только точки. Напиши сообщение вместо них.', 'The page still shows only dots. Write a message instead of them.'),
-    inTitle: L3('Xabar title ichiga tushib qoldi. Robotlar esa uni sahifada ko‘rishi kerak.', 'Сообщение попало на вкладку. А роботы должны увидеть его на странице.', 'The message went to the tab. The robots need to see it on the page.'),
-    short: L3('Yaxshi boshlanish! Yana bir-ikki so‘z qo‘shing: bazada nima qilish mumkin?', 'Хорошее начало! Добавь ещё пару слов: что можно делать на базе?', 'Good start! Add a few more words: what can robots do at the base?'),
-    titleGone: L3('Baza nomi yo‘qoldi. Uni title ichiga qaytaring.', 'Название базы пропало с вкладки. Верни его в title.', 'The base name is gone from the tab. Put it back in title.'),
-    words: L3('Xabarni so‘zlar bilan yozing.', 'Напиши сообщение словами.', 'Write the message in words.'),
-    card: L3('Xabar qabul qilindi', 'Сообщение получено', 'Message received'),
-    praise: L3('Super! Xabar sahifada — robotlar o‘qib, sizga qo‘l silkitishyapti!', 'Супер! Сообщение уже на странице — роботы читают и машут тебе!', 'Super! The message is on the page; the robots are reading it and waving at you!'),
-    done: L3('Salomlashish terminali ishlayapti.', 'Терминал приветствия уже работает.', 'The welcome terminal is already working.'),
-    drill: L3('Ustaxona sahifasida faqat nuqtalar. U yerda nima qilinishini yozing.', 'На странице мастерской только точки. Напиши, что там делают.', 'The workshop page has only dots. Write what happens there.')
+    praise: L3('To‘g‘ri! title yopildi, matn yana oynaga qaytdi.', 'Есть! title закрылся, и текст вернулся в окно.', 'Yes! title is closed, and the text is back in the window.'),
+    done: L3('Pochta sahifasi joyida.', 'Страница почты в порядке.', 'The post office page is fine.'),
+    drill: L3('Bu yerda ham title yopilmagan. Qator oxiriga yopuvchi tegni yozing.', 'И здесь title не закрыт. Допиши закрывающий тег в конце строки.', 'title isn’t closed here either. Add the closing tag at the end of the line.')
   },
 
+  // 3 · блок из трёх строк: body со своим текстом.
   t3: {
-    order: L3('title ichiga «{name}» deb yozing. Yo‘qolgan qatorni to‘liq tiklang.',
-      'Назови вкладку «{name}». Восстанови всю пропавшую строку.',
-      'Name the tab “{name}”. Restore the whole missing line.'),
-    say: L3('Omborda butun bir qator yo‘qolgan. Uni o‘zingiz yozing: teg, nom va yopuvchi teg.',
-      'У склада пропала целая строка. Напиши её сам: тег, название и закрывающий тег.',
-      'A whole line is missing at the storage. Write it yourself: the tag, the name and the closing tag.'),
-    schema: L3('Sahifa nomi qayerda turadi', 'Где живёт название вкладки', 'Where the tab name lives'),
+    order: L3('body qismini yozing: bugun kinoda nima bor?', 'Напиши часть body: что сегодня в кино?', 'Write the body part: what’s on at the cinema today?'),
+    say: L3('Kinoteatr oynasi bo‘m-bo‘sh, chunki body qismi yo‘q. Uni o‘zingiz yozing: ochuvchi body, matn va yopuvchi body.',
+      'Окно кинотеатра пустое: части body нет. Напиши её: открывающий body, текст и закрывающий body.',
+      'The cinema window is empty: there is no body part. Write it: the opening body, the text and the closing body.'),
+    empty: L3('Matn shu yerda chiqadi', 'Здесь появится текст', 'The text will appear here'),
     hints: [
-      L3('Bu qatorga teg, nom va yopuvchi juft kerak.', 'В этой строке нужны тег, название и закрывающая пара.', 'This line needs a tag, a name and the closing pair.'),
-      L3('Sahifa nomi title ichida turadi. Yopuvchi juft qiya chiziq bilan farq qiladi.', 'Название вкладки находится внутри title. Закрывающая пара отличается косой чертой.', 'The tab name goes inside title. The closing pair differs by a slash.'),
-      L3('Mana boshqa nomli namuna. Ombor uchun qatorni o‘zingiz yozing.', 'Вот образец с другим названием. Строку для склада напиши сам.', 'Here is a sample with a different name. Write the line for the storage yourself.')
+      L3('Oynadagi matn hujjatning o‘z qismida turadi. U teg bilan boshlanib, teg bilan tugaydi.',
+        'Текст в окне стоит в своей части документа. Она начинается тегом и заканчивается тегом.',
+        'Window text sits in its own part of the document. It starts with a tag and ends with a tag.'),
+      L3('Bu qism body. U head dan keyin boshlanadi va html yopilishidan oldin tugaydi.',
+        'Это часть body. Она начинается после head и заканчивается до закрытия html.',
+        'This part is body. It starts after head and ends before html closes.'),
+      L3('Mana boshqa matnli namuna. Kinoteatr uchun ham shunday yozing.', 'Вот образец с другим текстом. Для кинотеатра напиши так же.', 'Here’s a sample with other text. Write the cinema one the same way.')
     ],
-    praise: L3('Ana! title qatori tayyor — omborning endi nomi bor!', 'Есть! Строка title готова — у склада теперь есть имя!', 'Yes! The title line is ready; the storage has a name now!'),
-    done: L3('Detallar omborining nomi bor.', 'У склада деталей уже есть название.', 'The parts storage already has a name.'),
-    drill: L3('Endi «{name}» uchun title qatorini yozing.', 'Теперь напиши строку title для вкладки «{name}».', 'Now write the title line for the “{name}” tab.')
+    praise: L3('To‘g‘ri! Matn oynada. Kinoteatr ochildi.', 'Верно! Текст в окне — кинотеатр открыт.', 'Right! The text is in the window, and the cinema is open.'),
+    done: L3('Kinoteatr oynasida matn bor.', 'В окне кинотеатра уже есть текст.', 'The cinema window already has text.'),
+    drill: L3('Basseyn oynasi ham bo‘sh. Unga matnli body yozing.', 'Окно бассейна тоже пустое. Напиши для него body с текстом.', 'The pool window is empty too. Write it a body with text.')
   },
 
+  // 4 · найти место в чужом коде и дописать </head>.
   t4: {
-    order: L3('Aloqa terminali sahifasini yarating. Unda Kodi uchun xabar bo‘lsin. Unga nima deyishni o‘ylab toping.',
-      'Сделай страницу терминала связи. На ней должно быть сообщение для Коди. Придумай, что ты ему передашь.',
-      'Make the comms terminal page. It should have a message for Kodi. Make up what you will tell Kodi.'),
-    say: L3('Aloqa ekrani bo‘sh. Sahifaning ko‘rinadigan qismini menga xabar bilan yozing!',
-      'Экран связи пустой. Напиши видимую часть страницы с сообщением для меня!',
-      'The comms screen is empty. Write the visible part of the page with a message for me!'),
-    empty: L3('Xabar shu yerda chiqadi', 'Здесь появится сообщение', 'The message will appear here'),
+    order: L3('head qayerda tugashi kerakligini bosing', 'Нажми место, где должен закончиться head', 'Tap the place where head should end'),
+    order2: L3('Shu joyga yopuvchi head tegini yozing', 'Напиши здесь закрывающий тег head', 'Type the closing head tag here'),
+    say: L3('Maktab sahifasida head ochilgan, lekin yopilmagan: chap tomondagi chizig‘i punktir. Avval head qayerda tugashi kerakligini bosing.',
+      'В странице школы head открыт, но не закрыт: его полоска слева — пунктиром. Сначала нажми место, где head должен закончиться.',
+      'On the school page head is opened but not closed: its bar on the left is dashed. First tap the place where head should end.'),
+    picked: L3('To‘g‘ri joy! Endi shu yerga yopuvchi head tegini yozing.', 'Верное место! Теперь напиши здесь закрывающий тег head.', 'Right spot! Now type the closing head tag here.'),
+    miss: {
+      before: L3('Bu yerda head hali boshlanmagan.', 'Здесь head ещё не начался.', 'head hasn’t started here yet.'),
+      inside: L3('head endi boshlandi: uning ichida hali title bor.', 'head только начался: внутри него ещё title.', 'head has just started: title is still inside it.'),
+      after: L3('Bu yerda body boshlangan. head esa body dan oldin tugashi kerak.', 'Здесь уже идёт body. А head должен закончиться до начала body.', 'body has already started here. head must end before body begins.')
+    },
     hints: [
-      L3('Ko‘rinadigan xabarga hujjatning o‘z qismi kerak.', 'Видимому сообщению нужна своя часть документа.', 'A visible message needs its own part of the document.'),
-      L3('Bu qism body deb ataladi. U head dan keyin boshlanadi va html ichida turadi.', 'Эта часть называется body. Она начинается после head и стоит внутри html.', 'This part is called body. It starts after head and sits inside html.'),
-      L3('Uchta joy: ochuvchi teg, xabaringiz, yopuvchi teg. Ularni o‘zingiz to‘ldiring.', 'Три места: открывающий тег, твоё сообщение, закрывающий тег. Заполни их сам.', 'Three places: the opening tag, your message, the closing tag. Fill them in yourself.')
+      L3('head nima bilan tugashini tekshiring. U qayerda tugashi kerak?', 'Проверь, чем заканчивается head. Где он должен закончиться?', 'Check how head ends. Where should it end?'),
+      L3('head body boshlanishidan oldin tugaydi. title esa head ichida qoladi.', 'head заканчивается до начала body. А title остаётся внутри head.', 'head ends before body starts. title stays inside head.'),
+      L3('title qatoridan keyingi joyni bosing va u yerga yopuvchi head yozing.', 'Нажми место после строки title и напиши там закрывающий head.', 'Tap the place after the title line and type the closing head there.')
     ],
-    praise: L3('Zo‘r-ku! Aloqa ishladi — Kodi xabaringizni oldi!', 'Огонь! Связь заработала — Коди получил твоё сообщение!', 'Brilliant! Comms are up, and Kodi got your message!'),
-    done: L3('Aloqa terminali ishlayapti.', 'Терминал связи уже работает.', 'The comms terminal is already working.'),
-    drill: L3('Mayoq jim. Unga signal bilan body yozing.', 'Маяк молчит. Напиши для него body с сигналом.', 'The beacon is silent. Write it a body with a signal.')
+    praise: L3('To‘g‘ri! head yopildi, chizig‘i ham butun bo‘ldi.', 'Есть! head закрыт — полоска стала сплошной.', 'Yes! head is closed, and its bar is solid now.'),
+    done: L3('Maktab sahifasida head yopiq.', 'В странице школы head уже закрыт.', 'On the school page head is already closed.'),
+    drill: L3('Bu yerda body yopilmagan. U qayerda tugashini bosing va yopuvchi tegni yozing.', 'А здесь не закрыт body. Нажми, где он заканчивается, и допиши закрывающий тег.', 'Here body isn’t closed. Tap where it ends and type the closing tag.'),
+    drill2: L3('Shu joyga yopuvchi body tegini yozing', 'Напиши здесь закрывающий тег body', 'Type the closing body tag here'),
+    drillMiss: {
+      before: L3('Bu yerda body hali boshlanmagan.', 'Здесь body ещё не начался.', 'body hasn’t started here yet.'),
+      inside: L3('body hali davom etyapti: pastda uning matni bor.', 'body ещё продолжается: ниже его текст.', 'body still goes on: its text is below.')
+    }
   },
 
+  // 5 · самое сложное, но посильное: внутри готового html — head с title и body с текстом.
   t5: {
-    order: L3('Hujjatni tuzating: kartochkadagidek qiling.', 'Исправь документ: сделай как на карточке.', 'Fix the document: make it like the card.'),
-    say: L3('Voy, robot hammasini aralashtirib yuboribdi! Nom va salomlashuv o‘z joyida emas.',
-      'Ой, робот всё перепутал! Название и приветствие стоят не на своих местах.',
-      'Oops, the robot mixed everything up! The name and the greeting are in the wrong places.'),
-    target: L3('Qanday bo‘lishi kerak', 'Как должно быть', 'How it should be'),
+    order: L3('html ichiga ikki qism yozing: nomli title bilan head, keyin matnli body',
+      'Внутри html напиши две части: head с title и body с текстом',
+      'Inside html, write two parts: head with title, then body with text'),
+    say: L3('Ko‘cha tuzaldi! Endi o‘z uyingiz. html ramkasi tayyor. Uning ichiga head va title bilan uy nomini, keyin body va matnni yozing.',
+      'Улица починена! Теперь твой дом. Рамка html уже есть. Внутри напиши head с title — это название дома, а потом body с текстом.',
+      'The street is fixed! Now your house. The html frame is ready. Inside it, write head with title for the house name, then body with text.'),
     hints: [
-      L3('Ikki yozuvni solishtiring: har biri qayerda turishi kerak?', 'Сравни две надписи: где должна находиться каждая?', 'Compare the two texts: where should each one be?'),
-      L3('title matni — sahifa nomi. body matni — sahifaning o‘zida.', 'Текст title попадёт на вкладку. Текст body — на страницу.', 'The title text goes to the tab. The body text goes to the page.'),
-      L3('Xona nomini title ichiga, salomlashuvni body ichiga yozing.', 'Название комнаты напиши внутри title, приветствие — внутри body.', 'Write the room name inside title and the greeting inside body.')
+      L3('html ichida ikki qism bo‘ladi: avval head, keyin body.', 'Внутри html две части: сначала head, потом body.', 'Inside html there are two parts: first head, then body.'),
+      L3('head ichida title qatori bo‘ladi. head yopilgach body ochiladi va html tugashidan oldin yopiladi.',
+        'В head — строка title. Когда head закрыт, открывается body, и он закрывается до конца html.',
+        'Inside head goes the title line. After head closes, body opens and closes before html ends.'),
+      L3('Mana boshqa uyda bu qanday ko‘rinadi. O‘zingiznikini ham shunday yozing.', 'Вот как это выглядит у другого дома. Свою часть напиши так же.', 'Here is how it looks for another house. Write yours the same way.')
     ],
-    same: L3('Matnlar hali avvalgidek turibdi. Kartochkaga qarang: title ichida nima bo‘lishi kerak?', 'Тексты пока стоят как раньше. Посмотри на карточку: что должно быть на вкладке?', 'The texts are still where they were. Look at the card: what should be on the tab?'),
-    titleOnly: L3('Sahifa tayyor! title ichida esa «{a}» bo‘lishi kerak.', 'Страница готова! А на вкладке должно быть «{a}».', 'The page is ready! The tab should say “{a}”.'),
-    bodyOnly: L3('title tayyor! Sahifada esa «{b}» bo‘lishi kerak.', 'Вкладка готова! А на странице должно быть «{b}».', 'The tab is ready! The page should say “{b}”.'),
-    double: L3('Bitta yozuv endi ikki joyda turibdi. Kartochka bilan solishtiring.', 'Одна надпись теперь стоит в двух местах. Сравни с карточкой.', 'One text is now in two places. Compare with the card.'),
-    other: L3('Kartochka bilan solishtiring: title — «{a}», sahifada — «{b}».', 'Сравни с карточкой: на вкладке — «{a}», на странице — «{b}».', 'Compare with the card: the tab says “{a}”, the page says “{b}”.'),
-    praise: L3('Qoyil! Hammasi joyida: nom — title da, salom — body da. Dam olish xonasi yondi!', 'Вот это да! Всё на своих местах: название — в title, приветствие — в body. Комната отдыха зажглась!', 'Amazing! Everything’s in place: the name in title, the greeting in body. The rest room lit up!'),
-    done: L3('Dam olish xonasi ishlayapti.', 'Комната отдыха уже работает.', 'The rest room is already working.'),
-    drill: L3('Bu yerda ham aralash! Kartochkadagidek tuzating.', 'И здесь перепутано! Исправь как на карточке.', 'This one is mixed up too! Fix it like the card.')
+    praise: L3('Uyingiz qurildi! Uning sahifasini o‘zingiz yozdingiz.', 'Дом построен! Его страница написана твоими руками.', 'Your house is built! You wrote its page yourself.'),
+    done: L3('Uyingiz qurilgan.', 'Твой дом уже построен.', 'Your house is already built.'),
+    drill: L3('Ustaxona uchun body yozing: u yerda nima qilinadi?', 'Напиши body для мастерской: что там делают?', 'Write a body for the workshop: what happens there?')
   },
 
-  t6: {
-    order: L3('Tanish teglarning juftlarini tekshiring. Nima yetishmasligini toping va kerakli qatorlarni yozing.',
-      'Проверь пары знакомых тегов. Найди, чего не хватает, и допиши нужные строки.',
-      'Check the pairs of familiar tags. Find what is missing and add the lines you need.'),
-    say: L3('Himoya bo‘limi yopilmayapti. Kodda yopuvchi teglar yetishmayapti.',
-      'Защитный отсек не закрывается. В коде не хватает закрывающих тегов.',
-      'The defense bay will not close. Some closing tags are missing in the code.'),
-    // Легенда отсеков: вместо слов «сплошная скобка / пунктир» — сами скобки.
-    legendClosed: L3('bo‘lim yopiq', 'отсек закрыт', 'the bay is closed'),
-    legendOpen: L3('bo‘lim yopilmagan', 'отсек не закрыт', 'the bay is not closed'),
-    hints: [
-      L3('head va body qayerda tugashini tekshiring.', 'Проверь, где заканчиваются head и body.', 'Check where head and body end.'),
-      L3('Sahifa haqidagi ma’lumot ko‘rinadigan qism boshlanishidan oldin tugashi kerak. Ko‘rinadigan qism — html yopilishidan oldin.',
-        'Сведения о странице должны закончиться до начала видимой части. Видимая часть — до закрытия html.',
-        'The page information must end before the visible part starts. The visible part must end before html closes.'),
-      L3('Joylarni punktir bilan, ochuvchi teglarni rang bilan belgiladim. Yopuvchi teglarni o‘zingiz yozing.',
-        'Я отметил места пунктиром, а открывающие теги — цветом. Закрывающие теги напиши сам.',
-        'I marked the places with dashes and the opening tags with colour. Write the closing tags yourself.')
-    ],
-    praise: L3('Ura! Barcha bo‘limlar yopildi — baza xavfsiz!', 'Ура! Все отсеки закрыты — база в безопасности!', 'Hooray! All the bays are closed; the base is safe!'),
-    done: L3('Himoya bo‘limi yopiq.', 'Защитный отсек уже закрыт.', 'The defense bay is already closed.'),
-    drill: L3('Ustaxonada bitta bo‘lim yopilmagan. Toping va yozing.', 'В мастерской не закрыт один отсек. Найди и допиши.', 'One bay in the workshop is not closed. Find it and add it.')
-  },
-
-  t7: {
-    // Коротко (заказчик, 15.10.2026): на телефоне место нужно редактору.
-    order: L3('Xonangiz sahifasi: title — uning nomi, body — unda nima qilish mumkin.',
-      'Страница твоей комнаты: title — её название, body — что в ней можно делать.',
-      'Your room’s page: title — its name, body — what you can do there.'),
-    say: L3('Bazani jonlantirdik! Sizning xonangiz qoldi. Uning sahifasini o‘zingiz yozing — html dan oxirigacha.',
-      'Базу мы оживили! Осталась твоя комната. Напиши её страницу сам — от html до конца.',
-      'We brought the base back to life! Only your room is left. Write its page yourself, from html to the end.'),
-    planTitle: L3('xona nomi', 'название комнаты', 'room name'),
-    planBody: L3('xona haqida hikoya', 'рассказ о комнате', 'about the room'),
-    hint1: L3('Katta html konteyneridan boshlang. Uning ichida ikki qism bo‘ladi.', 'Начни с большого контейнера html. Внутри него будут две части.', 'Start with the big html container. It will have two parts inside.'),
+  // Подсказка 2 своего дома — по той части, где сейчас затруднение.
+  house: {
     hint2: {
-      html: L3('Birinchi qatordan keyin html ni oching, eng oxirida esa yoping.', 'После первой строки открой html, а в самом конце закрой его.', 'Open html after the first line and close it at the very end.'),
-      head: L3('head ichiga title qo‘yish kerak. head body boshlanishidan oldin yopiladi.', 'В head нужно поместить title. head закрывается до начала body.', 'Put title inside head. head closes before body starts.'),
+      html: L3('html juftini tekshiring: ochuvchi html birinchi qatordan keyin, yopuvchisi eng oxirida.', 'Проверь пару html: открывающий — после первой строки, закрывающий — в самом конце.', 'Check the html pair: the opening one after the first line, the closing one at the very end.'),
+      head: L3('head juftini tekshiring: u html ichida, title esa uning ichida.', 'Проверь пару head: она внутри html, а title — внутри неё.', 'Check the head pair: it is inside html, and title is inside it.'),
       body: L3('body juftini tekshiring: u head dan keyin ochiladi va html tugashidan oldin yopiladi.', 'Проверь пару body: она открывается после head и закрывается до конца html.', 'Check the body pair: it opens after head and closes before html ends.'),
-      tag: L3('Teglar qanday yozilganini tekshiring: burchaklar, qiya chiziq va harflar.', 'Проверь, как написаны теги: уголки, косая черта и буквы.', 'Check how the tags are written: brackets, slash and letters.'),
-      none: L3('Hujjatni chizma bilan solishtiring: html, ichida title bilan head, keyin body.', 'Сверь документ с чертежом: html, внутри head с title, потом body.', 'Compare the document with the blueprint: html, inside it head with title, then body.')
-    },
-    hint3: {
-      html: L3('html ikkala qismni qanday o‘rashini qarang. O‘z hujjatingizda ham shunday yozing.', 'Посмотри, как html обнимает обе части. Напиши так же в своём документе.', 'See how html wraps both parts. Write it the same way in your document.'),
-      head: L3('Mana boshqa xona uchun head namunasi. O‘z nomingizni o‘zingiz yozing.', 'Вот пример head для другой комнаты. Своё название напиши сам.', 'Here is a head sample for another room. Write your own name yourself.'),
-      body: L3('Mana boshqa xona uchun body namunasi. O‘z hikoyangizni o‘zingiz yozing.', 'Вот пример body для другой комнаты. Свой рассказ напиши сам.', 'Here is a body sample for another room. Write your own story yourself.')
-    },
-    praise: L3('Aql bovar qilmaydi! Butun hujjat noldan — xonangiz xaritada paydo bo‘ldi!', 'Невероятно! Целый документ с нуля — твоя комната уже на карте!', 'Incredible! A whole document from scratch, and your room is on the map!'),
-    done: L3('Xonangiz xaritada turibdi.', 'Твоя комната уже на карте.', 'Your room is already on the map.'),
-    drill: {
-      html: L3('Ikkala qismni html teglari bilan o‘rang.', 'Обними обе части тегами html.', 'Wrap both parts in html tags.'),
-      head: L3('«{name}» nomli title bilan head yozing.', 'Напиши head с title «{name}».', 'Write a head with the title “{name}”.'),
-      body: L3('Ustaxona uchun body yozing: u yerda nima qilinadi?', 'Напиши body для мастерской: что там делают?', 'Write a body for the workshop: what happens there?')
+      tag: L3('Teglar qanday yozilganini tekshiring: qavslar, qiya chiziq va harflar.', 'Проверь, как написаны теги: уголки, косая черта и буквы.', 'Check how the tags are written: brackets, slash and letters.')
     }
   },
 
   drill: {
-    say: L3('Super, chiqdi! Endi yana bir marta, qisqa va yangi matn bilan.', 'Супер, получилось! А теперь ещё разок — коротко и с новым текстом.', 'Super, you did it! Now once more, quickly, with new text.'),
-    done: L3('Voy, yangi matn bilan ham chiqdi! Endi bu aniq sizniki.', 'Вау, и с новым текстом получилось! Теперь это точно твоё.', 'Wow, it worked with new text too! Now it’s really yours.')
+    say: L3('Chiqdi! Endi yana bir marta, yangi matn bilan.', 'Получилось! Теперь ещё раз, с новым текстом.', 'You did it! Now once more, with new text.'),
+    done: L3('Yangi matn bilan ham chiqdi. Endi bu sizning qo‘lingizda.', 'И с новым текстом получилось. Теперь это точно твоё.', 'It worked with new text too. Now it’s really yours.')
   },
 
   fin: {
-    eyebrow: L3('Baza yana ishlayapti', 'База снова работает', 'The base is working again'),
-    say: L3('Ura, baza yana ishlayapti! Xaritada esa o‘z xonangiz bor. Bu zo‘r bo‘ldi!', 'Ура, база снова работает! А на карте — твоя собственная комната. Это было мощно!', 'Hooray, the base is working again! And your own room is on the map. That was awesome!'),
+    eyebrow: L3('Ko‘cha yana tirik', 'Улица снова живая', 'The street is alive again'),
+    say: L3('Tabriklayman! Ko‘cha yana tirik. Oxirgi uy esa sizniki: uning sahifasini o‘zingiz yozdingiz.',
+      'Ура! Улица снова живая. А последний дом — твой: его страница целиком твоя.',
+      'Hooray! The street is alive again. And the last house is yours: you wrote its page yourself.'),
     skills: [
-      L3('title qatorini o‘zim yozaman', 'Пишу строку title сам', 'I write the title line myself'),
-      L3('Matn bilan body quraman', 'Строю body с текстом', 'I build body with text'),
-      L3('Yopuvchi teglarni topib yozaman', 'Нахожу и дописываю закрывающие теги', 'I find and add closing tags'),
-      L3('Hujjatni chizma bo‘yicha yozaman', 'Пишу документ по чертежу', 'I write a document from a blueprint')
+      L3('title ichiga sahifa nomini yozaman', 'Пишу название страницы в title', 'I write the page name in title'),
+      L3('Yopuvchi tegni yozaman', 'Пишу закрывающий тег', 'I write a closing tag'),
+      L3('Matnli body yozaman', 'Пишу body с текстом', 'I write body with text'),
+      L3('head qayerda tugashini topaman', 'Нахожу, где заканчивается head', 'I find where head ends'),
+      L3('head va body bilan sahifa yozaman', 'Пишу страницу из head и body', 'I write a page with head and body')
     ]
   }
 };
 
-// Тексты-образцы, которые дети пишут в задании и дополнительных задачах.
-const TARGET = {
-  store: STATIONS[2].name,
-  rest: STATIONS[4].name
+// Сгенерировано tools/kollazh/paper-data.mjs из assets/paper.mp3 — не править руками.
+const PAPER_MP3 = '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';
+
+// Шорох бумаги: звучит, пока бумажная вырезка движется (ступенчатые анимации
+// kz… и полёт частей), и стихает, как только движение кончилось. Бесконечные
+// движения (дрожь, взмах руки, огонёк) не шуршат. Выключенный звук урока
+// (_soundOff канона) и «меньше движения» — тишина.
+const PAPER_ANIMS = { kzDrop: 1, kzRise: 1, kzLeft: 1, kzRight: 1, kzPop: 1, kzStamp: 1, kzOut: 1, kzOutL: 1, kzShake: 1, kzScatter: 1, kzAsmIn: 1, kzSlideUp: 1, kzSlideUnder: 1 };
+// Громкость шороха: фон, тише голоса и звуков ответа (заказчик: 0.11; было 0.55, потом 0.22).
+const PAPER_VOL = 0.11;
+const PAPER_PROPS = { translate: 1, scale: 1, rotate: 1, transform: 1 };
+const _pp = { ctx: null, buf: null, src: null, gain: null, live: new Map(), stopT: 0, pruneT: 0 };
+
+function paperCtx() {
+  if (_pp.ctx) return _pp.ctx;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  _pp.ctx = new AC();
+  _pp.ctx.onstatechange = () => { if (_pp.ctx.state === 'running' && _pp.live.size) paperOn(); };
+  try {
+    const bin = atob(PAPER_MP3);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+    _pp.ctx.decodeAudioData(bytes.buffer, (b) => { _pp.buf = b; if (_pp.live.size) paperOn(); }, () => {});
+  } catch (e) { /* без звука */ }
+  return _pp.ctx;
+}
+
+function paperOn() {
+  clearTimeout(_pp.stopT);
+  if (_soundOff || _pp.src) return;
+  const ctx = paperCtx();
+  if (!ctx || !_pp.buf) return;
+  // Звук ещё не разрешён (урок открыт без касания) — шорох начнётся, как только
+  // браузер его пустит (onstatechange), если движение ещё идёт.
+  if (ctx.state !== 'running') { ctx.resume().catch(() => {}); return; }
+  const src = ctx.createBufferSource(), g = ctx.createGain(), t = ctx.currentTime;
+  src.buffer = _pp.buf;
+  src.loop = true;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(PAPER_VOL, t + 0.03);
+  src.connect(g); g.connect(ctx.destination);
+  src.start(t, Math.random() * Math.max(0, _pp.buf.duration - 1));   // каждый раз — другой кусок шороха
+  _pp.src = src; _pp.gain = g;
+}
+
+function paperOff() {
+  const src = _pp.src, g = _pp.gain;
+  _pp.src = null; _pp.gain = null;
+  if (!src) return;
+  const t = _pp.ctx.currentTime;
+  g.gain.cancelScheduledValues(t);
+  g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+  src.stop(t + 0.1);
+}
+
+// Движение кончилось: короткая выдержка, чтобы соседние вырезки с задержкой
+// (лесенка влёта) шуршали одним звуком, а не щёлкали.
+function paperCheck() {
+  const now = Date.now();
+  _pp.live.forEach((t0, k) => { if (!k.el.isConnected || now - t0 > 2500) _pp.live.delete(k); });
+  clearTimeout(_pp.stopT);
+  if (!_pp.live.size) _pp.stopT = setTimeout(() => { if (!_pp.live.size) paperOff(); }, 160);
+}
+
+function usePaperSound() {
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    paperCtx();   // сразу: пока собирается первая сцена, звук успеет раскодироваться
+    const wake = () => { if (_pp.ctx && _pp.ctx.state !== 'running') _pp.ctx.resume().catch(() => {}); };
+    const keys = new Map();   // элемент + имя движения → ключ в _pp.live
+    const keyOf = (el, name) => {
+      let m = keys.get(el);
+      if (!m) { m = {}; keys.set(el, m); }
+      return m[name] || (m[name] = { el, name });
+    };
+    const start = (el, name) => { _pp.live.set(keyOf(el, name), Date.now()); paperOn(); };
+    const end = (el, name) => { _pp.live.delete(keyOf(el, name)); paperCheck(); };
+    const onAnimStart = (e) => {
+      if (!PAPER_ANIMS[e.animationName]) return;
+      if (getComputedStyle(e.target).animationIterationCount.indexOf('infinite') >= 0) return;
+      start(e.target, e.animationName);
+    };
+    const onAnimEnd = (e) => { if (PAPER_ANIMS[e.animationName]) end(e.target, e.animationName); };
+    const isCut = (e) => PAPER_PROPS[e.propertyName] && e.target.classList && e.target.classList.contains('kz-cut');
+    const onTrStart = (e) => { if (isCut(e)) start(e.target, 'tr:' + e.propertyName); };
+    const onTrEnd = (e) => { if (isCut(e)) end(e.target, 'tr:' + e.propertyName); };
+    // Вырезка исчезла посреди движения (смена экрана) — событий конца не будет.
+    _pp.pruneT = setInterval(() => { if (_pp.live.size) paperCheck(); }, 300);
+    const ev = [['animationstart', onAnimStart], ['animationend', onAnimEnd], ['animationcancel', onAnimEnd],
+      ['transitionrun', onTrStart], ['transitionend', onTrEnd], ['transitioncancel', onTrEnd], ['pointerdown', wake], ['keydown', wake]];
+    ev.forEach(([n, f]) => document.addEventListener(n, f, true));
+    return () => {
+      ev.forEach(([n, f]) => document.removeEventListener(n, f, true));
+      clearInterval(_pp.pruneT); clearTimeout(_pp.stopT);
+      _pp.live.clear(); paperOff();
+    };
+  }, []);
+}
+
+// =============================================================================
+// БУМАЖНЫЙ НАБОР. Вырезка (Cut): внешний слой — движение и тень, внутренний —
+// бумага с рваным краем (clip-path) и фактурой. Рваный край считается один раз
+// по зерну (seed): одна и та же вырезка всегда одинаковая.
+// =============================================================================
+// ОЗВУЧКА ЗНАКОВ И ТЕГОВ (общая для уроков на бумажном наборе). Знак в кавычках
+// («<», «/», “>”) нужен глазам: в реплике он назван словами рядом («chap «<» qavsdan»,
+// «уголка «<»»). В речь знак не идёт — иначе сервис читает сырой символ; знак без
+// названия читается словами. Узбекский закрывающий тег — «yopuvchi title tegi»
+// (порядок слов узбекского), а не «yopuvchi teg title».
+const KZ_SIGN_WORD = '(?:qavs|chiziq|скобк|уголк|черт|bracket|slash)[^\\s,.!?:;]*';
+const KZ_SIGN_NAME = { uz: { '<': 'chap burchakli qavs', '>': 'o‘ng burchakli qavs', '/': 'qiya chiziq' },
+  ru: { '<': 'левый уголок', '>': 'правый уголок', '/': 'косая черта' }, en: { '<': 'less-than sign', '>': 'greater-than sign', '/': 'slash' } };
+const spokenHtmlL2 = spokenHtml;
+// eslint-disable-next-line no-func-assign
+spokenHtml = (text, lang) => {
+  let s = String(text || '');
+  s = s.replace(new RegExp('(' + KZ_SIGN_WORD + ')[\\s:—–-]*[«“"]\\s*[<>/\\\\]\\s*[»”"]', 'gi'), '$1');
+  s = s.replace(new RegExp('[«“"]\\s*[<>/\\\\]\\s*[»”"]\\s*(' + KZ_SIGN_WORD + ')', 'gi'), '$1');
+  const nm = KZ_SIGN_NAME[lang] || KZ_SIGN_NAME.ru;
+  s = s.replace(/[«“"]\s*([<>/\\])\s*[»”"]/g, (all, c) => ' ' + (nm[c] || nm['/']) + ' ');
+  if (lang === 'uz') s = s.replace(/<\s*\/\s*([a-z][a-z0-9]*)\s*>/gi, (all, t) => 'yopuvchi ' + t + ' tegi');
+  return spokenHtmlL2(s, lang);
 };
 
+// Параллакс слоёв: палец или мышь сдвигают вырезки по углам листа на разную
+// глубину. Значения — ступеньками (как кадры stop-motion), без лишних перерисовок.
+function useParallax() {
+  useEffect(() => {
+    if (typeof window === 'undefined' || reduceMotion()) return undefined;
+    const root = document.documentElement;
+    let last = '';
+    const onMove = (e) => {
+      const x = Math.round(((e.clientX / window.innerWidth) * 2 - 1) * 4) / 4;
+      const y = Math.round(((e.clientY / window.innerHeight) * 2 - 1) * 4) / 4;
+      const k = x + ',' + y;
+      if (k === last) return;
+      last = k;
+      root.style.setProperty('--kzx', String(x));
+      root.style.setProperty('--kzy', String(y));
+    };
+    window.addEventListener('pointermove', onMove);
+    return () => window.removeEventListener('pointermove', onMove);
+  }, []);
+}
+
+const KZ = { kraft: '#D8C4A1', paper: '#EFE7D6', face: '#F2D7BC', cream: '#FBF6EA', coral: '#E0643F', mustard: '#F0B13F', teal: '#2A8C7E', ink: '#1F2A44' };
+const kzRnd = (seed) => { let s = (Math.abs(seed) * 7919 + 104729) % 2147483647 || 1; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; };
+const TORN = {};
+// Рваный прямоугольник: зубцы по четырём сторонам; amp — глубина зубца в % по
+// короткой стороне, asp — ширина/высота вырезки (чтобы зубцы были одинаковыми).
+function torn(seed, n, amp, asp) {
+  const k = seed + ':' + n + ':' + amp + ':' + asp;
+  if (TORN[k]) return TORN[k];
+  const r = kzRnd(seed);
+  const a = asp || 1;
+  const ay = a >= 1 ? amp : amp * a, ax = a >= 1 ? amp / a : amp;
+  const f = (v) => v.toFixed(2) + '%';
+  const nx = Math.max(4, Math.round(n * Math.max(1, a))), ny = Math.max(4, Math.round(n / Math.min(1, a)));
+  const p = [];
+  for (let i = 0; i < nx; i += 1) p.push(f((i / nx) * 100) + ' ' + f(r() * ay));
+  for (let i = 0; i < ny; i += 1) p.push(f(100 - r() * ax) + ' ' + f((i / ny) * 100));
+  for (let i = 0; i < nx; i += 1) p.push(f(100 - (i / nx) * 100) + ' ' + f(100 - r() * ay));
+  for (let i = 0; i < ny; i += 1) p.push(f(r() * ax) + ' ' + f(100 - (i / ny) * 100));
+  TORN[k] = 'polygon(' + p.join(', ') + ')';
+  return TORN[k];
+}
+// Рваный круг (голова, круг в углу листа).
+function tornRound(seed, n, amp) {
+  const k = 'o' + seed + ':' + n + ':' + amp;
+  if (TORN[k]) return TORN[k];
+  const r = kzRnd(seed);
+  const p = [];
+  for (let i = 0; i < n; i += 1) {
+    const t = (i / n) * Math.PI * 2;
+    const rad = 50 - r() * amp;
+    p.push((50 + Math.cos(t) * rad).toFixed(2) + '% ' + (50 + Math.sin(t) * rad).toFixed(2) + '%');
+  }
+  TORN[k] = 'polygon(' + p.join(', ') + ')';
+  return TORN[k];
+}
+const TRI = 'polygon(4% 2%, 30% 12%, 62% 22%, 98% 38%, 70% 58%, 44% 76%, 14% 98%, 9% 62%, 6% 30%)';
+
+function Cut({ c, seed = 1, n = 10, amp = 3, asp = 1, round, clip, x, y, w, h, r = 0, anim, dl, cls, hl, hlc, boil, onClick, label, children, style, dp }) {
+  const st = Object.assign({}, x !== undefined ? { left: x + '%', top: y + '%', width: w + '%', height: h + '%' } : {},
+    { '--r': r + 'deg', '--dl': (dl || 0) + 's', '--bd': ((seed % 7) * 0.17).toFixed(2) + 's' }, hlc ? { '--hl': hlc } : {}, dp ? { '--dp': dp } : {}, style || {});
+  const cp = clip || (round ? tornRound(seed, n * 3, amp) : torn(seed, n, amp, asp));
+  const tap = !!onClick;
+  return (
+    <span className={'kz-cut' + (anim ? ' kz-a-' + anim : '') + (hl ? ' is-hl' : '') + (boil ? ' kz-boil' : '') + (tap ? ' is-tap' : '') + (cls ? ' ' + cls : '')}
+      style={st} onClick={onClick} role={tap ? 'button' : undefined} tabIndex={tap ? 0 : undefined} aria-label={label}
+      onKeyDown={tap ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(e); } } : undefined}>
+      <span className="kz-cut-in" style={{ background: c, clipPath: cp, WebkitClipPath: cp }}>{children}</span>
+    </span>
+  );
+}
+
+// Лист на крафтовом столе + вырезки по углам (скотч, треугольник, круг) —
+// они сдвигаются за пальцем на разную глубину (параллакс).
+function Sheet({ children, cls }) {
+  const cp = torn(5, 30, 1.1, 1.6);
+  return (
+    <div className={'kz-sheet' + (cls ? ' ' + cls : '')}>
+      <div className="kz-sheet-wrap"><div className="kz-sheet-in" style={{ clipPath: cp, WebkitClipPath: cp }} /></div>
+      <Cut c={KZ.mustard} seed={11} n={8} amp={10} asp={5} r={-32} cls="kz-deco kz-deco-tape" dp={9} />
+      <Cut c={KZ.coral} clip={TRI} r={8} cls="kz-deco kz-deco-tri" dp={12} />
+      <Cut c={KZ.teal} round seed={13} n={8} amp={5} cls="kz-deco kz-deco-dot" dp={7} />
+      <div className="kz-sheet-body">{children}</div>
+    </div>
+  );
+}
+
+// Строка задания — бумажная полоска; ступень подсказки встаёт на её место.
+function KzAsk({ text, hint, n }) {
+  const pick = usePick();
+  return (
+    <div className="kz-ask-wrap">
+      <p className={'kz-ask' + (hint ? ' is-hint' : '')} aria-live="polite">
+        {n ? <span className="kz-ask-n">{n}</span> : null}{pick(hint || text)}
+      </p>
+    </div>
+  );
+}
+
+// Тег: коралловые уголки и черта, имя чернилами.
+function TagK({ t, close }) {
+  return <span className="kz-tag" translate="no"><span className="kz-tk-b">{'<'}</span>{close ? <span className="kz-tk-b">/</span> : null}<span className="kz-tk-n">{t}</span><span className="kz-tk-b">{'>'}</span></span>;
+}
+const tagText = (t, close) => '<' + (close ? '/' : '') + t + '>';
+
+// Бирка на скотче.
+function KzLabel({ t, close, raw, cls, style, onClick, led, on, hl, flow, anim, dl, disabled }) {
+  const inner = (
+    <>
+      <span className="kz-label-tape" aria-hidden="true" />
+      <span className="kz-label-paper">{raw ? <span translate="no">{raw}</span> : <TagK t={t} close={close} />}</span>
+      <Led on={!!led} />
+    </>
+  );
+  const c = 'kz-label' + (flow ? ' kz-flow' : '') + (onClick ? ' is-tap' : '') + (led ? ' is-led' : '') + (on ? ' is-on' : '') + (hl ? ' is-hl' : '') + (anim ? ' kz-a-' + anim : '') + (cls ? ' ' + cls : '');
+  const st = Object.assign({ '--dl': (dl || 0) + 's' }, style || {});
+  if (onClick) return <button type="button" className={c} style={Object.assign({ border: 'none', background: 'none', padding: 0 }, st)} onClick={onClick} disabled={disabled}>{inner}</button>;
+  return <span className={c} style={st}>{inner}</span>;
+}
+
+// Код — бумажные полоски. Строка: { k, d, parts: [узлы], cls, onTap, led, disabled }.
+// Строка: { k, d, parts, cls, onTap, led, disabled, place, move }.
+// move — бумажные кнопки ▲ ▼ справа от строки: { up, down } (обработчики или null),
+// { hide: true } — пустое место той же ширины, чтобы строки не прыгали.
+function KzCode({ lines, cls }) {
+  const pick = usePick();
+  return (
+    <div className={'kz-code' + (cls ? ' ' + cls : '')} translate="no">
+      {lines.map((ln, i) => {
+        const st = Object.assign({ '--d': ln.d || 0, '--r': ((i % 2 ? 1 : -1) * (0.25 + (i % 3) * 0.12)).toFixed(2) + 'deg' }, ln.style || {});
+        const c = 'kz-line' + (ln.cls ? ' ' + ln.cls : '');
+        const body = ln.onTap ? (
+          <button key={ln.move ? 'b' : (ln.k || i)} type="button" className={c + ' kz-tap'} style={st} disabled={!!ln.disabled} onClick={ln.onTap} data-place={ln.place}>
+            {React.Children.toArray(ln.parts)}<Led on={!!ln.led} />
+          </button>
+        ) : <div key={ln.move ? 'b' : (ln.k || i)} className={c} style={st} data-place={ln.place}>{React.Children.toArray(ln.parts)}<Led on={!!ln.led} /></div>;
+        if (!ln.move) return body;
+        const mv = ln.move;
+        return (
+          <div key={ln.k || i} className="kz-line-row">
+            {body}
+            <span className={'kz-move' + (mv.hide ? ' is-hide' : '')}>
+              {['up', 'down'].map((d) => (
+                <button key={d} type="button" className={'kz-move-b is-' + d} disabled={mv.hide || !mv[d] || !!ln.disabled}
+                  onClick={mv[d] || undefined} aria-label={pick(d === 'up' ? UI.up : UI.down)} tabIndex={mv.hide ? -1 : undefined}>
+                  <svg viewBox="0 0 12 8" width="12" height="8" aria-hidden="true"><path d="M1.2 6.8 6 2 10.8 6.8" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                </button>
+              ))}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+const T_ = (t, close) => <TagK t={t} close={close} />;
+const W_ = (s) => <span className="kz-txt">{s}</span>;
+
+// БУМАЖНЫЙ ЧЕЛОВЕЧЕК. Части по порядку сборки: тело, голова, руки, ноги, лицо.
+// build — сколько частей уже на листе (каждая влетает своим движением).
+// out — части разлетаются (превращение в страницу).
+const MAN_PARTS = ['body', 'head', 'armL', 'armR', 'legL', 'legR', 'face'];
+function PaperMan({ build = 7, out, headOpen, hl, onHead, onBody, onTitle, titleText, titleGone, anim = true, wave }) {
+  const has = (k) => MAN_PARTS.indexOf(k) < build;
+  const A = (a, d) => (out ? { anim: 'out', dl: d * 0.07 } : anim ? { anim: a, dl: d } : {});
+  return (
+    <div className="kz-man">
+      {has('legL') ? <Cut c={KZ.ink} seed={41} n={4} amp={9} asp={0.3} x={38} y={64} w={7.5} h={27} r={-2} {...A('rise', 0.1)} /> : null}
+      {has('legR') ? <Cut c={KZ.ink} seed={42} n={4} amp={9} asp={0.3} x={54.5} y={64} w={7.5} h={27} r={2} {...A('rise', 0.2)} /> : null}
+      {has('armL') ? <Cut c={KZ.ink} seed={43} n={5} amp={12} asp={5} x={4} y={37} w={26} h={5.5} r={22} cls={wave ? 'kz-wave-l' : ''} {...A('left', 0)} /> : null}
+      {has('armR') ? <Cut c={KZ.ink} seed={44} n={5} amp={12} asp={5} x={70} y={37} w={26} h={5.5} r={-22} cls={wave ? 'kz-wave-r' : ''} {...A('right', 0.08)} /> : null}
+      {has('body') ? (
+        <Cut c={KZ.teal} seed={45} n={9} amp={3} asp={1.15} x={27} y={29} w={46} h={38} r={-1} {...A('drop', 0)} boil hl={hl === 'body'} hlc={KZ.teal}
+          onClick={onBody} label="body" />
+      ) : null}
+      {titleText && !titleGone ? (
+        <Cut c="var(--kz-piece)" seed={46} n={6} amp={8} asp={3} x={24} y={10} w={52} h={12} r={-3} cls="kz-man-title" anim="pop" onClick={onTitle} label="title">
+          <span className="kz-man-title-t">{titleText}</span>
+        </Cut>
+      ) : null}
+      {has('head') ? (
+        <Cut c={KZ.face} round seed={47} n={9} amp={4} x={31} y={0} w={38} h={33} {...A('drop', 0.18)} boil hl={hl === 'head'} hlc={KZ.mustard}
+          onClick={onHead} label="head" style={{ translate: headOpen ? '0 -38%' : '0 0', transition: 'translate .42s steps(5, end)' }}>
+          {has('face') ? (
+            <span className={'kz-face' + (out ? '' : anim ? ' kz-a-pop' : '')} style={{ '--dl': '0.55s' }} aria-hidden="true">
+              <i className="kz-eye" style={{ left: '33%' }} /><i className="kz-eye" style={{ left: '60%' }} /><i className="kz-smile" />
+            </span>
+          ) : null}
+        </Cut>
+      ) : null}
+    </div>
+  );
+}
+
+// Рамка html — четыре коралловые полоски; любую можно убрать (s4).
+function Frame({ sides, anim, hl }) {
+  const S = sides || { top: 1, right: 1, bottom: 1, left: 1 };
+  return (
+    <>
+      {S.top ? <Cut c={KZ.coral} seed={51} n={12} amp={22} asp={22} x={0} y={0} w={100} h={4.2} r={-0.4} anim={anim ? 'drop' : null} hl={hl} /> : null}
+      {S.right ? <Cut c={KZ.coral} seed={52} n={12} amp={22} asp={0.045} x={95.6} y={0} w={4.4} h={100} r={0.3} anim={anim ? 'right' : null} dl={0.1} hl={hl} /> : null}
+      {S.bottom ? <Cut c={KZ.coral} seed={53} n={12} amp={22} asp={22} x={0} y={95.8} w={100} h={4.2} r={0.4} anim={anim === 'all' ? 'rise' : S.bottom === 'new' ? 'left' : null} dl={0.2} hl={hl} /> : null}
+      {S.left ? <Cut c={KZ.coral} seed={54} n={12} amp={22} asp={0.045} x={0} y={0} w={4.4} h={100} r={-0.3} anim={anim ? 'left' : null} dl={0.15} hl={hl} /> : null}
+    </>
+  );
+}
+
+// Сцена «человечек в рамке»: рамка по краю, человечек внутри.
+function ManBox({ frame, frameSides, frameAnim, frameHl, labels, man, cls, children }) {
+  return (
+    <div className={'kz-stagebox' + (cls ? ' ' + cls : '')}>
+      {frame ? <Frame sides={frameSides} anim={frameAnim} hl={frameHl} /> : null}
+      <div className="kz-manbox">{man}</div>
+      {labels}
+      {children}
+    </div>
+  );
+}
+
+// БУМАЖНЫЙ БРАУЗЕР — узнаваемый Chrome в Windows, только из бумаги: тёмная
+// полоса вкладок (вкладка с значком, именем и крестиком, «+»), кнопки окна
+// «– □ ×», полоса со стрелками и адресной строкой, под ней страница.
+function PaperBrowser({ title, children, tabHl, pageHl, stamp, short, cls, tabRef, pageRef }) {
+  const t = title != null && String(title).trim() !== '' ? String(title) : '';
+  return (
+    <div className={'kz-br' + (short ? ' is-short' : '') + (pageHl ? ' is-hl-page' : '') + (cls ? ' ' + cls : '')}>
+      <Cut c={KZ.ink} seed={31} n={16} amp={1.4} asp={1.6} cls="kz-br-frame" />
+      <div className="kz-br-bar">
+        <span ref={tabRef} key={'tab' + (stamp || 0)} className={'kz-br-tab' + (tabHl ? ' is-hl' : '') + (stamp ? ' kz-a-stamp' : '')}>
+          <i className="kz-br-fav" aria-hidden="true" />
+          <span className={'kz-br-tab-t' + (t ? '' : ' is-file')}>{t || 'index.html'}</span>
+          <i className="kz-br-x" aria-hidden="true" />
+        </span>
+        <span className="kz-br-plus" aria-hidden="true" />
+        <span className="kz-br-win" aria-hidden="true"><i className="kz-w-min" /><i className="kz-w-max" /><i className="kz-w-close" /></span>
+      </div>
+      <div className="kz-br-tool">
+        <Cut c="#E6DCC6" seed={33} n={12} amp={6} asp={12} cls="kz-br-tool-bg" />
+        <span className="kz-br-arrows" aria-hidden="true"><i className="kz-ar-l" /><i className="kz-ar-r" /></span>
+        <span className="kz-br-url"><i className="kz-br-lock" aria-hidden="true" /><span>index.html</span></span>
+      </div>
+      <div className="kz-br-body">
+        <Cut c={KZ.cream} seed={32} n={16} amp={1.1} asp={1.6} cls="kz-br-paper" />
+        <div ref={pageRef} className="kz-br-page">{children}</div>
+      </div>
+    </div>
+  );
+}
+// Содержимое страницы — бумажные вырезки: строки текста, картинка, кнопка.
+function PageBits({ text, bits, anim }) {
+  const pick = usePick();
+  return (
+    <div className="kz-bits">
+      {text ? <div className={'kz-br-text' + (anim ? ' kz-a-drop' : '')}>{text}</div> : null}
+      {bits ? (
+        <div className="kz-bits-row">
+          <span className="kz-bit-lines">
+            {[0, 1, 2].map((i) => <Cut key={i} c={KZ.ink} seed={60 + i} n={6} amp={14} asp={9} cls="kz-bit-line" anim={anim ? 'left' : null} dl={0.1 * i} style={{ width: (88 - i * 18) + '%' }} />)}
+          </span>
+          <Cut c={KZ.teal} seed={64} n={6} amp={5} cls="kz-bit-pic" anim={anim ? 'pop' : null} dl={0.35}>
+            <span className="kz-pic-sun" /><span className="kz-pic-mnt" />
+          </Cut>
+          <Cut c={KZ.coral} seed={65} n={5} amp={8} asp={3} cls="kz-bit-btn" anim={anim ? 'rise' : null} dl={0.5}><span>{pick(UI.play)}</span></Cut>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// Мини-страница в разрезе (как финальный кадр ролика): рамка html, голова head
+// с title, тело body с текстом — с бирками.
+function PageCollage({ title, text, show, hl, anim }) {
+  const S = show || { doc: 1, html: 1, head: 1, title: 1, body: 1, text: 1 };
+  const pick = usePick();
+  const H = (k) => (Array.isArray(hl) ? hl.indexOf(k) >= 0 : hl === k);   // подсветка: одна часть или несколько
+  return (
+    <div className="kz-collage">
+      {S.doc ? <KzLabel raw="<!DOCTYPE html>" cls={'kz-col-doc' + (H('doc') ? ' is-on' : '')} anim={anim ? 'drop' : null} /> : null}
+      {S.html ? (
+        <Cut c={KZ.coral} seed={71} n={14} amp={1.8} asp={1.3} cls="kz-col-html" anim={anim ? 'drop' : null} hl={H('html')} hlc={KZ.coral}>
+          <span className="kz-col-in">
+            {S.head ? (
+              <Cut c={KZ.mustard} seed={72} n={12} amp={4} asp={4} cls="kz-col-head" anim={anim ? 'left' : null} hl={H('head') || H('title')} hlc={KZ.mustard}>
+                {S.title ? <span className={'kz-col-title' + (anim ? ' kz-a-pop' : '')}><TagK t="title" />{title || pick(UI.mySite)}<TagK t="title" close /></span> : null}
+              </Cut>
+            ) : null}
+            {S.body ? (
+              <Cut c={KZ.teal} seed={73} n={12} amp={3} asp={1.8} cls="kz-col-body" anim={anim ? 'rise' : null} hl={H('body')} hlc={KZ.teal}>
+                {S.text ? <span className={'kz-col-text' + (anim ? ' kz-a-pop' : '')}>{text}</span> : null}
+              </Cut>
+            ) : null}
+          </span>
+        </Cut>
+      ) : null}
+      {S.html ? <KzLabel t="html" cls="kz-col-lbl kz-col-lbl-html" /> : null}
+      {S.html && S.head ? <KzLabel t="head" cls="kz-col-lbl kz-col-lbl-head" /> : null}
+      {S.html && S.body ? <KzLabel t="body" cls="kz-col-lbl kz-col-lbl-body" /> : null}
+    </div>
+  );
+}
+
+// ЛЕСЕНКА ПОДСКАЗОК: ступень поднимает лампочка в шапке или затруднение.
+function useKzLadder(active) {
+  const [lv, setLv] = useState(0);
+  const asked = useRef(0);
+  const pulse = useHintPulse();
+  const p0 = useRef(pulse);
+  const act = useRef(active);
+  act.current = active;
+  useEffect(() => {
+    if (pulse === p0.current) return;
+    p0.current = pulse;
+    if (!act.current) return;
+    asked.current += 1;
+    setLv((l) => Math.min(3, l + 1));
+  }, [pulse]);
+  const bump = useCallback(() => setLv((l) => Math.min(3, l + 1)), []);
+  const reset = useCallback(() => { setLv(0); asked.current = 0; }, []);
+  return { lv, bump, reset, asked };
+}
+const hintAt = (lv, hints) => (lv > 0 && hints && hints[lv - 1] ? hints[lv - 1] : null);
+const navOf = (p, canGo) => <><BackBtn onPrev={p.prev} /><NextBtn disabled={!canGo} onClick={p.next} /></>;
+
+// ПЕРЕТАСКИВАНИЕ: деталь тянется за пальцем; место — [data-place] под пальцем
+// при отпускании. Короткое касание остаётся нажатием («выбери, потом место»).
+// ПЕРЕТАСКИВАНИЕ вырезок: взятая вырезка на столе становится пунктирным
+// следом (is-lifted), за пальцем летит её бумажная копия — приподнятая (тень
+// больше), чуть наклоняется по ходу движения; место под ней подсвечивается.
+// Не туда или мимо (onDrop вернул false или места нет) — копия ступенчато
+// возвращается на своё место. Нажатие без сдвига остаётся обычным касанием.
+function useKzDrag(onDrop) {
+  const drag = useRef(null);
+  const dropRef = useRef(onDrop);
+  dropRef.current = onDrop;
+  const [ghost, setGhost] = useState(null);
+  const [hover, setHover] = useState(null);
+  const backT = useRef(0);
+  const start = (e, payload, label) => {
+    if (e.button > 0) return;
+    const el = e.currentTarget;
+    drag.current = { payload, label, x: e.clientX, y: e.clientY, lx: e.clientX, rot: 0, moved: false, el, touch: e.pointerType === 'touch' };
+  };
+  useEffect(() => {
+    const placeAt1 = (x, y) => { const el = document.elementFromPoint(x, y); const z = el && el.closest && el.closest('[data-place]'); return z ? z.getAttribute('data-place') : null; };
+    // Копия летит выше пальца (на телефоне — заметно выше), и ученик целится ею:
+    // место ищется сначала под центром копии, потом под пальцем.
+    const placeAt = (x, y, touch) => placeAt1(x, y - (touch ? 40 : 14)) || placeAt1(x, y);
+    const lift = (d, on) => { if (d && d.el && d.el.classList) d.el.classList.toggle('is-lifted', on); };
+    const move = (e) => {
+      const d = drag.current;
+      if (!d) return;
+      if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 7) { d.moved = true; lift(d, true); clearTimeout(backT.current); }
+      if (!d.moved) return;
+      // Наклон по ходу движения, ступеньками по 3° — как бумажка в пальцах.
+      d.rot = Math.max(-14, Math.min(14, d.rot * 0.7 + (e.clientX - d.lx) * 0.9));
+      d.lx = e.clientX;
+      setGhost({ label: d.label, x: e.clientX, y: e.clientY, rot: Math.round(d.rot / 3) * 3, touch: d.touch });
+      setHover(placeAt(e.clientX, e.clientY, d.touch));
+    };
+    const up = (e) => {
+      const d = drag.current;
+      drag.current = null;
+      setHover(null);
+      if (!d || !d.moved) { setGhost(null); return; }
+      const where = placeAt(e.clientX, e.clientY, d.touch);
+      const res = where ? dropRef.current(d.payload, where, document.elementFromPoint(e.clientX, e.clientY)) : false;
+      if (res !== false || !d.el || !d.el.isConnected || reduceMotion()) { setGhost(null); lift(d, false); return; }
+      const r = d.el.getBoundingClientRect();
+      setGhost({ label: d.label, x: r.left + r.width / 2, y: r.top + r.height / 2, rot: 0, back: true, touch: false });
+      clearTimeout(backT.current);
+      backT.current = setTimeout(() => { setGhost(null); lift(d, false); }, 300);
+    };
+    const cancel = () => { lift(drag.current, false); drag.current = null; setGhost(null); setHover(null); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', cancel);
+    return () => { clearTimeout(backT.current); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', cancel); };
+  }, []);
+  return { start, ghost, hover, active: !!ghost && !ghost.back };
+}
+function KzGhost({ ghost }) {
+  if (!ghost) return null;
+  return (
+    <div className={'kz-ghost' + (ghost.back ? ' is-back' : '') + (ghost.touch ? ' is-touch' : '')} aria-hidden="true"
+      style={{ left: ghost.x, top: ghost.y, '--gr': (ghost.rot || 0) + 'deg' }}>
+      <span className="kz-ghost-in" translate="no">{ghost.label}</span>
+    </div>
+  );
+}
+
+// ПЕРЕЛЁТ вырезки к месту (stop-motion): ступенчато, с уменьшением до размера
+// цели; в конце гаснет. Возвращает false, если лететь нечему.
+function kzFly(el, to, ms) {
+  if (!el || !to) return false;
+  const d = ((ms || 780) / 1000).toFixed(2);
+  const a = el.getBoundingClientRect(), b = to.getBoundingClientRect();
+  const dx = b.left + b.width / 2 - (a.left + a.width / 2), dy = b.top + b.height / 2 - (a.top + a.height / 2);
+  const k = Math.max(0.15, Math.min(b.width / a.width, b.height / a.height, 1.2));
+  el.style.animation = 'none';
+  el.style.zIndex = '60';
+  el.style.transition = 'translate ' + d + 's steps(9, end), scale ' + d + 's steps(9, end), opacity .16s linear ' + (d - 0.1).toFixed(2) + 's';
+  el.style.translate = dx.toFixed(1) + 'px ' + dy.toFixed(1) + 'px';
+  el.style.scale = k.toFixed(3);
+  el.style.opacity = '0';
+  return true;
+}
+
+// РУКА-ПОКАЗ (по образцу DemoHand эталона, только бумажная): рука нажимает
+// первую цель и, не отпуская, ведёт её копию ко второй — так показывается
+// перетаскивание. Повторяет дважды, исчезает от первого касания ученика, на
+// паузе стоит. Позиции — внутри листа (.kz-sheet-body).
+function KzHand({ targets, run, label }) {
+  const audio = useAudio();
+  const pausedRef = useRef(false);
+  pausedRef.current = !!(audio && audio.paused);
+  const [pos, setPos] = useState(null);
+  const [tap, setTap] = useState(false);
+  const [carry, setCarry] = useState(false);
+  const [gone, setGone] = useState(false);
+  useEffect(() => {
+    if (!run || gone) return undefined;
+    const off = () => setGone(true);
+    window.addEventListener('pointerdown', off, true);
+    return () => window.removeEventListener('pointerdown', off, true);
+  }, [run, gone]);
+  useEffect(() => {
+    if (!run || gone) { setPos(null); return undefined; }
+    let dead = false;
+    const tm = [];
+    const at = (i) => {
+      const el = targets[i] && targets[i]();
+      const w = el && el.closest('.kz-sheet-body');
+      if (!w) return null;
+      const W = w.getBoundingClientRect(), R = el.getBoundingClientRect();
+      return { x: R.left + R.width / 2 - W.left, y: R.top + R.height / 2 - W.top };
+    };
+    const later = (ms, f) => { tm.push(setTimeout(() => { if (!dead) f(); }, ms)); };
+    let loop = 0;
+    const cycle = () => {
+      if (dead) return;
+      if (pausedRef.current) { later(400, cycle); return; }
+      if (loop >= 2) { setPos(null); return; }
+      loop += 1;
+      const a = at(0);
+      if (!a) { later(400, cycle); return; }
+      setTap(false); setCarry(false); setPos(a);
+      if (reduceMotion()) return;
+      // Взятая вырезка на столе — пунктирный след, как при настоящем перетаскивании.
+      const src = () => targets[0] && targets[0]();
+      const lift = (on) => { const el = src(); if (el && el.classList) el.classList.toggle('is-lifted', on); };
+      later(800, () => { setTap(true); setCarry(true); lift(true); });
+      later(1150, () => { const b = at(1); if (b) setPos(b); });
+      later(2500, () => { setTap(false); setCarry(false); lift(false); });
+      later(3300, cycle);
+    };
+    later(500, cycle);
+    return () => {
+      dead = true; tm.forEach(clearTimeout);
+      const el = targets[0] && targets[0]();
+      if (el && el.classList) el.classList.remove('is-lifted');
+    };
+  }, [run, gone]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!pos || !run || gone) return null;
+  return (
+    <span className="kz-hand-layer" aria-hidden="true">
+    <span className={'kz-hand' + (tap ? ' is-tap' : '') + (carry ? ' is-carry' : '')} style={{ transform: `translate(${pos.x}px, ${pos.y}px)` }}>
+      {carry && label ? <span className="kz-hand-ghost" translate="no">{label}</span> : null}
+      <span className="kz-hand-ring" />
+      <svg viewBox="0 0 40 48" width="38" height="46">
+        <path d="M14 6a4 4 0 0 1 8 0v15a4 4 0 0 1 7 1 4 4 0 0 1 7 2v10c0 7-5 12-13 12h-3c-5 0-8-2-11-6l-6-9a3.6 3.6 0 0 1 5.6-4.4L14 30z"
+          fill="#FBF6EA" stroke={KZ.ink} strokeWidth="2.6" strokeLinejoin="round" />
+      </svg>
+    </span>
+    </span>
+  );
+}
+
+// Текст ученика (или образец) — сквозной для экранов 7–15.
+const okText = (s) => hasLetters(s) && !hasTags(s);
+const useMine = () => {
+  const store = useStore();
+  const pick = usePick();
+  return { title: store.get('myTitle') || pick(UI.mySite), text: store.get('myText') || pick(UI.hello) };
+};
+function makeArtifact(store) {
+  const t = store.get('myTitle'), x = store.get('myText');
+  if (!t && !x) return null;
+  return { type: 'html-page', title: t || '', text: x || '',
+    html: ['<!DOCTYPE html>', '<html>', '  <head>', '    <title>' + escHtml(t || '') + '</title>', '  </head>', '  <body>', '    ' + escHtml(x || ''), '  </body>', '</html>'].join('\n') };
+}
+
+// ПЕРЕХОД МЕЖДУ ЭКРАНАМИ «РАЗБОР И СБОРКА». По «Дальше» / «Назад» снимается
+// неподвижная копия вырезок текущего листа; вырезки копии ступенчато (stop-motion)
+// разлетаются от центра листа наружу с поворотом. Новый экран уже на месте
+// (голос, кнопки, проверки работают как обычно), но ждёт, пока старое разлетится;
+// потом его вырезки слетаются на свои места. Вырезки, у которых есть свой влёт
+// (kz-a-drop и т. п.), влетают своим движением. При «меньше движения» — смена без
+// анимации. Шорох бумаги включается сам (kzScatter, kzAsmIn — в PAPER_ANIMS).
+const KZ_PIECES = '.kz-ask-wrap, .kz-br, .kz-line, .kz-scrap, .kz-btn, .kz-card, .kz-zone, .kz-label, .kz-slot, '
+  + '.kz-stagebox > .kz-cut, .kz-manbox .kz-cut, .kz-collage, .kz-role, .kz-next, .kz-msg, .keys, .kz-tray > *, '
+  + '.kz-piece';   // любая своя вырезка урока на этом наборе (практика: редактор, заметки, улица)
+const KZ_OUT_MS = 520;     // разлёт
+const KZ_WAIT_MS = 300;    // новый экран ждёт, пока старое разлетается
+const _kzT = { busy: 0, pending: false };
+
+// Только верхние вырезки: деталь внутри другой детали летит вместе с ней.
+const kzTop = (nodes) => {
+  const all = Array.prototype.slice.call(nodes);
+  return all.filter((el) => !all.some((o) => o !== el && o.contains(el)));
+};
+const kzRand = (a, b) => a + Math.random() * (b - a);
+
+function kzSnapshotOut() {
+  const sheet = kzLiveSheet();
+  const stage = document.querySelector('.stage');
+  if (!sheet || !stage) return false;
+  const r = sheet.getBoundingClientRect();
+  const clone = sheet.cloneNode(true);
+  // Лист, скотч и вырезки по углам одинаковы на всех экранах — разлетается только содержимое.
+  clone.querySelectorAll('.kz-sheet-wrap, .kz-deco').forEach((e) => e.remove());
+  // Набранный текст в полях копии (значение textarea не копируется само).
+  const src = sheet.querySelectorAll('textarea'), dst = clone.querySelectorAll('textarea');
+  dst.forEach((t, i) => { if (src[i]) t.value = src[i].value; });
+  const layer = document.createElement('div');
+  layer.className = 'kz-snap';
+  layer.setAttribute('aria-hidden', 'true');
+  Object.assign(layer.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+  clone.style.width = '100%';
+  clone.style.height = '100%';
+  layer.appendChild(clone);
+  // Не в саму панель экрана: она пересоздаётся при смене экрана и унесла бы снимок.
+  (stage.parentNode || document.body).appendChild(layer);
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const reach = Math.max(window.innerWidth, window.innerHeight) * 0.75;
+  kzTop(clone.querySelectorAll(KZ_PIECES)).forEach((el, i) => {
+    const b = el.getBoundingClientRect();
+    let dx = b.left + b.width / 2 - cx, dy = b.top + b.height / 2 - cy;
+    const len = Math.hypot(dx, dy) || 1;
+    dx /= len; dy /= len;
+    // Наружу от центра, чуть вверх (как вырезки, сметённые со стола), со своим разбросом.
+    el.style.setProperty('--ox', ((dx + kzRand(-0.25, 0.25)) * reach).toFixed(0) + 'px');
+    el.style.setProperty('--oy', ((dy - 0.35 + kzRand(-0.2, 0.2)) * reach).toFixed(0) + 'px');
+    el.style.setProperty('--or', kzRand(-38, 38).toFixed(0) + 'deg');
+    el.style.setProperty('--od', ((i % 7) * 0.025).toFixed(3) + 's');
+    el.classList.add('kz-out-go');
+  });
+  setTimeout(() => { if (layer.parentNode) layer.parentNode.removeChild(layer); }, KZ_OUT_MS + 260);
+  return true;
+}
+
+// Настоящий лист экрана — не копия в снимке (React ставит новый экран после слоя снимка).
+const kzLiveSheet = () => Array.prototype.slice.call(document.querySelectorAll('.kz-sheet')).find((x) => !x.closest('.kz-snap')) || null;
+
+function kzAssembleIn() {
+  const sheet = kzLiveSheet();
+  if (!sheet) return;
+  // Лист не проявляется заново: бумага остаётся на столе, меняются только вырезки.
+  // Встроенным стилем и навсегда: снятый позже запрет перезапустил бы проявление (вспышка).
+  sheet.style.animation = 'none';
+  sheet.classList.add('kz-asm-wait');   // скрыт, свои влёты на паузе
+  setTimeout(() => {
+    const H = window.innerHeight, W = window.innerWidth;
+    let n = 0;
+    kzTop(sheet.querySelectorAll(KZ_PIECES)).forEach((el) => {
+      const cs = getComputedStyle(el);
+      // Свой влёт есть — пусть летит им (снимается с паузы вместе со всеми).
+      if (cs.animationName !== 'none' && cs.animationIterationCount.indexOf('infinite') < 0) return;
+      const fromLeft = n % 2 === 0;
+      el.style.setProperty('--ix', ((fromLeft ? -1 : 1) * kzRand(0.25, 0.55) * W).toFixed(0) + 'px');
+      el.style.setProperty('--iy', (kzRand(-0.55, -0.2) * H).toFixed(0) + 'px');
+      el.style.setProperty('--ir', kzRand(-30, 30).toFixed(0) + 'deg');
+      const dl = Math.min(0.3, n * 0.035);
+      n += 1;
+      el.style.animation = 'kzAsmIn .56s steps(1, end) ' + dl.toFixed(3) + 's both';
+      // Снять, когда сел: иначе встроенная анимация перебьёт будущие (тряску, огонёк).
+      setTimeout(() => { el.style.animation = ''; }, (0.56 + dl) * 1000 + 80);
+    });
+    sheet.classList.remove('kz-asm-wait');
+  }, KZ_WAIT_MS);
+}
+
+// Обёртка навигации: снимок старого листа → смена экрана → сборка нового.
+function useKzTransition(screenKey) {
+  const go = useCallback((fn) => {
+    if (!fn) return fn;
+    return () => {
+      const now = Date.now();
+      if (now - _kzT.busy < KZ_WAIT_MS + 120) return;   // двойное нажатие не пролистывает экран
+      _kzT.busy = now;
+      if (!reduceMotion() && kzSnapshotOut()) _kzT.pending = true;
+      fn();
+    };
+  }, []);
+  useLayoutEffect(() => {
+    if (!_kzT.pending) return;
+    _kzT.pending = false;
+    kzAssembleIn();
+  }, [screenKey]);
+  return go;
+}
+
+// =============================================================================
+// МЕХАНИКА ПРАКТИКИ. Каркас — практика 01p (разбор кода, редактор, ход задания,
+// экран без Коди); вид — бумажный набор урока 1 (лист, вырезки, бумажный браузер).
+// =============================================================================
+
 // ─────────────────────────────────────────────────────────────────────────────
-// ТЕГИ ПРОИЗНОСЯТСЯ СЛОВАМИ — как в уроке 1. На экране точная запись (title,
-// </body>), в озвучку теги уходят английскими словами («title», «закрывающий тег
-// body»). Подмену делает SpokenTags — обёртка над озвучкой канона.
+// ТЕГИ ПРОИЗНОСЯТСЯ СЛОВАМИ. На экране точная запись (title, </body>), в озвучку
+// теги уходят английскими словами («title», «закрывающий тег body»). Знаки в
+// кавычках рядом со своим названием убирает бумажный набор (kollazh-kit).
 // ─────────────────────────────────────────────────────────────────────────────
-// Названия тегов вслух — по-английски во всех языках (заказчик, 17.10.2026:
-// «body, а не бади»): сервис читает их как английские слова. Остальные слова
-// (закрывающий тег, уголок, косая черта) — на языке урока.
 const TAG_SAY = {
   ru: { html: 'HTML', head: 'head', title: 'title', body: 'body', doctype: 'doctype',
-    close: 'закрывающий тег', lt: 'уголок', gt: 'закрывающий уголок', slash: 'косая черта' },
+    close: 'закрывающий тег', lt: 'уголок', gt: 'уголок', slash: 'косая черта' },
   uz: { html: 'HTML', head: 'head', title: 'title', body: 'body', doctype: 'doctype',
-    close: 'yopuvchi teg', lt: 'ochuvchi burchak', gt: 'yopuvchi burchak', slash: 'qiya chiziq' },
+    close: 'yopuvchi teg', lt: 'chap qavs', gt: 'o‘ng qavs', slash: 'qiya chiziq' },
   en: { html: 'H T M L', head: 'head', title: 'title', body: 'body', doctype: 'doctype',
     close: 'closing tag', lt: 'less-than sign', gt: 'greater-than sign', slash: 'slash' }
 };
@@ -7105,10 +7784,9 @@ function spokenHtml(text, lang) {
   s = s.replace(/</g, ' ' + m.lt + ' ').replace(/>/g, ' ' + m.gt + ' ').replace(/\s\/\s/g, ' ' + m.slash + ' ');
   return s.replace(/\s+/g, ' ').trim();
 }
-// Реплики героя в данных экрана — для прогрева озвучки. Подписи, которые
-// только печатаются, пропускаем; шаблоны с подстановкой {…} — тоже.
-const PRINTED = { eyebrow: 1, order: 1, schema: 1, target: 1, empty: 1, plan: 1, planTitle: 1, planBody: 1,
-  show: 1, hide: 1, legend: 1, card: 1, skills: 1, drill: 1, pose: 1 };
+// Реплики в данных экрана — для прогрева озвучки. Подписи, которые только
+// печатаются, пропускаем; шаблоны с подстановкой {…} — тоже.
+const PRINTED = { eyebrow: 1, order: 1, order2: 1, drill2: 1, ask: 1, empty: 1, note: 1, skills: 1, drill: 1, pose: 1 };
 function heroLines(node, lang, out) {
   const acc = out || [];
   if (!node || typeof node !== 'object') return acc;
@@ -7121,7 +7799,6 @@ function heroLines(node, lang, out) {
   Object.keys(node).forEach((k) => { if (!PRINTED[k]) heroLines(node[k], lang, acc); });
   return acc;
 }
-
 function SpokenTags({ children }) {
   const audio = useAudio();
   const lang = useLang();
@@ -7132,10 +7809,12 @@ function SpokenTags({ children }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ЦВЕТА ТЕГОВ — те же, что в уроке 1. Один тег — один цвет: в коде, в
-// скобках вложенности, на схемах и в подсветке мини-браузера.
+// ЧАСТИ СТРАНИЦЫ — цвета как в уроке 1: html — коралл, head и title — горчица,
+// body — бирюза. Цвет — только у полосок вложенности; смысл несёт форма
+// (сплошная — закрыто, пунктир — нет), а теги в коде — коралловые уголки и
+// имя чернилами, как на бумажках урока.
 // ─────────────────────────────────────────────────────────────────────────────
-const TAGC = { html: '#586A83', head: '#6F57AB', title: '#9F4471', body: '#1171A0' };
+const TAGC = { html: '#E0643F', head: '#D39A1E', title: '#D39A1E', body: '#2A8C7E' };
 const KNOWN = ['html', 'head', 'title', 'body'];
 const PARENT = { html: null, head: 'html', body: 'html', title: 'head' };
 const catOf = (tag) => (tag === 'html' ? 'html' : tag === 'body' ? 'body' : 'head');
@@ -7143,17 +7822,16 @@ const catOf = (tag) => (tag === 'html' ? 'html' : tag === 'body' ? 'body' : 'hea
 // Осмысленный текст: хотя бы две буквы любого алфавита.
 const LETTER_RE = /\p{L}/gu;
 const hasLetters = (s) => (String(s || '').match(LETTER_RE) || []).length >= 2;
-// Похоже на тег: «<» с буквой или «/» после него, либо знакомый тег без «<».
-const hasTags = (s) => /<\s*[A-Za-z\/!]/.test(String(s || '')) || /\b(html|head|title|body)\s*>/i.test(String(s || ''));
-const wordCount = (s) => String(s || '').split(/\s+/).filter((w) => /\p{L}/u.test(w)).length;
+// Похоже на тег: «<» с буквой, «/» или «!» после него, либо знакомый тег без «<».
+const hasTags = (s) => /<\s*[A-Za-z\/!\\]/.test(String(s || '')) || /\b(html|head|title|body)\s*>/i.test(String(s || ''));
 const squash = (s) => String(s || '').replace(/\s+/g, ' ').trim();
-// Сравнение придуманных и заданных надписей: регистр, ё/е, кавычки и знаки
-// по краям не важны — важны слова.
+// Сравнение заданных надписей: регистр, ё/е, кавычки и знаки по краям не важны.
 const normName = (s) => String(s || '').toLowerCase().replace(/ё/g, 'е')
   .replace(/[«»"“”„'‘’ʻʼ`.!?,:;…]/g, '').replace(/\s+/g, ' ').trim();
-
 const reduceMotion = () => typeof window !== 'undefined' && !!window.matchMedia
   && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const escHtml = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const pickOf = (x, lang) => (x && typeof x === 'object' ? (x[lang] !== undefined ? x[lang] : x.ru) : String(x || ''));
 
 // Расстояние между словами — чтобы узнать «titel» и подсказать title.
 function editDist(a, b) {
@@ -7181,7 +7859,7 @@ const nearTag = (name) => {
 // lexDoc только режет строку на теги и текст. Пробелы и переносы внутри и
 // между тегами допустимы, регистр букв не важен.
 //   { k: 'doctype' } · { k: 'open' | 'close', name } · { k: 'text', v } ·
-//   { k: 'bad', bad: 'noGt' | 'noLt' | 'unknown' | 'slashEnd' | 'junk' | 'emptyTag', name, raw }
+//   { k: 'bad', bad: 'noGt' | 'noLt' | 'unknown' | 'slashEnd' | 'backslash' | 'junk' | 'emptyTag', name, raw }
 // У каждого токена — номер строки (line), считая от нуля.
 // ─────────────────────────────────────────────────────────────────────────────
 function lexDoc(src) {
@@ -7208,9 +7886,9 @@ function lexDoc(src) {
   };
   let i = 0;
   while (i < s.length) {
-    // «<» без буквы, «/» или «!» после него — просто текст («<3», «2 < 5»),
+    // «<» без буквы, «/», «\» или «!» после него — просто текст («<3», «2 < 5»),
     // как и в настоящем браузере.
-    if (s[i] === '<' && !/^<\s*[A-Za-z\/!]/.test(s.slice(i, i + 24))) {
+    if (s[i] === '<' && !/^<\s*[A-Za-z\/!\\]/.test(s.slice(i, i + 24))) {
       const j = s.indexOf('<', i + 1);
       const end = j < 0 ? s.length : j;
       pushText(i, end);
@@ -7228,9 +7906,9 @@ function lexDoc(src) {
     const lt = s.indexOf('<', i + 1);
     if (gt < 0 || (lt >= 0 && lt < gt)) {
       // «<title» без «>»: тег не закончен. Хвост дальше читается как текст.
-      const m = /^<\s*\/?\s*!?[A-Za-z]*[A-Za-z0-9]*/.exec(s.slice(i));
+      const m = /^<\s*[\/\\]?\s*!?[A-Za-z]*[A-Za-z0-9]*/.exec(s.slice(i));
       const raw = m ? m[0] : '<';
-      const name = (/[A-Za-z][A-Za-z0-9]*/.exec(raw.replace(/^<\s*\/?\s*!?/, '')) || [''])[0].toLowerCase();
+      const name = (/[A-Za-z][A-Za-z0-9]*/.exec(raw.replace(/^<\s*[\/\\]?\s*!?/, '')) || [''])[0].toLowerCase();
       push({ k: 'bad', bad: 'noGt', name, raw }, i, i + raw.length);
       i += raw.length;
       continue;
@@ -7244,6 +7922,8 @@ function lexDoc(src) {
       const name = m[2].toLowerCase();
       tok = KNOWN.indexOf(name) >= 0 ? { k: m[1] ? 'close' : 'open', name, raw }
         : { k: 'bad', bad: 'unknown', name, raw };
+    } else if ((m = /^\s*\\\s*([A-Za-z][A-Za-z0-9]*)\s*$/.exec(inner))) {
+      tok = { k: 'bad', bad: 'backslash', name: m[1].toLowerCase(), raw };
     } else if ((m = /^\s*([A-Za-z][A-Za-z0-9]*)\s*\/\s*$/.exec(inner))) {
       tok = { k: 'bad', bad: 'slashEnd', name: m[1].toLowerCase(), raw };
     } else if (/^\s*$/.test(inner)) tok = { k: 'bad', bad: 'emptyTag', name: '', raw };
@@ -7264,23 +7944,26 @@ const fbT = (node, vars, cat) => ({ ok: false, msg: vars ? fillL(node, vars) : n
 function badFb(t) {
   const nm = t.name || '';
   const cat = KNOWN.indexOf(nm) >= 0 ? catOf(nm) : (nearTag(nm) ? catOf(nearTag(nm)) : 'tag');
-  if (t.bad === 'noGt') return fb('noGt', { tag: KNOWN.indexOf(nm) >= 0 ? nm : (t.raw || '<') }, cat);
-  if (t.bad === 'noLt') return fb('noLt', { tag: nm }, cat);
-  if (t.bad === 'slashEnd') return fb('slashEnd', { tag: KNOWN.indexOf(nm) >= 0 ? nm : (nearTag(nm) || nm) }, cat);
-  if (t.bad === 'emptyTag') return fb('emptyTag', null, 'tag');
-  if (t.bad === 'junk') return fb('junk', null, cat);
+  const r = (o) => Object.assign(o, { line: t.line });
+  if (t.bad === 'noGt') return r(fb('noGt', { tag: KNOWN.indexOf(nm) >= 0 ? nm : (t.raw || '<') }, cat));
+  if (t.bad === 'noLt') return r(fb('noLt', { tag: nm }, cat));
+  if (t.bad === 'slashEnd') return r(fb('slashEnd', { tag: KNOWN.indexOf(nm) >= 0 ? nm : (nearTag(nm) || nm) }, cat));
+  if (t.bad === 'backslash') return r(fb('backslash', null, cat));
+  if (t.bad === 'emptyTag') return r(fb('emptyTag', null, 'tag'));
+  if (t.bad === 'junk') return r(fb('junk', null, cat));
   const near = nearTag(nm);
-  return near ? fb('unknown', { raw: t.raw, tag: near }, catOf(near)) : fb('unknownFar', { raw: t.raw }, 'tag');
+  return r(near ? fb('unknown', { raw: t.raw, tag: near }, catOf(near)) : fb('unknownFar', { raw: t.raw }, 'tag'));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ПРОВЕРКА ДОКУМЕНТА. Правила нашего учебного документа: html снаружи всех;
-// внутри — head, потом body; в head — title с названием; в body — текст.
-// Обход идёт по порядку записи и запоминает ПЕРВУЮ проблему: ребёнок чинит
-// одно место за раз. Неверная запись тега проверяется раньше структуры — так
-// «не там стоит текст» не путается с «тег написан с ошибкой».
+// ПРОВЕРКА ДОКУМЕНТА. Правила нашей страницы: html снаружи всех; внутри —
+// head, потом body; в head — title с названием; в body — текст. Обход идёт по
+// порядку записи и запоминает ПЕРВУЮ проблему. Неверная запись тега
+// проверяется раньше структуры. need — какие части уже нужны (свой дом
+// строится по шагам: сначала html, потом head с title, потом body).
 // ─────────────────────────────────────────────────────────────────────────────
-function analyzeDoc(src) {
+function analyzeDoc(src, need) {
+  const N = Object.assign({ head: true, body: true }, need || {});
   const toks = lexDoc(src);
   const bad = toks.find((t) => t.k === 'bad');
   if (bad) return badFb(bad);
@@ -7332,30 +8015,32 @@ function analyzeDoc(src) {
     }
   });
   if (first) return first;
-  if (!seen.html) return fb('missHtml', null, 'html');
-  if (!seen.head) return fb('missHead', null, 'head');
-  if (!seen.title) return fb('missTitle', null, 'head');
-  if (!seen.body) return fb('missBody', null, 'body');
+  // Дальше — «чего-то не хватает»: под заметкой пометка «документ собран не полностью».
+  const miss = (key, vars, cat) => Object.assign(fb(key, vars, cat), { sub: true });
+  if (!seen.html) return miss('missHtml', null, 'html');
+  if (N.head && !seen.head) return miss('missHead', null, 'head');
+  if (N.head && !seen.title) return miss('missTitle', null, 'head');
+  if (N.body && !seen.body) return miss('missBody', null, 'body');
   if (stack.length) {
     const tag = stack[stack.length - 1];
-    if (tag === 'html' && hasLetters(titleText) && hasLetters(bodyText)) return fb('unclosedHtmlOk', null, 'html');
-    return fb('unclosedEnd', { tag }, catOf(tag));
+    if (tag === 'html' && N.body && hasLetters(titleText) && hasLetters(bodyText)) return miss('unclosedHtmlOk', null, 'html');
+    return miss('unclosedEnd', { tag }, catOf(tag));
   }
-  if (!hasLetters(titleText)) return fb('titleEmpty', null, 'head');
-  if (!hasLetters(bodyText)) return fb('bodyEmpty', null, 'body');
+  if ((N.head || seen.title) && !hasLetters(titleText)) return miss('titleEmpty', null, 'head');
+  if ((N.body || seen.body) && !hasLetters(bodyText)) return miss('bodyEmpty', null, 'body');
   return { ok: true, result: { title: squash(titleText), text: squash(bodyText), html: String(src) } };
 }
 
-// Документ целиком (задания 6, 7): первая строка, теги вообще, потом структура.
-function checkDoc(code) {
+// Документ целиком (t7–t10): первая строка, теги вообще, потом структура.
+function checkDoc(code, need) {
   const toks = lexDoc(code);
   if (!toks.some((t) => t.k === 'doctype')) return fb('noDoctype', null, 'html');
   const tags = toks.filter((t) => t.k === 'open' || t.k === 'close' || t.k === 'bad');
   if (!tags.length) return fb(toks.some((t) => t.k === 'text' && hasLetters(t.v)) ? 'textOnly' : 'docEmpty', null, 'html');
-  return analyzeDoc(code);
+  return analyzeDoc(code, need);
 }
 
-// Строка title (задание 3 и его дополнительная задача). target — { uz, ru, en }.
+// Строка title (t3, t4 и их дополнительные задачи). target — { uz, ru, en }.
 function checkLine(line, target, lang) {
   if (!String(line || '').trim()) return fb('lineEmpty', null, 'head');
   const toks = lexDoc(line).filter((t) => !(t.k === 'text' && !t.v.trim()));
@@ -7378,15 +8063,12 @@ function checkLine(line, target, lang) {
   if (toks.some((t, k) => t.k === 'text' && (k < io || k > ic))) return fb('lineTextOutside', null, 'head');
   const inner = squash(toks.slice(io + 1, ic).map((t) => t.v).join(''));
   if (!hasLetters(inner)) return fb('lineNoName', null, 'head');
-  if (target) {
-    const want = target[lang] !== undefined ? target[lang] : target.ru;
-    if (normName(inner) !== normName(want)) return fb('lineWrongName', { name: target }, 'head');
-  }
+  if (target && normName(inner) !== normName(pickOf(target, lang))) return fb('lineWrongName', { name: target }, 'head');
   return { ok: true, result: { title: inner } };
 }
 
-// Блок body (задание 4 и дополнительные задачи): открывающий тег, своё
-// сообщение, закрывающий тег — в любом количестве строк.
+// Блок body (t5 и дополнительные задачи): открывающий тег, свой текст,
+// закрывающий тег — в любом количестве строк.
 function checkBlock(area) {
   if (!String(area || '').trim()) return fb('blockEmpty', null, 'body');
   const toks = lexDoc(area);
@@ -7412,10 +8094,27 @@ function checkBlock(area) {
   return { ok: true, result: { text: inner } };
 }
 
+// Один закрывающий тег на своей строке (t6): </head> или </body>.
+function checkCloseTag(code, tag) {
+  if (!String(code || '').trim()) return fb('closeEmpty', { tag }, catOf(tag));
+  const toks = lexDoc(code).filter((t) => !(t.k === 'text' && !t.v.trim()));
+  const bad = toks.find((t) => t.k === 'bad');
+  if (bad) return badFb(bad);
+  const tags = toks.filter((t) => t.k === 'open' || t.k === 'close');
+  if (!tags.length) return fb('closeText', null, catOf(tag));
+  if (tags.length > 1) return tags.every((t) => t.k === 'close' && t.name === tag) ? fb('closeOne', { tag }, catOf(tag)) : fb('closeOther', { tag }, catOf(tag));
+  const t = tags[0];
+  if (t.name === tag && t.k === 'open') return fb('openAgain', { tag }, catOf(tag));
+  if (t.name !== tag) return fb('closeOther', { tag }, catOf(tag));
+  if (toks.some((x) => x.k === 'text' && hasLetters(x.v))) return fb('closeText', null, catOf(tag));
+  return { ok: true, result: {} };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// ЧТО ПОКАЖЕТ БРАУЗЕР. Как настоящий браузер: текст из title — на вкладку,
-// остальной текст — на страницу, даже если структура собрана не до конца.
-// Всё возвращается строками; React рисует их как текст, без разметки.
+// ЧТО ПОКАЖЕТ БРАУЗЕР — честно, как настоящий: всё, что после <title>, до
+// </title> — название на вкладке (если </title> нет, туда уезжает и остальной
+// код вместе с тегами, как в уроке 1); остальной текст — в окне, даже если
+// структура собрана не до конца. Всё — строки; React рисует их как текст.
 // ─────────────────────────────────────────────────────────────────────────────
 function pageOf(src) {
   const toks = lexDoc(src);
@@ -7424,18 +8123,22 @@ function pageOf(src) {
   let title = '';
   const page = [];
   toks.forEach((t) => {
+    if (inTitle) {
+      if (t.k === 'close' && t.name === 'title') { inTitle = false; return; }
+      title += t.k === 'text' ? t.v : ' ' + (t.raw || '') + ' ';
+      return;
+    }
     if (t.k === 'open' && t.name === 'title') { inTitle = true; titleSeen = true; return; }
-    if (t.k === 'close' && t.name === 'title') { inTitle = false; return; }
-    if (t.k === 'open' || t.k === 'close') { if (inTitle && t.name !== 'title') inTitle = false; return; }
-    if (t.k === 'text') { if (inTitle) title += t.v; else page.push(t.v); return; }
-    if (t.k === 'bad' && t.bad === 'noLt') page.push(t.raw);
+    if (t.k === 'text') { page.push(t.v); return; }
+    // Это браузер не считает тегом и показывает в окне как есть: «title>», «<\body>», «<>».
+    if (t.k === 'bad' && (t.bad === 'noLt' || t.bad === 'backslash' || t.bad === 'emptyTag')) page.push(t.raw);
   });
   return { title: titleSeen ? squash(title) : null, text: squash(page.join(' ')) };
 }
 
-// Скобки вложенности для отсеков задания 6: какой контейнер на каких строках
-// и закрыт ли он. Незакрытый тянется до места, где его закрыли бы, или до
-// конца документа. title — строчный, скобка ему не нужна.
+// Полоски вложенности: какой контейнер на каких строках и закрыт ли он.
+// Незакрытый тянется до места, где его закрыли бы, или до конца кода.
+// title — строчный, полоска ему не нужна.
 function regionsOf(src) {
   const toks = lexDoc(src);
   const last = String(src || '').split('\n').length - 1;
@@ -7447,7 +8150,7 @@ function regionsOf(src) {
       let at = -1;
       for (let k = stack.length - 1; k >= 0; k -= 1) if (stack[k].tag === t.name) { at = k; break; }
       if (at < 0) return;
-      for (let k = stack.length - 1; k > at; k -= 1) regs.push(Object.assign({}, stack[k], { to: t.line, closed: false }));
+      for (let k = stack.length - 1; k > at; k -= 1) regs.push(Object.assign({}, stack[k], { to: t.line - 1, closed: false }));
       regs.push(Object.assign({}, stack[at], { to: t.line, closed: true }));
       stack.length = at;
     }
@@ -7456,37 +8159,25 @@ function regionsOf(src) {
   return regs;
 }
 
-// Подсказка 3 задания 6: где не хватает закрывающих тегов и чьи это пары.
-// Сами теги не появляются — только пунктир на стыке строк и цвет открывающих.
-function gapMarks(src) {
-  const lines = String(src || '').split('\n');
-  const find = (re) => lines.findIndex((l) => re.test(l));
-  const headO = find(/<\s*head\s*>/i);
-  const bodyO = find(/<\s*body\s*>/i);
-  const htmlC = find(/<\s*\/\s*html\s*>/i);
-  const marks = { open: {}, ins: {} };
-  if (!/<\s*\/\s*head\s*>/i.test(src) && bodyO > 0) { marks.ins[bodyO - 1] = 'head'; if (headO >= 0) marks.open[headO] = 'head'; }
-  if (!/<\s*\/\s*body\s*>/i.test(src) && htmlC > 0) { marks.ins[htmlC - 1] = 'body'; if (bodyO >= 0) marks.open[bodyO] = 'body'; }
-  return marks;
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
-// ПОДСВЕТКА КОДА. Знакомые теги — своим цветом, остальное — нейтрально.
-// Шрифт и начертание одни для всех кусочков: подсветка лежит под прозрачной
-// textarea и обязана совпадать с ней буква в букву.
+// ПОДСВЕТКА КОДА — как теги на бумажках урока 1: уголки и косая черта
+// коралловые, имя чернилами. Начертание одно для всех кусочков: подсветка
+// лежит под прозрачной textarea и обязана совпадать с ней буква в букву.
 // ─────────────────────────────────────────────────────────────────────────────
 function hlLine(str) {
-  const re = /<!DOCTYPE\s+html\s*>|<\s*\/?\s*[A-Za-z][A-Za-z0-9]*\s*>/gi;
+  const re = /<!DOCTYPE\s+html\s*>|<\s*[\/\\]?\s*[A-Za-z][A-Za-z0-9]*\s*\/?\s*>/gi;
   const out = [];
   let last = 0;
   let m;
   while ((m = re.exec(str))) {
     if (m.index > last) out.push(<span key={'t' + last} className="ed-t">{str.slice(last, m.index)}</span>);
     const raw = m[0];
-    const nm = ((/[A-Za-z][A-Za-z0-9]*/.exec(raw.replace(/^<\s*\/?\s*/, '')) || [''])[0]).toLowerCase();
+    const nm = ((/[A-Za-z][A-Za-z0-9]*/.exec(raw.replace(/^<\s*[\/\\]?\s*/, '')) || [''])[0]).toLowerCase();
     if (/^<!/.test(raw)) out.push(<span key={'g' + m.index} className="ed-doc">{raw}</span>);
-    else if (TAGC[nm]) out.push(<span key={'g' + m.index} className="ed-tag" style={{ color: TAGC[nm] }}>{raw}</span>);
-    else out.push(<span key={'g' + m.index} className="ed-unk">{raw}</span>);
+    else if (KNOWN.indexOf(nm) >= 0 && /^<\s*\/?\s*[A-Za-z]+\s*>$/.test(raw)) {
+      const mm = /^(<\s*\/?\s*)([A-Za-z]+)(\s*>)$/.exec(raw);
+      out.push(<span key={'g' + m.index} className="ed-tag"><span className="ed-br">{mm[1]}</span><span className="ed-nm">{mm[2]}</span><span className="ed-br">{mm[3]}</span></span>);
+    } else out.push(<span key={'g' + m.index} className="ed-unk">{raw}</span>);
     last = m.index + raw.length;
   }
   if (last < str.length) out.push(<span key={'t' + last} className="ed-t">{str.slice(last)}</span>);
@@ -7515,13 +8206,25 @@ function insertAtCaret(el, ch) {
 
 const MAX_CODE = 1500;
 
+// Бумажная подложка: вырезка с рваным краем под содержимым (редактор, заметка,
+// образец). Сам край не обрезает текст — он лежит слоем ниже.
+function Pad({ c, seed = 7, cls, children, style }) {
+  return (
+    <div className={'pp-pad kz-piece' + (cls ? ' ' + cls : '')} style={style}>
+      <Cut c={c || '#FFFCF4'} seed={seed} n={18} amp={0.9} asp={1.4} cls="pp-pad-bg" />
+      {children}
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // РЕДАКТОР КОДА. Прозрачная textarea лежит поверх подсвеченных строк той же
 // ширины, шрифта и отступов: всё, что умеет обычное поле (курсор, выделение,
 // удаление, переносы, вставка, отмена), работает как есть. Строки до и после
 // — неизменяемая рамка задания. single — одна строка: Enter не переносит.
+// regions — полоски вложенности; markLine — строка, на которую указывает подсказка.
 // ─────────────────────────────────────────────────────────────────────────────
-function CodeEditor({ value, onChange, before, after, single, ind, regions, marks, inputRef, label, led, flash }) {
+function CodeEditor({ value, onChange, before, after, single, ind, regions, markLine, inputRef, label, led }) {
   const pick = usePick();
   const boxRef = useRef(null);
   const lines = String(value || '').split('\n');
@@ -7532,15 +8235,32 @@ function CodeEditor({ value, onChange, before, after, single, ind, regions, mark
     const ed = box && box.querySelector('.ed-edit');
     if (box && ed && box.scrollHeight > box.clientHeight + 4) box.scrollTop = Math.max(0, ed.offsetTop - 28);
   }, []);
+  // Открылась клавиатура — редактор стал ниже: строка ввода не должна уехать
+  // за край. Для документа целиком браузер сам держит курсор на виду.
+  const reveal = useCallback(() => {
+    const box = boxRef.current;
+    const ed = box && box.querySelector('.ed-edit');
+    if (!box || !ed || !nB) return;
+    const top = ed.offsetTop, bot = top + ed.offsetHeight;
+    if (top < box.scrollTop + 4 || bot > box.scrollTop + box.clientHeight - 4) box.scrollTop = Math.max(0, Math.min(top - 8, bot - box.clientHeight + 8));
+  }, [nB]);
+  useEffect(() => {
+    const vv = typeof window !== 'undefined' && window.visualViewport;
+    const on = () => { if (inputRef && inputRef.current && document.activeElement === inputRef.current) setTimeout(reveal, 60); };
+    if (vv) vv.addEventListener('resize', on);
+    window.addEventListener('resize', on);
+    return () => { if (vv) vv.removeEventListener('resize', on); window.removeEventListener('resize', on); };
+  }, [reveal]); // eslint-disable-line react-hooks/exhaustive-deps
   const barsAt = (i) => (regions ? regions.filter((r) => r.from <= i && i <= r.to) : []);
-  const bars = (list, i) => list.map((r, k) => (
+  const bars = (i) => barsAt(i).map((r, k) => (
     <span key={k} aria-hidden="true"
       className={'ed-bar' + (r.closed ? '' : ' is-open') + (r.from === i ? ' is-first' : '') + (r.to === i ? ' is-last' : '')}
       style={{ '--c': TAGC[r.tag], '--lv': r.depth }} />
   ));
-  const staticLine = (txt, n, key) => (
-    <div className="ed-line is-static" key={key}>
-      <span className="ed-n" aria-hidden="true">{n}</span>
+  const staticLine = (txt, i, key) => (
+    <div className={'ed-line is-static' + (markLine === i ? ' is-mark' : '')} key={key}>
+      <span className="ed-n" aria-hidden="true">{i + 1}</span>
+      {bars(i)}
       {txt ? hlLine(txt) : '​'}
     </div>
   );
@@ -7550,54 +8270,32 @@ function CodeEditor({ value, onChange, before, after, single, ind, regions, mark
     onChange(v.slice(0, MAX_CODE));
   };
   return (
-    <div ref={boxRef} className={'ed' + (flash ? ' is-flash' : '')} translate="no" style={{ '--edi': (ind || 0) + 'ch' }}>
-      {(before || []).map((t, i) => staticLine(t, i + 1, 'b' + i))}
-      <div className={'ed-edit' + (single ? ' is-single' : '') + (before && before.length ? ' is-framed' : '') + (led ? ' is-led-in' : '')}>
+    <div ref={boxRef} className="ed" translate="no" style={{ '--edi': (ind || 0) + 'ch' }}>
+      {(before || []).map((t, i) => staticLine(t, i, 'b' + i))}
+      <div className={'ed-edit' + (single ? ' is-single' : '') + (nB || (after && after.length) ? ' is-framed' : '') + (led ? ' is-led-in' : '')}>
         <div className="ed-hl" aria-hidden="true">
-          {lines.map((ln, i) => {
-            const mo = marks && marks.open[i];
-            const mi = marks && marks.ins[i];
-            return (
-              <div key={i} className={'ed-line' + (mo ? ' is-mark' : '')} style={mo ? { '--mc': TAGC[mo] } : undefined}>
-                <span className="ed-n">{nB + i + 1}</span>
-                {bars(barsAt(i), i)}
-                {mi ? <span className="ed-ins" style={{ '--mc': TAGC[mi] }}><i>→</i></span> : null}
-                {ln ? hlLine(ln) : '​'}
-              </div>
-            );
-          })}
+          {lines.map((ln, i) => (
+            <div key={i} className={'ed-line' + (markLine === nB + i ? ' is-mark' : '')}>
+              <span className="ed-n">{nB + i + 1}</span>
+              {bars(nB + i)}
+              {ln ? hlLine(ln) : '​'}
+            </div>
+          ))}
         </div>
         <textarea ref={inputRef} className="ed-ta" value={value} onChange={change} rows={1} wrap="soft"
+          onFocus={() => { setTimeout(reveal, 80); setTimeout(reveal, 420); }}
           onKeyDown={(e) => { if (single && e.key === 'Enter') e.preventDefault(); }}
           spellCheck={false} autoCapitalize="off" autoCorrect="off" autoComplete="off"
           enterKeyHint={single ? 'done' : 'enter'} aria-label={pick(label || UI.editor)} />
       </div>
-      {(after || []).map((t, i) => staticLine(t, nB + lines.length + i + 1, 'a' + i))}
+      {(after || []).map((t, i) => staticLine(t, nB + lines.length + i, 'a' + i))}
     </div>
   );
 }
 
-// Поле в строке кода, которое растёт по тексту (текст страницы бывает длинным).
-function GrowArea({ value, onChange, label, inputRef, cls, max = 160 }) {
-  const pick = usePick();
-  const ref = useRef(null);
-  const setRef = (el) => { ref.current = el; if (inputRef) inputRef.current = el; };
-  const fit = () => fitGrow(ref.current);   // сначала в ширину, потом в высоту
-  useLayoutEffect(fit, [value]);
-  useEffect(() => {
-    window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
-  }, []);
-  return (
-    <textarea ref={setRef} rows={1} className={'tk-input tk-area tk-grow' + (cls ? ' ' + cls : '')} value={value} maxLength={max}
-      aria-label={label ? pick(label) : undefined} spellCheck={false} autoComplete="off" enterKeyHint="done"
-      onChange={(e) => onChange(e.target.value.replace(/\r?\n/g, ' '))}
-      onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }} />
-  );
-}
-// Ширина поля — по тексту (или подсказке-примеру), высота — по переносам.
-// Ширину меряем холстом тем же шрифтом, что у поля; дальше её ограничивает
-// строка (max-width: 100%, flex-shrink), и тогда текст переносится.
+// Поле прямо в строке кода. Растёт по тексту: сначала в ширину, упёрлось в
+// край строки — переносит текст и растёт в высоту. 16 px — меньше нельзя:
+// iOS увеличит страницу. Enter строку не переносит.
 let _growCtx = null;
 function fitGrow(el) {
   if (!el) return;
@@ -7606,17 +8304,13 @@ function fitGrow(el) {
   if (_growCtx) {
     _growCtx.font = cs.font || (cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily);
     const txt = el.value || el.placeholder || '';
-    const w = Math.ceil(_growCtx.measureText(txt).width) + parseFloat(cs.paddingLeft || 0) + parseFloat(cs.paddingRight || 0) + 8;
+    const w = Math.ceil(_growCtx.measureText(txt).width) + parseFloat(cs.paddingLeft || 0) + parseFloat(cs.paddingRight || 0) + 10;
     el.style.width = w + 'px';
   }
   el.style.height = 'auto';
   el.style.height = el.scrollHeight + 'px';
 }
-function InlineInput({ value, onChange, placeholder, label, max = 40, inputRef, onEnter, cls, onFocus }) {
-  // РАСТЁТ ПО ТЕКСТУ (заказчик, 17.10.2026): сначала в ширину — поле ровно по
-  // тексту и расширяется по мере набора; упёрлось в край строки — текст
-  // переносится внутри поля, и тогда оно растёт в высоту. Видно всё написанное.
-  // Поле — textarea; Enter строку не переносит, а работает, как раньше.
+function InlineInput({ value, onChange, placeholder, label, max = 60, inputRef, cls }) {
   const pick = usePick();
   const ref = useRef(null);
   const setRef = (el) => { ref.current = el; if (inputRef) inputRef.current = el; };
@@ -7633,70 +8327,51 @@ function InlineInput({ value, onChange, placeholder, label, max = 40, inputRef, 
     return () => ro.disconnect();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <textarea ref={setRef} rows={1} className={'tk-input tk-grow' + (cls ? ' ' + cls : '')} value={value} maxLength={max}
+    <textarea ref={setRef} rows={1} className={'tk-input' + (cls ? ' ' + cls : '')} value={value} maxLength={max}
       placeholder={placeholder ? pick(placeholder) : ''} aria-label={label ? pick(label) : undefined}
       autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} enterKeyHint="done"
-      onFocus={onFocus} onChange={(e) => onChange(e.target.value.replace(/\r?\n/g, ' '))}
-      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (onEnter) onEnter(); else e.currentTarget.blur(); } }} />
-  );
-}
-
-// Тег в статичной строке кода.
-function Tag({ tag, close }) {
-  return (
-    <span className="tk-tag" style={{ '--c': TAGC[tag] }}>
-      <span className="tk-br">{'<'}</span>{close ? '/' : ''}{tag}<span className="tk-br">{'>'}</span>
-    </span>
+      onChange={(e) => onChange(e.target.value.replace(/\r?\n/g, ' '))}
+      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }} />
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ДОКУМЕНТ С ПОЛЯМИ (задания 1, 2, 5). Документ собран правильно; ребёнок
-// пишет только содержимое title и body — прямо в строках кода. Скобки слева
-// показывают вложенность; hl подсвечивает часть по подсказке.
+// ДОКУМЕНТ С ПОЛЯМИ (t1, t2). Документ собран правильно; ученик пишет только
+// содержимое title или body — прямо в строке кода. Полоски слева — вложенность;
+// hl подсвечивает часть по подсказке, led — поле, куда писать.
 // ─────────────────────────────────────────────────────────────────────────────
-function FieldDoc({ title, body, onTitle, onBody, editTitle = true, editBody = true, hl, led, titleRef, bodyRef, focusBody }) {
+function FieldDoc({ title, body, onTitle, onBody, editTitle = true, editBody = true, hl, led, titleRef, bodyRef, focusBody, ph }) {
   const pick = usePick();
   const boxRef = useRef(null);
-  // Работа в body, а код не влез целиком (телефон) — сразу показываем body.
   useLayoutEffect(() => {
     const box = boxRef.current;
     const row = box && box.children[6];
     if (focusBody && row && box.scrollHeight > box.clientHeight + 4) box.scrollTop = Math.max(0, row.offsetTop - box.clientHeight / 2);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const field = (val, on, ref, lbl, which) => (
+    <InlineInput value={val} onChange={on} label={lbl} inputRef={ref} placeholder={ph && ph[which]}
+      cls={led === which ? 'is-led-in' : ''} max={which === 'body' ? 140 : 40} />
+  );
   const rows = [
-    { d: 0, reg: [], c: <span className="tk-doc">{'<!DOCTYPE html>'}</span> },
-    { d: 0, reg: ['html'], first: 'html', c: <Tag tag="html" /> },
-    { d: 1, reg: ['html', 'head'], first: 'head', c: <Tag tag="head" /> },
-    { d: 2, reg: ['html', 'head', 'title'], c: (
-      <>
-        <Tag tag="title" />
-        {editTitle ? <InlineInput value={title} onChange={onTitle} label={UI.titleField} inputRef={titleRef}
-          cls={led === 'title' || led === 'both' ? 'is-led-in' : ''} />
-          : <span className="tk-text">{title}</span>}
-        <Tag tag="title" close />
-      </>
-    ) },
-    { d: 1, reg: ['html', 'head'], last: 'head', c: <Tag tag="head" close /> },
-    { d: 1, reg: ['html', 'body'], first: 'body', c: <Tag tag="body" /> },
-    { d: 2, reg: ['html', 'body'], c: editBody
-      ? <GrowArea value={body} onChange={onBody} label={UI.bodyField} inputRef={bodyRef}
-        cls={led === 'body' || led === 'both' ? 'is-led-in' : ''} />
-      : <span className="tk-text">{body}</span> },
-    { d: 1, reg: ['html', 'body'], last: 'body', c: <Tag tag="body" close /> },
-    { d: 0, reg: ['html'], last: 'html', c: <Tag tag="html" close /> }
+    { d: 0, reg: [], c: <span className="pp-doc">{'<!DOCTYPE html>'}</span> },
+    { d: 0, reg: ['html'], first: 'html', c: T_('html') },
+    { d: 1, reg: ['html', 'head'], first: 'head', c: T_('head') },
+    { d: 2, reg: ['html', 'head', 'title'], c: <>{T_('title')}{editTitle ? field(title, onTitle, titleRef, UI.titleField, 'title') : <span className="pp-text">{title}</span>}{T_('title', true)}</> },
+    { d: 1, reg: ['html', 'head'], last: 'head', c: T_('head', true) },
+    { d: 1, reg: ['html', 'body'], first: 'body', c: T_('body') },
+    { d: 2, reg: ['html', 'body'], c: editBody ? field(body, onBody, bodyRef, UI.bodyField, 'body') : <span className="pp-text">{body}</span> },
+    { d: 1, reg: ['html', 'body'], last: 'body', c: T_('body', true) },
+    { d: 0, reg: ['html'], last: 'html', c: T_('html', true) }
   ];
   return (
     <div ref={boxRef} className="cv" translate="no" aria-label={pick(UI.editor)} role="group">
       {rows.map((r, i) => {
         const inHl = hl && r.reg.indexOf(hl) >= 0;
         return (
-          <div key={i} className={'cv-line' + (hl ? (inHl ? ' is-in' : ' is-out') : '')}
-            style={{ '--d': r.d, '--hc': hl ? TAGC[hl] : 'transparent' }}>
-            <span className="cv-n mono" aria-hidden="true">{i + 1}</span>
+          <div key={i} className={'cv-line' + (hl ? (inHl ? ' is-in' : ' is-out') : '')} style={{ '--d': r.d }}>
+            <span className="cv-n" aria-hidden="true">{i + 1}</span>
             {r.reg.filter((g) => g !== 'title').map((g) => (
-              <span key={g} aria-hidden="true"
-                className={'cv-bar' + (r.first === g ? ' is-first' : '') + (r.last === g ? ' is-last' : '')}
+              <span key={g} aria-hidden="true" className={'cv-bar' + (r.first === g ? ' is-first' : '') + (r.last === g ? ' is-last' : '')}
                 style={{ '--c': TAGC[g], '--lv': g === 'html' ? 0 : 1 }} />
             ))}
             <span className="cv-code">{r.c}</span>
@@ -7707,12 +8382,12 @@ function FieldDoc({ title, body, onTitle, onBody, editTitle = true, editBody = t
   );
 }
 
-// Статичный кусок кода: образец подсказки, код готовой комнаты.
+// Статичный кусок кода: образец подсказки, код готовой страницы.
 function CodeSample({ code, label, cls }) {
   const pick = usePick();
   return (
     <div className={'sample' + (cls ? ' ' + cls : '')} translate="no">
-      {label ? <span className="sample-lbl"><Icon name="bulb" size={13} />{pick(label)}</span> : null}
+      {label ? <span className="sample-lbl">{pick(label)}</span> : null}
       <div className="sample-code">
         {String(code).split('\n').map((ln, i) => <div key={i} className="sample-line">{ln ? hlLine(ln) : '​'}</div>)}
       </div>
@@ -7720,115 +8395,99 @@ function CodeSample({ code, label, cls }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// МИНИ-БРАУЗЕР — вкладка и страница, как в уроке 1. Страница — HTML без
-// оформления, как его рисует браузер по умолчанию. Всё содержимое — текст.
-// ─────────────────────────────────────────────────────────────────────────────
-function MiniBrowser({ title, page, hl, empty, flash, label }) {
+// Бумажный браузер урока 1 со страницей: текст из body — в окне.
+function PageView({ title, text, empty, flash, hl }) {
   const pick = usePick();
-  const t = title != null && String(title).trim() !== '' ? String(title) : '';
-  const txt = String(page || '').trim();
+  const t = String(text || '').trim();
   return (
-    <div className={'mb' + (hl ? ' mb-hl-' + hl : '')} role="img"
-      aria-label={pick(UI.tab) + ': ' + (t || 'index.html') + '. ' + pick(UI.page) + ': ' + (txt || (empty ? pick(empty) : '—'))}>
-      <div className="mb-top">
-        <span key={'tab' + (flash || 0)} className={'mb-tab' + (flash ? ' is-flash' : '')}>
-          <span className="mb-fav" aria-hidden="true" />
-          <span className={'mb-tab-t' + (t ? '' : ' is-file')}>{t || 'index.html'}</span>
-          <span className="mb-x" aria-hidden="true" />
-        </span>
-        {label ? <span className="mb-label">{pick(label)}</span> : null}
-        {/* Окно как Chrome в Windows: «+» новой вкладки и кнопки окна справа. */}
-        <span className="mb-new" aria-hidden="true" />
-        <span className="mb-win" aria-hidden="true"><i className="mb-w-min" /><i className="mb-w-max" /><i className="mb-w-x" /></span>
+    <PaperBrowser title={title} stamp={flash} tabHl={hl === 'title' || hl === 'head'} pageHl={hl === 'body'} cls="pp-br kz-piece">
+      <div key={'pg' + (flash || 0)} className={'pp-page' + (t ? '' : ' is-empty') + (flash ? ' kz-a-pop' : '')}>
+        {t || (empty ? pick(empty) : ' ')}
       </div>
-      <div key={'pg' + (flash || 0)} className={'mb-page' + (flash ? ' is-flash' : '')}>
-        <div className={'mb-doc' + (txt ? '' : ' is-empty')}>{txt || (empty ? pick(empty) : ' ')}</div>
-      </div>
-    </div>
+    </PaperBrowser>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// КАРТА БАЗЫ. Объект горит, когда его задание решено (store: tN.solved).
-// Смысл не только в цвете: у работающего — галочка и подпись «работает».
+// БУМАЖНАЯ УЛИЦА. Дом — вырезки: стены, крыша, окно, дверь. Ждёт — выцвел,
+// покосился от ветра, окно тёмное; готов — свой цвет, стоит ровно, окно
+// светится, галочка. Свой дом до постройки — пунктирный план. У пекарни и
+// своего дома на вывеске — название, которое придумал ученик.
 // ─────────────────────────────────────────────────────────────────────────────
-const ST_ICONS = {
-  door: 'M6.5 20.5V4.2h11v16.3M4 20.5h16M14.4 12.6h.01',
-  monitor: 'M3.4 5.2h17.2v10.6H3.4zM9 19.6h6M12 15.8v3.8',
-  box: 'M3.6 7.8L12 3.6l8.4 4.2v8.6L12 20.6l-8.4-4.2zM3.6 7.8L12 12l8.4-4.2M12 12v8.6',
-  antenna: 'M12 20.6V11M8.6 8.2a4.8 4.8 0 0 1 6.8 0M5.6 5.2a9 9 0 0 1 12.8 0M9.4 20.6h5.2M12 11.2a1.4 1.4 0 1 0 0-.01',
-  cup: 'M5.4 7.4h11v7a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5zM16.4 9.4h1.8a2.6 2.6 0 0 1 0 5.2h-1.8M7.4 4.2v-.02M11 4.2v-.02M14.6 4.2v-.02',
-  shield: 'M12 3.2l7.6 3v5.6c0 4.6-3.2 8.2-7.6 9.6-4.4-1.4-7.6-5-7.6-9.6V6.2zM8.8 12l2.3 2.3 4.3-4.6',
-  home: 'M3.8 11.4L12 4.4l8.2 7M6.2 9.6v10.8h11.6V9.6M10 20.4v-5.6h4v5.6'
+const ROOF = 'polygon(50% 0%, 58% 6%, 74% 22%, 88% 38%, 100% 52%, 96% 100%, 50% 96%, 4% 100%, 0% 52%, 14% 36%, 30% 20%, 42% 7%)';
+const houseLit = (store, i) => !!(store.get('t' + (i + 1)) || {}).solved;
+const houseName = (store, i, pick) => {
+  const own = i === 0 || i === HOME ? ((store.get('t' + (i + 1)) || {}).result || {}).title : null;
+  return own && houseLit(store, i) ? own : pick(STREET[i].name);
 };
-function StIcon({ name, size = 20 }) {
+// Наклон дома, который разметал ветер: у каждого свой; готовый дом стоит ровно.
+const TILT = [-7, 5, -5, 7, 0];
+function PaperHouse({ i, lit, cur, name, size, pop, whole }) {
+  const h = STREET[i];
+  const home = i === HOME;
+  const on = lit || (whole && !home);
+  const ghost = home && !lit;
+  const wait = !on && !home;
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1"
-      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      <path d={ST_ICONS[name]} />
-    </svg>
+    <span className={'pp-house' + (on ? ' is-lit' : '') + (wait ? ' is-wait' : '') + (cur ? ' is-cur' : '') + (ghost ? ' is-ghost' : '') + (pop ? ' kz-a-stamp' : '') + (size ? ' is-' + size : '')}
+      style={{ '--hc': h.c, '--tilt': TILT[i % TILT.length] + 'deg' }}>
+      <span className="pp-h-art" aria-hidden="true">
+        {ghost ? <span className="pp-h-plan" /> : (
+          <>
+            <Cut c={h.c} clip={ROOF} cls="pp-h-roof" />
+            <Cut c="#FBF6EA" seed={80 + i} n={6} amp={4} asp={0.9} cls="pp-h-wall" />
+            <Cut c={on ? '#FFD46B' : '#5B6070'} seed={90 + i} n={4} amp={8} cls="pp-h-win" />
+            <Cut c={h.c} seed={100 + i} n={4} amp={8} asp={0.6} cls="pp-h-door" />
+          </>
+        )}
+      </span>
+      {lit ? <span className="pp-h-ok"><Icon name="check" size={9} /></span> : null}
+      {name ? <span className="pp-h-name">{name}</span> : null}
+    </span>
   );
 }
-const isLit = (store, i) => !!(store.get('t' + (i + 1)) || {}).solved;
-const roomTitle = (store) => { const r = store.get('t7'); return r && r.result ? r.result.title : null; };
 
-// Полоска карты над заданием: семь значков и подпись текущего объекта.
-// mini — короткая полоса для шапки телефона (заказчик, 15.10.2026): только
-// предыдущий, текущий и следующий объект, без подписи.
-function BaseStrip({ cur, pop, mini }) {
+// Полоса улицы над заданием: восемь домов и подпись текущего. mini — для шапки
+// телефона: только предыдущий, текущий и следующий дом, без подписи.
+function StreetStrip({ cur, pop, mini }) {
   const pick = usePick();
   const store = useStore();
-  const room = roomTitle(store);
-  const nameOf = (i) => (i === 6 && room && isLit(store, 6) ? room : pick(STATIONS[i].name));
-  const shown = mini ? STATIONS.map((s, i) => i).filter((i) => Math.abs(i - cur) <= 1) : null;
+  const shown = mini ? STREET.map((s, i) => i).filter((i) => Math.abs(i - cur) <= 1) : STREET.map((s, i) => i);
+  const nm = (i) => houseName(store, i, pick);
   return (
-    <div className={'bstrip' + (mini ? ' bstrip-mini' : '')}>
-      <div className="bs-track" role="list" aria-label={pick(UI.map)}>
-        {STATIONS.map((s, i) => {
-          if (shown && shown.indexOf(i) < 0) return null;
-          const lit = isLit(store, i);
-          return (
-            <span key={s.id} role="listitem"
-              className={'bs-st' + (lit ? ' is-lit' : '') + (i === cur ? ' is-cur' : '') + (pop && i === cur ? ' is-pop' : '')}
-              aria-label={nameOf(i) + ' — ' + pick(lit ? UI.works : UI.off) + (i === cur ? ', ' + pick(UI.now) : '')}
-              title={nameOf(i)}>
-              <StIcon name={s.icon} size={16} />
-              {lit ? <span className="bs-ok" aria-hidden="true"><Icon name="check" size={9} /></span> : null}
-            </span>
-          );
-        })}
+    <div className={'pp-strip' + (mini ? ' is-mini' : ' kz-piece')}>
+      <div className="pp-strip-row" role="list" aria-label={pick(UI.map)}>
+        {shown.map((i) => (
+          <span key={STREET[i].id} role="listitem" title={nm(i)}
+            aria-label={nm(i) + ' — ' + pick(houseLit(store, i) ? UI.works : UI.off) + (i === cur ? ', ' + pick(UI.now) : '')}>
+            <PaperHouse i={i} lit={houseLit(store, i)} cur={i === cur} size="s" pop={pop && i === cur} />
+          </span>
+        ))}
       </div>
       {mini ? null : (
-        <span className="bs-cap">
-          <b>{pick(fillL(UI.stationOf, { n: cur + 1 }))}</b>
-          <span className="bs-name">{nameOf(cur)}</span>
-        </span>
+        <span className="pp-strip-cap"><b>{pick(fillL(UI.houseOf, { n: cur + 1 }))}</b><span>{nm(cur)}</span></span>
       )}
     </div>
   );
 }
 
-// Большая карта — на вступлении и в финале.
-function BaseMap({ lit, room, glow }) {
+// Большая улица — на вступлении и в финале: дома стоят на бумажной мостовой.
+// whole — улица до ветра (хук): все дома целые; blown — ветер только что
+// прошёл: с домов слетают бумажки-вывески.
+function StreetMap({ glow, whole, blown }) {
   const pick = usePick();
+  const store = useStore();
   return (
-    <div className={'bmap' + (glow ? ' is-glow' : '')} role="list" aria-label={pick(UI.map)}>
-      {STATIONS.map((s, i) => {
-        const on = !!lit[i];
-        const name = i === 6 && on && room ? room : pick(s.name);
+    <div className={'pp-street kz-piece' + (glow ? ' is-glow' : '') + (blown ? ' is-blown' : '')} role="list" aria-label={pick(UI.map)}>
+      <Cut c="#E6DCC6" seed={120} n={20} amp={10} asp={14} cls="pp-road" />
+      {STREET.map((s, i) => {
+        const lit = houseLit(store, i);
         return (
-          <div key={s.id} role="listitem" className={'bm-st' + (on ? ' is-lit' : '') + (i === 6 ? ' is-room' : '')}
-            style={{ animationDelay: glow ? (0.15 + i * 0.12) + 's' : undefined }}>
-            <span className="bm-ic"><StIcon name={s.icon} size={20} /></span>
-            <span className="bm-t">
-              <span className="bm-name">{name}</span>
-              <span className="bm-state">
-                {on ? <Icon name="check" size={12} /> : null}
-                {pick(on ? UI.works : UI.off)}
-              </span>
-            </span>
-          </div>
+          <span key={s.id} role="listitem" className="pp-street-h" style={{ '--dl': (glow ? 0.15 + i * 0.12 : i * 0.06) + 's', '--i': i }}
+            aria-label={houseName(store, i, pick) + ' — ' + pick(lit || (whole && i !== HOME) ? UI.works : UI.off)}>
+            <PaperHouse i={i} lit={lit} whole={whole} name={houseName(store, i, pick)} size="l" />
+            {blown && i !== HOME ? <Cut c="var(--kz-piece)" seed={140 + i} n={5} amp={10} asp={2.6} cls="pp-scrap" /> : null}
+          </span>
         );
       })}
     </div>
@@ -7836,152 +8495,65 @@ function BaseMap({ lit, room, glow }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// НАГЛЯДНАЯ ПОМОЩЬ ЗАДАНИЙ
+// НАГЛЯДНАЯ ПОМОЩЬ — видна сразу, подписана названиями тегов.
 // ─────────────────────────────────────────────────────────────────────────────
-// Задание 3: где живёт название вкладки — html → head → title.
-function Schema3() {
+// Три места строки или блока: открывающий тег · название (текст) · закрывающий.
+function Slots3({ mid }) {
   const pick = usePick();
   return (
-    <div className="schema" translate="no">
-      <span className="schema-cap">{pick(C.t3.schema)}</span>
-      <span className="schema-row">
-        {['html', 'head', 'title'].map((g, i) => (
-          <React.Fragment key={g}>
-            {i ? <span className="schema-arr" aria-hidden="true">→</span> : null}
-            <span className="schema-chip mono" style={{ '--c': TAGC[g] }}>{g}</span>
-          </React.Fragment>
-        ))}
-      </span>
-    </div>
-  );
-}
-// Задание 4, подсказка 3: три места блока, без кода.
-function Slots3() {
-  const pick = usePick();
-  return (
-    <div className="slots" aria-label={pick(UI.sample)}>
-      {['open', 'content', 'close'].map((k) => (
-        <span key={k} className={'slot slot-' + k}>
-          <span className="slot-n mono">{k === 'open' ? '1' : k === 'content' ? '2' : '3'}</span>
-          {pick(UI.part[k])}
-        </span>
+    <div className="pp-slots kz-piece" aria-label={pick(UI.sample)}>
+      {['open', mid || 'name', 'close'].map((k, n) => (
+        <span key={k} className={'pp-slot is-' + k}><b>{n + 1}</b>{pick(UI.part[k])}</span>
       ))}
     </div>
   );
 }
-// Задание 5: как должно быть — подписями, а не вторым браузером.
-// Подписи — имена тегов title и body, а не «вкладка / страница» (заказчик,
-// 15.10.2026): ребёнок сразу видит, в какой тег что писать. Имена тегов —
-// код, поэтому одинаковые на всех языках.
-function TargetCard({ a, b }) {
-  const pick = usePick();
-  return (
-    <div className="target">
-      <span className="target-h">{pick(C.t5.target)}</span>
-      <span className="target-r"><code className="target-k target-tag">title</code><b>{pick(a)}</b></span>
-      <span className="target-r"><code className="target-k target-tag">body</code><b>{pick(b)}</b></span>
-    </div>
-  );
-}
-// Задание 2: робот-получатель показывает карточку с сообщением.
-function RobotCard({ text }) {
-  const pick = usePick();
-  return (
-    <div className="rcard">
-      <svg className="rcard-bot" viewBox="0 0 48 48" width="44" height="44" aria-hidden="true">
-        <path d="M24 4v6" stroke={T.ink2} strokeWidth="2.4" strokeLinecap="round" />
-        <circle cx="24" cy="4" r="2.6" fill={T.ui} />
-        <rect x="8" y="10" width="32" height="24" rx="9" fill="#EAF1F8" stroke="#586A83" strokeWidth="2.4" />
-        <circle cx="18" cy="22" r="3" fill="#1171A0" /><circle cx="30" cy="22" r="3" fill="#1171A0" />
-        <path d="M19 28.5q5 3 10 0" fill="none" stroke="#1171A0" strokeWidth="2.2" strokeLinecap="round" />
-        <rect x="14" y="36" width="20" height="9" rx="4" fill="#586A83" />
-      </svg>
-      <span className="rcard-t">
-        <span className="rcard-h"><Icon name="check" size={13} />{pick(C.t2.card)}</span>
-        <span className="rcard-msg">{text}</span>
-      </span>
-    </div>
-  );
-}
-// Задание 7: чертёж документа. Всегда открыт, без кнопки «Чертёж»
-// (заказчик, 15.10.2026).
+// Чертёж своего дома (t5): дерево частей; html уже есть, head с title и body — пишет ученик.
 function Blueprint() {
   const pick = usePick();
-  const row = (pre, tag, note) => (
-    <div className="bp-row">
-      <span className="bp-pre" aria-hidden="true">{pre}</span>
-      <span className="bp-tag mono" style={{ color: TAGC[tag] }}>{tag}</span>
-      {note ? <span className="bp-note">— {pick(note)}</span> : null}
+  const row = (pre, tag, note, given) => (
+    <div className={'pp-bp-row' + (given ? ' is-done' : ' is-cur')}>
+      <span className="pp-bp-pre" aria-hidden="true">{pre}</span>
+      <span className="pp-bp-tag" style={{ '--c': TAGC[tag] }}>{tag}</span>
+      {note ? <span className="pp-bp-note">— {pick(note)}</span> : null}
+      {given ? <span className="pp-bp-ok" title={pick(UI.given)}><Icon name="check" size={11} /></span> : null}
     </div>
   );
   return (
-    <div className="bp is-open">
-      <div className="bp-tree mono" translate="no">
-        {row('', 'html')}
-        {row('├── ', 'head')}
-        {row('│   └── ', 'title', C.t7.planTitle)}
-        {row('└── ', 'body', C.t7.planBody)}
+    <div className="pp-bp kz-piece" translate="no">
+      <div className="pp-bp-tree">
+        {row('', 'html', UI.given, true)}
+        {row('├─ ', 'head')}
+        {row('│  └─ ', 'title', UI.bpTitle)}
+        {row('└─ ', 'body', UI.bpBody)}
       </div>
     </div>
   );
 }
 
-// Подписи ступеней подсказки — по брифу практики: направление → место или
-// правило → образец (или указание места).
+// Подписи ступеней подсказки: направление → место или правило → образец.
 const HINT_STEP = [
   L3('Yo‘nalish', 'Направление', 'Where to look'),
   L3('Joy va qoida', 'Место и правило', 'Place and rule'),
   L3('Deyarli javob', 'Почти ответ', 'Almost there')
 ];
 
-// Одна заметка под работой: самая свежая — разбор проверки, ступень
-// подсказки или похвала.
-// extra — наглядный образец третьей ступени (строка, три места, кусок
-// кода): он стоит прямо в заметке, чтобы на телефоне не уехать за край.
+// Одна заметка под работой — бумажный листок: разбор проверки, ступень
+// подсказки (с образцом на третьей) или похвала.
 function TaskNote({ note, extra }) {
   const pick = usePick();
   if (!note || !note.text) return null;
-  if (note.kind === 'hint') {
-    return (
-      <div className="note note-hint note-one" key={'h' + note.n} aria-live="polite">
-        <span className="note-lbl"><Icon name="bulb" size={13} />{pick(HINT_STEP[note.level - 1])}
-          <span className="note-step mono">{note.level}/3</span></span>
-        {note.fb ? <div className="note-fbline">{pick(note.fb)}</div> : null}
-        <div className="note-body">{pick(note.text)}</div>
-        {note.level === 3 && extra ? <div className="note-extra">{extra}</div> : null}
-      </div>
-    );
-  }
-  if (note.kind === 'ok') {
-    return (
-      <div className="note note-ok note-one" key={'o' + note.n} aria-live="polite">
-        <span className="note-lbl"><Icon name="check" size={13} />{pick(UI.ok)}</span>
-        <div className="note-body">{pick(note.text)}</div>
-      </div>
-    );
-  }
+  const kind = note.kind === 'hint' ? 'hint' : note.kind === 'ok' ? 'ok' : 'fb';
   return (
-    <div className="note note-fb note-one" key={'f' + note.n} aria-live="polite">
-      <span className="note-lbl"><Icon name="listN" size={13} />{pick(UI.fb)}
-        {note.sub ? <span className="note-sub">{pick(UI.incomplete)}</span> : null}</span>
-      <div className="note-body">{pick(note.text)}</div>
-    </div>
-  );
-}
-
-// Переключатель «Страница / Код» на телефоне в финале.
-function SegToggle({ value, options, onChange }) {
-  const pick = usePick();
-  const audio = useAudio();
-  return (
-    <div className="seg2" role="radiogroup">
-      {options.map((o) => (
-        <button key={o.v} type="button" role="radio" aria-checked={value === o.v}
-          className={'seg2-b' + (value === o.v ? ' is-on' : '')}
-          onClick={() => { sfx('tap', audio && audio.on); onChange(o.v); }}>
-          {pick(o.label)}
-        </button>
-      ))}
+    <div className={'note-one pp-note is-' + kind + ' kz-piece'} key={kind + note.n} aria-live="polite">
+      <span className="pp-note-lbl">
+        {kind === 'hint' ? <><Icon name="bulb" size={13} />{pick(HINT_STEP[note.level - 1])}<span className="pp-note-step">{note.level}/3</span></>
+          : kind === 'ok' ? <><Icon name="check" size={13} />{pick(UI.ok)}</>
+            : <>{pick(UI.fb)}{note.sub ? <span className="pp-note-sub">{pick(UI.incomplete)}</span> : null}</>}
+      </span>
+      {kind === 'hint' && note.fb ? <div className="pp-note-fb">{pick(note.fb)}</div> : null}
+      <div className="pp-note-body">{pick(note.text)}</div>
+      {kind === 'hint' && note.level === 3 && extra ? <div className="pp-note-extra">{extra}</div> : null}
     </div>
   );
 }
@@ -7992,29 +8564,29 @@ function SymKeys({ inputRef }) {
   const pick = usePick();
   const keep = (e) => e.preventDefault();
   return (
-    <div className="sym" role="group" aria-label={pick(UI.keys)} translate="no">
+    <div className="pp-sym" role="group" aria-label={pick(UI.keys)} translate="no">
       {['<', '/', '>'].map((k) => (
-        <button key={k} type="button" className="key-b sym-b mono" onPointerDown={keep} onMouseDown={keep}
+        <button key={k} type="button" className="pp-key" onPointerDown={keep} onMouseDown={keep}
           onClick={() => { insertAtCaret(inputRef.current, k); sfx('type', true); }}>{k}</button>
       ))}
     </div>
   );
 }
 
-// Подпись задания в шапке: «Задание 3 · Склад деталей».
-const taskEyebrow = (n) => {
-  const head = fillL(UI.task, { n });
+// Подпись задания в шапке: «Задание 2 · Почта».
+const taskEyebrow = (num, house) => {
+  const head = fillL(UI.task, { n: num });
   const out = {};
-  LANGS.forEach((l) => { out[l] = head[l] + ' · ' + STATIONS[n - 1].name[l]; });
+  LANGS.forEach((l) => { out[l] = head[l] + ' · ' + STREET[house - 1].name[l]; });
   return out;
 };
 
 // =============================================================================
-// ЗАДАНИЕ — общий ход для всех семи
+// ЗАДАНИЕ — общий ход
 //
-// Запись задания в сторе (tN): st — то, что написал ребёнок; checks — число
+// Запись задания в сторе (tN): st — то, что написал ученик; checks — число
 // проверок; hint — сколько ступеней подсказки открыто; note — заметка под
-// работой; solved — объект на карте горит; done — можно идти дальше (после
+// работой; solved — дом на улице горит; done — можно идти дальше (после
 // дополнительной задачи, если она была); drill — дополнительная задача.
 // Всё живёт в сторе урока, поэтому «Назад» и возврат ничего не теряют, а
 // «Повторить» (SCREEN_RESET) стирает только текущее задание.
@@ -8045,7 +8617,6 @@ function useTask(cfg) {
   const canGo = useAdvanceGate(rec.done, spoken);
   const [fresh, setFresh] = useState(false);
   const [flash, setFlash] = useState(0);
-  const [typed, setTyped] = useState(0);
 
   // Строка журнала: попытка — это проверка по кнопке, а не нажатие клавиши.
   const row = (v) => log({
@@ -8054,11 +8625,8 @@ function useTask(cfg) {
     drill: v.drill ? { done: !!v.drill.done, attempts: v.drill.checks } : null
   });
 
-  const setSt = useCallback((st) => { put({ st }); setTyped((k) => k + 1); }, [put]);
-  const setDrillSt = useCallback((st) => {
-    put({ drill: Object.assign({}, ref.current.drill, { st }) });
-    setTyped((k) => k + 1);
-  }, [put]);
+  const setSt = useCallback((st) => { put({ st }); }, [put]);
+  const setDrillSt = useCallback((st) => { put({ drill: Object.assign({}, ref.current.drill, { st }) }); }, [put]);
 
   // Следующая ступень подсказки: что записать в rec и что показать.
   const nextHint = (cur) => {
@@ -8069,8 +8637,7 @@ function useTask(cfg) {
 
   // ПОДСКАЗКА ПОСЛЕ НЕУДАЧ (заказчик, 15.10.2026). Каждая неудачная проверка
   // сначала называет, что не так. Начиная со второй неудачи подряд к этому
-  // сразу добавляется следующая ступень подсказки — ребёнок не должен сам
-  // догадываться нажать лампочку. Одна реплика: «что не так» + подсказка.
+  // сразу добавляется следующая ступень подсказки. Одна реплика на всё.
   const check = () => {
     const cur = ref.current;
     const r = cfg.check(cur.st);
@@ -8081,13 +8648,13 @@ function useTask(cfg) {
       const fails = (cur.fails || 0) + 1;
       if (fails >= AUTO_HINT_AFTER && cur.hint < 3) {
         const { lv, h, patch } = nextHint(cur);
-        const v = put(Object.assign({ checks, n, fails, lastOk: false,
+        const v = put(Object.assign({ checks, n, fails, lastOk: false, shake: n,
           note: { kind: 'hint', level: lv, text: h.text, fb: r.msg, n } }, patch));
         row(v);
         sayNow(joinL(r.msg, h.text), 'think');
         return;
       }
-      const v = put({ checks, n, fails, lastOk: false, note: { kind: 'fb', text: r.msg, n, sub: cfg.kind === 'doc' } });
+      const v = put({ checks, n, fails, lastOk: false, shake: n, note: { kind: 'fb', text: r.msg, n, sub: !!r.sub } });
       row(v);
       sayNow(r.msg, 'think');
       return;
@@ -8095,9 +8662,7 @@ function useTask(cfg) {
     const was = cur.solved;
     // Решил после образца третьей ступени — короткая задача с новым содержимым.
     const needDrill = !was && !!cfg.drill && cur.hint >= 3;
-    const praise = cfg.C.praise;
-    // Похвала задания сама начинается с эмоции («Вау, классно!») — общий набор не приклеиваем.
-    const say = needDrill ? joinL(praise, C.drill.say) : praise;
+    const say = needDrill ? joinL(cfg.C.praise, C.drill.say) : cfg.C.praise;
     let drill = cur.drill;
     if (needDrill) {
       const d = cfg.drill.make(cur.hcat || null);
@@ -8112,20 +8677,20 @@ function useTask(cfg) {
     if (!was) setFresh(true);
     setFlash((k) => k + 1);
     row(v);
-    sayNow(say, 'cheer');
+    sayNow(say, 'smile');
   };
 
   const checkDrill = () => {
     const cur = ref.current;
     const d = cur.drill;
     if (!d || d.done) return;
-    const r = cfg.drill.make(d.cat).check(d.st);
+    const dc = cfg.drill.make(d.cat);
+    const r = dc.check(d.st);
     const checks = d.checks + 1;
     const n = cur.n + 1;
     if (!r.ok) {
       sfx('soft', true);
-      const sub = cfg.drill.make(d.cat).spec.kind === 'doc';
-      const v = put({ n, drill: Object.assign({}, d, { checks, note: { kind: 'fb', text: r.msg, n, sub } }) });
+      const v = put({ n, shake: n, drill: Object.assign({}, d, { checks, note: { kind: 'fb', text: r.msg, n, sub: !!r.sub } }) });
       row(v);
       sayNow(r.msg, 'think');
       return;
@@ -8134,35 +8699,64 @@ function useTask(cfg) {
     const v = put({ n, done: true, drill: Object.assign({}, d, { checks, done: true, note: null }),
       note: { kind: 'ok', text: C.drill.done, n } });
     row(v);
-    sayNow(C.drill.done, 'cheer');
+    sayNow(C.drill.done, 'smile');
   };
 
-  // Подсказка открывается только по просьбе: кнопкой в задании или лампочкой
-  // в шапке (её реплику канон произносит сам — здесь только ступень).
-  const openHint = (silent) => {
+  // Подсказка по просьбе — лампочкой в шапке (её реплику канон произносит
+  // сам — здесь только ступень в заметке).
+  const openHint = () => {
     const cur = ref.current;
     if (cur.solved) return;
     const { lv, h, patch } = nextHint(cur);
     const n = cur.n + 1;
     const v = put(Object.assign({ n, note: { kind: 'hint', level: lv, text: h.text, n } }, patch));
     row(v);
-    if (!silent) { sfx('hint', true); sayNow(h.text, 'point'); }
   };
   const openRef = useRef(openHint);
   openRef.current = openHint;
   useEffect(() => {
-    const h = (e) => { const el = e.target; if (el && el.closest && el.closest('.ctl-hint')) openRef.current(true); };
+    const h = (e) => { const el = e.target; if (el && el.closest && el.closest('.ctl-hint')) openRef.current(); };
     document.addEventListener('click', h, true);
     return () => document.removeEventListener('click', h, true);
   }, []);
 
-  return { rec, put, setSt, setDrillSt, check, checkDrill, openHint, speaker, canGo, fresh, flash, typed };
+  return { rec, put, setSt, setDrillSt, check, checkDrill, openHint, speaker, canGo, fresh, flash, say: sayNow };
 }
 
-// Рабочая область: браузер с наглядной помощью и редактор с кнопками.
-// В колонку на телефоне (браузер сверху, редактор — главный), в ряд на
-// компьютере.
-function Workbench({ spec, st, setSt, inputRef, fx, aids, tools, flash }) {
+// ─────────────────────────────────────────────────────────────────────────────
+// ВЫБОР МЕСТА (t6): код — неподвижные строки, между ними — места-щели. Нажатое
+// верное место раскрывается в строку ввода (дальше обычный редактор), неверное
+// трясётся, и проверка называет причину. Полоски вложенности видны сразу:
+// незакрытая часть — пунктиром.
+// ─────────────────────────────────────────────────────────────────────────────
+function GapPick({ lines, gaps, onPick, led, miss }) {
+  const pick = usePick();
+  const regs = regionsOf(lines.join('\n'));
+  const bars = (i) => regs.filter((r) => r.from <= i && i <= r.to).map((r, k) => (
+    <span key={k} aria-hidden="true" className={'ed-bar' + (r.closed ? '' : ' is-open') + (r.from === i ? ' is-first' : '') + (r.to === i ? ' is-last' : '')}
+      style={{ '--c': TAGC[r.tag], '--lv': r.depth }} />
+  ));
+  return (
+    <div className="ed pp-gaps" translate="no">
+      {lines.map((ln, i) => (
+        <React.Fragment key={i}>
+          <div className="ed-line is-static"><span className="ed-n" aria-hidden="true">{i + 1}</span>{bars(i)}{ln ? hlLine(ln) : '​'}</div>
+          {gaps.indexOf(i) >= 0 ? (
+            <button type="button" className={'pp-gap' + (led === i ? ' is-led' : '') + (miss && miss.at === i ? ' kz-a-shake' : '')}
+              key={'g' + i + (miss && miss.at === i ? ':' + miss.n : '')} onClick={() => onPick(i)} aria-label={pick(UI.gapHere)}>
+              <span className="pp-gap-line" aria-hidden="true" />
+            </button>
+          ) : null}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+// Рабочая область: бумажный браузер с наглядной помощью и редактор с
+// кнопками. В колонку на телефоне (браузер сверху, редактор — главный), в ряд
+// на компьютере.
+function Workbench({ spec, st, setSt, inputRef, fx, aids, tools, flash, onPick }) {
   const f = fx || {};
   let title;
   let text;
@@ -8174,27 +8768,34 @@ function Workbench({ spec, st, setSt, inputRef, fx, aids, tools, flash }) {
       <FieldDoc title={st.title} body={st.body} editTitle={spec.editTitle !== false} editBody={spec.editBody !== false}
         onTitle={(v) => setSt(Object.assign({}, st, { title: v }))}
         onBody={(v) => setSt(Object.assign({}, st, { body: v }))}
-        hl={f.hl} led={f.led} titleRef={inputRef} focusBody={!!spec.focusBody} />
+        hl={f.hl} led={f.led} titleRef={inputRef} bodyRef={inputRef} focusBody={!!spec.focusBody} ph={spec.ph} />
     );
+  } else if (spec.kind === 'gap' && st.at == null) {
+    const pg = pageOf(spec.lines.join('\n'));
+    title = pg.title;
+    text = pg.text;
+    editor = <GapPick lines={spec.lines} gaps={spec.gaps} onPick={onPick} led={f.ledGap} miss={st.miss} />;
   } else {
-    const full = (spec.before || []).concat([st.code]).concat(spec.after || []).join('\n');
+    const before = spec.kind === 'gap' ? spec.lines.slice(0, st.at + 1) : spec.before;
+    const after = spec.kind === 'gap' ? spec.lines.slice(st.at + 1) : spec.after;
+    const full = (before || []).concat([st.code]).concat(after || []).join('\n');
     const pg = pageOf(full);
     title = pg.title;
     text = pg.text;
     editor = (
       <CodeEditor value={st.code} onChange={(v) => setSt(Object.assign({}, st, { code: v }))}
-        before={spec.before} after={spec.after} single={spec.kind === 'line'} ind={spec.ind}
-        regions={f.bays ? regionsOf(st.code) : null} marks={f.marks} inputRef={inputRef} led={!!f.led} />
+        before={before} after={after} single={spec.kind === 'line' || spec.kind === 'gap'} ind={spec.ind}
+        regions={spec.bars ? regionsOf(full) : null} markLine={f.markLine} inputRef={inputRef} led={!!f.led} />
     );
   }
   return (
     <div className={'op-work' + (spec.big ? ' is-big' : '')}>
       <div className="op-side">
-        <MiniBrowser title={title} page={text} hl={f.hl} empty={spec.empty} flash={flash} />
+        <PageView title={title} text={text} empty={spec.empty} flash={flash} hl={f.hl} />
         {aids || null}
       </div>
       <div className="op-main">
-        {editor}
+        <Pad cls={'pp-edpad' + (spec.big ? ' is-big' : '')}>{editor}</Pad>
         {tools}
       </div>
     </div>
@@ -8202,28 +8803,20 @@ function Workbench({ spec, st, setSt, inputRef, fx, aids, tools, flash }) {
 }
 
 // =============================================================================
-// КАРКАС ЭКРАНА ПРАКТИКИ — БЕЗ РОБОТА И БЕЗ ТЕКСТА РЕПЛИК
+// КАРКАС ЭКРАНА ПРАКТИКИ — БЕЗ КОДИ И БЕЗ ТЕКСТА РЕПЛИК
 // =============================================================================
-// Заказчик (14.10.2026): в практике Коди не рисуется и его слова не
-// печатаются — на телефоне это перегружало экран. Голос остаётся; о том, что
-// он звучит, говорит один кружок с полосками в ряду служебных кнопок.
-// Канонный Stage так не умеет, а канон внутри урока не правится, поэтому
-// каркас свой — разметка та же, что у Stage.
-// Пузырь героя по-прежнему смонтирован (спрятан, как в stage-bare): он ведёт
-// озвучку и зовёт onSpoken, без него экран не узнал бы, что реплика договорена.
-// Текста реплик нет и без голоса (заказчик, 15.10.2026): задание экрана и
-// так напечатано строкой задания, а плашка в шапке ломала раскладку.
-// top — то, что на телефоне встаёт в шапку слева от кнопок (короткая карта базы).
+// Заказчик (14–15.10.2026): в практике Коди не рисуется и его слова не
+// печатаются. Голос остаётся; о нём говорит кружок с полосками в шапке.
+// Пузырь героя смонтирован, но спрятан: он ведёт озвучку и зовёт onSpoken.
+// Телефон: голос и лампочка слева, три дома улицы по центру, пауза и счётчик
+// справа. Содержимое — на бумажном листе урока 1.
 const PStage = ({ children, eyebrow, screen, total, nav, speaker, done, hint, top }) => {
   const pick = usePick();
   const audio = useAudio();
   const speaking = useSayBusy();
   useEffect(() => { _hintText = hint || null; return () => { _hintText = null; }; }, [hint]);
   const line = speaker ? pick(speaker.text) : '';
-  // Подсказка при бездействии — та же, что у канонного Stage (useIdleCoach).
   const idle = useIdleCoach(!!nav, speaking);
-  // Кружок голоса и лампочка: на компьютере — в ряду кнопок справа, на
-  // телефоне — слева в шапке (заказчик, 15.10.2026).
   const voiceDot = (
     <span className={'speaker-voice p-voice' + (audio && audio.playing ? ' is-on' : '')} aria-hidden="true">
       <span className="sv-bars"><i /><i /><i /><i /><i /></span>
@@ -8238,7 +8831,6 @@ const PStage = ({ children, eyebrow, screen, total, nav, speaker, done, hint, to
           </div>
           <div className="chrome">
             <div className="eyebrow"><span className="dot" />{pick(eyebrow)}</div>
-            {/* Телефон: голос и подсказка слева, карта по центру, пауза и счётчик справа. */}
             <span className="p-voice-l">{line ? voiceDot : null}{nav && <HintChromeBtn />}</span>
             {top ? <div className="p-top">{top}</div> : null}
             <div className="chrome-side">
@@ -8255,12 +8847,24 @@ const PStage = ({ children, eyebrow, screen, total, nav, speaker, done, hint, to
         <div className="speaker-wrap p-hidden-hero"><div className="limit"><PersonaBubble {...speaker} /></div></div>
       )}
       <div className="stage-content">
-        <div className="limit stack stagger">{children}</div>
+        <div className="limit stack">{children}</div>
       </div>
       {nav && <div className="stage-nav"><div className="limit navrow">{nav}</div></div>}
     </div>
   );
 };
+
+// Строка задания — бумажная полоска урока 1 (KzAsk); у дополнительной задачи — ярлычок.
+function PAsk({ text, drill }) {
+  const pick = usePick();
+  return (
+    <div className="kz-ask-wrap pp-ask-wrap">
+      <p className={'kz-ask pp-ask' + (drill ? ' is-drill' : '')} aria-live="polite">
+        {drill ? <span className="pp-drill-tag">{pick(UI.drill)}</span> : null}{pick(text)}
+      </p>
+    </div>
+  );
+}
 
 function TaskScreen({ p, make }) {
   const pick = usePick();
@@ -8273,287 +8877,189 @@ function TaskScreen({ p, make }) {
   const drillRef = useRef(null);
   const drilling = !!(rec.drill && !rec.drill.done);
   const dcfg = drilling ? cfg.drill.make(rec.drill.cat) : null;
-  const spec = drilling ? dcfg.spec : cfg.spec;
-  const typing = spec.kind !== 'fields';
+  const cur = drilling ? dcfg : cfg;
+  const st = drilling ? rec.drill.st : rec.st;
+  const spec = cur.spec;
+  const typing = spec.kind !== 'fields' && !(spec.kind === 'gap' && st.at == null);
   const stageHint = drilling ? dcfg.order : rec.solved ? cfg.C.done : cfg.hint(Math.min(3, rec.hint + 1), rec.st).text;
-  // Подсказка и проверка не забирают фокус у поля: курсор остаётся на месте,
-  // а на телефоне не закрывается клавиатура.
   const keep = (e) => e.preventDefault();
+  // Нажатое место в задании с выбором места (t6): верное раскрывается в строку
+  // ввода, неверное трясётся и называет причину.
+  const onPick = (i) => {
+    const res = cur.pick(i);
+    const n = rec.n + 1;
+    const nst = res.ok ? Object.assign({}, st, { at: i, miss: null }) : Object.assign({}, st, { miss: { at: i, n } });
+    const note = res.ok ? null : { kind: 'fb', text: res.msg, n };
+    if (drilling) t.put({ n, drill: Object.assign({}, rec.drill, { st: nst, note }) });
+    else t.put({ n, st: nst, note });
+    sfx(res.ok ? 'ok' : 'soft', true);
+    t.say(res.ok ? res.say : res.msg, res.ok ? 'point' : 'think');
+    if (res.ok) setTimeout(() => { const el = (drilling ? drillRef : mainRef).current; if (el) el.focus(); }, 60);
+  };
   const tools = (
-    <div className="op-tools">
+    <div className="op-tools kz-piece">
       {typing ? <SymKeys inputRef={drilling ? drillRef : mainRef} /> : null}
-      {/* Своей кнопки подсказки у задания нет: ту же ступень открывает
-          лампочка в шапке (заказчик, 14.10.2026 — две одинаковые кнопки на
-          телефоне путали). */}
-      <button type="button" className="key-b key-go is-ready" onMouseDown={keep} onClick={drilling ? t.checkDrill : t.check}>
+      <button type="button" className="pp-go" onMouseDown={keep} onClick={drilling ? t.checkDrill : t.check}>
         <Icon name="check" size={17} />{pick(UI.check)}
       </button>
     </div>
   );
   const note = drilling ? (rec.drill.note || rec.note) : rec.note;
+  const order = drilling ? (dcfg.orderOf ? dcfg.orderOf(st) : dcfg.order) : (cfg.orderOf ? cfg.orderOf(rec.st) : cfg.C.order);
   return (
-    <PStage eyebrow={taskEyebrow(cfg.n)} screen={p.screen} total={p.total} speaker={t.speaker} done={t.canGo}
-      top={<BaseStrip mini cur={cfg.n - 1} pop={t.fresh} />}
+    <PStage eyebrow={taskEyebrow(cfg.num, cfg.num)} screen={p.screen} total={p.total} speaker={t.speaker} done={t.canGo}
+      top={<StreetStrip mini cur={cfg.num - 1} pop={t.fresh} />}
       hint={stageHint}
       nav={<><BackBtn onPrev={p.prev} /><NextBtn disabled={!t.canGo} onClick={p.next} /></>}>
-      <BaseStrip cur={cfg.n - 1} pop={t.fresh} />
-      <p className={'ask op-order' + (drilling ? ' is-drill' : '')}>
-        {drilling ? <span className="drill-tag">{pick(UI.drill)}</span> : null}
-        {pick(drilling ? dcfg.order : cfg.C.order)}
-      </p>
-      {drilling ? (dcfg.orderExtra || null) : (cfg.orderExtra ? cfg.orderExtra(rec, t) : null)}
-      {drilling ? (
-        <Workbench key="drill" spec={dcfg.spec} st={rec.drill.st} setSt={t.setDrillSt} inputRef={drillRef}
-          fx={null} aids={dcfg.aids || null} tools={tools} />
-      ) : (
-        <Workbench key="main" spec={cfg.spec} st={rec.st} setSt={t.setSt} inputRef={mainRef}
-          fx={cfg.fx ? cfg.fx(rec) : null} aids={cfg.aids ? cfg.aids(rec, t) : null} tools={tools} flash={t.flash} />
-      )}
-      <TaskNote note={note} extra={!drilling && cfg.h3 ? cfg.h3(rec) : null} />
+      <Sheet cls="pp-sheet">
+        <StreetStrip cur={cfg.num - 1} pop={t.fresh} />
+        <PAsk text={order} drill={drilling} />
+        {cur.orderExtra ? <div className="pp-extra">{typeof cur.orderExtra === 'function' ? cur.orderExtra(rec, st) : cur.orderExtra}</div> : null}
+        <Workbench key={drilling ? 'drill' : 'main'} spec={spec} st={st} setSt={drilling ? t.setDrillSt : t.setSt}
+          inputRef={drilling ? drillRef : mainRef} fx={!drilling && cfg.fx ? cfg.fx(rec) : (drilling && dcfg.fx ? dcfg.fx(rec.drill) : null)}
+          aids={cur.aids ? (typeof cur.aids === 'function' ? cur.aids(rec, st) : cur.aids) : null}
+          tools={tools} flash={drilling ? 0 : t.flash} onPick={onPick} />
+        <TaskNote note={note} extra={!drilling && cfg.h3 ? cfg.h3(rec) : null} />
+      </Sheet>
     </PStage>
   );
 }
 
 // =============================================================================
-// ПРОВЕРКИ ЗАДАНИЙ С ПОЛЯМИ
+// ХУК, ПЯТЬ ЗАДАНИЙ, ВЫВОД И КОРЕНЬ ПРАКТИКИ «БУМАЖНАЯ УЛИЦА»
+// Семь слайдов (заказчик, 22.10.2026): задания идут от самого лёгкого к
+// сложному — слово между тегами → один тег → блок из трёх строк → найти место
+// в чужом коде → своя страница внутри готового html.
 // =============================================================================
-// Задание 1: своё название на вкладке, приветствие на странице осталось.
-function checkName(st) {
-  const tt = st.title;
-  const bb = st.body;
-  if (hasTags(tt)) return fb('fieldTags', null, 'head');
-  if (!tt.trim()) return fb('titleBlank', null, 'head');
-  if (normName(tt) === normName(st.title0)) {
-    return normName(bb) !== normName(st.body0) ? fbT(C.t1.wrongPlace) : fbT(C.t1.sameTitle);
-  }
-  if (!hasLetters(tt)) return fb('fieldLetters', null, 'head');
-  if (hasTags(bb)) return fb('fieldTags', null, 'body');
-  if (!hasLetters(bb)) return fbT(C.t1.greetingGone);
-  return { ok: true, result: { title: squash(tt), text: squash(bb) } };
-}
-// Задание 2: своё сообщение в body, название вкладки на месте. Смысл не
-// оцениваем: нужны слова, и хотя бы три (приветствие и пара слов о базе).
-function checkMsg(st) {
-  const tt = st.title;
-  const bb = st.body;
-  if (hasTags(tt)) return fb('fieldTags', null, 'head');
-  if (!hasLetters(tt)) return fbT(C.t2.titleGone);
-  if (hasTags(bb)) return fb('fieldTags', null, 'body');
-  if (!hasLetters(bb)) {
-    return normName(tt) !== normName(st.title0) && wordCount(tt) >= 3 ? fbT(C.t2.inTitle) : fbT(C.t2.dotsLeft);
-  }
-  if (wordCount(bb) < 3) return fbT(C.t2.short);
-  return { ok: true, result: { title: squash(tt), text: squash(bb) } };
-}
-// Задание 5: тексты на своих местах. a — для вкладки, b — для страницы.
-function checkSwap(st, a, b, lang) {
-  const pickL = (x) => (x[lang] !== undefined ? x[lang] : x.ru);
-  const T1 = normName(st.title);
-  const B1 = normName(st.body);
-  const A = normName(pickL(a));
-  const B = normName(pickL(b));
-  if (hasTags(st.title) || hasTags(st.body)) return fb('fieldTags', null, 'head');
-  if (!st.title.trim()) return fb('titleBlank', null, 'head');
-  if (T1 === A && B1 === B) return { ok: true, result: { title: squash(st.title), text: squash(st.body) } };
-  if (T1 === normName(st.title0) && B1 === normName(st.body0)) return fbT(C.t5.same);
-  if (T1 === B1) return fbT(C.t5.double);
-  if (B1 === B) return fbT(C.t5.titleOnly, { a });
-  if (T1 === A) return fbT(C.t5.bodyOnly, { b });
-  return fbT(C.t5.other, { a, b });
-}
-
-const fieldsInit = (title, body) => ({ title, body, title0: title, body0: body });
 const DOCTYPE = '<!DOCTYPE html>';
 const headWith = (title) => [DOCTYPE, '<html>', '  <head>', '    <title>' + title + '</title>', '  </head>'];
 const bodyWith = (text) => ['  <body>', '    ' + text, '  </body>', '</html>'];
+const HEAD_OPEN = [DOCTYPE, '<html>', '  <head>'];
+const afterTitle = (text) => ['  </head>'].concat(bodyWith(text));
 
-// Образцы третьей ступени задания 7 — всегда с другим содержимым.
+// Поле в строке кода (t1): пишется только слово, теги уже стоят.
+function checkTitleField(st) {
+  if (hasTags(st.title)) return fb('fieldTags', null, 'head');
+  if (!st.title.trim()) return fb('titleBlank', null, 'head');
+  if (!hasLetters(st.title)) return fb('fieldLetters', null, 'head');
+  return { ok: true, result: { title: squash(st.title), text: squash(st.body) } };
+}
+
+// Образцы третьей ступени своего дома — по части, где затруднение; всегда для другого дома.
 const FRAG = {
-  html: () => '<html>\n  <head>…</head>\n  <body>…</body>\n</html>',
   head: (pick) => '<head>\n  <title>' + pick(TXT.workshop) + '</title>\n</head>',
-  body: (pick) => '<body>\n  ' + pick(TXT.workshopText) + '\n</body>'
+  body: (pick) => '<body>\n  ' + pick(TXT.bikeText) + '\n</body>'
 };
+const fragCat = (r) => (r.ok || r.cat === 'body' ? 'body' : 'head');
 
 // =============================================================================
-// СЕМЬ ЗАДАНИЙ. Каждое — описание: что в редакторе, как проверить, какие
+// ПЯТЬ ЗАДАНИЙ. Каждое — описание: что в редакторе, как проверить, какие
 // подсказки и наглядная помощь, какая дополнительная задача.
+// num — номер задания и дом улицы, который оно чинит.
 // =============================================================================
-function cfgT1(pick, store) {
+// 1 · Пекарня — своё название между готовыми тегами title.
+function cfgT1(pick) {
   return {
-    id: 't1', n: 1, kind: 'fields', C: C.t1,
-    spec: { kind: 'fields' },
-    init: () => fieldsInit(pick(TXT.untitled), pick(TXT.greeting)),
-    check: checkName,
-    onSolved: (r) => store.set('baseName', r.result.title),
+    id: 't1', num: 1, kind: 'fields', C: C.t1,
+    spec: { kind: 'fields', editBody: false, ph: { title: L3('nom', 'название', 'name') } },
+    init: () => ({ title: '', body: pick(TXT.bakeryText) }),
+    check: checkTitleField,
     hint: (lv) => ({ text: C.t1.hints[lv - 1] }),
-    fx: (rec) => (rec.solved ? null
-      : { hl: rec.hint >= 3 ? 'title' : rec.hint >= 2 ? 'head' : null, led: rec.hint >= 3 ? 'title' : null }),
+    fx: (rec) => (rec.solved ? null : { hl: rec.hint >= 2 ? 'head' : null, led: rec.hint >= 3 ? 'title' : null }),
     drill: { make: () => ({
       order: C.t1.drill, spec: { kind: 'fields', editBody: false },
-      init: () => fieldsInit(pick(TXT.untitled), pick(TXT.workshopText)), check: checkName
+      init: () => ({ title: '', body: pick(TXT.bikeText) }), check: checkTitleField
     }) }
   };
 }
 
-function cfgT2(pick, store) {
-  const base = store.get('baseName') || pick(TXT.baseDefault);
+// 2 · Почта — дописать </title>. Пока его нет, браузер честно уносит на вкладку
+// весь код после <title>.
+function cfgT2(pick, store, lang) {
   return {
-    id: 't2', n: 2, kind: 'fields', C: C.t2,
-    spec: { kind: 'fields', focusBody: true },
-    init: () => fieldsInit(base, TXT.dots),
-    check: checkMsg,
+    id: 't2', num: 2, kind: 'line', C: C.t2,
+    spec: { kind: 'line', before: HEAD_OPEN, after: afterTitle(pick(TXT.postText)), ind: 4 },
+    init: () => ({ code: '<title>' + pick(STREET[1].name) }),
+    check: (st) => checkLine(st.code, STREET[1].name, lang),
     hint: (lv) => ({ text: C.t2.hints[lv - 1] }),
-    fx: (rec) => (rec.solved ? null
-      : { hl: rec.hint >= 2 ? 'body' : null, led: rec.hint >= 3 ? 'body' : null }),
-    aids: (rec) => (rec.solved && rec.result ? <RobotCard text={rec.result.text} /> : null),
+    fx: (rec) => (rec.solved ? null : { led: rec.hint >= 3 }),
+    h3: () => <CodeSample code={'<body>\n  …\n</body>'} />,
     drill: { make: () => ({
-      order: C.t2.drill, spec: { kind: 'fields', editTitle: false, focusBody: true },
-      init: () => fieldsInit(pick(TXT.workshop), TXT.dots), check: checkMsg
+      order: C.t2.drill,
+      spec: { kind: 'line', before: HEAD_OPEN, after: afterTitle(pick(TXT.stopText)), ind: 4 },
+      init: () => ({ code: '<title>' + pick(TXT.stop) }), check: (st) => checkLine(st.code, TXT.stop, lang)
     }) }
   };
 }
 
-function cfgT3(pick, store, lang) {
-  const after = ['  </head>'].concat(bodyWith(pick(TXT.storeText)));
+// 3 · Кинотеатр — блок body со своим текстом; схема «1 · 2 · 3» видна сразу.
+function cfgT3(pick) {
   return {
-    id: 't3', n: 3, kind: 'line', C: Object.assign({}, C.t3, { order: fillL(C.t3.order, { name: TARGET.store }) }),
-    spec: { kind: 'line', before: [DOCTYPE, '<html>', '  <head>'], after, ind: 4 },
-    init: () => ({ code: '' }),
-    check: (st) => checkLine(st.code, TARGET.store, lang),
-    hint: (lv) => ({ text: C.t3.hints[lv - 1] }),
-    fx: () => null,
-    orderExtra: () => <Schema3 />,
-    h3: () => <CodeSample code={'<title>' + pick(TXT.sampleMap) + '</title>'} />,
-    drill: { make: () => ({
-      order: fillL(C.t3.drill, { name: TXT.workshop }),
-      spec: { kind: 'line', before: [DOCTYPE, '<html>', '  <head>'],
-        after: ['  </head>'].concat(bodyWith(pick(TXT.workshopText))), ind: 4 },
-      init: () => ({ code: '' }), check: (st) => checkLine(st.code, TXT.workshop, lang)
-    }) }
-  };
-}
-
-function cfgT4(pick) {
-  return {
-    id: 't4', n: 4, kind: 'block', C: C.t4,
-    spec: { kind: 'block', before: headWith(pick(TXT.comms)), after: ['</html>'], ind: 2, empty: C.t4.empty },
+    id: 't3', num: 3, kind: 'block', C: C.t3,
+    spec: { kind: 'block', before: headWith(pick(STREET[2].name)), after: ['</html>'], ind: 2, empty: C.t3.empty },
     init: () => ({ code: '' }),
     check: (st) => checkBlock(st.code),
+    hint: (lv) => ({ text: C.t3.hints[lv - 1] }),
+    fx: (rec) => (rec.solved ? null : { led: rec.hint >= 3 }),
+    orderExtra: <Slots3 mid="text" />,
+    h3: () => <CodeSample code={'<body>\n  ' + pick(TXT.bikeText) + '\n</body>'} />,
+    drill: { make: () => ({
+      order: C.t3.drill,
+      spec: { kind: 'block', before: headWith(pick(TXT.pool)), after: ['</html>'], ind: 2, empty: C.t3.empty },
+      init: () => ({ code: '' }), check: (st) => checkBlock(st.code), orderExtra: <Slots3 mid="text" />
+    }) }
+  };
+}
+
+// 4 · Школа — нажать место, где кончается head, и вписать </head>.
+function cfgT4(pick) {
+  const lines = [DOCTYPE, '<html>', '  <head>', '    <title>' + pick(STREET[3].name) + '</title>',
+    '  <body>', '    ' + pick(TXT.schoolText), '  </body>', '</html>'];
+  const m = C.t4.miss;
+  const dlines = headWith(pick(TXT.cafe)).concat(['  <body>', '    ' + pick(TXT.cafeText), '</html>']);
+  const dm = C.t4.drillMiss;
+  return {
+    id: 't4', num: 4, kind: 'gap', C: C.t4,
+    spec: { kind: 'gap', lines, gaps: [1, 2, 3, 4, 5, 6], ind: 2, bars: true },
+    init: () => ({ at: null, code: '', miss: null }),
+    pick: (i) => (i === 3 ? { ok: true, say: C.t4.picked } : { ok: false, msg: i < 2 ? m.before : i === 2 ? m.inside : m.after }),
+    orderOf: (st) => (st.at == null ? C.t4.order : C.t4.order2),
+    check: (st) => (st.at == null ? fb('pickFirst', { tag: 'head' }, 'head') : checkCloseTag(st.code, 'head')),
     hint: (lv) => ({ text: C.t4.hints[lv - 1] }),
-    fx: () => null,
-    h3: () => <Slots3 />,
+    fx: (rec) => (rec.solved ? null : { ledGap: rec.hint >= 3 && rec.st.at == null ? 3 : null, led: rec.hint >= 3 && rec.st.at != null }),
     drill: { make: () => ({
       order: C.t4.drill,
-      spec: { kind: 'block', before: headWith(pick(TXT.beacon)), after: ['</html>'], ind: 2, empty: C.t4.empty },
+      orderOf: (st) => (st.at == null ? C.t4.drill : C.t4.drill2),
+      spec: { kind: 'gap', lines: dlines, gaps: [4, 5, 6], ind: 2, bars: true },
+      init: () => ({ at: null, code: '', miss: null }),
+      pick: (i) => (i === 6 ? { ok: true, say: C.t4.drill2 } : { ok: false, msg: i === 4 ? dm.before : dm.inside }),
+      check: (st) => (st.at == null ? fb('pickFirst', { tag: 'body' }, 'body') : checkCloseTag(st.code, 'body'))
+    }) }
+  };
+}
+
+// 5 · Свой дом — внутри готового html: head с title (своё название) и body
+// со своим текстом. Редактор во всё свободное место; чертёж виден сразу.
+function cfgT5(pick) {
+  return {
+    id: 't5', num: 5, kind: 'doc', C: C.t5,
+    spec: { kind: 'doc', big: true, bars: true },
+    init: () => ({ code: [DOCTYPE, '<html>', '  ', '</html>'].join('\n') }),
+    check: (st) => checkDoc(st.code),
+    hint: (lv, st) => {
+      if (lv === 1) return { text: C.t5.hints[0] };
+      const r = checkDoc(st.code);
+      if (lv === 2) return { text: !r.ok && C.house.hint2[r.cat] ? C.house.hint2[r.cat] : C.t5.hints[1] };
+      return { text: C.t5.hints[2], cat: fragCat(r) };
+    },
+    orderExtra: <Blueprint />,
+    h3: (rec) => <CodeSample code={FRAG[rec.hcat || 'head'](pick)} />,
+    drill: { make: () => ({
+      order: C.t5.drill,
+      spec: { kind: 'block', before: headWith(pick(TXT.workshop)), after: ['</html>'], ind: 2, empty: C.t3.empty },
       init: () => ({ code: '' }), check: (st) => checkBlock(st.code)
     }) }
   };
-}
-
-function cfgT5(pick, store, lang) {
-  const room = TARGET.rest;
-  const hello = TXT.welcomeBase;
-  return {
-    id: 't5', n: 5, kind: 'fields', C: C.t5,
-    spec: { kind: 'fields' },
-    init: () => fieldsInit(pick(hello), pick(room)),
-    check: (st) => checkSwap(st, room, hello, lang),
-    hint: (lv) => ({ text: C.t5.hints[lv - 1] }),
-    fx: (rec) => (rec.solved ? null : { hl: null, led: rec.hint >= 3 ? 'both' : null }),
-    orderExtra: () => <TargetCard a={room} b={hello} />,
-    drill: { make: () => ({
-      order: C.t5.drill, spec: { kind: 'fields' },
-      init: () => fieldsInit(pick(TXT.helloRobots), pick(TXT.workshop)),
-      check: (st) => checkSwap(st, TXT.workshop, TXT.helloRobots, lang),
-      orderExtra: <TargetCard a={TXT.workshop} b={TXT.helloRobots} />
-    }) }
-  };
-}
-
-function cfgT6(pick) {
-  const doc = [DOCTYPE, '<html>', '  <head>', '    <title>' + pick(STATIONS[5].name) + '</title>',
-    '  <body>', '    ' + pick(TXT.shieldText), '</html>'].join('\n');
-  const drillDoc = headWith(pick(TXT.workshop)).concat(['  <body>', '    ' + pick(TXT.workshopText), '</html>']).join('\n');
-  return {
-    id: 't6', n: 6, kind: 'doc', C: C.t6,
-    spec: { kind: 'doc' },
-    init: () => ({ code: doc }),
-    check: (st) => checkDoc(st.code),
-    hint: (lv) => ({ text: C.t6.hints[lv - 1] }),
-    fx: (rec) => ({ bays: true, marks: !rec.solved && rec.hint >= 3 ? gapMarks(rec.st.code) : null }),
-    orderExtra: () => <Bays />,
-    drill: { make: () => ({
-      order: C.t6.drill, spec: { kind: 'doc' },
-      init: () => ({ code: drillDoc }), check: (st) => checkDoc(st.code)
-    }) }
-  };
-}
-
-function cfgT7(pick, store, lang) {
-  const fragCat = (cat) => (cat === 'html' || cat === 'head' || cat === 'body' ? cat : cat === 'tag' ? 'body' : 'head');
-  return {
-    id: 't7', n: 7, kind: 'doc', C: C.t7,
-    // big — документ пишется с нуля: редактор занимает всё свободное место.
-    spec: { kind: 'doc', big: true },
-    init: () => ({ code: DOCTYPE + '\n' }),
-    check: (st) => checkDoc(st.code),
-    onSolved: () => {},
-    hint: (lv, st) => {
-      if (lv === 1) return { text: C.t7.hint1 };
-      const r = checkDoc(st.code);
-      const cat = r.ok ? 'none' : r.cat;
-      if (lv === 2) return { text: C.t7.hint2[cat] || C.t7.hint2.none };
-      const fc = fragCat(cat);
-      return { text: C.t7.hint3[fc], cat: fc };
-    },
-    fx: () => null,
-    // Чертёж: на телефоне — под заданием, на компьютере — под браузером, где
-    // в левой колонке есть место.
-    orderExtra: () => <div className="bp-narrow"><Blueprint /></div>,
-    aids: () => <div className="bp-wide"><Blueprint /></div>,
-    h3: (rec) => (rec.hcat ? <CodeSample code={FRAG[rec.hcat](pick)} /> : null),
-    drill: { make: (cat) => {
-      if (cat === 'html') {
-        const code = [DOCTYPE, '  <head>', '    <title>' + pick(TXT.storeShort) + '</title>', '  </head>',
-          '  <body>', '    ' + pick(TXT.partsText), '  </body>', ''].join('\n');
-        return { order: C.t7.drill.html, spec: { kind: 'doc' }, init: () => ({ code }), check: (st) => checkDoc(st.code) };
-      }
-      if (cat === 'body') {
-        return { order: C.t7.drill.body,
-          spec: { kind: 'block', before: headWith(pick(TXT.workshop)), after: ['</html>'], ind: 2, empty: C.t4.empty },
-          init: () => ({ code: '' }), check: (st) => checkBlock(st.code) };
-      }
-      const before = [DOCTYPE, '<html>'];
-      const after = bodyWith(pick(TXT.workshopText));
-      return { order: fillL(C.t7.drill.head, { name: TXT.workshop }),
-        spec: { kind: 'block', before, after, ind: 2 },
-        init: () => ({ code: '' }),
-        check: (st) => {
-          if (st.code.trim() && !hasTags(st.code)) return fb('lineTextOnly', null, 'head');
-          const r = checkDoc(before.concat([st.code]).concat(after).join('\n'));
-          if (!r.ok) return r;
-          const want = pick(TXT.workshop);
-          return normName(r.result.title) === normName(want) ? r : fb('lineWrongName', { name: TXT.workshop }, 'head');
-        } };
-    } }
-  };
-}
-
-// Задание 6: отсеки — скобки вложенности; незакрытые — пунктиром. Видны
-// сразу, без кнопки «Показать отсеки» (заказчик, 15.10.2026); над кодом
-// остаётся только легенда.
-function Bays() {
-  const pick = usePick();
-  return (
-    <div className="bays">
-      <span className="bays-legend">
-        <span className="bl-solid" aria-hidden="true" />— {pick(C.t6.legendClosed)}
-      </span>
-      <span className="bays-legend">
-        <span className="bl-dash" aria-hidden="true" />— {pick(C.t6.legendOpen)}
-      </span>
-    </div>
-  );
 }
 
 const ST1 = ({ p }) => <TaskScreen p={p} make={cfgT1} />;
@@ -8561,28 +9067,64 @@ const ST2 = ({ p }) => <TaskScreen p={p} make={cfgT2} />;
 const ST3 = ({ p }) => <TaskScreen p={p} make={cfgT3} />;
 const ST4 = ({ p }) => <TaskScreen p={p} make={cfgT4} />;
 const ST5 = ({ p }) => <TaskScreen p={p} make={cfgT5} />;
-const ST6 = ({ p }) => <TaskScreen p={p} make={cfgT6} />;
-const ST7 = ({ p }) => <TaskScreen p={p} make={cfgT7} />;
 
 // =============================================================================
-// ВСТУПЛЕНИЕ И ФИНАЛ
+// ХУК — улица целая; одно касание «Ветер!»: дома выцветают и косятся, с них
+// слетают бумажки-вывески (stop-motion, шорох). Потом Коди называет задачу.
 // =============================================================================
 function SIntro({ p }) {
   const pick = usePick();
   const store = useStore();
   const c = C.intro;
-  const [speaker, , spoken] = useVoice(c.cast.map((m) => ({ text: m.text, pose: m.pose })));
-  const canGo = useAdvanceGate(true, spoken);
-  const lit = STATIONS.map((s, i) => isLit(store, i));
+  const [done, setDone] = useState(() => !!(store.get('intro') || {}).done);
+  const [blown, setBlown] = useState(false);
+  const [speaker, , spoken, sayNow] = useVoice([{ text: done ? c.plan : c.say, pose: 'hello' }]);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(done, spoken);
+  const led = useIdleLed(canTap && !done, 0);
+  const blow = () => {
+    if (!canTap || done) return;
+    sfx('pop', true);
+    setBlown(true);
+    setDone(true);
+    store.set('intro', { done: true });
+    sayNow(joinL(c.blown, c.plan), 'wonder');
+  };
   return (
-    <PStage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.cast[2].text}
+    <PStage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={done ? c.plan : c.ask}
       nav={<><BackBtn onPrev={p.prev} /><NextBtn disabled={!canGo} onClick={p.next} label={UI.start} /></>}>
-      <p className="ask hook-ask intro-ask">{pick(c.order)}</p>
-      <BaseMap lit={lit} room={roomTitle(store)} />
+      <Sheet cls="pp-sheet pp-sheet-intro">
+        <PAsk text={done ? c.order : c.ask} />
+        <StreetMap whole={!done} blown={blown} />
+        {done ? <p className="pp-intro-note kz-piece">{pick(c.note)}</p> : (
+          <div className="pp-wind-row">
+            <button type="button" className={'kz-btn is-coral pp-wind' + (led ? ' is-led' : '')} disabled={!canTap} onClick={blow}>
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <path d="M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7" />
+              </svg>
+              {pick(UI.wind)}
+            </button>
+          </div>
+        )}
+      </Sheet>
     </PStage>
   );
 }
 
+// Переключатель «Страница / Код» на телефоне в выводе.
+function PSeg({ value, onChange }) {
+  const pick = usePick();
+  return (
+    <div className="pp-seg" role="radiogroup">
+      {[{ v: 'page', label: UI.page }, { v: 'code', label: UI.code }].map((o) => (
+        <button key={o.v} type="button" role="radio" aria-checked={value === o.v} className={'pp-seg-b' + (value === o.v ? ' is-on' : '')}
+          onClick={() => { sfx('tap', true); onChange(o.v); }}>{pick(o.label)}</button>
+      ))}
+    </div>
+  );
+}
+
+// ВЫВОД — улица горит, своя страница и её код, что ученик теперь умеет, следующий урок.
 function SFin({ p }) {
   const pick = usePick();
   const store = useStore();
@@ -8590,100 +9132,81 @@ function SFin({ p }) {
   const [speaker, , spoken] = useVoice([{ text: c.say, pose: 'celebrate' }]);
   const canGo = useAdvanceGate(true, spoken);
   const [view, setView] = useState('page');
-  const res = (store.get('t7') || {}).result;
-  const lit = STATIONS.map((s, i) => isLit(store, i));
+  const res = (store.get('t5') || {}).result;
+  useEffect(() => { const t = setTimeout(() => celebrate(), 900); return () => clearTimeout(t); }, []);
   return (
     <PStage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.say}
       nav={<><BackBtn onPrev={p.prev} /><NextBtn disabled={!canGo} onClick={p.finish} label={UI.finish} /></>}>
-      <div className="fin-map-wide"><BaseMap lit={lit} room={roomTitle(store)} glow /></div>
-      <div className="fin-map-narrow"><BaseStrip cur={6} /></div>
-      {res ? (
-        <div className="fin">
-          <div className="fin-top">
-            <span className="saved-stamp"><Icon name="check" size={18} />{pick(UI.ready)}</span>
-            <span className="only-narrow">
-              <SegToggle value={view} onChange={setView}
-                options={[{ v: 'page', label: UI.page }, { v: 'code', label: UI.code }]} />
-            </span>
+      <Sheet cls="pp-sheet pp-sheet-fin">
+        <StreetMap glow />
+        {res ? (
+          <div className="pp-fin">
+            <div className="pp-fin-top">
+              <span className="pp-stamp kz-piece"><Icon name="check" size={18} />{pick(UI.ready)}</span>
+              <span className="pp-only-narrow"><PSeg value={view} onChange={setView} /></span>
+            </div>
+            <div className={'pp-fin-pair view-' + view}>
+              <div className="pp-fin-b"><PageView title={res.title} text={res.text} /></div>
+              <div className="pp-fin-c"><Pad><CodeSample code={res.html} /></Pad></div>
+            </div>
+            <div className="pp-skills kz-piece">
+              {c.skills.map((sk, i) => (
+                <span className="pp-skill" key={i} style={{ '--dl': (0.2 + i * 0.12) + 's' }}><Icon name="check" size={13} />{pick(sk)}</span>
+              ))}
+            </div>
+            <div className="kz-next"><Icon name="doc" size={18} /><span>{pick(UI.nextLesson)}: <b>{pick(UI.next)}</b></span></div>
           </div>
-          <div className={'fin-pair view-' + view}>
-            <div className="fin-b"><MiniBrowser title={res.title} page={res.text} /></div>
-            <div className="fin-c"><CodeSample code={res.html} /></div>
-          </div>
-          <div className="skills fin-skills">
-            {c.skills.map((sk, i) => (
-              <div className="skill-row" key={i} style={{ animationDelay: (0.2 + i * 0.12) + 's' }}>
-                <span className="skill-tick"><Icon name="check" size={14} /></span>
-                {pick(sk)}
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
+        ) : null}
+      </Sheet>
     </PStage>
   );
 }
 
 // =============================================================================
-// РЕЕСТР ЭКРАНОВ
+// РЕЕСТР ЭКРАНОВ, АРТЕФАКТ, КОРЕНЬ
 // =============================================================================
 const SCREENS = [
-  { id: 'intro', code: 'HOOK',     Comp: SIntro },
-  { id: 't1',    code: 'LEVEL-1',  Comp: ST1 },
-  { id: 't2',    code: 'LEVEL-2',  Comp: ST2 },
-  { id: 't3',    code: 'LEVEL-3',  Comp: ST3 },
-  { id: 't4',    code: 'LEVEL-4',  Comp: ST4 },
-  { id: 't5',    code: 'CHECK-1',  Comp: ST5 },
-  { id: 't6',    code: 'CHECK-2',  Comp: ST6 },
-  { id: 't7',    code: 'RESULT',   Comp: ST7 },
-  { id: 'fin',   code: 'PREVIEW',  Comp: SFin }
+  { id: 'intro', code: 'HOOK', Comp: SIntro },
+  { id: 't1', code: 'LEVEL-1', Comp: ST1 }, { id: 't2', code: 'LEVEL-2', Comp: ST2 },
+  { id: 't3', code: 'LEVEL-3', Comp: ST3 }, { id: 't4', code: 'CHECK-1', Comp: ST4 },
+  { id: 't5', code: 'RESULT', Comp: ST5 },
+  { id: 'fin', code: 'PREVIEW', Comp: SFin }
 ];
 
-// «Повторить» стирает только текущее задание. Название базы (baseName) из
-// задания 1 не трогаем: оно уже стоит на вкладке задания 2.
-const SCREEN_RESET = {
-  intro: [], t1: ['t1'], t2: ['t2'], t3: ['t3'], t4: ['t4'], t5: ['t5'], t6: ['t6'], t7: ['t7'], fin: []
-};
+// «Повторить» стирает только текущий экран.
+const SCREEN_RESET = { intro: ['intro'], t1: ['t1'], t2: ['t2'], t3: ['t3'], t4: ['t4'], t5: ['t5'], fin: [] };
 
-// Артефакт практики — страница комнаты из задания 7, как её написал ребёнок.
-function makeArtifact(store) {
-  const r = (store.get('t7') || {}).result;
+// Артефакт практики — страница своего дома, как её написал ученик.
+function practiceArtifact(store) {
+  const r = (store.get('t5') || {}).result;
   if (!r) return null;
   return { type: 'html-page', title: r.title, text: r.text, html: r.html };
 }
 
-// =============================================================================
-// КОРНЕВОЙ КОМПОНЕНТ
-// =============================================================================
 export default function HtmlPractice01({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
-  // Голос от LMS (как у эталона математики): если передан, он главнее голоса реплики.
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
     meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
-    extraPayload: (store) => ({ artifact: makeArtifact(store) })
+    extraPayload: (store) => ({ artifact: practiceArtifact(store) })
   });
+  useParallax();
+  usePaperSound();
   const cur = SCREENS[R.i];
   const Comp = cur.Comp;
-  // Прогрев озвучки: реплики этого экрана и следующего заказываются заранее,
-  // с тем же произношением тегов, что и в SpokenTags.
+  // Прогрев озвучки: реплики этого экрана и следующего — заранее.
   const nextId = SCREENS[R.i + 1] && SCREENS[R.i + 1].id;
   useEffect(() => {
     if (!R.audio || !R.audio.warm) return undefined;
     const t = setTimeout(() => {
-      R.audio.warm(heroLines(C[cur.id], R.lang).concat(heroLines(C[nextId], R.lang))
-        .map((s) => spokenHtml(s, R.lang)));
+      R.audio.warm(heroLines(C[cur.id], R.lang).concat(heroLines(C[nextId], R.lang)).map((s) => spokenHtml(s, R.lang)));
     }, 700);
     return () => clearTimeout(t);
   }, [cur.id, nextId, R.lang]); // eslint-disable-line react-hooks/exhaustive-deps
-  const p = {
-    screen: R.i, total: SCREENS.length,
-    next: R.next, prev: R.i > 0 ? R.prev : null,
-    finish: R.finish, name: R.displayName
-  };
+  // Переход «разбор и сборка» — на «Дальше» и «Назад», как в уроке 1.
+  const go = useKzTransition(cur.id + ':' + R.runN);
+  const p = { screen: R.i, total: SCREENS.length, next: go(R.next), prev: R.i > 0 ? go(R.prev) : null, finish: R.finish, name: R.displayName };
   return (
     <R.Shell css={LESSON_CSS + CANON_UI_CSS}>
-      {/* После финиша урок рисует только фон: поверх него платформа
-          показывает своё окно. */}
       <SpokenTags>
         {!R.done ? <Comp key={cur.id + ':' + R.runN} p={p} /> : null}
       </SpokenTags>
@@ -8691,441 +9214,996 @@ export default function HtmlPractice01({ studentName, lang, ttsApiBase, voiceGen
   );
 }
 
-// =============================================================================
-// CSS УРОКА — дописывается к CSS_BASE канона. CANON_SCREEN_CSS (типовые экраны
-// и механики) идёт первым, правки вёрстки канона (CANON_UI_CSS) — последними.
-// Код, мини-браузер, кнопки-символы — те же, что в уроке 1.
-// =============================================================================
 const LESSON_CSS = CANON_SCREEN_CSS + `
-.lesson-root { --ind: 1.2em; --gut: 2.3em; --cv-fs: clamp(12px, 3.3vw, 15px); --ed-fs: 16px; --gw: 50px; }
+/* ── БУМАЖНЫЙ КОЛЛАЖ (урок 1 курса HTML — эталон, по ролику html.mp4) ─────────────────
+   Стол — фон курса (как в остальных уроках, заказчик 20.10.2026; раньше был
+   крафт #D8C4A1), лист — кремовая бумага с рваным краем, вырезки — цветная
+   бумага с фактурой и мягкой тенью на нижний слой. Движение ступенчатое,
+   как stop-motion: keyframes по кадрам и steps(1, end). Префикс kz-. */
+/* Цвет бумажек: теги, строки кода, карточки, страница в браузере, вырезки в лотке
+   (заказчик, 20.10.2026: пробуем горчицу; было #FBF6EA). Меняется здесь одним числом. */
+:root { --kz-piece: #F0B13F; }
+.stage .stage-header, .stage .stage-nav { background: transparent; }
+.stage .stage-content { overflow: visible; }
+.stage-content::before, .stage-content::after { display: none; }
+.stage-content > .limit { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.stage-content > .limit > .kz-sheet { flex: 1 1 auto; }
+
+/* Фактура бумаги: мелкое зерно + мягкие пятна (одна картинка на всё). */
+.kz-cut-in::after, .kz-sheet-in::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; opacity: .55;
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .27  0 0 0 0 .16  0 0 0 .28 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='420' height='420'><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='.012' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .4  0 0 0 0 .3  0 0 0 0 .18  0 0 0 .16 0'/></filter><rect width='100%' height='100%' filter='url(%23m)'/></svg>");
+}
+
+/* Вырезка: внешний слой — движение (transform) и тень, внутренний — бумага
+   с рваным краем (clip-path) и лёгкая «дрожь» stop-motion (translate). */
+.kz-cut { position: absolute; display: block; rotate: var(--r, 0deg);
+  filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .32)) drop-shadow(0 5px 7px rgba(74, 48, 18, .14)); }
+.kz-cut.kz-flow { position: relative; }
+.kz-cut-in { position: absolute; inset: 0; display: block; overflow: hidden; }
+.kz-cut.is-hl { filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 5px var(--hl, #E0643F)) drop-shadow(0 4px 6px rgba(74, 48, 18, .2)); }
+.kz-cut.is-tap { cursor: pointer; }
+.kz-boil > .kz-cut-in { animation: kzBoil 1.26s steps(1, end) infinite; animation-delay: var(--bd, 0s); }
+
+/* Лист и стол */
+.kz-sheet { position: relative; flex: 1 1 auto; min-height: 0; width: 100%; display: flex; }
+.kz-sheet-in { position: absolute; inset: 0; background: #FBF6EA; }   /* лист (заказчик, 20.10.2026; было #EFE7D6) */
+.kz-sheet-wrap { position: absolute; inset: 0; filter: drop-shadow(0 2px 2px rgba(74, 48, 18, .28)) drop-shadow(0 10px 14px rgba(74, 48, 18, .16)); }
+.kz-sheet-body { position: relative; z-index: 1; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: clamp(8px, 1.6dvh, 14px);
+  padding: clamp(12px, 2.4dvh, 22px) clamp(12px, 2.4vw, 26px); }
+.kz-deco { position: absolute; z-index: 2; pointer-events: none;
+  translate: calc(var(--kzx, 0) * var(--dp, 6) * 1px) calc(var(--kzy, 0) * var(--dp, 6) * 1px); }
+.kz-deco-tape { left: -14px; top: 4px; width: clamp(54px, 9vw, 110px); height: clamp(14px, 2.2vw, 22px); }
+.kz-deco-tri { right: -14px; top: 6px; width: clamp(26px, 4vw, 46px); height: clamp(30px, 4.6vw, 52px); }
+.kz-deco-dot { left: -16px; bottom: 10px; width: clamp(30px, 4.6vw, 56px); height: clamp(30px, 4.6vw, 56px); }
+.kz-par { translate: calc(var(--kzx, 0) * var(--dp, 3) * 1px) calc(var(--kzy, 0) * var(--dp, 3) * 1px); }
+
+/* Ступенчатые движения (≈12 кадров в секунду). */
+.kz-a-drop { animation: kzDrop .66s steps(1, end) both; animation-delay: var(--dl, 0s); }
+.kz-a-rise { animation: kzRise .66s steps(1, end) both; animation-delay: var(--dl, 0s); }
+.kz-a-left { animation: kzLeft .66s steps(1, end) both; animation-delay: var(--dl, 0s); }
+.kz-a-right { animation: kzRight .66s steps(1, end) both; animation-delay: var(--dl, 0s); }
+.kz-a-pop { animation: kzPop .5s steps(1, end) both; animation-delay: var(--dl, 0s); }
+.kz-a-stamp { animation: kzStamp .5s steps(1, end) both; animation-delay: var(--dl, 0s); }
+.kz-a-out { animation: kzOut .58s steps(1, end) both; animation-delay: var(--dl, 0s); pointer-events: none; }
+.kz-a-shake { animation: kzShake .5s steps(1, end) both; }
+@keyframes kzDrop {
+  0% { transform: translate(0, -160%) rotate(-16deg); } 13% { transform: translate(0, -112%) rotate(-11deg); }
+  26% { transform: translate(0, -66%) rotate(-7deg); } 39% { transform: translate(0, -28%) rotate(-3deg); }
+  52% { transform: translate(0, 5%) rotate(2deg); } 65% { transform: translate(0, -4%) rotate(-1.2deg); }
+  78% { transform: translate(0, 1.5%) rotate(.6deg); } 100% { transform: none; } }
+@keyframes kzRise {
+  0% { transform: translate(0, 170%) rotate(10deg); } 15% { transform: translate(0, 110%) rotate(7deg); }
+  30% { transform: translate(0, 58%) rotate(4deg); } 45% { transform: translate(0, 18%) rotate(1deg); }
+  60% { transform: translate(0, -6%) rotate(-1.5deg); } 75% { transform: translate(0, 2%) rotate(.5deg); } 100% { transform: none; } }
+@keyframes kzLeft {
+  0% { transform: translate(-260%, -10%) rotate(-24deg); } 15% { transform: translate(-170%, -6%) rotate(-16deg); }
+  30% { transform: translate(-90%, -3%) rotate(-9deg); } 45% { transform: translate(-30%, 0) rotate(-3deg); }
+  60% { transform: translate(6%, 0) rotate(2deg); } 75% { transform: translate(-2%, 0) rotate(-.5deg); } 100% { transform: none; } }
+@keyframes kzRight {
+  0% { transform: translate(260%, -10%) rotate(24deg); } 15% { transform: translate(170%, -6%) rotate(16deg); }
+  30% { transform: translate(90%, -3%) rotate(9deg); } 45% { transform: translate(30%, 0) rotate(3deg); }
+  60% { transform: translate(-6%, 0) rotate(-2deg); } 75% { transform: translate(2%, 0) rotate(.5deg); } 100% { transform: none; } }
+@keyframes kzPop {
+  0% { transform: scale(0) rotate(-20deg); } 20% { transform: scale(.55) rotate(-9deg); } 40% { transform: scale(1.14) rotate(4deg); }
+  60% { transform: scale(.95) rotate(-2deg); } 80% { transform: scale(1.03) rotate(.5deg); } 100% { transform: none; } }
+@keyframes kzStamp {
+  0% { transform: scale(1.5) rotate(-8deg); opacity: .2; } 25% { transform: scale(1.18) rotate(-4deg); opacity: 1; }
+  50% { transform: scale(.94) rotate(2deg); } 75% { transform: scale(1.02) rotate(-.5deg); } 100% { transform: none; } }
+@keyframes kzOut {
+  0% { transform: none; } 20% { transform: translate(4%, -16%) rotate(6deg); } 40% { transform: translate(14%, -60%) rotate(14deg); }
+  60% { transform: translate(26%, -120%) rotate(24deg); } 80% { transform: translate(38%, -190%) rotate(34deg); opacity: .6; }
+  100% { transform: translate(50%, -260%) rotate(44deg); opacity: 0; } }
+@keyframes kzShake { 0% { transform: none; } 20% { transform: translateX(-6px) rotate(-2deg); } 40% { transform: translateX(5px) rotate(2deg); }
+  60% { transform: translateX(-3px) rotate(-1deg); } 80% { transform: translateX(2px); } 100% { transform: none; } }
+@keyframes kzBoil { 0% { translate: 0 0; } 33% { translate: .6px -.5px; } 66% { translate: -.5px .4px; } 100% { translate: 0 0; } }
+@keyframes kzLed { 0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 79, 40, 0)); } 50% { filter: drop-shadow(0 0 7px rgba(255, 79, 40, .95)); } }
+
+/* Строка задания — бумажная полоска. */
+.kz-ask { position: relative; align-self: center; max-width: 100%; margin: 0; padding: 7px 16px 8px; background: #FBF6EA; color: #1F2A44;
+  font: 700 clamp(15px, 2.1dvh, 18px)/1.3 'Manrope', sans-serif; text-align: center; rotate: -.6deg;
+  clip-path: polygon(0 6%, 4% 0, 30% 5%, 61% 0, 96% 4%, 100% 0, 99% 52%, 100% 100%, 70% 95%, 38% 100%, 3% 96%, 0 100%, 1% 48%);
+  filter: drop-shadow(0 2px 2px rgba(74, 48, 18, .22)); }
+.kz-ask-n { display: inline-block; margin-right: 8px; padding: 0 7px; border-radius: 6px; background: #1F2A44; color: #FBF6EA; font: 700 12px/20px 'JetBrains Mono', monospace; vertical-align: 2px; }
+.kz-ask.is-hint { background: #FFF1C9; color: #5B4300; }
+.kz-ask-wrap { display: flex; justify-content: center; filter: drop-shadow(0 2px 2px rgba(74, 48, 18, .2)); }
+
+/* Бирка-тег на скотче */
+.kz-label { position: absolute; display: inline-flex; z-index: 4; }
+.kz-label.kz-flow { position: relative; }
+.kz-label-paper { position: relative; display: inline-block; padding: 4px 12px 5px; background: var(--kz-piece); color: #1F2A44;
+  font: 700 clamp(16px, 2.9dvh, 24px)/1.2 'JetBrains Mono', ui-monospace, monospace; white-space: nowrap;
+  clip-path: polygon(0 8%, 12% 0, 40% 6%, 70% 0, 100% 7%, 97% 50%, 100% 94%, 64% 100%, 30% 93%, 0 100%, 3% 46%);
+  filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .3)); }
+.kz-label-tape { position: absolute; left: -9px; top: -8px; width: 32px; height: 14px; background: rgba(238, 222, 176, .78); rotate: -28deg; z-index: 1;
+  clip-path: polygon(0 10%, 8% 0, 16% 12%, 92% 0, 100% 20%, 93% 50%, 100% 85%, 90% 100%, 10% 90%, 0 100%, 6% 55%); }
+.kz-label.is-tap { cursor: pointer; }
+.kz-label.is-on .kz-label-paper { background: #FFF1C9; }
+.kz-label.is-led .kz-label-paper { animation: kzLed 1.2s ease-in-out infinite; }
+.kz-tk-b { color: #E0643F; }
+.kz-tk-n { color: #1F2A44; }
+
+/* Код — бумажные полоски */
+.kz-code { position: relative; display: flex; flex-direction: column; gap: 5px; min-width: 0; font: 600 clamp(14px, 1.9dvh, 17px)/1.35 'JetBrains Mono', ui-monospace, monospace; }
+.kz-line { position: relative; display: flex; align-items: center; flex-wrap: wrap; gap: 2px; min-height: 30px; padding: 4px 12px 4px calc(12px + var(--d, 0) * 1.4em);
+  background: var(--kz-piece); color: #1F2A44; rotate: var(--r, 0deg);
+  clip-path: polygon(0 10%, 2% 0, 35% 6%, 68% 0, 99% 8%, 100% 45%, 99% 100%, 66% 94%, 33% 100%, 1% 93%, 0 55%);
+  filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .26)); }
+.kz-line.is-read { background: #FFE4D8; }
+.kz-line.is-hl { background: #FFF1C9; }
+.kz-line.is-new { animation: kzDrop .6s steps(1, end) both; }
+.kz-line.is-mark { background: #FFF1C9; }
+.kz-line.is-gap { background: #F5EDDC; }
+.kz-line .kz-txt { font-family: 'Manrope', sans-serif; font-weight: 700; color: #1F2A44; }
+.kz-line .kz-dim { color: #8C8476; font-family: 'Manrope', sans-serif; font-weight: 600; }
+.kz-line.kz-tap { cursor: pointer; border: none; text-align: left; width: 100%; font: inherit; }
+.kz-line.is-sel { background: #FFE4D8; }
+.kz-line.is-cur { background: #FFF6DE; }
+.kz-line .led { position: absolute; }
+.kz-dash { flex: 1 1 auto; height: 14px; border: 1.5px dashed rgba(31, 42, 68, .25); border-radius: 4px; }
+
+/* Поле ввода внутри полоски */
+.kz-line .tk-input { min-width: 4em; padding: 1px 6px; border: none; border-bottom: 2px dashed #E0643F; background: #fff8ec; border-radius: 4px; color: #1F2A44;
+  font: 700 16px 'Manrope', sans-serif; outline: none; resize: none; line-height: 1.3; }
+.kz-line .tk-input.kz-tag-in { font-family: 'JetBrains Mono', monospace; }
+.kz-line .tk-input:focus { background: #fff; border-bottom-color: #1F2A44; }
+.kz-gap-led .tk-input { animation: kzLed 1.2s ease-in-out infinite; }
+
+/* Бумажный браузер — Chrome в Windows из бумаги */
+.kz-br { position: relative; width: 100%; aspect-ratio: 16 / 10.5; min-height: 0; flex: none; align-self: center;
+  max-width: min(100%, calc(var(--brh, 34dvh) * 1.52)); display: flex; flex-direction: column; padding: 0 2.2% 2.4%; }
+.kz-br.is-short { aspect-ratio: 16 / 7.4; max-width: min(100%, calc(var(--brh, 24dvh) * 2.16)); }
+.kz-cut.kz-br-frame { inset: 0; }
+.kz-br-bar { position: relative; z-index: 2; flex: 0 0 auto; height: clamp(26px, 4dvh, 36px); display: flex; align-items: flex-end; gap: 6px; padding-left: 2%; }
+.kz-br-tab { position: relative; display: flex; align-items: center; gap: 7px; max-width: 62%; height: 80%; padding: 0 12px 0 10px; background: #E6DCC6;
+  font: 700 clamp(11.5px, 1.7dvh, 14px)/1 'Manrope', sans-serif; color: #1F2A44;
+  clip-path: polygon(0 100%, 3% 30%, 7% 6%, 13% 0, 87% 0, 93% 6%, 97% 30%, 100% 100%); }
+.kz-br-tab.is-hl { background: #F0B13F; box-shadow: 0 0 0 2px #FBF6EA, 0 0 10px 2px rgba(240, 177, 63, .9); }
+.kz-br-fav { flex: none; width: 11px; height: 11px; border-radius: 3px; background: #E0643F; rotate: -6deg; }
+.kz-br-tab-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kz-br-tab-t.is-file { color: #7E7666; font-style: italic; font-weight: 600; }
+.kz-br-x { flex: none; position: relative; width: 9px; height: 9px; opacity: .55; }
+.kz-br-x::before, .kz-br-x::after { content: ''; position: absolute; left: 4px; top: -1px; width: 1.6px; height: 11px; background: #1F2A44; rotate: 45deg; }
+.kz-br-x::after { rotate: -45deg; }
+.kz-br-plus { position: relative; flex: none; align-self: center; width: 14px; height: 14px; margin-top: 4px; opacity: .8; }
+.kz-br-plus::before, .kz-br-plus::after { content: ''; position: absolute; left: 6px; top: 1px; width: 2px; height: 12px; background: #E6DCC6; }
+.kz-br-plus::after { rotate: 90deg; }
+.kz-br-win { margin-left: auto; align-self: center; display: flex; gap: clamp(10px, 1.6vw, 16px); padding-right: 3%; margin-top: 2px; }
+.kz-br-win i { position: relative; display: block; width: 11px; height: 11px; opacity: .85; }
+.kz-w-min::before { content: ''; position: absolute; left: 0; right: 0; bottom: 4px; height: 1.8px; background: #E6DCC6; }
+.kz-w-max { border: 1.8px solid #E6DCC6; border-radius: 1px; width: 10px !important; height: 10px !important; }
+.kz-w-close::before, .kz-w-close::after { content: ''; position: absolute; left: 5px; top: -1px; width: 1.8px; height: 13px; background: #E6DCC6; rotate: 45deg; }
+.kz-w-close::after { rotate: -45deg; }
+.kz-br-tool { position: relative; z-index: 2; flex: 0 0 auto; height: clamp(22px, 3.4dvh, 30px); display: flex; align-items: center; gap: 8px; padding: 0 2.5%; }
+.kz-cut.kz-br-tool-bg { inset: 0; }
+.kz-br-arrows { position: relative; display: flex; gap: 10px; padding-left: 2px; }
+.kz-br-arrows i { position: relative; width: 8px; height: 8px; border-left: 2px solid #1F2A44; border-bottom: 2px solid #1F2A44; opacity: .6; }
+.kz-ar-l { rotate: 45deg; }
+.kz-ar-r { rotate: -135deg; opacity: .3 !important; }
+.kz-br-url { position: relative; flex: 1 1 auto; min-width: 0; height: 70%; display: flex; align-items: center; gap: 6px; padding: 0 10px; background: #FBF6EA; border-radius: 999px;
+  font: 600 clamp(10px, 1.45dvh, 12.5px)/1 'Manrope', sans-serif; color: #5F584B; overflow: hidden; white-space: nowrap; }
+.kz-br-lock { flex: none; width: 8px; height: 8px; border-radius: 2px; background: #2A8C7E; }
+.kz-br-body { position: relative; z-index: 1; flex: 1 1 auto; min-height: 0; }
+.kz-cut.kz-br-paper { inset: 0; }
+.kz-br-page { position: absolute; inset: 9% 5% 8% 5%; z-index: 2; overflow: hidden;
+  font: 600 clamp(13px, 2dvh, 18px)/1.35 'Times New Roman', Times, serif; color: #1F2A44; }
+.kz-br.is-hl-page .kz-cut.kz-br-paper { filter: drop-shadow(0 0 4px #2A8C7E) drop-shadow(0 4px 6px rgba(74, 48, 18, .2)); }
+.kz-br.is-hl-page .kz-br-page { outline: 3px solid #2A8C7E; outline-offset: 4px; border-radius: 4px; }
+.kz-br-text { position: relative; overflow-wrap: anywhere; }
+@media (max-width: 759px) {
+  .kz-br-win { gap: 9px; }
+  .kz-br-win i { width: 9px; height: 9px; }
+  .kz-br-arrows { display: none; }
+}
+
+/* Кнопки на бумаге */
+.kz-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 8px 20px; border: none; cursor: pointer;
+  background: #1F2A44; color: #FBF6EA; font: 800 16px 'Manrope', sans-serif; rotate: -.8deg;
+  clip-path: polygon(0 8%, 6% 0, 50% 5%, 95% 0, 100% 10%, 98% 55%, 100% 92%, 94% 100%, 48% 95%, 5% 100%, 0 90%, 2% 45%);
+  filter: drop-shadow(0 2px 2px rgba(74, 48, 18, .3)); }
+.kz-btn:disabled { opacity: .45; cursor: default; }
+.kz-btn.is-coral { background: #E0643F; }
+.kz-btn.is-teal { background: #2A8C7E; }
+.kz-btn.is-ghost { background: #FBF6EA; color: #1F2A44; }
+.kz-btn.is-sel { background: #F0B13F; color: #1F2A44; }
+.kz-btn.is-ok { background: #2A8C7E; color: #fff; }
+.kz-btn.is-off { opacity: .35; }
+.kz-btn.is-led { animation: kzLed 1.2s ease-in-out infinite; }
+.kz-btn .led { top: 2px; right: 2px; }
+.kz-row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
+
+/* Сцена: место для человечка, рамки и браузера */
+.kz-scene { position: relative; flex: 1 1 auto; min-height: 0; display: flex; gap: clamp(10px, 2vw, 26px); align-items: center; justify-content: center; }
+.kz-stagebox { position: relative; height: 100%; max-height: 100%; min-height: 0; aspect-ratio: 1 / 1.08; }
+.kz-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; flex: 1 1 0; max-width: 560px; }
+@media (max-width: 759px) {
+  .kz-scene { flex-direction: column; align-items: stretch; gap: 8px; }
+  .kz-scene > .kz-stagebox { align-self: center; height: auto; width: min(62vw, 30dvh); }
+  .kz-scene.is-tight > .kz-stagebox { width: min(46vw, 22dvh); }
+  .kz-col { max-width: none; flex: 0 0 auto; }
+}
+
+/* Человечек */
+.kz-man { position: absolute; inset: 0; }
+.kz-man .kz-cut.kz-face-dot { border-radius: 50%; }
+.kz-man-title { z-index: 1; }
+.kz-frame-lbl-top { left: -2%; top: -4%; }
+.kz-frame-lbl-bot { right: -2%; bottom: -5%; }
+
+/* План — бумажные карточки */
+.kz-plan { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(10px, 2dvh, 18px); width: min(100%, 640px); align-self: center; margin: auto 0; }
+.kz-card { position: relative; min-height: clamp(84px, 15dvh, 140px); border: none; background: none; padding: 0; cursor: pointer; }
+.kz-card-face { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px 12px; text-align: center;
+  font: 800 clamp(14px, 2dvh, 17px)/1.25 'Manrope', sans-serif; color: #1F2A44; }
+.kz-card-face .kz-card-n { font: 800 clamp(24px, 4dvh, 36px)/1 'Unbounded', 'Manrope', sans-serif; color: rgba(31, 42, 68, .75); }
+.kz-card.is-open .kz-card-face { color: #1F2A44; }
+
+/* Прогноз: две карточки выбора */
+.kz-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: min(100%, 520px); align-self: center; }
+.kz-pick .kz-btn { width: 100%; min-height: 54px; }
+
+/* Сортировка вырезок */
+.kz-tray { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.kz-scrap { position: relative; border: none; padding: 7px 14px; background: var(--kz-piece); color: #1F2A44; cursor: grab; touch-action: none;
+  font: 800 15px 'Manrope', sans-serif; rotate: var(--r, 0deg);
+  clip-path: polygon(0 10%, 8% 0, 50% 6%, 92% 0, 100% 12%, 97% 52%, 100% 90%, 90% 100%, 50% 94%, 8% 100%, 0 88%, 3% 50%);
+  filter: drop-shadow(0 2px 2px rgba(74, 48, 18, .3)); }
+.kz-scrap.is-sel { background: #FFE4D8; translate: 0 -3px; }
+.kz-scrap.is-used { opacity: .25; cursor: default; }
+.kz-scrap.is-led { animation: kzLed 1.2s ease-in-out infinite; }
+.kz-scrap-pic { display: inline-flex; align-items: center; gap: 6px; }
+.kz-zones { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
+.kz-zone { position: relative; min-height: clamp(110px, 24dvh, 230px); border: none; padding: 0; background: none; cursor: pointer; }
+.kz-zone-in { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 6px; padding: 8px; }
+.kz-zone.is-hover .kz-cut, .kz-zone.is-led .kz-cut { filter: drop-shadow(0 0 6px rgba(255, 79, 40, .9)); }
+.kz-zone-items { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+
+/* Сборка каркаса */
+.kz-build { display: flex; gap: 14px; align-items: flex-start; width: 100%; min-height: 0; }
+.kz-build > .kz-code { flex: 1 1 58%; }
+.kz-build-side { flex: 1 1 42%; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.kz-pool { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.kz-pool .kz-scrap { font-family: 'JetBrains Mono', monospace; font-size: 14px; }
+@media (max-width: 759px) {
+  .kz-build { flex-direction: column-reverse; gap: 8px; }
+  .kz-build > .kz-code, .kz-build-side { flex: 0 0 auto; width: 100%; }
+  .kz-line { min-height: 26px; padding-top: 2px; padding-bottom: 2px; }
+  .kz-code { gap: 3px; font-size: 13.5px; }
+}
+/* Копия вырезки за пальцем: приподнята над столом (тень длиннее и мягче),
+   чуть крупнее и наклоняется по ходу движения. На телефоне — выше пальца. */
+.kz-ghost { position: fixed; z-index: 200; pointer-events: none; transform: translate(-50%, -85%) rotate(var(--gr, 0deg)) scale(1.1);
+  filter: drop-shadow(0 3px 2px rgba(74, 48, 18, .25)) drop-shadow(0 16px 14px rgba(74, 48, 18, .3)); transition: transform .12s steps(2, end); }
+.kz-ghost.is-touch { transform: translate(-50%, -150%) rotate(var(--gr, 0deg)) scale(1.1); }
+.kz-ghost-in { display: block; padding: 7px 16px; background: var(--kz-piece); color: #1F2A44; white-space: nowrap;
+  font: 800 clamp(15px, 2.4dvh, 19px)/1.2 'JetBrains Mono', ui-monospace, monospace;
+  clip-path: polygon(0 10%, 8% 0, 50% 6%, 92% 0, 100% 12%, 97% 52%, 100% 90%, 90% 100%, 50% 94%, 8% 100%, 0 88%, 3% 50%); }
+/* Не туда — копия ступенчато возвращается на стол. */
+.kz-ghost.is-back { transform: translate(-50%, -50%) rotate(0deg) scale(1); filter: drop-shadow(0 2px 2px rgba(74, 48, 18, .3));
+  transition: left .28s steps(4, end), top .28s steps(4, end), transform .28s steps(4, end), filter .28s steps(4, end); }
+/* Взятая вырезка — пунктирный след на столе. */
+.kz-scrap.is-lifted { background: transparent; color: transparent; filter: none; outline: 2px dashed rgba(31, 42, 68, .35); outline-offset: -3px; }
+.kz-scrap.is-lifted .led { display: none; }
+/* Пока тег в руке — свободные места на рамке зовут. */
+.kz-scene.is-dragging .kz-slot:not(.is-full) .kz-slot-dash { border-color: #E0643F; animation: kzSlotCall 1s steps(1, end) infinite; }
+.kz-slot.is-hover .kz-slot-dash { scale: 1.12; border-style: solid; }
+@keyframes kzSlotCall { 0%, 100% { background: rgba(251, 246, 234, .7); } 50% { background: #FFE4D8; } }
+
+/* Рука-показ (бумажная), движется ступеньками, как вырезка. */
+.kz-hand { position: absolute; left: 0; top: 0; z-index: 40; margin: -4px 0 0 -16px; pointer-events: none;
+  transition: transform 1s steps(10, end); filter: drop-shadow(0 2px 1px rgba(74, 48, 18, .3)) drop-shadow(0 8px 8px rgba(74, 48, 18, .22)); }
+.kz-hand svg { position: relative; display: block; rotate: -8deg; transition: transform .18s steps(2, end); transform-origin: 40% 10%; }
+.kz-hand.is-tap svg { transform: scale(.86) translateY(3px); }
+.kz-hand-ring { position: absolute; left: 16px; top: 4px; }
+.kz-hand.is-tap .kz-hand-ring::after { content: ''; position: absolute; left: -18px; top: -18px; width: 36px; height: 36px;
+  border-radius: 50%; border: 3px solid #E0643F; animation: kzRing .5s steps(5, end) both; }
+@keyframes kzRing { from { transform: scale(.3); } to { transform: scale(1.3); border-color: rgba(224, 100, 63, 0); } }
+/* Копия тега — прямо под пальцем: палец лежит на ней, как когда несёшь вырезку. */
+.kz-hand-ghost { position: absolute; left: 16px; top: 4px; translate: -50% -55%; padding: 5px 13px; background: var(--kz-piece); color: #1F2A44; white-space: nowrap;
+  font: 800 clamp(16px, 2.8dvh, 22px)/1.2 'JetBrains Mono', ui-monospace, monospace; rotate: -4deg;
+  clip-path: polygon(0 10%, 8% 0, 50% 6%, 92% 0, 100% 12%, 97% 52%, 100% 90%, 90% 100%, 50% 94%, 8% 100%, 0 88%, 3% 50%); }
+
+/* S4: на месте нижнего края — пунктирный след и «?»; мигает вместе с пустой строкой кода. */
+.kz-frame-miss { position: absolute; left: 0; right: 0; bottom: 0; height: 4.2%; min-height: 9px; z-index: 3;
+  border: 2.5px dashed #E0643F; border-radius: 2px; background: repeating-linear-gradient(-45deg, rgba(224, 100, 63, .2) 0 6px, transparent 6px 12px); }
+.kz-frame-miss-q { position: absolute; left: 50%; top: 50%; translate: -50% -50%; padding: 1px 10px 2px; background: #E0643F; color: #FBF6EA;
+  font: 800 clamp(14px, 2.4dvh, 20px)/1.2 'Manrope', sans-serif;
+  clip-path: polygon(0 10%, 10% 0, 50% 8%, 90% 0, 100% 14%, 96% 52%, 100% 88%, 88% 100%, 50% 92%, 10% 100%, 0 86%, 4% 50%); }
+.kz-frame-miss.is-blink, .kz-frame-miss.is-blink .kz-frame-miss-q { animation: kzMiss 1s steps(1, end) infinite; }
+@keyframes kzMiss { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+.kz-s6-box { z-index: 2; }
+.kz-scene.is-flying .kz-s6-box { z-index: 30; }
+
+/* Итог: роли */
+.kz-roles { display: grid; gap: 7px; }
+.kz-role { display: flex; align-items: center; gap: 10px; padding: 7px 12px; background: #FBF6EA; font: 700 14.5px 'Manrope', sans-serif; color: #1F2A44;
+  clip-path: polygon(0 8%, 5% 0, 60% 6%, 98% 0, 100% 50%, 98% 100%, 40% 94%, 2% 100%, 0 50%); transition: background .2s; }
+.kz-role i { flex: none; width: 14px; height: 14px; border-radius: 3px; background: var(--c); }
+.kz-role.is-on { background: #FFF1C9; }
+.kz-next { display: flex; align-items: center; gap: 10px; padding: 9px 14px; background: #1F2A44; color: #FBF6EA; font: 700 14px 'Manrope', sans-serif;
+  clip-path: polygon(0 6%, 4% 0, 96% 5%, 100% 0, 99% 50%, 100% 100%, 50% 95%, 0 100%, 1% 50%); }
+.kz-next b { color: #F0B13F; }
+.kz-msg { margin: 0; text-align: center; font: 700 14px 'Manrope', sans-serif; color: #5B4300; }
+
+/* Облако Коди — бумажная полоска */
+.speaker-bot .speaker-bubble { background: #FBF6EA; }
+
+@media (prefers-reduced-motion: reduce) {
+  .kz-cut, .kz-cut-in, .kz-line, .kz-label-paper, .kz-btn, .kz-scrap, .kz-a-drop, .kz-a-rise, .kz-a-left, .kz-a-right, .kz-a-pop, .kz-a-stamp, .kz-a-shake { animation: none !important; }
+  .kz-a-out { animation: none !important; opacity: 0; }
+  .kz-deco, .kz-par { translate: none !important; }
+}
+
+/* ── Части набора ─────────────────────────────────────────────────────────── */
+.kz-tag { white-space: nowrap; }
+.kz-manbox { position: absolute; inset: 9% 15% 7% 15%; }
+.kz-manbox-free { inset: 0; }
+.kz-s1 .kz-stagebox { height: min(100%, 62dvh); }
+.kz-s1-page { max-width: 640px; width: 100%; }
+.kz-face { position: absolute; inset: 0; display: block; }
+.kz-eye { position: absolute; top: 40%; width: 9%; height: 10%; border-radius: 50%; background: #1F2A44; display: block; }
+.kz-smile { position: absolute; left: 41%; top: 60%; width: 20%; height: 9%; background: #E0643F; display: block;
+  clip-path: polygon(0 0, 100% 0, 88% 60%, 50% 100%, 12% 60%); }
+.kz-man-title-t { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 800 clamp(11px, 1.8dvh, 15px) 'Manrope', sans-serif; color: #1F2A44; white-space: nowrap; }
+.kz-wave-l { animation: kzWaveL 1.6s steps(1, end) infinite; transform-origin: 100% 50%; }
+.kz-wave-r { animation: kzWaveR 1.6s steps(1, end) infinite; transform-origin: 0% 50%; }
+@keyframes kzWaveR { 0%, 100% { transform: none; } 25% { transform: rotate(-22deg); } 50% { transform: rotate(-8deg); } 75% { transform: rotate(-26deg); } }
+@keyframes kzWaveL { 0%, 100% { transform: none; } 50% { transform: rotate(6deg); } }
+
+/* Рамка вокруг человечка и места для бирок (s5) */
+.kz-slot { position: absolute; z-index: 5; display: grid; place-items: center; min-width: 128px; min-height: 42px; padding: 0; border: none; background: none; cursor: pointer; }
+.kz-slot-top { left: -2%; top: -5%; }
+.kz-slot-bot { right: -2%; bottom: -6%; }
+.kz-slot-dash { display: block; width: 124px; height: 38px; border: 2px dashed rgba(31, 42, 68, .45); border-radius: 4px; background: rgba(251, 246, 234, .7); rotate: -2deg; }
+.kz-slot.is-hover .kz-slot-dash { border-color: #E0643F; background: #FFE4D8; }
+.kz-slot.is-full { cursor: default; }
+.kz-slot .led { top: -2px; right: -2px; }
+
+/* Браузер: содержимое */
+.kz-bits { display: flex; flex-direction: column; gap: 8px; height: 100%; }
+.kz-bits-row { display: flex; gap: 8px; align-items: flex-start; flex: 1 1 auto; min-height: 0; }
+.kz-bit-lines { flex: 1 1 auto; display: flex; flex-direction: column; gap: 7px; padding-top: 4px; }
+.kz-cut.kz-bit-line { position: relative; height: clamp(5px, .9dvh, 8px); }
+.kz-cut.kz-bit-pic { position: relative; flex: 0 0 34%; aspect-ratio: 4 / 3; }
+.kz-pic-sun { position: absolute; right: 16%; top: 16%; width: 18%; aspect-ratio: 1; border-radius: 50%; background: #F0B13F; }
+.kz-pic-mnt { position: absolute; left: 10%; right: 10%; bottom: 8%; height: 55%; background: #1F2A44; clip-path: polygon(0 100%, 34% 18%, 52% 60%, 70% 30%, 100% 100%); }
+.kz-cut.kz-bit-btn { position: relative; align-self: flex-end; width: 26%; aspect-ratio: 3 / 1; }
+.kz-bit-btn span { position: absolute; inset: 0; display: grid; place-items: center; font: 800 clamp(10px, 1.6dvh, 13px) 'Manrope', sans-serif; color: #fff; }
+.kz-mini-pic { display: inline-block; width: 20px; height: 15px; background: #2A8C7E; clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); position: relative;
+  background-image: linear-gradient(135deg, transparent 55%, #1F2A44 55%); }
+
+/* Мини-страница в разрезе */
+.kz-collage { position: relative; width: 100%; aspect-ratio: 1.25 / 1; max-height: 100%; }
+.kz-col-doc { left: 0; top: 0; }
+.kz-cut.kz-col-html { left: 2%; right: 2%; top: 16%; bottom: 0; }
+.kz-col-in { position: absolute; inset: 9% 5% 6% 5%; display: flex; flex-direction: column; gap: 6%; }
+.kz-cut.kz-col-head { position: relative; flex: 0 0 26%; }
+.kz-cut.kz-col-body { position: relative; flex: 1 1 auto; }
+.kz-col-title { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 2px; padding: 0 6px;
+  font: 700 clamp(11px, 1.7dvh, 14px) 'JetBrains Mono', monospace; color: #1F2A44; }
+.kz-col-title .kz-tag { background: rgba(251, 246, 234, .7); padding: 1px 3px; }
+.kz-col-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 8px 12px; text-align: center;
+  font: 800 clamp(13px, 2.1dvh, 19px)/1.25 'Manrope', sans-serif; color: #FBF6EA; overflow-wrap: anywhere; }
+.kz-col-lbl { z-index: 6; }
+.kz-col-lbl-html { right: 4%; top: 16%; translate: 0 -50%; }
+.kz-col-lbl-head { left: 7%; top: 23.6%; translate: 0 -50%; }
+.kz-col-lbl-body { left: 7%; top: 46.1%; translate: 0 -50%; }
+
+/* План: карточка — вырезка во всю кнопку */
+.kz-cut.kz-card-cut { inset: 0; }
+.kz-card-face { position: absolute; inset: 0; }
+.kz-card .led { top: 4px; right: 4px; }
+
+/* Зоны сортировки */
+.kz-cut.kz-zone-cut { inset: 0; }
+.kz-zone .kz-label { z-index: 2; }
+
+/* Сборка */
+.kz-code-host { flex: 1 1 58%; min-width: 0; }
+.kz-code-sm { font-size: clamp(13px, 1.75dvh, 15.5px); }
+.kz-code-sm .kz-line { min-height: 27px; }
+.kz-line.kz-fixed { opacity: .85; }
+.kz-dash-sm { flex: 0 0 64px; }
+.kz-slip-wrap { align-self: center; min-width: 60%; }
+.kz-line.kz-slip { justify-content: center; font-size: 1.1em; }
+.kz-scene-col { flex-direction: column; }
+.kz-s12 .kz-col-code { flex: 0 1 44%; }
+.kz-s15-side { gap: 12px; }
+.kz-s15-man { position: relative; width: clamp(90px, 18dvh, 160px); aspect-ratio: 1 / 1.08; align-self: center; }
+
+@media (max-width: 759px) {
+  .kz-s12 .kz-col-code { flex: 0 0 auto; }
+  .kz-s12 .kz-collage { width: min(100%, 300px); align-self: center; }
+  .kz-s15 .kz-collage { width: min(100%, 300px); align-self: center; }
+
+  .kz-zones { gap: 8px; }
+  .kz-slot { min-width: 100px; }
+  .kz-slot-dash { width: 98px; height: 32px; }
+}
+.kz-scene-col > .kz-col { width: min(100%, 600px); flex: 0 1 auto; }
+.kz-s15-left { position: relative; }
+.kz-s15-man { position: absolute; right: -1%; bottom: -3%; width: 21%; aspect-ratio: 1 / 1.08; z-index: 7; }
+@media (max-width: 759px) {
+  .kz-br { max-width: min(100%, calc(var(--brh, 24dvh) * 1.52)); }
+  .kz-br.is-short { max-width: min(100%, calc(var(--brh, 19dvh) * 2.16)); }
+  .kz-s15-man { display: block; width: 23%; }
+  .kz-zone { min-height: clamp(96px, 18dvh, 160px); }
+}
+/* Браузер над кодом — ниже, чтобы код помещался */
+.kz-col > .kz-br:not(.is-short) { --brh: 28dvh; }
+.kz-scene-col { justify-content: flex-start; }
+.kz-s9 .kz-br, .kz-s6-col .kz-br { --brh: 26dvh; }
+@media (max-width: 759px) {
+  .kz-col > .kz-br:not(.is-short) { --brh: 20dvh; }
+}
+.kz-build > .kz-code-host { flex: 1 1 58%; }
+@media (max-width: 759px) {
+  .kz-build > .kz-code-host { flex: 0 0 auto; width: 100%; }
+  .kz-s12 { gap: 6px; }
+  .kz-s12 .kz-code { gap: 2px; font-size: 12.5px; }
+  .kz-s12 .kz-line { min-height: 21px; padding-top: 1px; padding-bottom: 1px; }
+  .kz-s12 .kz-collage { width: min(100%, 230px); }
+}
+/* Длинное имя на вкладке не распирает браузер и лист: вкладка сжимается, текст — с многоточием. */
+.kz-br, .kz-br-bar, .kz-br-tab, .kz-br-tab-t, .kz-br-tool, .kz-br-url, .kz-scene, .kz-sheet-body { min-width: 0; }
+.kz-br-bar { overflow: hidden; }
+.kz-br-tab { flex: 0 1 auto; }
+/* Крючок и итог: браузер крупно */
+.kz-s1-page .kz-br { --brh: 50dvh; }
+@media (max-width: 759px) { .kz-s1-page .kz-br { --brh: 34dvh; } }
+.kz-col.kz-s1-page > .kz-br:not(.is-short) { --brh: 50dvh; }
+@media (max-width: 759px) { .kz-col.kz-s1-page > .kz-br:not(.is-short) { --brh: 34dvh; } }
+/* Хук: человечек поверх места, где садится браузер; голова и тело летят к
+   вкладке и окну, руки и ноги разлетаются. */
+.kz-s1 { position: relative; }
+.kz-s1 .kz-s1-man { position: absolute; left: 50%; top: 50%; translate: -50% -50%; z-index: 6; height: min(100%, 62dvh); }
+.kz-scatter .kz-s1-man .kz-cut:not([aria-label]) { animation: kzOut .58s steps(1, end) both; animation-delay: .72s; }
+.kz-scatter .kz-s1-man .kz-cut:not([aria-label]):nth-child(2n) { animation-name: kzOutL; }
+@keyframes kzOutL {
+  0% { transform: none; } 20% { transform: translate(-4%, -16%) rotate(-6deg); } 40% { transform: translate(-14%, -60%) rotate(-14deg); }
+  60% { transform: translate(-26%, -120%) rotate(-24deg); } 80% { transform: translate(-38%, -190%) rotate(-34deg); opacity: .6; }
+  100% { transform: translate(-50%, -260%) rotate(-44deg); opacity: 0; } }
+@media (max-width: 759px) { .kz-s1 .kz-s1-man { height: min(100%, 44dvh); } }
+/* План: карточки открываются сами — пока Коди рассказывает, они не нажимаются,
+   но и не бледнеют. */
+.kz-card:disabled, .stage.is-speaking .stage-content .kz-card:disabled { opacity: 1; cursor: default; filter: none; }
+@media (prefers-reduced-motion: reduce) {
+  .kz-hand, .kz-hand svg, .kz-ghost { transition: none; }
+  .kz-frame-miss.is-blink, .kz-frame-miss.is-blink .kz-frame-miss-q, .kz-scene.is-dragging .kz-slot .kz-slot-dash { animation: none; }
+}
+/* Теги-вырезки в лотке — того же размера и шрифта, что теги на рамке. */
+.kz-scrap.kz-scrap-tag { padding: 8px 16px; font: 800 clamp(16px, 2.8dvh, 22px)/1.2 'JetBrains Mono', ui-monospace, monospace; }
+/* S5: нижнее место на рамке выступает вниз — лоток чуть отступает от него. */
+@media (max-width: 759px) { .kz-scene.is-tight + .kz-tray { margin-top: 12px; } }
+
+/* s11: имя страницы в теге title на вырезке. */
+.kz-scrap-code { font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 700; white-space: nowrap; }
+.kz-scrap-code .kz-tag { font-weight: 700; }
+/* s14: пустое место в строке title — сюда кладут тег. */
+.kz-dash.kz-drop { flex: 0 0 auto; width: clamp(78px, 9em, 120px); height: 1.6em; border: 2px dashed rgba(224, 100, 63, .7); border-radius: 4px; background: rgba(251, 246, 234, .6); }
+.kz-dash.kz-drop.is-call { animation: kzSlotCall 1s steps(1, end) infinite; }
+.kz-dash.kz-drop.is-hover { border-style: solid; background: #FFE4D8; scale: 1.08; }
+@media (prefers-reduced-motion: reduce) { .kz-dash.kz-drop.is-call { animation: none; } }
+
+/* Коллаж страницы (s12, s15): бирки компактные, у каждой своё место —
+   DOCTYPE над рамкой, html — на верхнем крае рамки справа, head и body — на
+   верхнем крае своих блоков (геометрия: рамка с 16 %, голова 23,6–40 %, тело с 46 %). */
+.kz-collage .kz-label-paper { font-size: clamp(11px, 1.8dvh, 15px); padding: 2px 8px 3px; }
+.kz-collage .kz-label-tape { left: -7px; top: -6px; width: 22px; height: 10px; }
+/* s15 на ноутбуке: коллаж крупнее (по высоте листа), подписи ролей читаемее. */
+@media (min-width: 760px) {
+  .kz-s15 .kz-s15-left { flex: 1.35 1 0; max-width: 700px; }
+  .kz-s15 .kz-collage { width: min(100%, calc((100dvh - 290px) * 1.25)); align-self: center; }
+  .kz-s15 .kz-s15-side { max-width: 480px; gap: 14px; }
+  .kz-s15 .kz-role { font-size: clamp(14.5px, 2.2dvh, 18px); padding: 9px 14px; }
+  .kz-s15 .kz-next { font-size: clamp(14px, 2.1dvh, 17px); padding: 11px 16px; }
+}
+/* Ноутбук: код и вырезки крупнее — места на листе много, а 14 px читались мелко. */
+@media (min-width: 760px) {
+  .kz-code { font-size: clamp(15px, 2.3dvh, 20px); }
+  .kz-line { min-height: 34px; }
+  .kz-code-sm { font-size: clamp(14px, 2.05dvh, 18px); }
+  .kz-scrap, .kz-pool .kz-scrap { font-size: clamp(15px, 2.3dvh, 19px); }
+}
+@media (max-width: 759px) {
+  /* s14: пустое место — в той же строке, что «<title>имя», без переноса. */
+  .kz-dash.kz-drop { width: 60px; height: 1.35em; }
+}
+
+/* Ноутбук: рамка с бирками ниже высоты сцены — верхняя бирка не залезает на
+   строку задания, нижняя не свисает за край листа. */
+@media (min-width: 760px) {
+  .kz-scene:not(.kz-s1) > .kz-stagebox { height: calc(100% - 48px); }
+}
+@media (min-width: 760px) {
+  /* s4–s5: снизу рамки ещё и место для тега — чуть больше воздуха. */
+  .kz-scene.is-tight > .kz-stagebox { height: calc(100% - 64px); }
+}
+
+/* Слой руки: кисть может свисать за край листа, но не раздувает экран
+   (overflow: clip не добавляет прокрутку; запас видимости — clip-margin). */
+.kz-hand-layer { position: absolute; inset: 0; z-index: 40; pointer-events: none; overflow: clip; overflow-clip-margin: 90px; }
+@media (min-width: 760px) {
+  /* s11: зоны головы и тела выше — на ноутбуке под ними было пусто. */
+  .kz-zone { min-height: clamp(150px, 36dvh, 340px); }
+}
+/* Канон поднимает содержимое экрана снизу (fadeUp, 10 px). Лист занимает всю
+   высоту, и в начале подъёма он на миг вылезал за край (переполнение 4 px).
+   Для листа — появление без сдвига: бумага и так влетает своими анимациями. */
+.stagger > .kz-sheet, .stage-content > .limit > .kz-sheet { animation-name: kzSheetIn; }
+@keyframes kzSheetIn { from { opacity: 0; } to { opacity: 1; } }
+/* s11: имя в теге внутри зоны не шире зоны — переносится между тегом и словом. */
+.kz-zone-items .kz-scrap-code { display: inline-flex; flex-wrap: wrap; justify-content: center; white-space: normal; font-size: 12.5px; }
+
+/* Тег на скотче подсвечен — о нём сейчас говорит Коди (s3: определение тега).
+   Тег — кнопка, а пока Коди говорит, канон гасит кнопки (opacity .62); подсвеченный
+   тег не гаснет: о нём и идёт речь. Чуть крупнее, коралловое свечение. */
+.kz-label.is-hl, .stage.is-speaking .stage-content .kz-label.is-hl, .stage .stage-content button.kz-label.is-hl:disabled {
+  opacity: 1; scale: 1.14; z-index: 8;
+  filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 6px #E0643F) drop-shadow(0 0 12px rgba(224, 100, 63, .8)); }
+.kz-label.is-hl .kz-label-paper { background: #FFE4D8; }
+
+/* s12: строки, о которых сейчас говорит Коди, — цветом своей части (html — коралл,
+   head — горчица, body — бирюза) и свечением. */
+.kz-line.is-say { background: var(--sb, #FFE4D8); filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 6px var(--sc, #E0643F)); z-index: 1; }
+.kz-line.is-say-doc, .kz-line.is-say-html { --sb: #FFE1D6; --sc: #E0643F; }
+.kz-line.is-say-head { --sb: #FCE9B8; --sc: #F0B13F; }
+.kz-line.is-say-body { --sb: #D2EDE7; --sc: #2A8C7E; }
+
+/* ПЕРЕХОД «РАЗБОР И СБОРКА» (kollazh-trans.jsx).
+   Снимок старого листа: свои анимации копии выключены, вырезки ступенчато
+   разлетаются наружу с поворотом и гаснут. */
+.kz-snap { position: fixed; z-index: 60; pointer-events: none; }
+.kz-snap, .kz-snap * { animation: none !important; transition: none !important; }
+.kz-snap .kz-out-go { animation: kzScatter .52s steps(1, end) var(--od, 0s) both !important; }
+@keyframes kzScatter {
+  0% { transform: none; opacity: 1; }
+  14% { transform: translate(calc(var(--ox) * .03), calc(var(--oy) * .03 - 8px)) rotate(calc(var(--or) * .12)); }
+  28% { transform: translate(calc(var(--ox) * .12), calc(var(--oy) * .12)) rotate(calc(var(--or) * .3)); }
+  42% { transform: translate(calc(var(--ox) * .26), calc(var(--oy) * .26)) rotate(calc(var(--or) * .5)); }
+  57% { transform: translate(calc(var(--ox) * .45), calc(var(--oy) * .45)) rotate(calc(var(--or) * .68)); }
+  71% { transform: translate(calc(var(--ox) * .66), calc(var(--oy) * .66)) rotate(calc(var(--or) * .84)); opacity: .9; }
+  85% { transform: translate(calc(var(--ox) * .86), calc(var(--oy) * .86)) rotate(var(--or)); opacity: .55; }
+  100% { transform: translate(var(--ox), var(--oy)) rotate(var(--or)); opacity: 0; } }
+/* Новый экран ждёт, пока старое разлетается: содержимое листа скрыто, свои влёты на паузе. */
+.kz-asm-wait > .kz-sheet-body { visibility: hidden; }
+.kz-asm-wait > .kz-sheet-body * { animation-play-state: paused !important; }
+/* Сборка: вырезка слетается сверху сбоку ступеньками, с лёгким перелётом. */
+@keyframes kzAsmIn {
+  0% { transform: translate(var(--ix), var(--iy)) rotate(var(--ir)); opacity: 0; }
+  12% { transform: translate(calc(var(--ix) * .7), calc(var(--iy) * .7)) rotate(calc(var(--ir) * .7)); opacity: 1; }
+  28% { transform: translate(calc(var(--ix) * .4), calc(var(--iy) * .4)) rotate(calc(var(--ir) * .4)); }
+  44% { transform: translate(calc(var(--ix) * .16), calc(var(--iy) * .16)) rotate(calc(var(--ir) * .16)); }
+  60% { transform: translate(calc(var(--ix) * -.03), calc(var(--iy) * -.02 + 4px)) rotate(calc(var(--ir) * -.08)); }
+  78% { transform: translate(calc(var(--ix) * .01), -2px) rotate(calc(var(--ir) * .03)); }
+  100% { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .kz-snap { display: none; } }
+/* s11: зоны head (горчица) и body (бирюза). Бирки зон и разложенные вырезки —
+   светлые: горчичные сливались с горчичной зоной head. Зоны — большие цветные
+   поля, пока Коди говорит, они не бледнеют (канон гасит кнопки до .62). */
+.kz-zone .kz-label-paper { background: #FBF6EA; }
+.stage.is-speaking .stage-content .kz-zone:disabled, .stage .stage-content .kz-zone:disabled { opacity: 1; filter: none; }
+
+/* s11: вырезка, положенная в зону, — бумажка: рваный край (как в лотке), мягкая
+   тень на зону, свой небольшой наклон. Светлая, чтобы читалась на горчице и бирюзе. */
+.kz-zone-item { display: inline-flex; max-width: 100%; rotate: var(--r, 0deg);
+  filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .35)) drop-shadow(0 4px 5px rgba(74, 48, 18, .18)); }
+.kz-zone-item-in { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 6px 12px 7px; background: #FBF6EA; color: #1F2A44;
+  font: 800 clamp(12.5px, 1.9dvh, 16px)/1.2 'Manrope', sans-serif;
+  clip-path: polygon(0 10%, 8% 0, 50% 6%, 92% 0, 100% 12%, 97% 52%, 100% 90%, 90% 100%, 50% 94%, 8% 100%, 0 88%, 3% 50%); }
+.kz-zone-item-in .kz-scrap-code { font-size: clamp(11.5px, 1.75dvh, 15px); }
+/* Зона растёт под разложенные вырезки (на телефоне они идут столбиком) —
+   содержимое в потоке, цветная бумага зоны тянется за ним. */
+.kz-zone-in { position: relative; inset: auto; min-height: 100%; }
+
+/* s12: строки кода горчичные, поэтому светлая подсветка делала строку цвета листа —
+   она будто пропадала. Подсвеченная строка (её читает браузер или о ней говорит
+   Коди) — тёмная, со светлым текстом и полосой цвета своей части слева:
+   html — коралл, head — горчица, body — бирюза. */
+.kz-line.is-read, .kz-line.is-say { background: linear-gradient(90deg, var(--sc, #E0643F) 0 14px, #1F2A44 14px); color: #FBF6EA; filter: none; }
+.kz-line.is-read .kz-tk-n, .kz-line.is-say .kz-tk-n, .kz-line.is-read .kz-txt, .kz-line.is-say .kz-txt { color: #FBF6EA; }
+.kz-line.is-read .kz-tk-b, .kz-line.is-say .kz-tk-b { color: #FF8A65; }
+/* Коллаж страницы (s12, s15): бирки светлые — горчичные сливались с горчичной головой. */
+.kz-collage .kz-label-paper { background: #FBF6EA; }
+
+/* s13: бумажные кнопки ▲ ▼ у правого края поставленной полоски (внутри жёлтой
+   полоски — поверх её края; текст строки под них не заезжает). */
+.kz-line-row { position: relative; display: flex; min-width: 0; }
+.kz-line-row > .kz-line { flex: 1 1 auto; min-width: 0; padding-right: 74px; }
+.kz-move { position: absolute; right: 7px; top: 50%; translate: 0 -50%; z-index: 3; display: flex; gap: 4px; }
+.kz-move.is-hide { visibility: hidden; }
+.kz-move-b { width: 30px; height: 24px; border: none; padding: 0; display: grid; place-items: center; cursor: pointer;
+  background: #FBF6EA; color: #1F2A44;
+  clip-path: polygon(0 10%, 12% 0, 50% 6%, 88% 0, 100% 12%, 96% 52%, 100% 90%, 88% 100%, 50% 94%, 12% 100%, 0 88%, 4% 50%);
+  filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .3)); }
+.kz-move-b.is-down svg { rotate: 180deg; }
+.kz-move-b:active:not(:disabled) { translate: 0 1px; background: #FFE4D8; }
+.kz-move-b:disabled { opacity: .3; cursor: default; }
+@media (max-width: 759px) { .kz-move-b { width: 27px; height: 22px; } .kz-line-row > .kz-line { padding-right: 66px; } .kz-move { right: 5px; gap: 3px; } }
+/* Перестановка, как бумажки: полоска приподнята (крупнее, длинная тень, наклон)
+   и ступенчато проезжает над соседней; соседняя уезжает под ней. --dy — откуда. */
+.kz-line.kz-slide-up { position: relative; z-index: 4; animation: kzSlideUp .5s steps(1, end) both; }
+.kz-line.kz-slide-under { position: relative; z-index: 1; animation: kzSlideUnder .5s steps(1, end) both; }
+@keyframes kzSlideUp {
+  0% { transform: translateY(var(--dy)); filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .26)); }
+  14% { transform: translateY(calc(var(--dy) - 3px)) scale(1.05) rotate(-1.4deg); filter: drop-shadow(0 8px 8px rgba(74, 48, 18, .35)); }
+  30% { transform: translateY(calc(var(--dy) * .72 - 3px)) scale(1.06) rotate(-1.8deg); filter: drop-shadow(0 10px 10px rgba(74, 48, 18, .35)); }
+  46% { transform: translateY(calc(var(--dy) * .42 - 2px)) scale(1.06) rotate(-1.2deg); filter: drop-shadow(0 10px 10px rgba(74, 48, 18, .35)); }
+  62% { transform: translateY(calc(var(--dy) * .15 - 2px)) scale(1.05) rotate(-.6deg); filter: drop-shadow(0 8px 8px rgba(74, 48, 18, .3)); }
+  80% { transform: translateY(1px) scale(1.01); filter: drop-shadow(0 3px 3px rgba(74, 48, 18, .28)); }
+  100% { transform: none; filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .26)); } }
+@keyframes kzSlideUnder {
+  0% { transform: translateY(var(--dy)); }
+  20% { transform: translateY(calc(var(--dy) * .85)) scale(.98); }
+  40% { transform: translateY(calc(var(--dy) * .55)) scale(.98); }
+  60% { transform: translateY(calc(var(--dy) * .25)) scale(.99); }
+  80% { transform: translateY(calc(var(--dy) * .05)); }
+  100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .kz-line.kz-slide-up, .kz-line.kz-slide-under { animation: none; } }
+/* ── ПРАКТИКА К УРОКУ 1 «Бумажная улица» — бумажный вид урока 1 ─────────────
+   Лист, вырезки и бумажный браузер — из набора kollazh; здесь только то, что
+   есть у практики: редактор на бумажной подложке, заметки-листки, кнопки,
+   улица из бумажных домов. Префикс pp- (и классы каркаса 01p: ed-, cv-, op-). */
+.lesson-root { --cv-fs: clamp(12.5px, 3.4vw, 15px); --ed-fs: 16px; --gw: 46px; }
 @media (min-width: 760px) and (min-height: 700px) {
   .lesson-root { --cv-fs: clamp(14px, 1.45vw, 16px); --ed-fs: 17px; }
 }
 
-/* ══ КОД С ПОЛЯМИ (задания 1, 2, 5) — как в уроке 1 ════════════════ */
-.cv { position: relative; width: 100%; min-width: 0; text-align: left;
-  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: var(--cv-fs); line-height: 1.5;
-  background: ${T.paper}; color: ${T.ink}; border-radius: 14px; padding: 6px 8px 6px 0;
-  box-shadow: 0 2px 0 rgba(${T.shadowBase},0.05), 0 12px 26px -16px rgba(${T.shadowBase},0.5),
-    inset 0 0 0 1.5px rgba(${T.shadowBase},0.08); }
-.cv-line { position: relative; display: flex; align-items: center; min-height: 1.5em; width: 100%;
-  padding-left: calc(var(--gut) + var(--d) * var(--ind)); padding-right: 4px; white-space: nowrap;
-  border-radius: 6px; transition: opacity .3s, background .3s; }
-.cv-n { position: absolute; left: 0; width: 1.9em; text-align: right; color: ${T.ink3}; font-size: .78em; }
-.cv-bar { position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--c); opacity: .5;
-  left: calc(var(--gut) - .55em + var(--lv) * var(--ind)); }
-.cv-bar.is-first { top: 50%; } .cv-bar.is-last { bottom: 50%; }
-.cv-code { display: flex; align-items: center; flex-wrap: nowrap; min-width: 0; flex: 1 1 auto; gap: 0; }
-.cv-line.is-out { opacity: .38; }
-.cv-line.is-in { background: color-mix(in srgb, var(--hc) 9%, transparent); }
-.tk-tag { color: var(--c); font-weight: 700; white-space: nowrap; }
-.tk-br { opacity: .72; }
-.tk-doc { color: ${T.ink2}; }
-.tk-text { color: ${T.ink}; font-weight: 600; white-space: normal; min-width: 0; overflow-wrap: anywhere;
-  font-family: 'Manrope', sans-serif; font-size: 1.02em; padding: 0 3px; }
-/* Поле прямо в строке кода. 16 px — меньше нельзя: iOS увеличит страницу. */
-.tk-input { flex: 1 1 0; min-width: 4.5ch; width: 100%; font: 600 16px/1.25 'Manrope', sans-serif; color: ${T.ink};
-  border: none; border-radius: 7px 7px 3px 3px; padding: 3px 7px; margin: 2px 2px; outline: none;
-  background: ${T.uiSoft}; box-shadow: inset 0 -2px 0 ${T.ui}; }
-.tk-input:focus { background: #fff; box-shadow: inset 0 0 0 2px ${T.ui}; }
-/* Поле растёт по тексту: перенос внутри, высота — по содержимому (InlineInput). */
-.tk-grow { display: block; resize: none; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere;
-  word-break: normal; min-height: 0; align-self: center; flex: 0 1 auto; width: auto; max-width: 100%; }
-/* В строке кода теги не сжимаются — сжимается (и переносит текст) только поле. */
-.cv-code > .tk:has(.tk-tag) { flex-shrink: 0; }
-.cv-code > .tk:has(.tk-grow) { flex: 0 1 auto; min-width: 4.5ch; }
-.tk-area { display: block; resize: none; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere;
-  line-height: 1.3; min-height: 30px; }
-.tk-input.is-led-in { animation: ledFrame 1.15s ease-in-out infinite; }
+/* ══ ЛИСТ ПРАКТИКИ ═══════════════════════════════════════════════════════ */
+.pp-sheet .kz-sheet-body { gap: clamp(6px, 1.2dvh, 12px); padding: clamp(10px, 1.8dvh, 18px) clamp(10px, 2vw, 22px); }
+.pp-sheet-intro .kz-sheet-body, .pp-sheet-fin .kz-sheet-body { justify-content: center; }
+.pp-sheet-fin .kz-sheet-body { justify-content: flex-start; overflow: auto; scrollbar-width: thin; }
+.kz-cut.pp-pad-bg, .kz-cut.pp-road { inset: 0; }
+.pp-pad { position: relative; }
+.pp-pad > :not(.pp-pad-bg) { position: relative; z-index: 1; }
 
-/* ══ РЕДАКТОР (задания 3, 4, 6, 7) ═════════════════════════════════
+/* Строка задания — полоска урока 1. */
+.pp-ask-wrap { flex: 0 0 auto; }
+.kz-ask.pp-ask { font-size: clamp(14.5px, 2dvh, 17.5px); padding: 7px 14px 8px; }
+.pp-drill-tag { display: inline-block; margin-right: 8px; padding: 1px 8px; background: #2A8C7E; color: #FBF6EA; vertical-align: 1px;
+  font: 800 11.5px/18px 'Manrope', sans-serif; letter-spacing: .04em; text-transform: uppercase;
+  clip-path: polygon(0 10%, 8% 0, 92% 8%, 100% 0, 97% 55%, 100% 100%, 50% 92%, 4% 100%, 0 50%); }
+.pp-extra { flex: 0 0 auto; display: flex; justify-content: center; }
+
+/* ══ РАБОЧАЯ ОБЛАСТЬ: браузер слева, редактор справа (на телефоне — в колонку) ═ */
+.kz-sheet-body > .op-work { flex: 0 1 auto; min-height: 0; }
+.kz-sheet-body > .pp-note { flex: 0 1 auto; min-height: 44px; overflow: auto; scrollbar-width: thin; }
+.op-work { display: flex; flex-direction: column; gap: clamp(6px, 1.2dvh, 12px); width: 100%; min-height: 0; }
+.op-side { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; min-width: 0; }
+.op-main { display: flex; flex-direction: column; gap: 8px; flex: 0 1 auto; min-height: 0; min-width: 0; }
+.op-main > .pp-edpad { flex: 0 1 auto; min-height: 64px; display: flex; flex-direction: column; }
+.pp-edpad > .ed, .pp-edpad > .cv { flex: 0 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+/* Свой дом с нуля: рабочая область забирает свободную высоту, поле — всю рамку. */
+.kz-sheet-body > .op-work.is-big { flex: 1 1 auto; }
+.op-work.is-big .op-main { flex: 1 1 auto; }
+.op-work.is-big .op-main > .pp-edpad { flex: 1 1 auto; }
+.op-work.is-big .pp-edpad > .ed { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 8em; }
+.op-work.is-big .ed-edit { flex: 1 1 auto; }
+@media (min-width: 720px) {
+  .op-work { flex-direction: row; align-items: stretch; gap: 20px; }
+  .op-side { flex: .9 1 0; min-height: 0; overflow: auto; }
+  .op-main { flex: 1.1 1 0; }
+  /* Ноутбук: лист шире — крупнее задание, браузер и улица; содержимое по центру листа. */
+  .pp-sheet .kz-sheet-body { justify-content: safe center; padding: clamp(14px, 2.4dvh, 26px) clamp(40px, 4.5vw, 64px); }
+  .kz-ask.pp-ask { font-size: clamp(15.5px, 2.5dvh, 20px); padding: 8px 18px 9px; }
+  .pp-strip { padding: 0 6px; }
+  .pp-strip .pp-house.is-s { --hw: clamp(28px, 4.4dvh, 38px); }
+  .pp-page { min-height: 4.2em; max-height: 9em; font-size: clamp(15px, 2.3dvh, 19px); }
+  .pp-br .kz-br-page { margin: 10px 14px 12px; }
+  .pp-note-body { font-size: clamp(15px, 2.3dvh, 18px); }
+}
+
+/* ══ БУМАЖНЫЙ БРАУЗЕР В ПРАКТИКЕ — высота по содержимому ══════════════════ */
+.kz-br.pp-br { aspect-ratio: auto; max-width: none; flex: 0 0 auto; }
+.pp-br .kz-br-body { flex: 0 0 auto; }
+.pp-br .kz-br-page { position: relative; inset: auto; margin: 7px 10px 9px; }
+.pp-page { min-height: 1.5em; max-height: 5.6em; overflow: auto; overflow-wrap: anywhere; scrollbar-width: thin; }
+.pp-page.is-empty { color: #9C9384; font-style: italic; font-family: 'Manrope', sans-serif; font-weight: 600; font-size: .86em; }
+.pp-br .kz-br-tab { max-width: 74%; }
+.pp-br.is-hl-page .kz-br-page { outline-offset: 2px; }
+
+/* ══ КОД С ПОЛЯМИ (t1, t2) ══════════════════════════════════════════════ */
+.cv { position: relative; width: 100%; min-width: 0; text-align: left; padding: 8px 8px 8px 0;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: var(--cv-fs); line-height: 1.55; color: #1F2A44; }
+.cv-line { position: relative; display: flex; align-items: center; min-height: 1.55em; width: 100%;
+  padding-left: calc(2.3em + var(--d) * 1.2em); padding-right: 4px; white-space: nowrap; transition: opacity .3s, background .3s; }
+.cv-n { position: absolute; left: 0; width: 1.9em; text-align: right; color: #A39A88; font-size: .78em; }
+.cv-bar { position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--c); opacity: .7;
+  left: calc(2.3em - .55em + var(--lv) * 1.2em); }
+.cv-bar.is-first { top: 50%; } .cv-bar.is-last { bottom: 50%; }
+.cv-code { display: flex; align-items: center; flex-wrap: nowrap; min-width: 0; flex: 1 1 auto; font-weight: 600; }
+.cv-code > .kz-tag { flex-shrink: 0; }
+.cv-line.is-out { opacity: .35; }
+.cv-line.is-in { background: #FFF1C9; }
+.pp-doc { color: #6E6758; }
+.pp-text { font: 700 1.02em/1.3 'Manrope', sans-serif; padding: 0 4px; white-space: normal; min-width: 0; overflow-wrap: anywhere; }
+/* Поле прямо в строке кода — как в уроке 1. 16 px — меньше нельзя: iOS увеличит страницу. */
+.tk-input { display: block; flex: 0 1 auto; min-width: 4.5ch; max-width: 100%; margin: 2px 3px; padding: 2px 7px; resize: none; overflow: hidden;
+  white-space: pre-wrap; overflow-wrap: anywhere; border: none; border-bottom: 2px dashed #E0643F; border-radius: 4px; outline: none;
+  background: #FFF8EC; color: #1F2A44; font: 700 16px/1.3 'Manrope', sans-serif; }
+.tk-input::placeholder { color: #A39A88; font-weight: 600; }
+.tk-input:focus { background: #fff; border-bottom-color: #1F2A44; }
+.tk-input.is-led-in { animation: kzLed 1.2s ease-in-out infinite; }
+
+/* ══ РЕДАКТОР ════════════════════════════════════════════════════════════
    Прозрачная textarea лежит над подсвеченными строками. У обоих слоёв один
    шрифт, кегль, межстрочный, отступы и правила переноса — иначе курсор
-   разойдётся с буквами. Лигатуры выключены у обоих по той же причине. */
-.ed { position: relative; width: 100%; min-width: 0; text-align: left; background: ${T.paper}; border-radius: 14px;
-  padding: 6px 0; font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; font-size: var(--ed-fs);
-  line-height: 1.45; font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; color: ${T.ink};
-  tab-size: 2; overscroll-behavior: contain;
-  box-shadow: 0 2px 0 rgba(${T.shadowBase},0.05), 0 12px 26px -16px rgba(${T.shadowBase},0.5),
-    inset 0 0 0 1.5px rgba(${T.shadowBase},0.08); }
-.ed-line { position: relative; min-height: 1.45em; padding: 0 10px 0 var(--gw);
-  white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; }
-.ed-line.is-static { color: ${T.ink2}; }
-.ed-line.is-static .ed-tag { opacity: .85; }
-.ed-n { position: absolute; left: 0; top: 0; width: 26px; text-align: right; color: ${T.ink3};
-  font-size: .72em; line-height: 2.01em; user-select: none; }
-.ed-tag { font-weight: inherit; }
-.ed-doc, .ed-unk { color: ${T.ink2}; }
-.ed-edit { position: relative; display: grid; border-radius: 8px; transition: box-shadow .2s, background .2s; }
-.ed-edit.is-framed { background: rgba(255,79,40,.05); box-shadow: inset 0 0 0 1.5px rgba(255,79,40,.34); }
-.ed-edit:focus-within { box-shadow: inset 0 0 0 2px ${T.ui}; background: #fff; }
-.ed-edit.is-led-in { animation: ledFrame 1.15s ease-in-out infinite; }
+   разойдётся с буквами. Лигатуры выключены по той же причине. */
+.ed { position: relative; width: 100%; min-width: 0; text-align: left; padding: 8px 0;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; font-size: var(--ed-fs); font-weight: 500;
+  line-height: 1.45; font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; color: #1F2A44; tab-size: 2; }
+.ed-line { position: relative; min-height: 1.45em; padding: 0 10px 0 var(--gw); white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; }
+.ed-line.is-static { color: #5B5446; }
+.ed-n { position: absolute; left: 0; top: 0; width: 24px; text-align: right; color: #A39A88; font-size: .72em; line-height: 2.01em; user-select: none; }
+.ed-br { color: #D2522C; }
+.ed-nm { color: #1F2A44; }
+.ed-line.is-static .ed-nm { color: #3D4559; }
+.ed-doc, .ed-unk { color: #5B5446; }
+.ed-edit { position: relative; display: grid; border-radius: 6px; transition: box-shadow .2s, background .2s; }
+.ed-edit.is-framed { background: #FFF1C9; box-shadow: inset 0 0 0 1.5px rgba(224, 100, 63, .45); }
+.ed-edit:focus-within { background: #fff; box-shadow: inset 0 0 0 2px #E0643F; }
+.ed-edit.is-led-in { animation: kzLed 1.2s ease-in-out infinite; }
 .ed-hl, .ed-ta { grid-area: 1 / 1; min-width: 0; }
 .ed-hl { pointer-events: none; }
 .ed-edit .ed-line { padding-left: calc(var(--gw) + var(--edi, 0ch)); }
 .ed-ta { position: relative; z-index: 1; display: block; width: 100%; height: 100%; min-height: 1.45em; margin: 0;
-  border: 0; border-radius: 8px; resize: none; overflow: hidden; outline: none;
+  border: 0; border-radius: 6px; resize: none; overflow: hidden; outline: none;
   padding: 0 10px 0 calc(var(--gw) + var(--edi, 0ch)); background: transparent;
-  color: transparent; -webkit-text-fill-color: transparent; caret-color: ${T.ink};
+  color: transparent; -webkit-text-fill-color: transparent; caret-color: #1F2A44;
   font: inherit; line-height: inherit; letter-spacing: inherit; tab-size: 2;
   font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0;
   white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; }
-.ed-ta::selection { background: rgba(255,79,40,.28); }
-/* Скобки вложенности (отсеки задания 6): сплошная — отсек закрыт,
-   пунктир — не закрыт. Цвет повторяет цвет тега, но смысл несёт форма. */
-.ed-bar { position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--c); opacity: .8;
-  left: calc(30px + var(--lv) * 6px); }
-.ed-bar.is-first { top: .5em; } .ed-bar.is-last { bottom: .5em; }
+.ed-ta::selection { background: rgba(224, 100, 63, .28); }
+/* Полоски вложенности: сплошная — часть закрыта, пунктир — не закрыта.
+   Цвет — цвет части в уроке 1, но смысл несёт форма. */
+.ed-bar { position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--c); opacity: .85;
+  left: calc(28px + var(--lv) * 6px); }
+.ed-bar.is-first { top: .45em; } .ed-bar.is-last { bottom: .45em; }
 .ed-bar.is-open { width: 0; background: none; border-left: 3px dashed var(--c); border-radius: 0; opacity: 1; }
-/* Подсказка 3 задания 6: открывающий тег отмечен цветом, место для
-   закрывающего — пунктиром на стыке строк со стрелкой в поле номеров. */
-.ed-line.is-mark { background: color-mix(in srgb, var(--mc) 12%, transparent); box-shadow: inset 3px 0 0 var(--mc); }
-.ed-ins { position: absolute; left: 22px; right: 6px; bottom: -1.5px; height: 0; border-top: 2.5px dashed var(--mc); z-index: 2; }
-.ed-ins i { position: absolute; left: -2px; top: -.62em; font-style: normal; font-weight: 800; font-size: .74em; line-height: 1;
-  color: var(--mc); background: ${T.paper}; padding: 0 1px; }
+/* Строка, на которую указывает подсказка. */
+.ed-line.is-mark { background: #FFE4D8; box-shadow: inset 4px 0 0 #E0643F; }
 
-/* ══ МИНИ-БРАУЗЕР — как в уроке 1 ═══════════════════════════════════ */
-.mb { position: relative; width: 100%; background: #fff; border-radius: 14px; overflow: hidden;
-  box-shadow: 0 2px 0 rgba(${T.shadowBase},0.06), 0 14px 30px -18px rgba(${T.shadowBase},0.6),
-    inset 0 0 0 1.5px rgba(${T.shadowBase},0.10); transition: box-shadow .3s; }
-.mb-top { position: relative; display: flex; align-items: flex-end; gap: 8px; height: clamp(30px, 4.6dvh, 40px);
-  padding: 0 10px; background: ${T.uiBar}; transition: background .3s, box-shadow .3s; }
-/* ВИД CHROME В WINDOWS (заказчик, 15.10.2026): вкладка от левого края с
-   крестиком, за ней «+», справа кнопки окна «— ▢ ✕» (у macOS — три точки
-   слева). Значки нарисованы линиями CSS, без картинок. */
-.mb-x { position: relative; width: 14px; height: 14px; flex: 0 0 auto; margin-left: 2px; border-radius: 50%; color: ${T.ink3}; }
-.mb-x::before, .mb-x::after, .mb-new::before, .mb-new::after, .mb-w-x::before, .mb-w-x::after {
-  content: ''; position: absolute; left: 50%; top: 50%; height: 1.5px; border-radius: 1px; background: currentColor; }
-.mb-x::before, .mb-x::after { width: 8px; margin: -0.75px 0 0 -4px; }
-.mb-x::before, .mb-w-x::before { transform: rotate(45deg); }
-.mb-x::after, .mb-w-x::after { transform: rotate(-45deg); }
-.mb-new { position: relative; align-self: center; width: 20px; height: 20px; flex: 0 0 auto; color: ${T.ink2}; }
-.mb-new::before, .mb-new::after { width: 10px; margin: -0.75px 0 0 -5px; }
-.mb-new::after { transform: rotate(90deg); }
-.mb-win { display: flex; align-self: stretch; margin: 0 -10px 0 auto; flex: 0 0 auto; color: ${T.ink2}; }
-.mb-label + .mb-new + .mb-win { margin-left: 4px; }
-.mb-win i { position: relative; width: 26px; }
-.mb-w-min::before { content: ''; position: absolute; left: 50%; top: 50%; width: 9px; height: 1.5px; margin-left: -4.5px; background: currentColor; }
-.mb-w-max::before { content: ''; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px;
-  border: 1.5px solid currentColor; border-radius: 1px; box-sizing: border-box; }
-.mb-w-x::before, .mb-w-x::after { width: 11px; margin: -0.75px 0 0 -5.5px; }
-@media (max-width: 380px) { .mb-win i { width: 22px; } .mb-new { width: 16px; } }
-.mb-tab { position: relative; display: flex; align-items: center; gap: 6px; max-width: 72%; min-width: 0; height: 78%;
-  padding: 0 12px; background: #fff; border-radius: 10px 10px 0 0;
-  font: 700 clamp(12px, 3.2vw, 14px)/1 'Manrope', sans-serif; color: ${T.ink}; transition: box-shadow .3s; }
-.mb-fav { width: 12px; height: 12px; border-radius: 3px; background: ${T.ui}; flex: 0 0 auto; }
-.mb-tab-t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.mb-tab-t.is-file { color: ${T.ink3}; font-weight: 600; font-style: italic; }
-.mb-label { margin-left: auto; align-self: center; font: 800 10.5px/1 'Manrope', sans-serif; letter-spacing: .06em;
-  text-transform: uppercase; color: ${T.ink2}; white-space: nowrap; }
-.mb-page { position: relative; min-height: clamp(44px, 8dvh, 120px); padding: 8px 10px; background: #fff;
-  transition: box-shadow .3s, background .3s; }
-.mb-doc { font-family: 'Times New Roman', Times, serif; font-size: 16px; line-height: 1.25; color: #000;
-  overflow-wrap: anywhere; text-align: left; white-space: normal; }
-.mb-doc.is-empty { color: ${T.ink3}; font-family: 'Manrope', sans-serif; font-style: italic; font-size: 14px; }
-.mb-tab.is-flash { animation: tabFlash 1s ease-out; }
-.mb-page.is-flash { animation: pageFlash 1s ease-out; }
-@keyframes tabFlash { 0% { background: #fff; } 25% { background: #FEEBF3; } 100% { background: #fff; } }
-@keyframes pageFlash { 0% { background: #fff; } 25% { background: #E4F4FF; } 100% { background: #fff; } }
-.mb-hl-head .mb-top { background: #F2EFFF; box-shadow: inset 0 0 0 2.5px #6F57AB; }
-.mb-hl-title .mb-tab { box-shadow: inset 0 0 0 2.5px #9F4471; }
-.mb-hl-body .mb-page { box-shadow: inset 0 0 0 2.5px #1171A0; background: #EEF7FF; }
+/* Места между строками (t6): нажимаешь щель — там раскрывается строка ввода. */
+.pp-gap { display: block; position: relative; width: calc(100% - var(--gw) + 10px); height: 18px; margin: -4px 0 -4px calc(var(--gw) - 10px);
+  padding: 0; border: none; background: none; cursor: pointer; z-index: 2; }
+.pp-gap-line { position: absolute; left: 0; right: 26px; top: 50%; height: 0; border-top: 2px dashed #E2D8C3; transition: border-color .15s; }
+.pp-gap::after { content: '+'; position: absolute; right: 6px; top: 50%; translate: 0 -52%; width: 15px; height: 15px; border-radius: 50%;
+  background: #FBF6EA; color: #B1A891; font: 800 13px/15px 'Manrope', sans-serif; text-align: center; box-shadow: inset 0 0 0 1.5px #D8CDB6; }
+.pp-gap:hover .pp-gap-line, .pp-gap:focus-visible .pp-gap-line { border-top-color: #E0643F; }
+.pp-gap:hover::after, .pp-gap:focus-visible::after { color: #E0643F; box-shadow: inset 0 0 0 1.5px #E0643F; }
+.pp-gap:focus-visible { outline: none; }
+.pp-gap.is-led .pp-gap-line { border-top-color: #E0643F; border-top-width: 3px; }
+.pp-gap.is-led { animation: kzLed 1.2s ease-in-out infinite; }
 
-/* ══ ЗАДАНИЕ: стопка ═══════════════════════════════════════════════
-   Рабочая область — единственный блок экрана, который сжимается: когда
-   места мало, редактор прокручивается внутри себя, а задание, кнопки и
-   заметка остаются на виду. */
-/* На экране задания главное — редактор: герой здесь компактнее, чем на
-   вступлении и в финале, на любом размере экрана. */
-.stage:has(.op-work) { --av: clamp(46px, min(12vw, 10dvh), 90px); }
-.stack > .op-work { flex: 0 1 auto; min-height: 120px; }
-/* Заметка тоже уступает место: длинный разбор или образец прокручиваются
-   внутри неё, а редактор с кнопками остаются на экране. */
-.stack > .note { flex: 0 1 auto; min-height: 52px; overflow: auto; scrollbar-width: thin; }
-.op-order { font-size: clamp(15px, 2.2vw, 18px); line-height: 1.35; text-align: left; }
-.op-order.is-drill { color: ${T.ink}; }
-.drill-tag { display: inline-block; margin-right: 8px; padding: 3px 9px; border-radius: 99px; vertical-align: 1px;
-  background: ${T.hintSoft}; color: ${T.hint}; font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
-.op-work { display: flex; flex-direction: column; gap: clamp(6px, 1.2dvh, 12px); width: 100%; min-height: 0; }
-.op-side { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; min-width: 0; }
-.op-main { display: flex; flex-direction: column; gap: 8px; flex: 0 1 auto; min-height: 0; min-width: 0; }
-.op-main > .ed, .op-main > .cv { flex: 0 1 auto; min-height: 64px; overflow: auto; }
-/* Большой редактор (задание 7, документ с нуля): рабочая область забирает
-   свободную высоту экрана, поле ввода растягивается на всю рамку редактора —
-   нажать можно в любом месте. */
-.stage:has(.op-work.is-big) .stack { flex: 1 1 auto; }
-.stack > .op-work.is-big { flex: 1 1 auto; }
-.op-work.is-big .op-main { flex: 1 1 auto; }
-.op-work.is-big .op-main > .ed { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 8.5em; }
-.op-work.is-big .ed-edit { flex: 1 1 auto; }
-.stage:has(.op-work.is-big) .stage-content::before,
-.stage:has(.op-work.is-big) .stage-content::after { flex: 0 0 4px; }
-@media (min-width: 720px) {
-  .op-work { flex-direction: row; align-items: stretch; gap: 20px; }
-  .op-side { flex: .82 1 0; min-height: 0; overflow: auto; }
-  .op-main { flex: 1.18 1 0; }
-}
-.op-tools { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 0 0 auto; }
-.sym { display: flex; gap: 4px; }
-.key-b { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  min-width: 44px; min-height: 44px; padding: 0 12px; border: none; border-radius: 12px; cursor: pointer;
-  background: ${T.paper}; color: ${T.ink}; font: 800 20px/1 'JetBrains Mono', ui-monospace, monospace;
-  box-shadow: 0 2px 6px rgba(80,65,45,.1), inset 0 0 0 2px ${T.uiSoft}; transition: transform .12s; }
-.key-b:active:not(:disabled) { transform: scale(.94); }
-.key-b:focus-visible { outline: 3px solid ${T.ui}; outline-offset: 2px; }
-.sym-b { min-width: 40px; padding: 0 6px; }
-.key-go { font: 800 15px/1 'Manrope', sans-serif; padding: 0 16px; color: ${T.uiDk}; flex: 1 1 auto; max-width: 240px; margin-left: auto; }
-.key-go.is-ready { background: ${T.ui}; color: #fff; box-shadow: 0 3px 0 ${T.uiDk}; }
+/* Образец и код готовой страницы. */
+.sample { display: flex; flex-direction: column; gap: 4px; padding: 6px 10px; text-align: left; }
+.sample-lbl { font: 800 11.5px 'Manrope', sans-serif; letter-spacing: .05em; text-transform: uppercase; color: #8A6A1A; }
+.sample-code { font: 500 14px/1.4 'JetBrains Mono', ui-monospace, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; color: #1F2A44; }
+
+/* ══ КНОПКИ: символы и «Проверить» — бумажные ═══════════════════════════ */
+.op-tools { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.pp-sym { display: flex; gap: 5px; }
+.pp-key { min-width: 44px; min-height: 44px; padding: 0 8px; border: none; cursor: pointer; background: #FBF6EA; color: #1F2A44;
+  font: 800 20px/1 'JetBrains Mono', ui-monospace, monospace;
+  clip-path: polygon(0 8%, 10% 0, 50% 6%, 92% 0, 100% 10%, 96% 52%, 100% 92%, 90% 100%, 50% 94%, 8% 100%, 0 90%, 4% 48%);
+  box-shadow: inset 0 0 0 2px #E6DCC6; transition: transform .1s steps(2, end); }
+.pp-key:active { transform: translateY(2px) rotate(-2deg); }
+.pp-go { flex: 1 1 auto; max-width: 260px; margin-left: auto; min-height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 0 16px; border: none; cursor: pointer; background: #E0643F; color: #fff; font: 800 16px 'Manrope', sans-serif; rotate: -.6deg;
+  clip-path: polygon(0 8%, 6% 0, 50% 5%, 95% 0, 100% 10%, 98% 55%, 100% 92%, 94% 100%, 48% 95%, 5% 100%, 0 90%, 2% 45%); }
+.pp-go:active { transform: translateY(2px); }
+.pp-key:focus-visible, .pp-go:focus-visible { outline: 3px solid #1F2A44; outline-offset: 2px; }
 @media (max-width: 479px) {
-  .sym-b { min-width: 36px; }
-  .key-go { padding: 0 10px; min-width: 96px; }
-  .key-go .ic { display: none; }
+  .pp-key { min-width: 38px; }
+  .pp-go { padding: 0 10px; min-width: 96px; }
 }
 
-/* Заметки: разбор проверки — белая с оранжевой кромкой (это не ошибка
-   и не подсказка), подсказка — жёлтая, похвала — зелёная. */
-.note-one { padding: 9px 13px; }
-.note-one .note-body { font-size: clamp(15px, 2vw, 18px); line-height: 1.35; }
-.note-one .note-lbl { margin-bottom: 3px; }
-.note-extra { margin-top: 6px; }
-.note-extra .sample { background: rgba(255,255,255,.7); box-shadow: inset 0 0 0 1.5px rgba(141,94,0,.25); }
-.note-extra .slot { padding: 5px 4px; }
-.stack > .target { flex-shrink: 0; }
-.note-fb { background: ${T.paper}; box-shadow: inset 3px 0 0 ${T.ui}, inset 0 0 0 1.5px rgba(255,79,40,.2); }
-.note-fb .note-lbl { color: ${T.uiDk}; }
-/* Подсказка после неудач: сверху — что не так, ниже — ступень подсказки. */
-.note-fbline { margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px dashed rgba(141,94,0,.3);
-  font-size: clamp(13.5px, 1.7vw, 15.5px); line-height: 1.35; font-weight: 600; color: ${T.uiDk}; }
-.is-kbd .note-fbline { display: none; }
-/* Низкий экран, третья ступень: важнее образец, «что не так» уже прозвучало. */
-@media (max-height: 760px) { .note-hint:has(.note-extra) .note-fbline { display: none; } }
-.note-sub { margin-left: 6px; padding: 2px 8px; border-radius: 99px; background: ${T.uiSoft}; color: ${T.uiDk};
-  font-size: 11px; letter-spacing: .02em; text-transform: none; }
+/* ══ ЗАМЕТКА ПОД РАБОТОЙ — бумажный листок ══════════════════════════════════
+   Разбор проверки — кремовый с коралловой кромкой (это не «ошибка»),
+   подсказка — жёлтый, похвала — бирюзовый. */
+.pp-note { padding: 8px 14px 9px; color: #1F2A44; text-align: left; rotate: -.3deg;
+  clip-path: polygon(0 5%, 4% 0, 32% 4%, 63% 0, 97% 3%, 100% 0, 99.4% 50%, 100% 100%, 70% 96%, 36% 100%, 3% 97%, 0 100%, .6% 50%);
+  animation: kzPop .45s steps(1, end) both; }
+.pp-note.is-fb { background: #FBF6EA; box-shadow: inset 4px 0 0 #E0643F, inset 0 0 0 1.5px #EADFC9; }
+.pp-note.is-hint { background: #FFF1C9; box-shadow: inset 4px 0 0 #F0B13F; }
+.pp-note.is-ok { background: #DCEFE8; box-shadow: inset 4px 0 0 #2A8C7E; }
+.pp-note-lbl { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; font: 800 11.5px 'Manrope', sans-serif;
+  letter-spacing: .05em; text-transform: uppercase; color: #8C5A2A; }
+.pp-note.is-hint .pp-note-lbl { color: #8A6A1A; }
+.pp-note.is-ok .pp-note-lbl { color: #1E6B5F; }
+.pp-note-step { margin-left: 2px; font-family: 'JetBrains Mono', monospace; }
+.pp-note-sub { margin-left: 4px; padding: 1px 7px; background: #FFE4D8; color: #8C3A1E; font-size: 10.5px; text-transform: none; letter-spacing: 0; border-radius: 3px; }
+.pp-note-fb { margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px dashed rgba(141, 94, 0, .3);
+  font: 600 clamp(13.5px, 1.7vw, 15px)/1.35 'Manrope', sans-serif; color: #8C3A1E; }
+.pp-note-body { font: 700 clamp(14.5px, 2dvh, 17px)/1.35 'Manrope', sans-serif; }
+.pp-note-extra { margin-top: 6px; background: rgba(255, 255, 255, .72); box-shadow: inset 0 0 0 1.5px rgba(141, 94, 0, .22); }
 
-/* ══ КАРТА БАЗЫ ═══════════════════════════════════════════════════ */
-.bstrip { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 5px; }
-.bs-track { position: relative; display: flex; align-items: center; gap: clamp(4px, 1.3vw, 10px); }
-.bs-track::before { content: ''; position: absolute; left: 12px; right: 12px; top: 50%; height: 2px; margin-top: -1px;
-  background: rgba(${T.shadowBase},0.14); }
-.bs-st { position: relative; z-index: 1; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
-  background: ${T.uiBar}; color: ${T.ink3}; border: 1.5px dashed rgba(${T.shadowBase},0.3); transition: background .3s, color .3s; }
-.bs-st.is-lit { background: ${T.ui}; color: #fff; border: 1.5px solid ${T.ui}; }
-.bs-st.is-cur { box-shadow: 0 0 0 2.5px ${T.bg}, 0 0 0 4.5px ${T.ink}; }
-.bs-st.is-pop { animation: bsPop .7s cubic-bezier(.3,1.6,.5,1) both; }
-@keyframes bsPop { 0% { transform: scale(.6); } 60% { transform: scale(1.25); } 100% { transform: none; } }
-.bs-ok { position: absolute; right: -4px; top: -4px; width: 14px; height: 14px; border-radius: 50%; display: grid; place-items: center;
-  background: ${T.success}; color: #fff; box-shadow: 0 0 0 2px ${T.bg}; }
-.bs-cap { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 13px; color: ${T.ink2}; white-space: nowrap; }
-.bs-cap b { color: ${T.uiDk}; font-weight: 800; }
-.bs-name { overflow: hidden; text-overflow: ellipsis; font-weight: 700; color: ${T.ink}; }
-@media (max-width: 600px) { .bs-cap { display: none; } .bstrip { justify-content: center; } }
-/* Телефон: карта базы уходит в шапку — три объекта (предыдущий, текущий,
-   следующий) слева от кнопок; полная полоса над заданием прячется. */
+/* ══ НАГЛЯДНАЯ ПОМОЩЬ ══════════════════════════════════════════════════════ */
+.pp-slots { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.pp-slot { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px 5px; background: #FBF6EA; color: #1F2A44;
+  font: 700 13.5px 'Manrope', sans-serif; box-shadow: inset 0 0 0 1.5px #E6DCC6;
+  clip-path: polygon(0 10%, 6% 0, 94% 8%, 100% 0, 97% 55%, 100% 100%, 50% 92%, 4% 100%, 0 50%); }
+.pp-slot b { display: inline-grid; place-items: center; width: 18px; height: 18px; background: #1F2A44; color: #FBF6EA; font: 800 11px 'JetBrains Mono', monospace; border-radius: 4px; }
+.pp-slot.is-name, .pp-slot.is-text { background: #FFF1C9; }
+.pp-left { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px 5px; background: #FFE4D8; color: #8C3A1E;
+  font: 800 13.5px 'Manrope', sans-serif; clip-path: polygon(0 10%, 6% 0, 94% 8%, 100% 0, 97% 55%, 100% 100%, 50% 92%, 4% 100%, 0 50%); }
+.pp-left.is-ok { background: #DCEFE8; color: #1E6B5F; }
+.pp-bp { display: flex; align-items: center; gap: 12px; padding: 6px 14px 7px; background: #FBF6EA; box-shadow: inset 0 0 0 1.5px #E6DCC6;
+  clip-path: polygon(0 6%, 4% 0, 96% 5%, 100% 0, 99% 50%, 100% 100%, 50% 95%, 0 100%, 1% 50%); }
+.pp-bp-step { flex: none; padding: 2px 9px; background: #1F2A44; color: #FBF6EA; font: 800 12px 'Manrope', sans-serif; border-radius: 4px; }
+.pp-bp-tree { font: 600 13.5px/1.4 'JetBrains Mono', ui-monospace, monospace; color: #1F2A44; }
+.pp-bp-row { display: flex; align-items: center; gap: 4px; opacity: .55; }
+.pp-bp-row.is-cur, .pp-bp-row.is-done { opacity: 1; }
+.pp-bp-row.is-cur .pp-bp-tag { background: #FFF1C9; box-shadow: inset 0 -2px 0 var(--c); }
+.pp-bp-pre { white-space: pre; color: #A39A88; }
+.pp-bp-tag { padding: 0 4px; font-weight: 800; border-radius: 3px; }
+.pp-bp-note { font: 600 12.5px 'Manrope', sans-serif; color: #5B5446; }
+.pp-bp-ok { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; background: #2A8C7E; color: #fff; margin-left: 3px; }
+
+/* ══ БУМАЖНАЯ УЛИЦА ═════════════════════════════════════════════════════════
+   Дом — вырезки: крыша, стена, окно, дверь. Ждёт — выцветший, окно тёмное;
+   готов — свой цвет, окно светится, галочка. Свой дом до постройки — пунктир. */
+.pp-house { position: relative; display: inline-flex; flex-direction: column; align-items: center; gap: 3px; vertical-align: bottom; }
+.pp-h-art { position: relative; display: block; width: var(--hw, 30px); height: calc(var(--hw, 30px) * 1.04); }
+.pp-house.is-s { --hw: 26px; }
+.pp-house.is-l { --hw: clamp(46px, 12.5vw, 66px); }
+.kz-cut.pp-h-roof { left: -8%; top: 0; width: 116%; height: 46%; z-index: 2; }
+.kz-cut.pp-h-wall { left: 6%; top: 38%; width: 88%; height: 62%; z-index: 1; }
+.kz-cut.pp-h-win { left: 18%; top: 52%; width: 30%; height: 24%; z-index: 3; }
+.kz-cut.pp-h-door { left: 58%; top: 62%; width: 24%; height: 38%; z-index: 3; }
+.pp-h-winplan { position: absolute; left: 18%; top: 52%; width: 30%; height: 24%; z-index: 3; border: 1.5px dashed #B1A891; border-radius: 2px; }
+.pp-h-plan { position: absolute; inset: 8% 6% 0; border: 2px dashed #B1A891; border-radius: 3px;
+  clip-path: polygon(50% 0, 100% 38%, 100% 100%, 0 100%, 0 38%); background: rgba(216, 205, 182, .25); }
+.pp-house.is-lit .kz-cut.pp-h-win { filter: drop-shadow(0 0 4px rgba(255, 196, 70, .95)) drop-shadow(0 1px 1px rgba(74, 48, 18, .3)); }
+/* Ждёт — выцвел и покосился от ветра; починили — свой цвет и стоит ровно (ступеньками). */
+.pp-h-art { transition: rotate .5s steps(5, end), filter .5s steps(5, end); }
+.pp-house.is-wait .pp-h-art { rotate: var(--tilt, 0deg); filter: grayscale(.8) opacity(.78); }
+.pp-h-ok { position: absolute; top: -4px; right: -6px; z-index: 5; display: grid; place-items: center; width: 15px; height: 15px; border-radius: 50%;
+  background: #2A8C7E; color: #fff; box-shadow: 0 0 0 2px #FBF6EA; }
+.pp-house.is-cur .pp-h-art::after { content: ''; position: absolute; left: 50%; bottom: -7px; translate: -50% 0; width: 70%; height: 3px; background: #E0643F; border-radius: 2px; }
+.pp-h-name { max-width: calc(var(--hw) * 1.7); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center;
+  font: 800 clamp(10.5px, 1.5dvh, 12.5px)/1.2 'Manrope', sans-serif; color: #1F2A44; }
+.pp-house:not(.is-lit) .pp-h-name { color: #8C8476; }
+
+.pp-strip { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 0 0 auto; }
+.pp-strip-row { display: flex; align-items: flex-end; gap: clamp(6px, 1.2vw, 12px); }
+.pp-strip-cap { display: flex; flex-direction: column; align-items: flex-end; font: 700 12.5px/1.25 'Manrope', sans-serif; color: #5B5446; text-align: right; }
+.pp-strip-cap b { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: #8C8476; }
+.pp-strip-cap span { font-size: 14px; color: #1F2A44; font-weight: 800; }
+.pp-strip.is-mini .pp-strip-row { gap: 10px; }
+.pp-strip.is-mini .pp-house.is-s { --hw: 24px; }
+
+.pp-street { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(10px, 2dvh, 18px) 8px; align-items: end;
+  justify-items: center; padding: 6px 10px 14px; flex: 0 0 auto; width: 100%; max-width: 860px; align-self: center; }
+.pp-street .pp-road { z-index: 0; top: auto !important; bottom: 0; height: 12px; }
+.pp-street-h { position: relative; z-index: 1; animation: kzDrop .66s steps(1, end) both; animation-delay: var(--dl, 0s); }
+.pp-street.is-glow .pp-house.is-lit .pp-h-art { animation: kzStamp .5s steps(1, end) both; animation-delay: var(--dl, 0s); }
+@media (min-width: 720px) {
+  .pp-house.is-l { --hw: clamp(64px, 13dvh, 112px); }
+  .pp-sheet-fin .pp-house.is-l { --hw: clamp(48px, 8dvh, 76px); }
+}
+/* Хук: ветер сдувает с домов бумажки-вывески (stop-motion, с шорохом — kzOut). */
+.kz-cut.pp-scrap { left: 30%; top: 2%; width: 44%; height: 16%; z-index: 6; animation: kzOut .9s steps(1, end) both; animation-delay: calc(var(--i, 0) * .09s); }
+.pp-street.is-blown .pp-h-art { animation: kzShake .5s steps(1, end) both; animation-delay: calc(var(--i, 0) * .07s); }
+.pp-wind-row { display: flex; justify-content: center; flex: 0 0 auto; }
+.kz-btn.pp-wind { min-width: 180px; font-size: 18px; }
+@media (prefers-reduced-motion: reduce) { .kz-cut.pp-scrap { display: none; } .pp-street.is-blown .pp-h-art { animation: none; } }
+.pp-intro-note { margin: 0; align-self: center; max-width: 560px; padding: 6px 14px; background: #FFF1C9; color: #5B4300; text-align: center;
+  font: 700 clamp(13.5px, 1.9dvh, 15.5px)/1.35 'Manrope', sans-serif;
+  clip-path: polygon(0 6%, 4% 0, 96% 5%, 100% 0, 99% 50%, 100% 100%, 50% 95%, 0 100%, 1% 50%); }
+
+/* ══ ФИНАЛ ═══════════════════════════════════════════════════════════════ */
+.pp-fin { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 980px; align-self: center; }
+.pp-fin-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.pp-stamp { display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; background: #2A8C7E; color: #fff; font: 800 16px 'Manrope', sans-serif; rotate: -2deg;
+  clip-path: polygon(0 8%, 6% 0, 50% 5%, 95% 0, 100% 10%, 98% 55%, 100% 92%, 94% 100%, 48% 95%, 5% 100%, 0 90%, 2% 45%); animation: kzStamp .5s steps(1, end) .6s both; }
+.pp-fin-pair { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.pp-fin-c .sample-code { max-height: 30dvh; overflow: auto; }
+.pp-fin-c .pp-pad { padding: 4px 2px; }
+.pp-skills { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.pp-skill { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: #FBF6EA; color: #1F2A44; font: 700 14px 'Manrope', sans-serif;
+  clip-path: polygon(0 8%, 5% 0, 60% 6%, 98% 0, 100% 50%, 98% 100%, 40% 94%, 2% 100%, 0 50%); box-shadow: inset 0 0 0 1.5px #E6DCC6;
+  animation: kzLeft .6s steps(1, end) both; animation-delay: var(--dl, 0s); }
+.pp-skill .ic { color: #2A8C7E; flex: none; }
+.pp-seg { display: inline-flex; padding: 3px; gap: 3px; background: #E6DCC6; }
+.pp-seg-b { min-height: 40px; padding: 0 16px; border: none; background: transparent; cursor: pointer; font: 700 14px 'Manrope', sans-serif; color: #5B5446; }
+.pp-seg-b.is-on { background: #FBF6EA; color: #1F2A44; }
+.pp-only-narrow { display: flex; justify-content: center; }
+@media (min-width: 720px) {
+  .pp-only-narrow { display: none !important; }
+  .pp-fin-pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .pp-skills { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 719px) {
+  .pp-fin-pair.view-page .pp-fin-c, .pp-fin-pair.view-code .pp-fin-b { display: none; }
+  .pp-sheet-fin .pp-skills { display: none; }
+}
+
+/* ══ ШАПКА ПРАКТИКИ (PStage) ═════════════════════════════════════════════
+   Коди нет: о голосе говорит кружок с полосками. Телефон — три колонки:
+   голос и лампочка | три дома улицы | пауза и счётчик. */
 .p-top, .p-voice-l { display: none; }
 .p-voice-r { display: contents; }
+.p-voice.is-on { animation: pVoiceRing 1.6s ease-out infinite; }
+@keyframes pVoiceRing { 0% { box-shadow: 0 0 0 0 rgba(224, 100, 63, .32); } 100% { box-shadow: 0 0 0 10px rgba(224, 100, 63, 0); } }
+.p-hidden-hero { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 719px) {
-  /* Шапка телефона — три колонки: голос | карта | кнопки. */
   .p-stage .chrome { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
   .p-stage .p-voice-l { display: flex; align-items: center; gap: clamp(4px, 1.2vw, 9px); grid-column: 1; justify-self: start; }
   .p-stage .p-voice-r { display: none; }
   .p-stage .p-top { display: flex; grid-column: 2; justify-self: center; min-width: 0; }
   .p-stage .chrome-side { grid-column: 3; justify-self: end; }
   .p-stage .chrome > .eyebrow { display: none; }
-  .p-stage .stage-content .bstrip { display: none; }
-  .bstrip-mini { padding-top: 0; }
-  .bstrip-mini .bs-track { gap: 8px; }
-  .bstrip-mini .bs-st { width: 34px; height: 34px; }
-  .bstrip-mini .bs-st svg { width: 17px; height: 17px; }
+  .p-stage .kz-sheet .pp-strip:not(.is-mini) { display: none; }
 }
 
-.bmap { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; max-width: 780px; align-self: center; }
-@media (min-width: 720px) {
-  .bmap { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-  .bm-st.is-room { grid-column: span 2; }
-}
-@media (max-width: 719px) { .bm-st.is-room { grid-column: 1 / -1; } }
-.bm-st { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 8px 10px; border-radius: 14px;
-  background: ${T.paper}; border: 1.5px dashed rgba(${T.shadowBase},0.24); }
-.bm-st.is-lit { border: 1.5px solid rgba(255,79,40,.4); box-shadow: 0 10px 22px -16px rgba(255,79,40,.7); }
-.bm-ic { flex: 0 0 auto; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
-  background: ${T.uiBar}; color: ${T.ink3}; }
-.bm-st.is-lit .bm-ic { background: ${T.ui}; color: #fff; box-shadow: 0 0 0 5px rgba(255,79,40,.14); }
-.bm-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.bm-name { font-weight: 800; font-size: 14px; line-height: 1.2; overflow-wrap: anywhere; }
-.bm-state { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: ${T.ink2}; }
-.bm-st.is-lit .bm-state { color: ${T.success}; }
-.bmap.is-glow .bm-st.is-lit { animation: bmOn .6s cubic-bezier(.3,1.4,.5,1) both; }
-@keyframes bmOn { from { opacity: .3; transform: scale(.94); } to { opacity: 1; transform: none; } }
-.intro-ask { font-weight: 600; }
-
-/* ══ НАГЛЯДНАЯ ПОМОЩЬ ═════════════════════════════════════════════ */
-.schema { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 10px; padding: 7px 10px;
-  border-radius: 12px; background: ${T.paper}; box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.1); }
-.schema-cap { font-size: 13px; font-weight: 700; color: ${T.ink2}; }
-.schema-row { display: inline-flex; align-items: center; gap: 6px; }
-.schema-chip { padding: 3px 9px; border-radius: 8px; font-size: 14px; font-weight: 800; color: var(--c);
-  background: color-mix(in srgb, var(--c) 10%, #fff); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 45%, #fff); }
-.schema-arr { color: ${T.ink3}; font-weight: 800; }
-.slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-.slot { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 4px; border-radius: 10px; text-align: center;
-  font-size: 13px; font-weight: 700; color: ${T.ink2}; background: ${T.paper}; border: 1.5px dashed rgba(17,113,160,.5); }
-.slot-content { border-color: rgba(${T.shadowBase},0.3); }
-.slot-n { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 12px;
-  background: ${T.hintSoft}; color: ${T.hint}; }
-.target { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; border-radius: 12px; background: ${T.paper};
-  box-shadow: inset 0 0 0 1.5px rgba(31,122,77,.35); }
-.target-h { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: ${T.success}; }
-.target-r { display: flex; align-items: baseline; gap: 8px; font-size: 15px; line-height: 1.3; }
-.target-k { flex: 0 0 auto; min-width: 72px; font-size: 13px; font-weight: 700; color: ${T.ink2}; }
-.target-tag { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13.5px; color: ${T.uiDk}; }
-.rcard { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 14px; background: ${T.paper};
-  box-shadow: inset 0 0 0 1.5px rgba(31,122,77,.35), 0 10px 22px -16px rgba(${T.shadowBase},.6); animation: noteIn .35s ease-out both; }
-.rcard-bot { flex: 0 0 auto; }
-.rcard-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.rcard-h { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 800; color: ${T.success};
-  letter-spacing: .04em; text-transform: uppercase; }
-.rcard-msg { font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; }
-.sample { display: flex; flex-direction: column; gap: 4px; padding: 7px 10px; border-radius: 12px; background: ${T.hintSoft};
-  box-shadow: inset 3px 0 0 ${T.hint}; text-align: left; }
-.sample-lbl { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 800; letter-spacing: .05em;
-  text-transform: uppercase; color: ${T.hint}; }
-.sample-code { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 14px; line-height: 1.4;
-  white-space: pre-wrap; overflow-wrap: anywhere; color: ${T.ink}; }
-.fin-c .sample { background: ${T.paper}; box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.1); }
-.fin-c .sample-code { max-height: 34dvh; overflow: auto; }
-.bp { display: flex; flex-direction: column; gap: 6px; }
-/* Чертёж всегда открыт и тянется на всю ширину колонки (заказчик, 15.10.2026). */
-.bp.is-open { flex-direction: column; align-items: stretch; width: 100%; }
-.bp-tree { width: 100%; box-sizing: border-box; }
-/* Раскрытый чертёж на низком экране прокручивается внутри себя. */
-.stack > .bp-narrow:has(.bp.is-open) { flex: 0 1 auto; min-height: 40px; overflow: auto; }
-.bp-wide .bp.is-open { flex-direction: column; }
-@media (min-width: 720px) { .bp-narrow { display: none; } }
-@media (max-width: 719px) { .bp-wide { display: none; } }
-.bp-tree { padding: 6px 12px; border-radius: 12px; background: ${T.paper}; box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.1);
-  font-size: 13.5px; line-height: 1.4; }
-.bp-row { display: flex; align-items: baseline; white-space: pre; }
-.bp-pre { color: ${T.ink3}; }
-.bp-tag { font-weight: 800; }
-.bp-note { margin-left: 6px; color: ${T.ink2}; font-family: 'Manrope', sans-serif; font-weight: 600; white-space: normal; }
-.bays { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; }
-.bays-legend { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: ${T.ink2}; }
-.bl-solid, .bl-dash { display: inline-block; width: 0; height: 18px; border-left: 3px solid #586A83; }
-.bl-dash { border-left-style: dashed; }
-
-/* ══ ФИНАЛ ════════════════════════════════════════════════════════ */
-.fin { display: flex; flex-direction: column; gap: 10px; width: 100%; }
-.fin-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.saved-stamp { display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: 99px;
-  background: ${T.successSoft}; color: ${T.success}; font-weight: 800; font-size: 16px; }
-.fin-pair { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
-.fin-pair .mb-page { min-height: clamp(60px, 12dvh, 160px); }
-.fin-skills { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.only-narrow { display: flex; justify-content: center; }
-.seg2 { display: inline-flex; align-self: center; padding: 3px; border-radius: 99px; background: rgba(${T.shadowBase},0.08); }
-.seg2-b { min-height: 40px; padding: 0 16px; border: none; border-radius: 99px; background: transparent; cursor: pointer;
-  font: 700 14px 'Manrope', sans-serif; color: ${T.ink2}; transition: background .2s, color .2s; }
-.seg2-b.is-on { background: ${T.paper}; color: ${T.uiDk}; box-shadow: 0 1px 4px rgba(${T.shadowBase},0.18); }
-.seg2-b:focus-visible { outline: 3px solid ${T.ui}; outline-offset: 2px; }
-@media (min-width: 720px) {
-  .only-narrow { display: none !important; }
-  .fin-pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
-  .fin-map-narrow { display: none; }
-}
+/* ══ ТЕЛЕФОН: главный — редактор ═══════════════════════════════════════════
+   Если места мало, первой ужимается колонка браузера с помощью
+   (прокручивается внутри), а редактор с кнопками держат высоту, при которой
+   видно строку ввода и «Проверить». */
 @media (max-width: 719px) {
-  .fin-pair.view-page .fin-c, .fin-pair.view-code .fin-b { display: none; }
-  .fin-skills, .fin-map-wide { display: none; }
-}
-
-/* ══ ВЫСОТА И ШИРИНА ════════════════════════════════════════════
-   Телефон: на экране задания главный — редактор. Герой меньше, отступы
-   плотнее; если места всё равно мало, первой ужимается колонка браузера с
-   наглядной помощью (прокручивается внутри), а редактор с кнопками держит
-   высоту, при которой видно строку ввода и «Проверить». */
-@media (max-width: 719px) {
-  .stage:has(.op-work) { --av: clamp(46px, 8.4dvh, 60px); --gap-stack: 8px; }
-  .stack > .op-work { min-height: 172px; }
+  /* Кружок в углу листа налезал бы на кнопки < / >: на телефоне в заданиях его нет. */
+  .pp-sheet:not(.pp-sheet-intro):not(.pp-sheet-fin) .kz-deco-dot { display: none; }
+  .pp-sheet .kz-sheet-body { padding: 10px 10px 12px; gap: 7px; }
+  .kz-sheet-body > .op-work { min-height: 168px; }
   .op-side { flex: 0 1 auto; min-height: 46px; overflow: auto; scrollbar-width: none; }
   .op-side::-webkit-scrollbar { display: none; }
-  .op-side > .mb { flex: 0 0 auto; }
-  .op-main { flex: 1 1 auto; min-height: 118px; }
-  .bs-st { width: 26px; height: 26px; }
-  .bs-st svg { width: 14px; height: 14px; }
-  .schema { flex-wrap: nowrap; padding: 5px 8px; gap: 8px; }
-  .schema-cap { font-size: 12px; line-height: 1.2; text-align: left; }
-  .schema-chip { font-size: 13px; padding: 2px 7px; }
-  .op-side .mb-doc { max-height: 3.9em; overflow: auto; }
-  .op-side .mb-page { min-height: 38px; padding: 6px 9px; }
+  .op-main { flex: 1 1 auto; min-height: 116px; }
+  .pp-page { max-height: 3.9em; }
+  .pp-br .kz-br-page { margin: 5px 9px 7px; }
   .ed-line.is-static { font-size: .9em; }
   .ed-line.is-static .ed-n { font-size: .8em; line-height: 2.01em; }
+  .pp-bp { padding: 4px 10px; gap: 8px; }
+  .pp-bp-tree { font-size: 12.5px; line-height: 1.32; }
+  .pp-slot { font-size: 12.5px; padding: 3px 9px 4px; }
+  .pp-slots { gap: 4px; }
+}
+@media (max-width: 400px) {
+  .pp-slot { font-size: 11.5px; padding: 2px 7px 3px; gap: 4px; }
+  .pp-slot b { width: 15px; height: 15px; font-size: 10px; }
 }
 @media (max-height: 700px) {
   .lesson-root { --cv-fs: clamp(11.5px, 3.2vw, 13.5px); }
   .cv { line-height: 1.42; }
-  .mb-top { height: 30px; }
-  .bm-st { padding: 6px 9px; }
-  .bm-ic { width: 34px; height: 34px; }
+  .kz-ask.pp-ask { font-size: 14.5px; padding: 5px 12px 6px; }
 }
 /* Совсем маленький телефон (320×568 и ниже). */
 @media (max-height: 600px) {
-  .lesson-root { --av: clamp(52px, 10.5dvh, 62px); --cv-fs: 11px; }
-  /* Место под редактор важнее полоски карты: где ты, видно по подписи
-     задания в шапке и по полосе прогресса. */
-  .lesson-root .stage:has(.op-work) .bstrip { display: none; }
-  .lesson-root .bs-st { width: 26px; height: 26px; }
-  .lesson-root .mb-top { height: 28px; }
-  .lesson-root .op-side .mb-page { min-height: 30px; padding: 4px 8px; }
-  .lesson-root .mb-doc { font-size: 15px; }
-  .lesson-root .op-order { font-size: 14.5px; line-height: 1.3; }
-  .lesson-root .key-b { min-height: 40px; }
-  .lesson-root .note-one { padding: 6px 10px; }
-  .lesson-root .note-one .note-body { font-size: 14px; }
+  .lesson-root { --cv-fs: 11px; }
+  .lesson-root .kz-ask.pp-ask { font-size: 14px; line-height: 1.25; }
+  .lesson-root .pp-key, .lesson-root .pp-go { min-height: 40px; }
+  .lesson-root .pp-note { padding: 5px 10px; }
+  .lesson-root .pp-note-body { font-size: 14px; }
   .lesson-root .cv { line-height: 1.3; padding-block: 4px; }
-  .lesson-root .tk-input { padding-block: 1px; }
-  .lesson-root .ed { padding-block: 3px; }
-  .lesson-root .bm-name { font-size: 13px; }
-  .lesson-root .bm-st { padding: 5px 8px; gap: 8px; }
-  .lesson-root .bm-ic { width: 30px; height: 30px; }
-  .lesson-root .schema { padding: 4px 8px; }
-  .lesson-root .bp-tree { font-size: 12.5px; line-height: 1.35; padding: 4px 10px; }
-  .lesson-root .target { padding: 5px 10px; gap: 1px; }
-  .lesson-root .target-h { display: none; }
-  .lesson-root .target-r { font-size: 14px; }
+  .lesson-root .ed { padding-block: 4px; }
+  .lesson-root .pp-bp-note { display: none; }
 }
 
-/* ══ КЛАВИАТУРА ТЕЛЕФОНА ОТКРЫТА ══════════════════════════════════
-   Видимой высоты остаётся около половины экрана. Пока ребёнок печатает,
-   на экране только браузер, редактор, кнопки и заметка. Герой, карта,
-   заказ и кнопки «Назад / Дальше» на это время уходят. */
-.is-kbd .speaker-wrap, .is-kbd .stage-nav, .is-kbd .bstrip, .is-kbd .op-order,
-.is-kbd .schema, .is-kbd .target, .is-kbd .bp-narrow, .is-kbd .bays, .is-kbd .rcard, .is-kbd .slots { display: none; }
-.is-kbd .stage-content::before, .is-kbd .stage-content::after { max-height: 4px; }
-
-/* ══ ШАПКА ПРАКТИКИ (PStage) ══════════════════════════════════════
-   Робота и его слов нет: о голосе говорит кружок с полосками в ряду кнопок.
-   Пока голос звучит, вокруг кружка мягко расходится кольцо. */
-.p-voice.is-on { animation: pVoiceRing 1.6s ease-out infinite; }
-@keyframes pVoiceRing {
-  0% { box-shadow: 0 0 0 0 rgba(255,79,40,.32); }
-  100% { box-shadow: 0 0 0 10px rgba(255,79,40,0); }
-}
-@media (prefers-reduced-motion: reduce) { .p-voice.is-on { animation: none; } }
-.p-hidden-hero { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0;
-  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.is-kbd .mb-top { height: 24px; }
-.is-kbd .op-side .mb-page { min-height: 24px; padding: 3px 8px; }
-.is-kbd .op-side .mb-doc { font-size: 15px; max-height: 2.5em; }
-.is-kbd .op-work { gap: 6px; }
-.is-kbd .key-b { min-height: 40px; }
-.is-kbd .note-one { padding: 4px 10px; }
-.is-kbd .note-one .note-lbl { display: none; }
-.is-kbd .note-one .note-body { font-size: 14px; }
-.is-kbd .sample { padding: 4px 8px; }
+/* ══ КЛАВИАТУРА ТЕЛЕФОНА ОТКРЫТА ═══════════════════════════════════════════
+   Видимой высоты — около половины экрана. Пока ученик печатает, на листе
+   только браузер, редактор, кнопки и заметка: улица, задание и помощь,
+   «Назад / Дальше» на это время уходят (задание есть в голосе и вернётся). */
+.is-kbd .stage-nav, .is-kbd .kz-sheet .pp-strip, .is-kbd .pp-extra, .is-kbd .kz-deco, .is-kbd .pp-drill-tag { display: none; }
+.is-kbd .pp-sheet .kz-sheet-body { padding: 6px 8px; gap: 5px; }
+/* Задание остаётся на виду (требование к практике) — одной-двумя короткими строками. */
+.is-kbd .kz-ask.pp-ask { font-size: 13px; line-height: 1.25; padding: 3px 10px 4px; }
+.is-kbd .kz-br-bar { height: 22px; }
+.is-kbd .kz-br-tool { display: none; }
+.is-kbd .pp-br .kz-br-page { margin: 3px 8px 4px; }
+.is-kbd .pp-page { min-height: 1.3em; max-height: 1.4em; font-size: 14px; line-height: 1.3; }
+.is-kbd .op-main > .pp-edpad { min-height: 84px; }
+.is-kbd .kz-sheet-body > .pp-note { max-height: 34%; }
+.is-kbd .op-work { gap: 5px; }
+.is-kbd .pp-key, .is-kbd .pp-go { min-height: 40px; }
+.is-kbd .pp-note { padding: 4px 10px; }
+.is-kbd .pp-note-lbl, .is-kbd .pp-note-fb { display: none; }
+.is-kbd .pp-note-body { font-size: 14px; }
 .is-kbd .stage-content { padding-bottom: 2px; }
 
 /* Меньше движения: смысл остаётся, движение уходит. */
 @media (prefers-reduced-motion: reduce) {
-  .bs-st.is-pop, .bmap.is-glow .bm-st, .ed-edit.is-led-in, .tk-input.is-led-in,
-  .mb-tab.is-flash, .mb-page.is-flash, .rcard { animation: none !important; }
+  .pp-note, .pp-street-h, .pp-street.is-glow .pp-h-art, .pp-stamp, .pp-skill, .pp-gap.is-led, .ed-edit.is-led-in, .tk-input.is-led-in, .p-voice.is-on { animation: none !important; }
 }
 `;

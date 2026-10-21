@@ -6,7 +6,8 @@
 // (kz-a-drop и т. п.), влетают своим движением. При «меньше движения» — смена без
 // анимации. Шорох бумаги включается сам (kzScatter, kzAsmIn — в PAPER_ANIMS).
 const KZ_PIECES = '.kz-ask-wrap, .kz-br, .kz-line, .kz-scrap, .kz-btn, .kz-card, .kz-zone, .kz-label, .kz-slot, '
-  + '.kz-stagebox > .kz-cut, .kz-manbox .kz-cut, .kz-collage, .kz-role, .kz-next, .kz-msg, .keys, .kz-tray > *';
+  + '.kz-stagebox > .kz-cut, .kz-manbox .kz-cut, .kz-collage, .kz-role, .kz-next, .kz-msg, .keys, .kz-tray > *, '
+  + '.kz-piece';   // любая своя вырезка урока на этом наборе (практика: редактор, заметки, улица)
 const KZ_OUT_MS = 520;     // разлёт
 const KZ_WAIT_MS = 300;    // новый экран ждёт, пока старое разлетается
 const _kzT = { busy: 0, pending: false };
