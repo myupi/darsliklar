@@ -216,8 +216,12 @@ function Inspector({ rules }) {
 //            (с призраком детали `label`), там отпускает.
 // Показ повторяется дважды и исчезает от первого касания ребёнка. На паузе
 // стоит на месте. При «меньше движения» рука просто стоит на первой цели.
+// Рука не решает за ученика сразу (заказчик, 21.10.2026): она приходит, только
+// если ученик HAND_IDLE_MS ничего не делает (любое касание или клавиша сбрасывает
+// ожидание) или уже ошибся (soon) — сначала ученик пробует сам.
 // ─────────────────────────────────────────────────────────────────────────────
-function DemoHand({ wrapRef, targets, run, drag, label }) {
+const HAND_IDLE_MS = 8000;
+function DemoHand({ wrapRef, targets, run, drag, label, soon }) {
   const audio = useAudio();
   const pausedRef = useRef(false);
   pausedRef.current = !!(audio && audio.paused);
@@ -225,14 +229,25 @@ function DemoHand({ wrapRef, targets, run, drag, label }) {
   const [tap, setTap] = useState(false);
   const [carry, setCarry] = useState(false);
   const [gone, setGone] = useState(false);
+  const [ready, setReady] = useState(false);
   useEffect(() => {
-    if (!run || gone) return undefined;
+    if (!run || gone) { setReady(false); return undefined; }
+    if (soon) { setReady(true); return undefined; }
+    let t = 0;
+    const arm = () => { clearTimeout(t); setReady(false); t = setTimeout(() => setReady(true), HAND_IDLE_MS); };
+    arm();
+    window.addEventListener('pointerdown', arm, true);
+    window.addEventListener('keydown', arm, true);
+    return () => { clearTimeout(t); window.removeEventListener('pointerdown', arm, true); window.removeEventListener('keydown', arm, true); };
+  }, [run, gone, soon]);
+  useEffect(() => {
+    if (!run || gone || !ready) return undefined;
     const off = () => setGone(true);
     window.addEventListener('pointerdown', off, true);
     return () => window.removeEventListener('pointerdown', off, true);
-  }, [run, gone]);
+  }, [run, gone, ready]);
   useEffect(() => {
-    if (!run || gone) { setPos(null); return undefined; }
+    if (!run || gone || !ready) { setPos(null); return undefined; }
     let dead = false;
     const tm = [];
     const at = (i) => {
@@ -271,8 +286,8 @@ function DemoHand({ wrapRef, targets, run, drag, label }) {
     };
     later(450, cycle);
     return () => { dead = true; tm.forEach(clearTimeout); };
-  }, [run, gone]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!pos || !run || gone) return null;
+  }, [run, gone, ready]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!pos || !run || gone || !ready) return null;
   return (
     <span className={'demo-hand' + (tap ? ' is-tap' : '') + (drag ? ' is-drag' : '')} style={{ transform: `translate(${pos.x}px, ${pos.y}px)` }} aria-hidden="true">
       {carry && label ? <span className="dh-ghost mono">{label}</span> : null}

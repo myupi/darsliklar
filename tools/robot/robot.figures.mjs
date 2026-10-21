@@ -20,15 +20,30 @@ const f1 = (v) => Math.round(v * 10) / 10;
 // bust — крупный план: камера ближе, Pixel в кадре целиком — от ступней с
 // табличкой до антенны (заказчик, 17.10.2026: «ноги не видны»), за край
 // уходят только боковые края подставки. Нужен там, где читают экран Pixel.
-// Кадры взмаха правой руки: углы (градусы от «рука опущена») и расписание
-// [кадр, мс]. Пауза — рука поднимается — три взмаха ладонью — опускается.
-// Кадры сменяются ступенькой: робот машет чуть «механически», это к месту.
-const ARM_DEG = [0, 30, 60, 95, 125, 135, 145, 155, 165];
+// Взмах правой руки (заказчик, 21.10.2026: «рука странно работает» — рука была
+// одной жёсткой палкой и качалась целиком от плеча). Теперь рука как у человека:
+// плечо — локоть — предплечье с варежкой. Поза = [плечо, локоть]: плечо — угол от
+// «рука висит» наружу и вверх; локоть — насколько предплечье согнуто дальше (0 —
+// прямая рука). Взмах: плечо поднимается чуть выше горизонтали, предплечье встаёт
+// вверх и машет от локтя туда-сюда, плечо держит. Кадры сменяются ступенькой —
+// робот машет чуть «механически», это к месту, но кадров больше, чем раньше.
+const ease = (x) => (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2);
+const ARM_POSE = (() => {
+  const poses = [[0, 0]];
+  // подъём: 7 кадров, плечо 0 → 100, локоть 0 → 70 (предплечье встаёт вверх)
+  for (let i = 1; i <= 7; i += 1) { const e = ease(i / 7); poses.push([100 * e, 70 * e]); }
+  // взмах от локтя: предплечье от 148° до 192° (абсолютно), плечо 100°
+  [52, 62, 74, 86, 94, 86, 74, 62].forEach((b) => poses.push([100, b]));
+  return poses;
+})();
 const ARM_SEQ = (() => {
-  const seq = [[0, 1100], [1, 80], [2, 80], [3, 80], [4, 80]];
-  const sweep = [5, 6, 7, 8, 7, 6, 5, 4];
-  for (let r = 0; r < 3; r += 1) sweep.forEach((f) => seq.push([f, 65]));
-  seq.push([3, 90], [2, 90], [1, 90]);
+  const seq = [[0, 1500]];
+  for (let i = 1; i <= 7; i += 1) seq.push([i, 55]);   // подъём ≈ 0,4 с
+  for (let r = 0; r < 3; r += 1) {                       // три взмаха ≈ 0,5 с каждый
+    for (let f = 8; f <= 15; f += 1) seq.push([f, 62]);
+  }
+  seq.push([7, 70]);
+  for (let i = 6; i >= 1; i -= 1) seq.push([i, 60]);    // опускание
   return seq;
 })();
 // CSS кадров: без слоя «движение» виден только кадр 0 (рука опущена).
@@ -36,7 +51,7 @@ export function armCss(sel = '.fig-robot') {
   const total = ARM_SEQ.reduce((n, [, ms]) => n + ms, 0);
   const pct = (ms) => +((ms / total) * 100).toFixed(3);
   const out = [`${sel} .rb-af { visibility: hidden; }`, `${sel} .rb-af-0 { visibility: visible; }`];
-  ARM_DEG.forEach((_, f) => {
+  ARM_POSE.forEach((_, f) => {
     const kf = [];
     let t = 0, prev = null;
     ARM_SEQ.forEach(([g, ms]) => { const on = g === f; if (on !== prev) kf.push(`${pct(t)}% { visibility: ${on ? 'visible' : 'hidden'}; }`); prev = on; t += ms; });
@@ -119,28 +134,45 @@ export function robotModel({ bust = false } = {}) {
   };
   const V = lt.viewOf(P);
   const SHOULDER_Z = 104;
-  // deg — угол от «рука опущена» наружу и вверх (0 — висит, 180 — вверх).
-  const armAt = (x0, deg) => {
-    const t = (deg * Math.PI) / 180;
+  const UPPER = 21;   // плечо: от втулки до локтя
+  // Плоскость взмаха чуть развёрнута назад (−y): при этом ракурсе рука уходит вбок
+  // и видна целиком; развёрнутая вперёд, она шла на зрителя и укорачивалась.
+  const PHI = (-20 * Math.PI) / 180;
+  // pose = [плечо, локоть], градусы. Левая (дальняя) рука висит прямо в плоскости x–z.
+  const armAt = (x0, pose, side = 1) => {
+    const [sDeg, bDeg] = pose;
+    const phi = side > 0 ? PHI : 0;
+    const u = [side * Math.cos(phi), Math.sin(phi), 0];       // «наружу» в плоскости взмаха
+    const n = [-Math.sin(phi) * side, Math.cos(phi), 0];      // нормаль плоскости (ось шарниров)
+    const dir = (deg) => { const t = (deg * Math.PI) / 180; return [u[0] * Math.sin(t), u[1] * Math.sin(t), -Math.cos(t)]; };
+    const perp = (deg) => { const t = (deg * Math.PI) / 180; return [u[0] * Math.cos(t), u[1] * Math.cos(t), Math.sin(t)]; };
     const o = [x0 + 5, 0, SHOULDER_Z];
-    const a = [Math.sin(t), 0, -Math.cos(t)];
-    const F = lt.frameOf(o, a, [Math.cos(t), 0, Math.sin(t)], [0, 1, 0]);
-    const mid = (sm) => [o[0] + a[0] * sm, o[1], o[2] + a[2] * sm];
+    const a1 = dir(sDeg), F1 = lt.frameOf(o, a1, perp(sDeg), n);
+    const el = [o[0] + a1[0] * UPPER, o[1] + a1[1] * UPPER, o[2] + a1[2] * UPPER];
+    const a2 = dir(sDeg + bDeg), F2 = lt.frameOf(el, a2, perp(sDeg + bDeg), n);
+    const at1 = (sm) => [o[0] + a1[0] * sm, o[1] + a1[1] * sm, o[2] + a1[2] * sm];
+    const at2 = (sm) => [el[0] + a2[0] * sm, el[1] + a2[1] * sm, el[2] + a2[2] * sm];
     const parts = [
-      { at: mid(18), svg: paint('limb', S(lt.prismOf(F, rrect(10, 12, 3), 4, 32, P), { tone: 'mid' })) },        // рука
-      { at: mid(32), svg: paint('frame', S(lt.disc(30, 34, 5.4, F, P), { tone: 'hi' })) },                     // манжета
-      { at: mid(40), svg: paint('hand', S(lt.prismOf(F, rrect(12, 14, 5), 34, 46, P), { tone: 'mid' })) }      // варежка
+      { at: at1(12), svg: paint('limb', S(lt.prismOf(F1, rrect(10, 12, 3), 4, UPPER + 1, P), { tone: 'mid' })) },          // плечо
+      { at: el, d: 0.6, svg: paint('frame', S(lt.disc(0, 11, 4.6, lt.frameAlong([el[0] - n[0] * 5.5, el[1] - n[1] * 5.5, el[2]], n), P), { tone: 'hi' })) },  // локоть
+      { at: at2(7), svg: paint('limb', S(lt.prismOf(F2, rrect(9, 11, 3), 0, 12, P), { tone: 'mid' })) },                   // предплечье
+      { at: at2(12.5), svg: paint('frame', S(lt.disc(10.5, 14, 5.2, F2, P), { tone: 'hi' })) },                             // манжета
+      { at: at2(20), svg: paint('hand', S(lt.prismOf(F2, rrect(12, 14, 5), 14, 26, P), { tone: 'mid' })) }                 // варежка
     ];
-    // Дальнее — раньше: висящая рука рисуется от варежки к плечу, поднятая — наоборот.
-    parts.sort((p, q) => lt.dot3(p.at, V) - lt.dot3(q.at, V));
+    // Дальнее — раньше (по глубине центров); локоть — поверх своего сочленения.
+    parts.sort((p, q) => (lt.dot3(p.at, V) + (p.d || 0)) - (lt.dot3(q.at, V) + (q.d || 0)));
     return parts.map((x) => x.svg).join('');
   };
-  // Втулка плеча — диск с осью спереди назад; рисуется поверх корня руки.
-  const hub = (x0) => paint('frame', S(lt.disc(0, 14, 6.6, lt.frameAlong([x0 + 5, -7, SHOULDER_Z], [0, 1, 0]), P), { tone: 'hi' }));
+  // Втулка плеча — диск с осью по нормали плоскости руки; рисуется поверх корня руки.
+  const hub = (x0, side) => {
+    const phi = side > 0 ? PHI : 0;
+    const n = [-Math.sin(phi) * side, Math.cos(phi), 0];
+    return paint('frame', S(lt.disc(0, 14, 6.6, lt.frameAlong([x0 + 5 - n[0] * 7, -7 * n[1], SHOULDER_Z], n), P), { tone: 'hi' }));
+  };
   const arm = (side) => {
-    if (side < 0) return `<g class="rb-arm-l">${armAt(-42, 0)}${hub(-42)}</g>`;
-    const frames = ARM_DEG.map((deg, i) => `<g class="rb-af rb-af-${i}">${armAt(32, deg)}</g>`).join('');
-    return `<g class="rb-arm-r">${frames}${hub(32)}</g>`;
+    if (side < 0) return `<g class="rb-arm-l">${armAt(-42, [0, 0], -1)}${hub(-42, -1)}</g>`;
+    const frames = ARM_POSE.map((pose, i) => `<g class="rb-af rb-af-${i}">${armAt(32, pose, 1)}</g>`).join('');
+    return `<g class="rb-arm-r">${frames}${hub(32, 1)}</g>`;
   };
   out.push(arm(-1));
 

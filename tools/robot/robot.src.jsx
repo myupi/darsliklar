@@ -193,23 +193,15 @@ const C = {
           'А в конце сделаешь свою страницу — и она появится на экране у Пикселя!',
           'And at the end you’ll make your own page, and it will appear on Pixel’s screen!') }
     ],
-    done: L3('Reja tayyor! Endi sizga doim yordam beradigan ikkita tugmani ko‘rsataman.',
-      'План готов! Теперь покажу две кнопки, которые всегда выручат.',
-      'The plan is ready! Now let me show you two buttons that always help.'),
+    done: L3('Reja tayyor! Endi sizga doim yordam beradigan tugmani ko‘rsataman.',
+      'План готов! Теперь покажу кнопку, которая всегда выручит.',
+      'The plan is ready! Now let me show you a button that always helps.'),
     coach: [
       { id: 'hint', sel: '.chrome-side .ctl-hint', icon: 'bulb',
         title: L3('«Maslahat» tugmasi', 'Кнопка «Подсказка»', 'The “Hint” button'),
         text: L3('Nima qilishni bilmasangiz, shu tugmani bosing — men yordam beraman. Hoziroq bosib ko‘ring!',
           'Не знаешь, что делать? Жми сюда — подскажу. Попробуй прямо сейчас!',
-          'Not sure what to do? Tap here and I’ll help. Try it right now!') },
-      { id: 'pause', sel: '.chrome-side .ctl-btn:not(.is-exit):not(.ctl-hint)', icon: 'pause',
-        title: L3('«Pauza» tugmasi', 'Кнопка «Пауза»', 'The “Pause” button'),
-        text: L3('Biroz tanaffus qilmoqchimisiz? «Pauza» tugmasini bosing. Hozir sinab ko‘ring!',
-          'Нужно отвлечься? Жми «Паузу». Попробуй!',
-          'Need a break? Tap “Pause”. Try it!'),
-        text2: L3('Dars to‘xtatildi. Davom etish uchun tugmani yana bosing.',
-          'Урок на паузе. Нажми ещё раз — и продолжим.',
-          'The lesson is paused. Tap again and we’ll carry on.') }
+          'Not sure what to do? Tap here and I’ll help. Try it right now!') }
     ],
     hintSay: L3('Ko‘rdingizmi? «Maslahat» tugmasi doim nima qilish kerakligini aytib beradi.', 'Вот так: подсказка всегда скажет, что делать.', 'Like that: the hint always tells you what to do.'),
     ready: L3('Zo‘r, hammasi tayyor! Boshladik!', 'Отлично, всё готово! Поехали!', 'Great, all set! Let’s go!'),
@@ -431,59 +423,31 @@ const C = {
   },
 
   s10: {
-    eyebrow: L3('Yopuvchi tegni yozing', 'Допиши конец', 'Write the end'),
-    say: L3('Sahifadagi matn tayyor. Endi body qayerda tugashini ko‘rsatamiz: bo‘sh joyga yopuvchi tegni yozing.',
-      'Текст уже есть. Теперь покажем, где кончается body: допиши закрывающий тег.',
-      'The text is there. Now let’s show where body ends: type the closing tag.'),
+    // Поломка без закрывающего тега (заказчик, 21.10.2026): не хватает </title> — и браузер,
+    // как настоящий, считает названием всё до конца файла: весь текст уезжает на вкладку,
+    // окно пустое. Ученик дописывает </title> — текст возвращается в окно.
+    eyebrow: L3('Nom qayerda tugaydi?', 'Где конец названия?', 'Where does the name end?'),
+    say: L3('Qarang: sahifaning butun matni yorliqqa tushib qoldi, oyna esa bo‘sh.',
+      'Смотри: на вкладку попал весь текст страницы, а окно пустое.',
+      'Look: all the page text ended up on the tab, and the window is empty.'),
+    sayWhy: L3('Brauzer sahifa nomi qayerda tugashini bilmayapti. Bo‘sh joyga title uchun yopuvchi tegni yozing.',
+      'Браузер не знает, где кончается название. Допиши закрывающий тег title в пустое место.',
+      'The browser doesn’t know where the page name ends. Type the closing title tag in the empty place.'),
     sayHead: L3('Endi head bo‘limi qayerda tugashini ko‘rsating.', 'Теперь покажи, где кончается head.', 'Now show where head ends.'),
     open: L3('E’tibor bering: bu — ochuvchi teg. Bu yerga esa yopuvchi teg kerak, unda qiya chiziq bo‘ladi.', 'Это открывающий тег. А нужен закрывающий — с косой чертой.', 'That’s an opening tag. We need the closing one, with a slash.'),
     noSlash: L3('Yana bir qarang: qiya chiziq yetishmayapti. Yopuvchi tegda u albatta bo‘ladi.', 'Почти! Не хватает косой черты.', 'Almost! The slash is missing.'),
-    noBracket: L3('Hechqisi yo‘q. Burchakli qavs yetishmayapti: teg boshidagi «<» va oxiridagi «>» belgilarini tekshiring.', 'Почти! Не хватает уголка.', 'Almost! An angle bracket is missing.'),
+    noBracket: L3('Hechqisi yo‘q. Burchakli qavs yetishmayapti: teg boshidagi «<» va oxiridagi «>» belgilarini tekshiring.', 'Почти! Не хватает угловой скобки.', 'Almost! An angle bracket is missing.'),
     slashPlace: L3('Qarang: qiya chiziq noto‘g‘ri joyda. U «<» belgisidan keyin yoziladi.', 'Почти! Косая черта стоит не там: её место сразу после «<».', 'Almost! The slash is in the wrong spot: it goes right after “<”.'),
     otherName: L3('E’tibor bering: teg ichidagi nom boshqacha. Bu yerga {tag} kerak.', 'Это другое имя. Нам нужен {tag}.', 'That’s a different name. We need {tag}.'),
-    h1: L3('Yuqoridagi ochuvchi tegga qarang.', 'Посмотри на открывающий тег выше.', 'Look at the opening tag above.'),
+    h1: L3('Shu qatordagi ochuvchi tegga qarang.', 'Посмотри на открывающий тег в этой строке.', 'Look at the opening tag in this line.'),
     h2: L3('Yopuvchi teg ochuvchi tegga o‘xshaydi, faqat unda qiya chiziq bor.', 'Закрывающий тег похож на открывающий, только с косой чертой.', 'A closing tag looks like the opening one, only with a slash.'),
     h3: L3('Qiya chiziq «<» belgisidan keyin darhol yoziladi.', 'Косая черта стоит сразу после «<».', 'The slash comes right after “<”.'),
-    ok: L3('Zo‘r! body uchun yopuvchi tegni to‘g‘ri yozdingiz. Endi brauzer body qayerda tugashini biladi.', 'Отлично! body закрыт — теперь браузер знает, где его конец.', 'Great job! body is closed: now the browser knows where it ends.'),
+    ok: L3('Tuzatildi! Nom yana yorliqda, matn esa oynaga qaytdi. Yopuvchi teg brauzerga title qayerda tugashini ko‘rsatadi.',
+      'Починено! Название снова на вкладке, а текст вернулся в окно. Закрывающий тег показывает браузеру, где кончается title.',
+      'Fixed! The name is back on the tab, and the text is back in the window. The closing tag shows the browser where title ends.'),
     okHead: L3('Barakalla, head bo‘limi ham yopildi!', 'И head закрыт! Чётко!', 'head is closed too! Spot on!'),
-    ask: L3('Bo‘sh joyga body uchun yopuvchi tegni yozing', 'Допиши закрывающий тег body в пустое место', 'Type the closing body tag in the empty place'),
+    ask: L3('Bo‘sh joyga title uchun yopuvchi tegni yozing', 'Допиши закрывающий тег title в пустое место', 'Type the closing title tag in the empty place'),
     askHead: L3('Bo‘sh joyga head uchun yopuvchi tegni yozing', 'Допиши закрывающий тег head в пустое место', 'Type the closing head tag in the empty place')
-  },
-
-  s12: {
-    // Заказ: ученик сам пишет название в title, потом текст в body (заказчик,
-    // 17.10.2026). Поля пустые; засчитывается любой осмысленный текст — без
-    // проверки на совпадение с примером, опечатки и знаки препинания.
-    eyebrow: L3('O‘yinchilardan buyurtma', 'Заказ от игроков', 'An order from players'),
-    say: L3('O‘yinchilardan buyurtma keldi: o‘yinga yangi nom va yangi matn kerak. Ularni o‘zingiz yozasiz.',
-      'Пришёл заказ от игроков: игре нужно новое название и новый текст. Напишешь их сам.',
-      'Players sent an order: the game needs a new name and a new text. You’ll write them yourself.'),
-    tasks: [
-      { id: 'title', goal: L3('O‘yinga yangi nom o‘ylab toping', 'Придумай игре новое название', 'Come up with a new name for the game'),
-        t: L3('Bilimlar jangi 2', 'Битва знаний 2', 'Battle of Knowledge 2') },
-      { id: 'text', goal: L3('O‘yinchilarga sahifa uchun matn yozing', 'Напиши игрокам текст для окна', 'Write the players a text for the window'),
-        t: L3('Final juma kuni!', 'Финал в пятницу!', 'The final is on Friday!') }
-    ],
-    sayGoal: {
-      title: L3('Birinchi buyurtma — o‘yinning yangi nomi. Uni title ichidagi bo‘sh joyga yozing: masalan, «{t}» yoki o‘zingiz o‘ylab toping.',
-        'Заказ первый — новое название игры. Напиши его в пустом месте внутри title: например, «{t}» или своё.',
-        'Order one: a new name for the game. Type it in the empty space inside title, for example “{t}”, or your own.'),
-      text: L3('Ikkinchi buyurtma — sahifa uchun matn. Uni body ichidagi bo‘sh joyga yozing: masalan, «{t}» yoki o‘zingiz o‘ylab toping.',
-        'Заказ второй — текст для окна. Напиши его в пустом месте внутри body: например, «{t}» или своё.',
-        'Order two: a text for the window. Type it in the empty space inside body, for example “{t}”, or your own.')
-    },
-    okTitle: L3('Ana! Yangi nom yorliqda paydo bo‘ldi.', 'Есть! Новое название уже на вкладке.', 'Yes! The new name is already on the tab.'),
-    ask: {
-      title: L3('Nomni title ichiga yozing', 'Напиши название внутри title', 'Write the name inside title'),
-      text: L3('Matnni body ichiga yozing', 'Напиши текст внутри body', 'Write the text inside body')
-    },
-    h1t: L3('Yorliqdagi nom kodning qayerida yozilgan?', 'Где в коде задаётся название вкладки?', 'Where in the code is the tab name set?'),
-    h2t: L3('Yorliqdagi nom — title ichidagi matn.', 'Название вкладки — это текст внутри title.', 'The tab name is the text inside title.'),
-    h3t: L3('<title> va </title> orasidagi bo‘sh joyni bosing va nom yozing.', 'Нажми на пустое место между <title> и </title> и напиши название.', 'Tap the empty space between <title> and </title> and type a name.'),
-    h1b: L3('Sahifaning o‘zida qaysi matn ko‘rinadi?', 'Что видно в самом окне?', 'What shows in the window itself?'),
-    h2b: L3('Sahifadagi matn — body ichida.', 'Текст в окне — внутри body.', 'The text in the window is inside body.'),
-    h3b: L3('<body> va </body> orasidagi bo‘sh joyni bosing va matn yozing.', 'Нажми на пустое место между <body> и </body> и напиши текст.', 'Tap the empty space between <body> and </body> and type a text.'),
-    done: L3('Barakalla, ikkala buyurtma ham bajarildi! Nom — yorliqda, matn — sahifada.', 'Оба заказа выполнены! Название — на вкладке, текст — в окне.', 'Both orders done! The name is on the tab, the text is in the window.')
   },
 
   s13: {
@@ -513,6 +477,8 @@ const C = {
     say: L3('Tabriklayman! O‘zingiz yaratgan sahifa Pikselning ekranida. Endi siz HTML teglari yordamida sahifa tuza olasiz — xuddi haqiqiy veb-dasturchi kabi!',
       'Смотри — твоя страница на экране у Пикселя! Это было мощно! Теперь ты умеешь собирать страницу из тегов, как настоящий веб-программист.',
       'Look, your page is on Pixel’s screen! That was epic! Now you can build a page from tags, like a real web developer.'),
+    // Пиксель читает страницу ученика вслух (заказчик, 21.10.2026): своя фраза голосом — самый личный момент.
+    readIntro: L3('Endi Piksel sahifangizni ovoz chiqarib o‘qiydi. Tinglang!', 'А теперь Пиксель прочитает твою страницу. Слушай!', 'Now Pixel will read your page out loud. Listen!'),
     ach: {
       place: { self: L3('O‘zgartirish joyini maslahatsiz topdingiz', 'Место изменения — найдено без подсказок', 'Found the place to change on your own'),
         help: L3('O‘zgartirish joyini maslahat bilan topdingiz', 'Место изменения — найдено с подсказкой', 'Found the place to change with a hint') },
@@ -704,7 +670,7 @@ function R2({ p }) {
     sayNow(c.tab, 'wonder');
     say(c.win, 'point');
     say(c.code, 'explain');
-    say(c.done, 'cheer');
+    say(c.done, 'smile');
   };
   // Что Коди называет, то и обведено: вкладка, окно, код.
   const now = speaker.text === c.tab ? 'tab' : speaker.text === c.win ? 'win' : speaker.text === c.code ? 'code' : null;
@@ -747,10 +713,11 @@ function M({ p }) {
   const store = useStore();
   const c = C.m;
   const tour = useCardTour({ id: 'm', intro: c.say, lines: c.steps.map((st) => st.say), done: c.done });
-  // -1 карточки · 0 «Подсказка» · 1 «Пауза» · 2 итоговая реплика · 3 готово
+  // -1 карточки · 0 «Подсказка» · 2 итоговая реплика · 3 готово. Шаг «Пауза»
+  // убран (заказчик, 21.10.2026: экран короче; кнопку паузы видно по значку).
   const [phase, setPhase] = useState(() => (store.get('mc') ? 3 : -1));
   useEffect(() => { if (phase === -1 && tour.ended && tour.spoken) setPhase(0); }, [tour.ended, tour.spoken]); // eslint-disable-line react-hooks/exhaustive-deps
-  const cur = phase === 0 || phase === 1 ? c.coach[phase] : null;
+  const cur = phase === 0 ? c.coach[0] : null;
 
   // Реплика шага тура звучит голосом героя. Предохранитель: шаг, который ребёнок
   // так и не выполнил, сам уступает место следующему — урок не запирает.
@@ -763,7 +730,7 @@ function M({ p }) {
       if (audio && audio.stop) audio.stop();
       if (audio && !dead) await audio.speak(pickRef.current(cur.text), VOICE.bot);
     })();
-    const t = setTimeout(() => { if (!dead) setPhase((ph) => (ph === phase ? ph + 1 : ph)); }, COACH_SAFETY_MS);
+    const t = setTimeout(() => { if (!dead) setPhase((ph) => (ph === phase ? 2 : ph)); }, COACH_SAFETY_MS);
     return () => { dead = true; clearTimeout(t); };
   }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -781,25 +748,14 @@ function M({ p }) {
   useEffect(() => {
     if (phase !== 0 || !hintHit) return undefined;
     if (playing) { heard.current = true; return undefined; }
-    const t = setTimeout(() => setPhase(1), heard.current ? 700 : 5000);
+    const t = setTimeout(() => setPhase(2), heard.current ? 700 : 5000);
     return () => clearTimeout(t);
   }, [phase, hintHit, playing]);
-
-  // «Пауза»: засчитываются два нажатия — остановил и продолжил.
-  const paused = !!(audio && audio.paused);
-  const [hits, setHits] = useState(0);
-  const lastPaused = useRef(null);
-  useEffect(() => {
-    if (phase !== 1) { lastPaused.current = null; return; }
-    if (lastPaused.current !== null && lastPaused.current !== paused) setHits((h) => h + 1);
-    lastPaused.current = paused;
-  }, [phase, paused]);
-  useEffect(() => { if (phase === 1 && hits >= 2) setPhase(2); }, [phase, hits]);
 
   // Итоговая реплика — своим голосом экрана, после тура.
   const [speaker2, , spoken2, sayNow2] = useVoice([]);
   const [said, setSaid] = useState(false);
-  useEffect(() => { if (phase === 2 && !said) { setSaid(true); sayNow2(c.ready, 'cheer'); } }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (phase === 2 && !said) { setSaid(true); sayNow2(c.ready, 'smile'); } }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (phase === 2 && said && spoken2) { store.set('mc', true); setPhase(3); }
   }, [phase, said, spoken2]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -811,7 +767,7 @@ function M({ p }) {
       nav={<><BackBtn onPrev={p.prev} /><NextBtn disabled={!ended} onClick={p.next} /></>}
       overlay={cur ? (
         <CoachMark selector={cur.sel} icon={cur.icon} title={cur.title}
-          text={phase === 1 && hits >= 1 ? cur.text2 : cur.text} nonce={phase * 10 + Math.min(hits, 1)} />
+          text={cur.text} nonce={phase} />
       ) : null}>
       <TourCards tour={tour} cards={c.steps} label={(st) => st.text}
         face={(st) => (
@@ -846,7 +802,7 @@ function S1({ p }) {
     const nt = mode === 'title' ? v : title, nx = mode === 'text' ? v : text;
     setTitle(nt); setText(nx);
     setFlash((f) => (mode === 'title' ? { tab: f.tab + 1, page: f.page } : { tab: f.tab, page: f.page + 1 }));
-    if (!changed) { put({ title: nt, text: nx }); sayNow(c.done, 'cheer'); } else put({ title: nt, text: nx });
+    if (!changed) { put({ title: nt, text: nx }); sayNow(c.done, 'smile'); } else put({ title: nt, text: nx });
   };
   const opts = mode === 'title' ? c.titles : mode === 'text' ? c.texts : [];
   return (
@@ -967,7 +923,7 @@ function S2({ p }) {
         hints: s0.helped ? 1 : 0, helped: s0.helped, followUp: s0.follow });
       put({ done: true });
       setPhase('done');
-      sayNow(joinL(c.ok[part], c.done), 'cheer');
+      sayNow(joinL(c.ok[part], c.done), 'smile');
       return;
     }
     st.current.misses += 1;
@@ -1060,8 +1016,8 @@ function S3({ p }) {
     if (mark(k)) {
       // Всё открыто — итог по частям; пока Коди называет часть, она светится
       // в коробке, в коде и в браузере.
-      sayNow(c[k], 'cheer');
-      say(c.sum0, 'cheer'); say(c.sumHtml, 'point'); say(c.sumHead, 'point'); say(c.sumBody, 'point');
+      sayNow(c[k], 'smile');
+      say(c.sum0, 'smile'); say(c.sumHtml, 'point'); say(c.sumHead, 'point'); say(c.sumBody, 'point');
       return;
     }
     sayNow(c[k], pose);
@@ -1197,7 +1153,7 @@ function S4({ p }) {
       store.set('myTitle', val.trim());
       setWire((n) => n + 1); setFlash((n) => n + 1);
       sfx('ok', true);
-      if (!solved) { put({ done: true, was: first }); sayNow(c.done, 'cheer'); }
+      if (!solved) { put({ done: true, was: first }); sayNow(c.done, 'smile'); }
     }, 1100);
     return () => clearTimeout(t);
   }, [val]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1253,7 +1209,7 @@ function S5({ p }) {
       committed.current = val.trim();
       store.set('myText', val.trim());
       setWire((n) => n + 1); setFlash((n) => n + 1);
-      if (!solved) { put({ done: true }); sfx('ok', true); sayNow(c.done, 'cheer'); }
+      if (!solved) { put({ done: true }); sfx('ok', true); sayNow(c.done, 'smile'); }
     }, 1200);
     return () => clearTimeout(t);
   }, [val]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1331,7 +1287,7 @@ function S6({ p }) {
         ['title', 'body'].forEach((kk) => log({ screenId: 's6.' + kk, type: 'predict', correct: true, firstTry: s[kk].first === true,
           attempts: s[kk].extra === null ? 1 : 2, hints: s[kk].first ? 0 : 1, helped: s[kk].first === false, followUp: s[kk].extra }));
         put({ done: true });
-        setTimeout(() => sayNow(c.done, 'cheer'), 300);
+        setTimeout(() => sayNow(c.done, 'smile'), 300);
       }
     }, reduceMotion() ? 1500 : 2600);
   };
@@ -1566,7 +1522,7 @@ function S7({ p }) {
       ) : (
         <>
           <div ref={exRef} className={'ex rb-rel' + (hand ? ' is-hand' : '')}>{fig}{code}
-            <DemoHand wrapRef={exRef} drag label={UI.piece.head} run={canTap && !solved && placed.length === 0 && !sel && !dnd.ghost}
+            <DemoHand wrapRef={exRef} drag label={UI.piece.head} run={canTap && !solved && placed.length === 0 && !sel && !dnd.ghost} soon={st.current.misses > 0}
               targets={[() => pieceRefs.current.head, () => {
                 // В код: к строке </html> — при перетаскивании над ней встаёт место «сюда: внутрь html».
                 const ls = exRef.current ? exRef.current.querySelectorAll('.cv .cv-line') : [];
@@ -1640,7 +1596,7 @@ function S8({ p }) {
     if (next.length === PAIR_TAGS.length) {
       put({ done: true });
       log({ screenId: 's8', type: 'pairs', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries });
-      sayNow(joinL(c.area[t.tag], c.done), 'cheer');
+      sayNow(joinL(c.area[t.tag], c.done), 'smile');
     } else sayNow(c.area[t.tag], 'smile');
   };
   const zone = (z, t) => {
@@ -1657,7 +1613,7 @@ function S8({ p }) {
             не тускнеет — найденные пары остаются цветными, со скобкой слева. */}
         <CodeLines lines={buildLines(FULL_DOC, mine)} className="cv-big" barsFor={found} zone={zone} onZone={tapTok}
           regZone={(z, el) => { zoneEls.current[z] = el; }} />
-        <DemoHand wrapRef={boxRef} run={canTap && !solved && found.length === 0 && !first}
+        <DemoHand wrapRef={boxRef} run={canTap && !solved && found.length === 0 && !first} soon={st.current.misses > 0}
           targets={[() => zoneEls.current['head-o'], () => zoneEls.current['head-c']]} />
         <div className="pairs-side">
         <div className="pair-chips" translate="no">
@@ -1738,7 +1694,7 @@ function S9({ p }) {
       log({ screenId: 's9', type: 'fix-nesting', correct: true, firstTry: s.misses === 0 && lad.asked.current === 0, attempts: s.tries,
         hints: lad.asked.current, depth: lad.lv, helped: variant === 'B', followUp: variant === 'B' ? s.followMiss === 0 : null });
       put({ done: true });
-      sayNow(c.ok, 'cheer');
+      sayNow(c.ok, 'smile');
       return;
     }
     st.current.misses += 1;
@@ -1777,7 +1733,7 @@ function S9({ p }) {
       <div className={'rule-panel' + (fixed ? ' is-ok' : '')}><span className="rule-ic">{fixed ? <Icon name="check" size={13} /> : '!'}</span><span><b>{pick(UI.inspector)}:</b> {pick(c.rule)}</span></div>
       <Ask text={fixed ? c.ok : picked ? c.pickPlace : c.ask} hint={fixed ? null : (msg || hint)} n={variant === 'B' ? pick(UI.again) : null} />
       <div ref={fixRef} className="fix-row rb-rel">
-        <DemoHand wrapRef={fixRef} run={canTap && !fixed && !picked && variant === 'A' && st.current.misses === 0}
+        <DemoHand wrapRef={fixRef} run={canTap && !fixed && !picked && variant === 'A'} soon={st.current.misses > 0}
           targets={[() => lineEl('title'), () => lineEl('head-o')]} />
         <div ref={codeRef} onPointerDown={onCodeDown} className="drag-host">
           <CodeLines lines={buildLines(shown, { title: titleText, text: mine.text })} className="cv-ex"
@@ -1809,11 +1765,13 @@ function S10({ p }) {
   const mine = useMine();
   const [rec, put] = useRec('s10');
   const solved = !!(rec && rec.done);
-  const [tag, setTag] = useState('body');
-  const [val, setVal] = useState(solved ? '</body>' : '');
+  // title — основное задание (поломка: нет </title>); head — новый пример после 3-й ступени.
+  const [tag, setTag] = useState('title');
+  const [val, setVal] = useState(solved ? '</title>' : '');
   const [msg, setMsg] = useState(null);
   const [okNow, setOkNow] = useState(solved);
-  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'explain' }]);
+  const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.ok, pose: 'smile' }]
+    : [{ text: c.say, pose: 'wonder' }, { text: c.sayWhy, pose: 'explain' }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved, spoken);
   const lad = useLadder(!solved);
@@ -1841,7 +1799,7 @@ function S10({ p }) {
     const r = judge(val);
     if (r.ok) {
       sfx('win', true); setMsg(null); setOkNow(true);
-      if (tag === 'body' && lad.lv >= 3) {
+      if (tag === 'title' && lad.lv >= 3) {
         sayNow(joinL(c.ok, c.sayHead), 'smile');
         setTimeout(() => { setTag('head'); setVal(''); setOkNow(false); lad.reset(); }, 1600);
         return;
@@ -1850,9 +1808,10 @@ function S10({ p }) {
       const s = st.current;
       log({ screenId: 's10', type: 'write-closing', correct: true, firstTry: s.misses === 0 && lad.asked.current === 0, attempts: s.tries,
         hints: lad.asked.current, depth: lad.lv, helped: tag === 'head', followUp: s.follow });
-      putAch(store, 'close', s.misses === 0 && lad.asked.current === 0 && tag === 'body' ? 'self' : 'help');
+      putAch(store, 'close', s.misses === 0 && lad.asked.current === 0 && tag === 'title' ? 'self' : 'help');
       put({ done: true });
-      sayNow(tag === 'head' ? c.okHead : c.ok, 'cheer');
+      // Починка — большой момент урока: конфетти (поза cheer).
+      sayNow(tag === 'head' ? c.okHead : c.ok, tag === 'head' ? 'smile' : 'cheer');
       return;
     }
     st.current.misses += 1;
@@ -1863,20 +1822,34 @@ function S10({ p }) {
   };
   const ins = (ch) => { setVal((v) => v + ch); if (inputRef.current) inputRef.current.focus(); };
   const hint = hintOf(lad.lv, [c.h1, c.h2, c.h3]);
-  const order = okNow ? FULL_DOC : DOC10[tag];
+  // Основное задание: полный документ, в строке title вместо </title> — поле ввода.
+  // Новый пример (head): пустая строка вместо </head>.
+  const broken = tag === 'title' && !okNow;
+  const order = okNow || tag === 'title' ? FULL_DOC : DOC10.head;
+  const lines = buildLines(order, mine).map((ln) => (broken && ln.id === 'title' ? Object.assign({}, ln, { toks: ln.toks.slice(0, 2) }) : ln));
+  const gapAt = tag === 'title' ? order.indexOf('title') : order.indexOf(null);
+  const field = (
+    <span className={'gap-in' + (led ? ' is-led' : '')}>
+      <InlineInput value={val} onChange={(v) => { setVal(v); setMsg(null); }} onEnter={check} inputRef={inputRef} placeholder={L3('…', '…', '…')} label={tag === 'head' ? c.askHead : c.ask} max={12} cls="tk-input-tag" />
+      <Led on={led} />
+    </span>
+  );
+  // Как настоящий браузер: без </title> названием становится всё до конца файла.
+  const eaten = mine.title + ' </head> <body> ' + mine.text + ' </body> </html>';
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintOf(Math.min(3, lad.lv + 1), [c.h1, c.h2, c.h3]) || c.ask} nav={navOf(p, canGo)}>
       <Ask text={okNow ? (tag === 'head' ? c.okHead : c.ok) : tag === 'head' ? c.askHead : c.ask} hint={okNow ? null : (msg || hint)} n={tag === 'head' ? pick(UI.again) : null} />
       <div className="work pr s10-work">
-      <MiniBrowser title={mine.title} page={mine.text} flashPage={okNow ? 1 : 0} />
-      <CodeLines lines={buildLines(order, mine)} className="cv-big cv-10"
-        lineProps={(ln, i) => (ln.empty ? { cls: 'is-gap', empty: (
-          <span className={'gap-in' + (led ? ' is-led' : '')}>
-            <InlineInput value={val} onChange={(v) => { setVal(v); setMsg(null); }} onEnter={check} inputRef={inputRef} placeholder={L3('…', '…', '…')} label={tag === 'head' ? c.askHead : c.ask} max={12} cls="tk-input-tag" />
-            <Led on={led} />
-          </span>) } : {
+      <div className={'s10-br' + (broken ? ' is-broken' : '') + (okNow && tag === 'title' ? ' is-fixed' : '')}>
+        <MiniBrowser title={broken ? eaten : mine.title} page={broken ? '' : mine.text} hl={broken ? 'title' : null}
+          flashTab={okNow ? 1 : 0} flashPage={okNow ? 1 : 0} />
+      </div>
+      <CodeLines lines={lines} className="cv-big cv-10"
+        lineProps={(ln, i) => (ln.empty ? { cls: 'is-gap', empty: field } : {
             // При открытой клавиатуре видны только строки рядом с пустым местом (.is-ctx уходят).
-            cls: (ln.id === tag + '-o' && lad.lv >= 1 && !okNow ? 'is-look ' : '') + (Math.abs(i - order.indexOf(null)) > 1 ? 'is-ctx' : '')
+            cls: ((ln.id === tag + '-o' || (tag === 'title' && ln.id === 'title')) && lad.lv >= 1 && !okNow ? 'is-look ' : '')
+              + (broken && ln.id === 'title' ? 'is-gap-line ' : '') + (Math.abs(i - gapAt) > 1 ? 'is-ctx' : ''),
+            after: broken && ln.id === 'title' ? field : null
           })} />
       </div>
       {!okNow ? (
@@ -1889,95 +1862,6 @@ function S10({ p }) {
     </Stage>
   );
 }
-
-// =============================================================================
-// 12. ЗАКАЗ ОТ ИГРОКОВ — ученик сам пишет: сначала название в title, потом
-// текст в body (заказчик, 17.10.2026). Поля пустые; поле body открывается,
-// когда название написано. Засчитывается любой осмысленный текст: хотя бы две
-// буквы и без уголков — без сверки с примером, опечаток и знаков препинания.
-// Пример из заказа — только идея («например»).
-// =============================================================================
-function S12({ p }) {
-  const pick = usePick();
-  const log = useLog();
-  const c = C.s12;
-  const [rec, put] = useRec('s12');
-  const solved = !!(rec && rec.done);
-  const [step, setStep] = useState(solved ? 2 : 0);          // 0 — название, 1 — текст, 2 — готово
-  const [title, setTitle] = useState(rec && rec.title ? rec.title : '');
-  const [text, setText] = useState(rec && rec.text ? rec.text : '');
-  const [flash, setFlash] = useState({ tab: 0, page: 0 });
-  const [wire, setWire] = useState({ n: 0, to: null });
-  const sayGoal = (k) => fillL(c.sayGoal[k], { t: pick(c.tasks[k === 'title' ? 0 : 1].t) });
-  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
-    : [{ text: c.say, pose: 'explain' }, { text: sayGoal('title'), pose: 'point' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved || step === 2, spoken);
-  const lad = useLadder(!solved && step < 2);
-  const field = step === 0 ? 'title' : step === 1 ? 'text' : null;
-  const task = field ? c.tasks[step] : null;
-  const val = step === 0 ? title : text;
-  const led = useIdleLed(canTap && !!field && !val.trim(), step);
-  const wrapRef = useRef(null), tabRef = useRef(null), pageRef = useRef(null);
-  const zones = useRef({});
-  const regZone = (z, el) => { zones.current[z] = el; };
-  // Написал и сделал паузу — заказ выполнен. Поле остаётся открытым: можно дописывать.
-  useEffect(() => {
-    if (!field || !okText(val)) return undefined;
-    const t = setTimeout(() => {
-      sfx('ok', true);
-      if (step === 0) {
-        setFlash((f) => ({ tab: f.tab + 1, page: f.page })); setWire((w) => ({ n: w.n + 1, to: 'tab' }));
-        setStep(1); lad.reset();
-        sayNow(c.okTitle, 'smile');
-        say(sayGoal('text'), 'point');
-        return;
-      }
-      setFlash((f) => ({ tab: f.tab, page: f.page + 1 })); setWire((w) => ({ n: w.n + 1, to: 'page' }));
-      log({ screenId: 's12', type: 'write-title-body', correct: true, hints: lad.asked.current, depth: lad.lv });
-      put({ done: true, title: title.trim(), text: text.trim() });
-      setStep(2);
-      sayNow(c.done, 'cheer');
-    }, step === 0 ? 1300 : 1500);
-    return () => clearTimeout(t);
-  }, [val, step]); // eslint-disable-line react-hooks/exhaustive-deps
-  const hints = field === 'title' ? [c.h1t, c.h2t, c.h3t] : [c.h1b, c.h2b, c.h3b];
-  const hint = field ? hintOf(lad.lv, hints) : null;
-  const askText = field ? c.ask[field] : c.done;
-  const input = (k) => (
-    <span className={'s12-in' + (led && field === k ? ' is-led' : '')}>
-      <InlineInput value={k === 'title' ? title : text} onChange={k === 'title' ? setTitle : setText}
-        label={c.ask[k]} placeholder={L3('…', '…', '…')} max={k === 'title' ? 40 : 70} />
-      <Led on={led && field === k} />
-    </span>
-  );
-  return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo}
-      hint={field ? (hintOf(Math.min(3, lad.lv + 1), hints) || sayGoal(field)) : c.done} nav={navOf(p, canGo)}>
-      <div className={'goal-card' + (!task ? ' is-ok' : '')}>
-        <span className="goal-l">{pick(UI.goal)} {task ? (step + 1) + '/2' : '2/2'}</span>
-        {task ? (
-          <span className="goal-row"><b>{pick(task.goal)}</b>
-            <span className="goal-eg">{pick(UI.forExample)}: <i translate="no">{pick(task.t)}</i></span></span>
-        ) : <b>{pick(c.done)}</b>}
-      </div>
-      {task ? <Ask text={askText} hint={hasTags(val) ? UI.noTags : hint} /> : null}
-      <div className="work pr" ref={wrapRef}>
-        <MiniBrowser title={okText(title) ? title : ''} page={okText(text) ? text : ''} tabRef={tabRef} pageRef={pageRef}
-          flashTab={flash.tab} flashPage={flash.page} hl={field === 'title' ? 'title' : field === 'text' ? 'body' : null} />
-        <CodeLines lines={buildLines(FULL_DOC, { title, text })} className="cv-ed s12-code" regZone={regZone}
-          hl={field === 'title' ? 'title' : field === 'text' ? 'body' : null}
-          renderText={(t) => (t.z === 'title-text' ? input('title')
-            : t.z === 'body-text' ? (step >= 1 ? input('text') : <span className="s12-locked" aria-hidden="true">…</span>)
-              : <span className="tk-text">{t.v}</span>)} />
-        <Wire wrapRef={wrapRef} on={wire.n > 0} nonce={wire.n} color={wire.to === 'tab' ? TAGC.title : TAGC.body}
-          from={() => zones.current[wire.to === 'tab' ? 'title-text' : 'body-text']}
-          to={() => (wire.to === 'tab' ? tabRef.current : pageRef.current)} />
-      </div>
-    </Stage>
-  );
-}
-
 // =============================================================================
 // 13. СОЗДАЙ СВОЮ СТРАНИЦУ — плоская сборка из 8 строк, затем свои тексты.
 // =============================================================================
@@ -2065,7 +1949,7 @@ function S13({ p }) {
       store.set('artifact', { type: 'html-page', title: title.trim(), text: text.trim(), html: buildHtml(title.trim(), text.trim()) });
       putAch(store, 'page', 'self');
       put({ build: true, done: true, title: title.trim(), text: text.trim() });
-      setPhase('done'); sfx('ok', true); sayNow(c.done, 'cheer');
+      setPhase('done'); sfx('ok', true); sayNow(c.done, 'smile');
     }, 1600);
     return () => clearTimeout(t);
   }, [title, text, phase]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -2180,8 +2064,15 @@ function S14({ p }) {
   const c = C.s14;
   const mine = useMine();
   const ach = store.get('ach') || {};
-  const [speaker, , spoken] = useVoice([{ text: c.say, pose: 'celebrate' }]);
+  // Название и текст ученика — одной фразой, на всех языках как написал ученик.
+  const read = useMemo(() => {
+    const t = String(mine.title || '').trim(), x = String(mine.text || '').trim();
+    const line = (t ? t.replace(/[.!?…]*$/, '') + '. ' : '') + (x && !/[.!?…]$/.test(x) ? x + '.' : x);
+    return { uz: line, ru: line, en: line };
+  }, [mine.title, mine.text]);
+  const [speaker, , spoken] = useVoice([{ text: c.say, pose: 'celebrate' }, { text: c.readIntro, pose: 'point' }, { text: read, pose: 'smile' }]);
   const canGo = useAdvanceGate(true, spoken);
+  const reading = speaker.text === read;   // пока звучит страница ученика — экран Пикселя светится
   useEffect(() => { const t = setTimeout(() => celebrate(), 700); return () => clearTimeout(t); }, []);
   const list = ['place', 'build', 'close', 'page'].filter((k) => ach[k]);
   return (
@@ -2189,7 +2080,8 @@ function S14({ p }) {
       nav={<><BackBtn onPrev={p.prev} /><NextBtn disabled={!canGo} onClick={p.finish} label={c.btn} /></>}>
       <div className="rb-fin">
         <div className="rb-fin-pixel">
-          <Fig fig={RFIG_BUST} cls="fig-robot rb-html rb-css rb-js" texts={{ scr1: mine.title, scr2: shortTxt(mine.text, 22) }} label={UI.robot} />
+          <Fig fig={RFIG_BUST} cls={'fig-robot rb-html rb-css rb-js' + (reading ? ' is-reading' : '')} texts={{ scr1: mine.title, scr2: shortTxt(mine.text, 22) }} label={UI.robot}
+            led={reading ? ['screen'] : []} />
         </div>
         <div className="rb-fin-side">
           {list.length ? (
@@ -2217,13 +2109,13 @@ const SCREENS = [
   { id: 's1', code: 'SHOW', Comp: S1 }, { id: 's2', code: 'SHOW', Comp: S2 }, { id: 's3', code: 'SHOW', Comp: S3 },
   { id: 's4', code: 'LEVEL-1', Comp: S4 }, { id: 's5', code: 'LEVEL-2', Comp: S5 }, { id: 's6', code: 'CHECK-1', Comp: S6 },
   { id: 's7', code: 'LEVEL-3', Comp: S7 }, { id: 's8', code: 'LEVEL-4', Comp: S8 }, { id: 's9', code: 'CHECK-2', Comp: S9 },
-  { id: 's10', code: 'CHECK-3', Comp: S10 }, { id: 's12', code: 'CHECK-4', Comp: S12 },
+  { id: 's10', code: 'CHECK-3', Comp: S10 },
   { id: 's13', code: 'RESULT', Comp: S13 }, { id: 's14', code: 'ACHIEVEMENT', Comp: S14 }
 ];
 // «Повторить» стирает только экран; тексты ученика (myTitle, myText,
 // artifact) и достижения (ach) сохраняются.
 const SCREEN_RESET = { r1: ['r1'], r2: ['r2'], m: ['m', 'mc'], s1: ['s1'], s2: ['s2'], s3: ['s3'], s4: ['s4'], s5: ['s5'], s6: ['s6'], s7: ['s7'], s8: ['s8'],
-  s9: ['s9'], s10: ['s10'], s12: ['s12'], s13: ['s13'] };
+  s9: ['s9'], s10: ['s10'], s13: ['s13'] };
 
 export default function HtmlStrukturaRobot({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
