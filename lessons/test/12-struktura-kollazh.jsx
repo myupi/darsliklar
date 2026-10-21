@@ -6736,6 +6736,8 @@ const UI = {
   noTags: L3('Bu yerga faqat so‘z yozing, burchakli qavslarsiz.', 'Здесь нужны только слова, без угловых скобок.', 'Only words here, no angle brackets.'),
   again: L3('yangi misol', 'новый пример', 'new example'),
   hintN: L3('Maslahat', 'Подсказка', 'Hint'),
+  up: L3('Yuqoriga', 'Вверх', 'Up'),
+  down: L3('Pastga', 'Вниз', 'Down'),
   swap: L3('Ikki qatorni bosing — ular joy almashadi.', 'Нажми две полоски — они поменяются местами.', 'Tap two strips: they swap places.'),
   finish: L3('Darsni tugatish', 'Завершить урок', 'Finish the lesson')
 };
@@ -7793,7 +7795,7 @@ const PAPER_MP3 = 'SUQzBAAAAAAAIlRTU0UAAAAOAAADTGF2ZjYzLjEuMTAyAAAAAAAAAAAAAAD/+
 // kz… и полёт частей), и стихает, как только движение кончилось. Бесконечные
 // движения (дрожь, взмах руки, огонёк) не шуршат. Выключенный звук урока
 // (_soundOff канона) и «меньше движения» — тишина.
-const PAPER_ANIMS = { kzDrop: 1, kzRise: 1, kzLeft: 1, kzRight: 1, kzPop: 1, kzStamp: 1, kzOut: 1, kzOutL: 1, kzShake: 1 };
+const PAPER_ANIMS = { kzDrop: 1, kzRise: 1, kzLeft: 1, kzRight: 1, kzPop: 1, kzStamp: 1, kzOut: 1, kzOutL: 1, kzShake: 1, kzScatter: 1, kzAsmIn: 1, kzSlideUp: 1, kzSlideUnder: 1 };
 // Громкость шороха: фон, тише голоса и звуков ответа (заказчик: 0.11; было 0.55, потом 0.22).
 const PAPER_VOL = 0.11;
 const PAPER_PROPS = { translate: 1, scale: 1, rotate: 1, transform: 1 };
@@ -7892,7 +7894,7 @@ function usePaperSound() {
 // бумага с рваным краем (clip-path) и фактурой. Рваный край считается один раз
 // по зерну (seed): одна и та же вырезка всегда одинаковая.
 // =============================================================================
-const KZ = { kraft: '#D8C4A1', paper: '#EFE7D6', cream: '#FBF6EA', coral: '#E0643F', mustard: '#F0B13F', teal: '#2A8C7E', ink: '#1F2A44' };
+const KZ = { kraft: '#D8C4A1', paper: '#EFE7D6', face: '#F2D7BC', cream: '#FBF6EA', coral: '#E0643F', mustard: '#F0B13F', teal: '#2A8C7E', ink: '#1F2A44' };
 const kzRnd = (seed) => { let s = (Math.abs(seed) * 7919 + 104729) % 2147483647 || 1; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; };
 const TORN = {};
 // Рваный прямоугольник: зубцы по четырём сторонам; amp — глубина зубца в % по
@@ -7992,20 +7994,36 @@ function KzLabel({ t, close, raw, cls, style, onClick, led, on, hl, flow, anim, 
 }
 
 // Код — бумажные полоски. Строка: { k, d, parts: [узлы], cls, onTap, led, disabled }.
+// Строка: { k, d, parts, cls, onTap, led, disabled, place, move }.
+// move — бумажные кнопки ▲ ▼ справа от строки: { up, down } (обработчики или null),
+// { hide: true } — пустое место той же ширины, чтобы строки не прыгали.
 function KzCode({ lines, cls }) {
+  const pick = usePick();
   return (
     <div className={'kz-code' + (cls ? ' ' + cls : '')} translate="no">
       {lines.map((ln, i) => {
-        const st = { '--d': ln.d || 0, '--r': ((i % 2 ? 1 : -1) * (0.25 + (i % 3) * 0.12)).toFixed(2) + 'deg' };
+        const st = Object.assign({ '--d': ln.d || 0, '--r': ((i % 2 ? 1 : -1) * (0.25 + (i % 3) * 0.12)).toFixed(2) + 'deg' }, ln.style || {});
         const c = 'kz-line' + (ln.cls ? ' ' + ln.cls : '');
-        if (ln.onTap) {
-          return (
-            <button key={ln.k || i} type="button" className={c + ' kz-tap'} style={st} disabled={!!ln.disabled} onClick={ln.onTap} data-place={ln.place}>
-              {React.Children.toArray(ln.parts)}<Led on={!!ln.led} />
-            </button>
-          );
-        }
-        return <div key={ln.k || i} className={c} style={st} data-place={ln.place}>{React.Children.toArray(ln.parts)}<Led on={!!ln.led} /></div>;
+        const body = ln.onTap ? (
+          <button key={ln.move ? 'b' : (ln.k || i)} type="button" className={c + ' kz-tap'} style={st} disabled={!!ln.disabled} onClick={ln.onTap} data-place={ln.place}>
+            {React.Children.toArray(ln.parts)}<Led on={!!ln.led} />
+          </button>
+        ) : <div key={ln.move ? 'b' : (ln.k || i)} className={c} style={st} data-place={ln.place}>{React.Children.toArray(ln.parts)}<Led on={!!ln.led} /></div>;
+        if (!ln.move) return body;
+        const mv = ln.move;
+        return (
+          <div key={ln.k || i} className="kz-line-row">
+            {body}
+            <span className={'kz-move' + (mv.hide ? ' is-hide' : '')}>
+              {['up', 'down'].map((d) => (
+                <button key={d} type="button" className={'kz-move-b is-' + d} disabled={mv.hide || !mv[d] || !!ln.disabled}
+                  onClick={mv[d] || undefined} aria-label={pick(d === 'up' ? UI.up : UI.down)} tabIndex={mv.hide ? -1 : undefined}>
+                  <svg viewBox="0 0 12 8" width="12" height="8" aria-hidden="true"><path d="M1.2 6.8 6 2 10.8 6.8" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                </button>
+              ))}
+            </span>
+          </div>
+        );
       })}
     </div>
   );
@@ -8031,12 +8049,12 @@ function PaperMan({ build = 7, out, headOpen, hl, onHead, onBody, onTitle, title
           onClick={onBody} label="body" />
       ) : null}
       {titleText && !titleGone ? (
-        <Cut c={KZ.cream} seed={46} n={6} amp={8} asp={3} x={24} y={10} w={52} h={12} r={-3} cls="kz-man-title" anim="pop" onClick={onTitle} label="title">
+        <Cut c="var(--kz-piece)" seed={46} n={6} amp={8} asp={3} x={24} y={10} w={52} h={12} r={-3} cls="kz-man-title" anim="pop" onClick={onTitle} label="title">
           <span className="kz-man-title-t">{titleText}</span>
         </Cut>
       ) : null}
       {has('head') ? (
-        <Cut c={KZ.mustard} round seed={47} n={9} amp={4} x={31} y={0} w={38} h={33} {...A('drop', 0.18)} boil hl={hl === 'head'} hlc={KZ.mustard}
+        <Cut c={KZ.face} round seed={47} n={9} amp={4} x={31} y={0} w={38} h={33} {...A('drop', 0.18)} boil hl={hl === 'head'} hlc={KZ.mustard}
           onClick={onHead} label="head" style={{ translate: headOpen ? '0 -38%' : '0 0', transition: 'translate .42s steps(5, end)' }}>
           {has('face') ? (
             <span className={'kz-face' + (out ? '' : anim ? ' kz-a-pop' : '')} style={{ '--dl': '0.55s' }} aria-hidden="true">
@@ -8346,6 +8364,115 @@ function makeArtifact(store) {
     html: ['<!DOCTYPE html>', '<html>', '  <head>', '    <title>' + escHtml(t || '') + '</title>', '  </head>', '  <body>', '    ' + escHtml(x || ''), '  </body>', '</html>'].join('\n') };
 }
 
+// ПЕРЕХОД МЕЖДУ ЭКРАНАМИ «РАЗБОР И СБОРКА». По «Дальше» / «Назад» снимается
+// неподвижная копия вырезок текущего листа; вырезки копии ступенчато (stop-motion)
+// разлетаются от центра листа наружу с поворотом. Новый экран уже на месте
+// (голос, кнопки, проверки работают как обычно), но ждёт, пока старое разлетится;
+// потом его вырезки слетаются на свои места. Вырезки, у которых есть свой влёт
+// (kz-a-drop и т. п.), влетают своим движением. При «меньше движения» — смена без
+// анимации. Шорох бумаги включается сам (kzScatter, kzAsmIn — в PAPER_ANIMS).
+const KZ_PIECES = '.kz-ask-wrap, .kz-br, .kz-line, .kz-scrap, .kz-btn, .kz-card, .kz-zone, .kz-label, .kz-slot, '
+  + '.kz-stagebox > .kz-cut, .kz-manbox .kz-cut, .kz-collage, .kz-role, .kz-next, .kz-msg, .keys, .kz-tray > *';
+const KZ_OUT_MS = 520;     // разлёт
+const KZ_WAIT_MS = 300;    // новый экран ждёт, пока старое разлетается
+const _kzT = { busy: 0, pending: false };
+
+// Только верхние вырезки: деталь внутри другой детали летит вместе с ней.
+const kzTop = (nodes) => {
+  const all = Array.prototype.slice.call(nodes);
+  return all.filter((el) => !all.some((o) => o !== el && o.contains(el)));
+};
+const kzRand = (a, b) => a + Math.random() * (b - a);
+
+function kzSnapshotOut() {
+  const sheet = kzLiveSheet();
+  const stage = document.querySelector('.stage');
+  if (!sheet || !stage) return false;
+  const r = sheet.getBoundingClientRect();
+  const clone = sheet.cloneNode(true);
+  // Лист, скотч и вырезки по углам одинаковы на всех экранах — разлетается только содержимое.
+  clone.querySelectorAll('.kz-sheet-wrap, .kz-deco').forEach((e) => e.remove());
+  // Набранный текст в полях копии (значение textarea не копируется само).
+  const src = sheet.querySelectorAll('textarea'), dst = clone.querySelectorAll('textarea');
+  dst.forEach((t, i) => { if (src[i]) t.value = src[i].value; });
+  const layer = document.createElement('div');
+  layer.className = 'kz-snap';
+  layer.setAttribute('aria-hidden', 'true');
+  Object.assign(layer.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+  clone.style.width = '100%';
+  clone.style.height = '100%';
+  layer.appendChild(clone);
+  // Не в саму панель экрана: она пересоздаётся при смене экрана и унесла бы снимок.
+  (stage.parentNode || document.body).appendChild(layer);
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const reach = Math.max(window.innerWidth, window.innerHeight) * 0.75;
+  kzTop(clone.querySelectorAll(KZ_PIECES)).forEach((el, i) => {
+    const b = el.getBoundingClientRect();
+    let dx = b.left + b.width / 2 - cx, dy = b.top + b.height / 2 - cy;
+    const len = Math.hypot(dx, dy) || 1;
+    dx /= len; dy /= len;
+    // Наружу от центра, чуть вверх (как вырезки, сметённые со стола), со своим разбросом.
+    el.style.setProperty('--ox', ((dx + kzRand(-0.25, 0.25)) * reach).toFixed(0) + 'px');
+    el.style.setProperty('--oy', ((dy - 0.35 + kzRand(-0.2, 0.2)) * reach).toFixed(0) + 'px');
+    el.style.setProperty('--or', kzRand(-38, 38).toFixed(0) + 'deg');
+    el.style.setProperty('--od', ((i % 7) * 0.025).toFixed(3) + 's');
+    el.classList.add('kz-out-go');
+  });
+  setTimeout(() => { if (layer.parentNode) layer.parentNode.removeChild(layer); }, KZ_OUT_MS + 260);
+  return true;
+}
+
+// Настоящий лист экрана — не копия в снимке (React ставит новый экран после слоя снимка).
+const kzLiveSheet = () => Array.prototype.slice.call(document.querySelectorAll('.kz-sheet')).find((x) => !x.closest('.kz-snap')) || null;
+
+function kzAssembleIn() {
+  const sheet = kzLiveSheet();
+  if (!sheet) return;
+  // Лист не проявляется заново: бумага остаётся на столе, меняются только вырезки.
+  // Встроенным стилем и навсегда: снятый позже запрет перезапустил бы проявление (вспышка).
+  sheet.style.animation = 'none';
+  sheet.classList.add('kz-asm-wait');   // скрыт, свои влёты на паузе
+  setTimeout(() => {
+    const H = window.innerHeight, W = window.innerWidth;
+    let n = 0;
+    kzTop(sheet.querySelectorAll(KZ_PIECES)).forEach((el) => {
+      const cs = getComputedStyle(el);
+      // Свой влёт есть — пусть летит им (снимается с паузы вместе со всеми).
+      if (cs.animationName !== 'none' && cs.animationIterationCount.indexOf('infinite') < 0) return;
+      const fromLeft = n % 2 === 0;
+      el.style.setProperty('--ix', ((fromLeft ? -1 : 1) * kzRand(0.25, 0.55) * W).toFixed(0) + 'px');
+      el.style.setProperty('--iy', (kzRand(-0.55, -0.2) * H).toFixed(0) + 'px');
+      el.style.setProperty('--ir', kzRand(-30, 30).toFixed(0) + 'deg');
+      const dl = Math.min(0.3, n * 0.035);
+      n += 1;
+      el.style.animation = 'kzAsmIn .56s steps(1, end) ' + dl.toFixed(3) + 's both';
+      // Снять, когда сел: иначе встроенная анимация перебьёт будущие (тряску, огонёк).
+      setTimeout(() => { el.style.animation = ''; }, (0.56 + dl) * 1000 + 80);
+    });
+    sheet.classList.remove('kz-asm-wait');
+  }, KZ_WAIT_MS);
+}
+
+// Обёртка навигации: снимок старого листа → смена экрана → сборка нового.
+function useKzTransition(screenKey) {
+  const go = useCallback((fn) => {
+    if (!fn) return fn;
+    return () => {
+      const now = Date.now();
+      if (now - _kzT.busy < KZ_WAIT_MS + 120) return;   // двойное нажатие не пролистывает экран
+      _kzT.busy = now;
+      if (!reduceMotion() && kzSnapshotOut()) _kzT.pending = true;
+      fn();
+    };
+  }, []);
+  useLayoutEffect(() => {
+    if (!_kzT.pending) return;
+    _kzT.pending = false;
+    kzAssembleIn();
+  }, [screenKey]);
+  return go;
+}
+
 // =============================================================================
 // S1. КРЮЧОК — бумажный человечек собирается из вырезок; нажали — его части
 // разлетаются и садятся бумажной веб-страницей.
@@ -8419,7 +8546,7 @@ function S1({ p }) {
 // переворачивается, когда Коди начинает о ней рассказывать. Открытую можно
 // нажать — Коди повторит.
 // =============================================================================
-const CARD_C = [KZ.coral, KZ.mustard, KZ.teal, KZ.cream];
+const CARD_C = [KZ.coral, KZ.mustard, KZ.teal, 'var(--kz-piece)'];
 function S2({ p }) {
   const pick = usePick();
   const c = C.s2;
@@ -8455,7 +8582,7 @@ function S2({ p }) {
             return (
               <button key={i} type="button" className={'kz-card' + (on ? ' is-open' : '')} disabled={!on || !canTap} onClick={() => again(i)}
                 aria-label={on ? pick(card.title) : String(i + 1)} style={{ '--dl': (i * 0.12) + 's' }}>
-                <Cut c={on ? CARD_C[i] : KZ.cream} seed={80 + i} n={9} amp={3} asp={1.6} cls="kz-card-cut kz-a-drop" r={i % 2 ? 1.2 : -1.4} dl={i * 0.12}
+                <Cut c={on ? CARD_C[i] : 'var(--kz-piece)'} seed={80 + i} n={9} amp={3} asp={1.6} cls="kz-card-cut kz-a-drop" r={i % 2 ? 1.2 : -1.4} dl={i * 0.12}
                   hl={now} hlc={KZ.ink}>
                   <span className="kz-card-face" key={on ? 'o' : 'c'}>
                     {on ? <span className="kz-a-stamp">{pick(card.title)}</span> : <span className="kz-card-n">{i + 1}</span>}
@@ -9024,7 +9151,11 @@ function S11({ p }) {
       <Cut c={where === 'head' ? KZ.mustard : KZ.teal} seed={where === 'head' ? 91 : 92} n={10} amp={3} asp={1.6} cls="kz-zone-cut" />
       <span className="kz-zone-in">
         <KzLabel t={where} flow />
-        <span className="kz-zone-items">{Object.keys(placed).filter((k) => placed[k] === where).map((k) => <span key={k} className="kz-a-stamp">{k === 'name' ? face(k) : label(k)}</span>)}</span>
+        <span className="kz-zone-items">{Object.keys(placed).filter((k) => placed[k] === where).map((k, j) => (
+          // Разложенная вырезка — та же бумажка, что в лотке: рваный край, тень, свой наклон.
+          <span key={k} className="kz-zone-item kz-a-stamp" style={{ '--r': ['-2deg', '1.6deg', '-1.2deg', '2.2deg'][j % 4] }}>
+            <span className="kz-zone-item-in">{k === 'pic' ? face(k) : k === 'name' ? face(k) : label(k)}</span>
+          </span>))}</span>
       </span>
     </button>
   );
@@ -9098,7 +9229,8 @@ function S12({ p }) {
     { k: 'htmlc', d: 0, parts: [T_('html', true)] }
   ].map((ln) => {
     const part = sayK && SAY_LINES[sayK][ln.k];
-    return Object.assign(ln, { cls: cur === ln.k ? 'is-read' : part ? 'is-say is-say-' + part : '' });
+    const PART = { doc: 'doc', html: 'html', htmlc: 'html', head: 'head', title: 'head', headc: 'head', body: 'body', text: 'body', bodyc: 'body' };
+    return Object.assign(ln, { cls: cur === ln.k ? 'is-read is-say-' + PART[ln.k] : part ? 'is-say is-say-' + part : '' });
   });
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={read < 0 ? c.ask : c.askDone} nav={navOf(p, canGo)}>
@@ -9197,6 +9329,28 @@ function S13({ p }) {
     sfx('soft', true); setRes(r); sayNow(c.rules[r.rule], 'think');
     if (st.current.checks >= 2) lad.bump();
   };
+  // ▲ ▼ у поставленной полоски: на строку вверх или вниз (меняется местами с соседней,
+  // в том числе с пустой). Как бумажки на столе: нажатая полоска приподнимается и
+  // ступенчато проезжает над соседней, соседняя уезжает под ней на освободившееся место.
+  const [moved, setMoved] = useState(null);   // { to, from, dy } — dy: откуда приехала полоска
+  const mvT = useRef(0);
+  const hostRef = useRef(null);
+  useEffect(() => () => clearTimeout(mvT.current), []);
+  const move = (k, dir) => {
+    if (!canTap || solved) return;
+    const j = k + dir;
+    if (j < 0 || j > 7) return;
+    const rows = hostRef.current ? hostRef.current.querySelectorAll('.kz-line-row') : [];
+    const a = rows[k + 1], z = rows[j + 1];   // [0] — строка DOCTYPE
+    const dy = a && z ? a.getBoundingClientRect().top - z.getBoundingClientRect().top : 0;
+    const s2 = slots.slice(); const t = s2[j]; s2[j] = s2[k]; s2[k] = t;
+    setSlots(s2); setRes(null); setHeld(null);
+    const ne = s2.indexOf(null);
+    setCur(ne >= 0 ? ne : j);
+    sfx('tap', true);
+    setMoved(reduceMotion() ? null : { to: j, from: k, dy, n: Date.now() });
+    clearTimeout(mvT.current); mvT.current = setTimeout(() => setMoved(null), 560);
+  };
   const dnd = useKzDrag((payload, where) => {
     if (!canTap || solved || where === null) return;
     const k = Number(where);
@@ -9210,12 +9364,15 @@ function S13({ p }) {
     sfx('tap', true);
   });
   const hint = hintAt(lad.lv, c.hints);
-  const lines = [{ k: 'doc', d: 0, cls: 'kz-fixed', parts: [<span key="d" className="kz-tag"><span className="kz-tk-b">{'<!'}</span><span className="kz-tk-n">DOCTYPE html</span><span className="kz-tk-b">{'>'}</span></span>] }]
+  const lines = [{ k: 'doc', d: 0, cls: 'kz-fixed', move: { hide: true }, parts: [<span key="d" className="kz-tag"><span className="kz-tk-b">{'<!'}</span><span className="kz-tk-n">DOCTYPE html</span><span className="kz-tk-b">{'>'}</span></span>] }]
     .concat(slots.map((id, k) => {
       const marked = res && id && res.mark.indexOf(id) >= 0;
       return {
-        k: 's' + k, d: id ? DEPTH13(slots, k) : 0,
-        cls: (!id && cur === k && !solved ? 'is-cur' : '') + (held === k ? ' is-sel' : '') + (marked ? ' is-mark' : ''),
+        // Новый ключ на каждый сдвиг — анимация перестановки перезапускается и при быстрых нажатиях.
+        k: 's' + k + (moved && (moved.to === k || moved.from === k) ? ':' + moved.n : ''), d: id ? DEPTH13(slots, k) : 0,
+        cls: (!id && cur === k && !solved ? 'is-cur' : '') + (held === k ? ' is-sel' : '') + (marked ? ' is-mark' : '') + (moved && moved.to === k ? ' kz-slide-up' : moved && moved.from === k && slots[k] ? ' kz-slide-under' : ''),
+        style: moved && (moved.to === k || moved.from === k) ? { '--dy': (moved.to === k ? moved.dy : -moved.dy).toFixed(1) + 'px' } : null,
+        move: solved || !id ? { hide: true } : { up: k > 0 ? () => move(k, -1) : null, down: k < 7 ? () => move(k, 1) : null },
         onTap: solved ? null : () => tapSlot(k), disabled: !canTap, led: (led && !id && cur === k) || (lad.lv >= 3 && marked),
         parts: id ? partsOf(id) : [<span key="e" className="kz-dash" aria-label={'slot ' + (k + 2)} />]
       };
@@ -9225,11 +9382,13 @@ function S13({ p }) {
       <Sheet>
         <KzAsk text={solved ? c.ok : c.ask} hint={solved ? null : (res ? c.rules[res.rule] : hint)} n={solved ? null : slots.filter(Boolean).length + '/8'} />
         <div className="kz-build">
-          <div className="kz-code-host" onPointerDown={(e) => {
+          <div ref={hostRef} className="kz-code-host" onPointerDown={(e) => {
             if (!canTap || solved) return;
+            if (e.target.closest && e.target.closest('.kz-move')) return;   // ▲ ▼ — не перетаскивание
             const ln = e.target.closest && e.target.closest('.kz-line');
             if (!ln) return;
-            const k = [...ln.parentNode.children].indexOf(ln) - 1;
+            const row = ln.closest('.kz-line-row') || ln;
+            const k = [...row.parentNode.children].indexOf(row) - 1;
             if (k >= 0 && slots[k]) dnd.start(e, { from: 'slot', k }, labelOf(slots[k]));
           }}>
             <KzCode lines={lines.map((ln, i) => (i === 0 ? ln : Object.assign(ln, { place: String(i - 1) })))} cls="kz-code-sm kz-code-build" />
@@ -9418,7 +9577,9 @@ export default function HtmlKollazh({ studentName, lang, ttsApiBase, voiceGender
     }, 700);
     return () => clearTimeout(t);
   }, [cur.id, nextId, R.lang]); // eslint-disable-line react-hooks/exhaustive-deps
-  const p = { screen: R.i, total: SCREENS.length, next: R.next, prev: R.i > 0 ? R.prev : null, finish: R.finish, name: R.displayName };
+  // Переход «разбор и сборка» — на «Дальше» и «Назад».
+  const go = useKzTransition(cur.id + ':' + R.runN);
+  const p = { screen: R.i, total: SCREENS.length, next: go(R.next), prev: R.i > 0 ? go(R.prev) : null, finish: R.finish, name: R.displayName };
   return (
     <R.Shell css={LESSON_CSS + CANON_UI_CSS}>
       <SpokenTags>
@@ -10481,10 +10642,13 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .mark-row.is-compact .mark-b { padding: 0 12px; min-height: 42px; }
 .prj-tools:has(.mark-row) { flex-wrap: nowrap; }
 /* ── БУМАЖНЫЙ КОЛЛАЖ (тестовый урок 12, по ролику html.mp4) ─────────────────
-   Стол — крафт, лист — кремовая бумага с рваным краем, вырезки — цветная
+   Стол — фон курса (как в остальных уроках, заказчик 20.10.2026; раньше был
+   крафт #D8C4A1), лист — кремовая бумага с рваным краем, вырезки — цветная
    бумага с фактурой и мягкой тенью на нижний слой. Движение ступенчатое,
    как stop-motion: keyframes по кадрам и steps(1, end). Префикс kz-. */
-.stage { background: #D8C4A1; }
+/* Цвет бумажек: теги, строки кода, карточки, страница в браузере, вырезки в лотке
+   (заказчик, 20.10.2026: пробуем горчицу; было #FBF6EA). Меняется здесь одним числом. */
+:root { --kz-piece: #F0B13F; }
 .stage .stage-header, .stage .stage-nav { background: transparent; }
 .stage .stage-content { overflow: visible; }
 .stage-content::before, .stage-content::after { display: none; }
@@ -10511,7 +10675,7 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 
 /* Лист и стол */
 .kz-sheet { position: relative; flex: 1 1 auto; min-height: 0; width: 100%; display: flex; }
-.kz-sheet-in { position: absolute; inset: 0; background: #EFE7D6; }
+.kz-sheet-in { position: absolute; inset: 0; background: #FBF6EA; }   /* лист (заказчик, 20.10.2026; было #EFE7D6) */
 .kz-sheet-wrap { position: absolute; inset: 0; filter: drop-shadow(0 2px 2px rgba(74, 48, 18, .28)) drop-shadow(0 10px 14px rgba(74, 48, 18, .16)); }
 .kz-sheet-body { position: relative; z-index: 1; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: clamp(8px, 1.6dvh, 14px);
   padding: clamp(12px, 2.4dvh, 22px) clamp(12px, 2.4vw, 26px); }
@@ -10575,7 +10739,7 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 /* Бирка-тег на скотче */
 .kz-label { position: absolute; display: inline-flex; z-index: 4; }
 .kz-label.kz-flow { position: relative; }
-.kz-label-paper { position: relative; display: inline-block; padding: 4px 12px 5px; background: #FBF6EA; color: #1F2A44;
+.kz-label-paper { position: relative; display: inline-block; padding: 4px 12px 5px; background: var(--kz-piece); color: #1F2A44;
   font: 700 clamp(16px, 2.9dvh, 24px)/1.2 'JetBrains Mono', ui-monospace, monospace; white-space: nowrap;
   clip-path: polygon(0 8%, 12% 0, 40% 6%, 70% 0, 100% 7%, 97% 50%, 100% 94%, 64% 100%, 30% 93%, 0 100%, 3% 46%);
   filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .3)); }
@@ -10590,7 +10754,7 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 /* Код — бумажные полоски */
 .kz-code { position: relative; display: flex; flex-direction: column; gap: 5px; min-width: 0; font: 600 clamp(14px, 1.9dvh, 17px)/1.35 'JetBrains Mono', ui-monospace, monospace; }
 .kz-line { position: relative; display: flex; align-items: center; flex-wrap: wrap; gap: 2px; min-height: 30px; padding: 4px 12px 4px calc(12px + var(--d, 0) * 1.4em);
-  background: #FBF6EA; color: #1F2A44; rotate: var(--r, 0deg);
+  background: var(--kz-piece); color: #1F2A44; rotate: var(--r, 0deg);
   clip-path: polygon(0 10%, 2% 0, 35% 6%, 68% 0, 99% 8%, 100% 45%, 99% 100%, 66% 94%, 33% 100%, 1% 93%, 0 55%);
   filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .26)); }
 .kz-line.is-read { background: #FFE4D8; }
@@ -10708,7 +10872,7 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 
 /* Сортировка вырезок */
 .kz-tray { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
-.kz-scrap { position: relative; border: none; padding: 7px 14px; background: #FBF6EA; color: #1F2A44; cursor: grab; touch-action: none;
+.kz-scrap { position: relative; border: none; padding: 7px 14px; background: var(--kz-piece); color: #1F2A44; cursor: grab; touch-action: none;
   font: 800 15px 'Manrope', sans-serif; rotate: var(--r, 0deg);
   clip-path: polygon(0 10%, 8% 0, 50% 6%, 92% 0, 100% 12%, 97% 52%, 100% 90%, 90% 100%, 50% 94%, 8% 100%, 0 88%, 3% 50%);
   filter: drop-shadow(0 2px 2px rgba(74, 48, 18, .3)); }
@@ -10721,7 +10885,6 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-zone-in { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 6px; padding: 8px; }
 .kz-zone.is-hover .kz-cut, .kz-zone.is-led .kz-cut { filter: drop-shadow(0 0 6px rgba(255, 79, 40, .9)); }
 .kz-zone-items { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
-.kz-zone-items > span { padding: 3px 8px; background: #FBF6EA; font: 700 13px 'Manrope', sans-serif; color: #1F2A44; border-radius: 3px; rotate: -1deg; }
 
 /* Сборка каркаса */
 .kz-build { display: flex; gap: 14px; align-items: flex-start; width: 100%; min-height: 0; }
@@ -10740,7 +10903,7 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-ghost { position: fixed; z-index: 200; pointer-events: none; transform: translate(-50%, -85%) rotate(var(--gr, 0deg)) scale(1.1);
   filter: drop-shadow(0 3px 2px rgba(74, 48, 18, .25)) drop-shadow(0 16px 14px rgba(74, 48, 18, .3)); transition: transform .12s steps(2, end); }
 .kz-ghost.is-touch { transform: translate(-50%, -150%) rotate(var(--gr, 0deg)) scale(1.1); }
-.kz-ghost-in { display: block; padding: 7px 16px; background: #FBF6EA; color: #1F2A44; white-space: nowrap;
+.kz-ghost-in { display: block; padding: 7px 16px; background: var(--kz-piece); color: #1F2A44; white-space: nowrap;
   font: 800 clamp(15px, 2.4dvh, 19px)/1.2 'JetBrains Mono', ui-monospace, monospace;
   clip-path: polygon(0 10%, 8% 0, 50% 6%, 92% 0, 100% 12%, 97% 52%, 100% 90%, 90% 100%, 50% 94%, 8% 100%, 0 88%, 3% 50%); }
 /* Не туда — копия ступенчато возвращается на стол. */
@@ -10764,7 +10927,7 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
   border-radius: 50%; border: 3px solid #E0643F; animation: kzRing .5s steps(5, end) both; }
 @keyframes kzRing { from { transform: scale(.3); } to { transform: scale(1.3); border-color: rgba(224, 100, 63, 0); } }
 /* Копия тега — прямо под пальцем: палец лежит на ней, как когда несёшь вырезку. */
-.kz-hand-ghost { position: absolute; left: 16px; top: 4px; translate: -50% -55%; padding: 5px 13px; background: #FBF6EA; color: #1F2A44; white-space: nowrap;
+.kz-hand-ghost { position: absolute; left: 16px; top: 4px; translate: -50% -55%; padding: 5px 13px; background: var(--kz-piece); color: #1F2A44; white-space: nowrap;
   font: 800 clamp(16px, 2.8dvh, 22px)/1.2 'JetBrains Mono', ui-monospace, monospace; rotate: -4deg;
   clip-path: polygon(0 10%, 8% 0, 50% 6%, 92% 0, 100% 12%, 97% 52%, 100% 90%, 90% 100%, 50% 94%, 8% 100%, 0 88%, 3% 50%); }
 
@@ -10998,7 +11161,6 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .stagger > .kz-sheet, .stage-content > .limit > .kz-sheet { animation-name: kzSheetIn; }
 @keyframes kzSheetIn { from { opacity: 0; } to { opacity: 1; } }
 /* s11: имя в теге внутри зоны не шире зоны — переносится между тегом и словом. */
-.kz-zone-items > span { max-width: 100%; }
 .kz-zone-items .kz-scrap-code { display: inline-flex; flex-wrap: wrap; justify-content: center; white-space: normal; font-size: 12.5px; }
 
 /* Тег на скотче подсвечен — о нём сейчас говорит Коди (s3: определение тега).
@@ -11015,4 +11177,95 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-line.is-say-doc, .kz-line.is-say-html { --sb: #FFE1D6; --sc: #E0643F; }
 .kz-line.is-say-head { --sb: #FCE9B8; --sc: #F0B13F; }
 .kz-line.is-say-body { --sb: #D2EDE7; --sc: #2A8C7E; }
+
+/* ПЕРЕХОД «РАЗБОР И СБОРКА» (kollazh-trans.jsx).
+   Снимок старого листа: свои анимации копии выключены, вырезки ступенчато
+   разлетаются наружу с поворотом и гаснут. */
+.kz-snap { position: fixed; z-index: 60; pointer-events: none; }
+.kz-snap, .kz-snap * { animation: none !important; transition: none !important; }
+.kz-snap .kz-out-go { animation: kzScatter .52s steps(1, end) var(--od, 0s) both !important; }
+@keyframes kzScatter {
+  0% { transform: none; opacity: 1; }
+  14% { transform: translate(calc(var(--ox) * .03), calc(var(--oy) * .03 - 8px)) rotate(calc(var(--or) * .12)); }
+  28% { transform: translate(calc(var(--ox) * .12), calc(var(--oy) * .12)) rotate(calc(var(--or) * .3)); }
+  42% { transform: translate(calc(var(--ox) * .26), calc(var(--oy) * .26)) rotate(calc(var(--or) * .5)); }
+  57% { transform: translate(calc(var(--ox) * .45), calc(var(--oy) * .45)) rotate(calc(var(--or) * .68)); }
+  71% { transform: translate(calc(var(--ox) * .66), calc(var(--oy) * .66)) rotate(calc(var(--or) * .84)); opacity: .9; }
+  85% { transform: translate(calc(var(--ox) * .86), calc(var(--oy) * .86)) rotate(var(--or)); opacity: .55; }
+  100% { transform: translate(var(--ox), var(--oy)) rotate(var(--or)); opacity: 0; } }
+/* Новый экран ждёт, пока старое разлетается: содержимое листа скрыто, свои влёты на паузе. */
+.kz-asm-wait > .kz-sheet-body { visibility: hidden; }
+.kz-asm-wait > .kz-sheet-body * { animation-play-state: paused !important; }
+/* Сборка: вырезка слетается сверху сбоку ступеньками, с лёгким перелётом. */
+@keyframes kzAsmIn {
+  0% { transform: translate(var(--ix), var(--iy)) rotate(var(--ir)); opacity: 0; }
+  12% { transform: translate(calc(var(--ix) * .7), calc(var(--iy) * .7)) rotate(calc(var(--ir) * .7)); opacity: 1; }
+  28% { transform: translate(calc(var(--ix) * .4), calc(var(--iy) * .4)) rotate(calc(var(--ir) * .4)); }
+  44% { transform: translate(calc(var(--ix) * .16), calc(var(--iy) * .16)) rotate(calc(var(--ir) * .16)); }
+  60% { transform: translate(calc(var(--ix) * -.03), calc(var(--iy) * -.02 + 4px)) rotate(calc(var(--ir) * -.08)); }
+  78% { transform: translate(calc(var(--ix) * .01), -2px) rotate(calc(var(--ir) * .03)); }
+  100% { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .kz-snap { display: none; } }
+/* s11: зоны head (горчица) и body (бирюза). Бирки зон и разложенные вырезки —
+   светлые: горчичные сливались с горчичной зоной head. Зоны — большие цветные
+   поля, пока Коди говорит, они не бледнеют (канон гасит кнопки до .62). */
+.kz-zone .kz-label-paper { background: #FBF6EA; }
+.stage.is-speaking .stage-content .kz-zone:disabled, .stage .stage-content .kz-zone:disabled { opacity: 1; filter: none; }
+
+/* s11: вырезка, положенная в зону, — бумажка: рваный край (как в лотке), мягкая
+   тень на зону, свой небольшой наклон. Светлая, чтобы читалась на горчице и бирюзе. */
+.kz-zone-item { display: inline-flex; max-width: 100%; rotate: var(--r, 0deg);
+  filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .35)) drop-shadow(0 4px 5px rgba(74, 48, 18, .18)); }
+.kz-zone-item-in { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 6px 12px 7px; background: #FBF6EA; color: #1F2A44;
+  font: 800 clamp(12.5px, 1.9dvh, 16px)/1.2 'Manrope', sans-serif;
+  clip-path: polygon(0 10%, 8% 0, 50% 6%, 92% 0, 100% 12%, 97% 52%, 100% 90%, 90% 100%, 50% 94%, 8% 100%, 0 88%, 3% 50%); }
+.kz-zone-item-in .kz-scrap-code { font-size: clamp(11.5px, 1.75dvh, 15px); }
+/* Зона растёт под разложенные вырезки (на телефоне они идут столбиком) —
+   содержимое в потоке, цветная бумага зоны тянется за ним. */
+.kz-zone-in { position: relative; inset: auto; min-height: 100%; }
+
+/* s12: строки кода горчичные, поэтому светлая подсветка делала строку цвета листа —
+   она будто пропадала. Подсвеченная строка (её читает браузер или о ней говорит
+   Коди) — тёмная, со светлым текстом и полосой цвета своей части слева:
+   html — коралл, head — горчица, body — бирюза. */
+.kz-line.is-read, .kz-line.is-say { background: linear-gradient(90deg, var(--sc, #E0643F) 0 14px, #1F2A44 14px); color: #FBF6EA; filter: none; }
+.kz-line.is-read .kz-tk-n, .kz-line.is-say .kz-tk-n, .kz-line.is-read .kz-txt, .kz-line.is-say .kz-txt { color: #FBF6EA; }
+.kz-line.is-read .kz-tk-b, .kz-line.is-say .kz-tk-b { color: #FF8A65; }
+/* Коллаж страницы (s12, s15): бирки светлые — горчичные сливались с горчичной головой. */
+.kz-collage .kz-label-paper { background: #FBF6EA; }
+
+/* s13: бумажные кнопки ▲ ▼ у правого края поставленной полоски (внутри жёлтой
+   полоски — поверх её края; текст строки под них не заезжает). */
+.kz-line-row { position: relative; display: flex; min-width: 0; }
+.kz-line-row > .kz-line { flex: 1 1 auto; min-width: 0; padding-right: 74px; }
+.kz-move { position: absolute; right: 7px; top: 50%; translate: 0 -50%; z-index: 3; display: flex; gap: 4px; }
+.kz-move.is-hide { visibility: hidden; }
+.kz-move-b { width: 30px; height: 24px; border: none; padding: 0; display: grid; place-items: center; cursor: pointer;
+  background: #FBF6EA; color: #1F2A44;
+  clip-path: polygon(0 10%, 12% 0, 50% 6%, 88% 0, 100% 12%, 96% 52%, 100% 90%, 88% 100%, 50% 94%, 12% 100%, 0 88%, 4% 50%);
+  filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .3)); }
+.kz-move-b.is-down svg { rotate: 180deg; }
+.kz-move-b:active:not(:disabled) { translate: 0 1px; background: #FFE4D8; }
+.kz-move-b:disabled { opacity: .3; cursor: default; }
+@media (max-width: 759px) { .kz-move-b { width: 27px; height: 22px; } .kz-line-row > .kz-line { padding-right: 66px; } .kz-move { right: 5px; gap: 3px; } }
+/* Перестановка, как бумажки: полоска приподнята (крупнее, длинная тень, наклон)
+   и ступенчато проезжает над соседней; соседняя уезжает под ней. --dy — откуда. */
+.kz-line.kz-slide-up { position: relative; z-index: 4; animation: kzSlideUp .5s steps(1, end) both; }
+.kz-line.kz-slide-under { position: relative; z-index: 1; animation: kzSlideUnder .5s steps(1, end) both; }
+@keyframes kzSlideUp {
+  0% { transform: translateY(var(--dy)); filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .26)); }
+  14% { transform: translateY(calc(var(--dy) - 3px)) scale(1.05) rotate(-1.4deg); filter: drop-shadow(0 8px 8px rgba(74, 48, 18, .35)); }
+  30% { transform: translateY(calc(var(--dy) * .72 - 3px)) scale(1.06) rotate(-1.8deg); filter: drop-shadow(0 10px 10px rgba(74, 48, 18, .35)); }
+  46% { transform: translateY(calc(var(--dy) * .42 - 2px)) scale(1.06) rotate(-1.2deg); filter: drop-shadow(0 10px 10px rgba(74, 48, 18, .35)); }
+  62% { transform: translateY(calc(var(--dy) * .15 - 2px)) scale(1.05) rotate(-.6deg); filter: drop-shadow(0 8px 8px rgba(74, 48, 18, .3)); }
+  80% { transform: translateY(1px) scale(1.01); filter: drop-shadow(0 3px 3px rgba(74, 48, 18, .28)); }
+  100% { transform: none; filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .26)); } }
+@keyframes kzSlideUnder {
+  0% { transform: translateY(var(--dy)); }
+  20% { transform: translateY(calc(var(--dy) * .85)) scale(.98); }
+  40% { transform: translateY(calc(var(--dy) * .55)) scale(.98); }
+  60% { transform: translateY(calc(var(--dy) * .25)) scale(.99); }
+  80% { transform: translateY(calc(var(--dy) * .05)); }
+  100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .kz-line.kz-slide-up, .kz-line.kz-slide-under { animation: none; } }
 `;

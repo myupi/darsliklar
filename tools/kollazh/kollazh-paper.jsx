@@ -2,7 +2,7 @@
 // kz… и полёт частей), и стихает, как только движение кончилось. Бесконечные
 // движения (дрожь, взмах руки, огонёк) не шуршат. Выключенный звук урока
 // (_soundOff канона) и «меньше движения» — тишина.
-const PAPER_ANIMS = { kzDrop: 1, kzRise: 1, kzLeft: 1, kzRight: 1, kzPop: 1, kzStamp: 1, kzOut: 1, kzOutL: 1, kzShake: 1 };
+const PAPER_ANIMS = { kzDrop: 1, kzRise: 1, kzLeft: 1, kzRight: 1, kzPop: 1, kzStamp: 1, kzOut: 1, kzOutL: 1, kzShake: 1, kzScatter: 1, kzAsmIn: 1, kzSlideUp: 1, kzSlideUnder: 1 };
 // Громкость шороха: фон, тише голоса и звуков ответа (заказчик: 0.11; было 0.55, потом 0.22).
 const PAPER_VOL = 0.11;
 const PAPER_PROPS = { translate: 1, scale: 1, rotate: 1, transform: 1 };

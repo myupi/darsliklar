@@ -1,8 +1,11 @@
 /* ── БУМАЖНЫЙ КОЛЛАЖ (тестовый урок 12, по ролику html.mp4) ─────────────────
-   Стол — крафт, лист — кремовая бумага с рваным краем, вырезки — цветная
+   Стол — фон курса (как в остальных уроках, заказчик 20.10.2026; раньше был
+   крафт #D8C4A1), лист — кремовая бумага с рваным краем, вырезки — цветная
    бумага с фактурой и мягкой тенью на нижний слой. Движение ступенчатое,
    как stop-motion: keyframes по кадрам и steps(1, end). Префикс kz-. */
-.stage { background: #D8C4A1; }
+/* Цвет бумажек: теги, строки кода, карточки, страница в браузере, вырезки в лотке
+   (заказчик, 20.10.2026: пробуем горчицу; было #FBF6EA). Меняется здесь одним числом. */
+:root { --kz-piece: #F0B13F; }
 .stage .stage-header, .stage .stage-nav { background: transparent; }
 .stage .stage-content { overflow: visible; }
 .stage-content::before, .stage-content::after { display: none; }
@@ -29,7 +32,7 @@
 
 /* Лист и стол */
 .kz-sheet { position: relative; flex: 1 1 auto; min-height: 0; width: 100%; display: flex; }
-.kz-sheet-in { position: absolute; inset: 0; background: #EFE7D6; }
+.kz-sheet-in { position: absolute; inset: 0; background: #FBF6EA; }   /* лист (заказчик, 20.10.2026; было #EFE7D6) */
 .kz-sheet-wrap { position: absolute; inset: 0; filter: drop-shadow(0 2px 2px rgba(74, 48, 18, .28)) drop-shadow(0 10px 14px rgba(74, 48, 18, .16)); }
 .kz-sheet-body { position: relative; z-index: 1; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: clamp(8px, 1.6dvh, 14px);
   padding: clamp(12px, 2.4dvh, 22px) clamp(12px, 2.4vw, 26px); }
@@ -93,7 +96,7 @@
 /* Бирка-тег на скотче */
 .kz-label { position: absolute; display: inline-flex; z-index: 4; }
 .kz-label.kz-flow { position: relative; }
-.kz-label-paper { position: relative; display: inline-block; padding: 4px 12px 5px; background: #FBF6EA; color: #1F2A44;
+.kz-label-paper { position: relative; display: inline-block; padding: 4px 12px 5px; background: var(--kz-piece); color: #1F2A44;
   font: 700 clamp(16px, 2.9dvh, 24px)/1.2 'JetBrains Mono', ui-monospace, monospace; white-space: nowrap;
   clip-path: polygon(0 8%, 12% 0, 40% 6%, 70% 0, 100% 7%, 97% 50%, 100% 94%, 64% 100%, 30% 93%, 0 100%, 3% 46%);
   filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .3)); }
@@ -108,7 +111,7 @@
 /* Код — бумажные полоски */
 .kz-code { position: relative; display: flex; flex-direction: column; gap: 5px; min-width: 0; font: 600 clamp(14px, 1.9dvh, 17px)/1.35 'JetBrains Mono', ui-monospace, monospace; }
 .kz-line { position: relative; display: flex; align-items: center; flex-wrap: wrap; gap: 2px; min-height: 30px; padding: 4px 12px 4px calc(12px + var(--d, 0) * 1.4em);
-  background: #FBF6EA; color: #1F2A44; rotate: var(--r, 0deg);
+  background: var(--kz-piece); color: #1F2A44; rotate: var(--r, 0deg);
   clip-path: polygon(0 10%, 2% 0, 35% 6%, 68% 0, 99% 8%, 100% 45%, 99% 100%, 66% 94%, 33% 100%, 1% 93%, 0 55%);
   filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .26)); }
 .kz-line.is-read { background: #FFE4D8; }
@@ -226,7 +229,7 @@
 
 /* Сортировка вырезок */
 .kz-tray { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
-.kz-scrap { position: relative; border: none; padding: 7px 14px; background: #FBF6EA; color: #1F2A44; cursor: grab; touch-action: none;
+.kz-scrap { position: relative; border: none; padding: 7px 14px; background: var(--kz-piece); color: #1F2A44; cursor: grab; touch-action: none;
   font: 800 15px 'Manrope', sans-serif; rotate: var(--r, 0deg);
   clip-path: polygon(0 10%, 8% 0, 50% 6%, 92% 0, 100% 12%, 97% 52%, 100% 90%, 90% 100%, 50% 94%, 8% 100%, 0 88%, 3% 50%);
   filter: drop-shadow(0 2px 2px rgba(74, 48, 18, .3)); }
@@ -239,7 +242,6 @@
 .kz-zone-in { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 6px; padding: 8px; }
 .kz-zone.is-hover .kz-cut, .kz-zone.is-led .kz-cut { filter: drop-shadow(0 0 6px rgba(255, 79, 40, .9)); }
 .kz-zone-items { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
-.kz-zone-items > span { padding: 3px 8px; background: #FBF6EA; font: 700 13px 'Manrope', sans-serif; color: #1F2A44; border-radius: 3px; rotate: -1deg; }
 
 /* Сборка каркаса */
 .kz-build { display: flex; gap: 14px; align-items: flex-start; width: 100%; min-height: 0; }
@@ -258,7 +260,7 @@
 .kz-ghost { position: fixed; z-index: 200; pointer-events: none; transform: translate(-50%, -85%) rotate(var(--gr, 0deg)) scale(1.1);
   filter: drop-shadow(0 3px 2px rgba(74, 48, 18, .25)) drop-shadow(0 16px 14px rgba(74, 48, 18, .3)); transition: transform .12s steps(2, end); }
 .kz-ghost.is-touch { transform: translate(-50%, -150%) rotate(var(--gr, 0deg)) scale(1.1); }
-.kz-ghost-in { display: block; padding: 7px 16px; background: #FBF6EA; color: #1F2A44; white-space: nowrap;
+.kz-ghost-in { display: block; padding: 7px 16px; background: var(--kz-piece); color: #1F2A44; white-space: nowrap;
   font: 800 clamp(15px, 2.4dvh, 19px)/1.2 'JetBrains Mono', ui-monospace, monospace;
   clip-path: polygon(0 10%, 8% 0, 50% 6%, 92% 0, 100% 12%, 97% 52%, 100% 90%, 90% 100%, 50% 94%, 8% 100%, 0 88%, 3% 50%); }
 /* Не туда — копия ступенчато возвращается на стол. */
@@ -282,7 +284,7 @@
   border-radius: 50%; border: 3px solid #E0643F; animation: kzRing .5s steps(5, end) both; }
 @keyframes kzRing { from { transform: scale(.3); } to { transform: scale(1.3); border-color: rgba(224, 100, 63, 0); } }
 /* Копия тега — прямо под пальцем: палец лежит на ней, как когда несёшь вырезку. */
-.kz-hand-ghost { position: absolute; left: 16px; top: 4px; translate: -50% -55%; padding: 5px 13px; background: #FBF6EA; color: #1F2A44; white-space: nowrap;
+.kz-hand-ghost { position: absolute; left: 16px; top: 4px; translate: -50% -55%; padding: 5px 13px; background: var(--kz-piece); color: #1F2A44; white-space: nowrap;
   font: 800 clamp(16px, 2.8dvh, 22px)/1.2 'JetBrains Mono', ui-monospace, monospace; rotate: -4deg;
   clip-path: polygon(0 10%, 8% 0, 50% 6%, 92% 0, 100% 12%, 97% 52%, 100% 90%, 90% 100%, 50% 94%, 8% 100%, 0 88%, 3% 50%); }
 
@@ -516,7 +518,6 @@
 .stagger > .kz-sheet, .stage-content > .limit > .kz-sheet { animation-name: kzSheetIn; }
 @keyframes kzSheetIn { from { opacity: 0; } to { opacity: 1; } }
 /* s11: имя в теге внутри зоны не шире зоны — переносится между тегом и словом. */
-.kz-zone-items > span { max-width: 100%; }
 .kz-zone-items .kz-scrap-code { display: inline-flex; flex-wrap: wrap; justify-content: center; white-space: normal; font-size: 12.5px; }
 
 /* Тег на скотче подсвечен — о нём сейчас говорит Коди (s3: определение тега).
@@ -533,3 +534,94 @@
 .kz-line.is-say-doc, .kz-line.is-say-html { --sb: #FFE1D6; --sc: #E0643F; }
 .kz-line.is-say-head { --sb: #FCE9B8; --sc: #F0B13F; }
 .kz-line.is-say-body { --sb: #D2EDE7; --sc: #2A8C7E; }
+
+/* ПЕРЕХОД «РАЗБОР И СБОРКА» (kollazh-trans.jsx).
+   Снимок старого листа: свои анимации копии выключены, вырезки ступенчато
+   разлетаются наружу с поворотом и гаснут. */
+.kz-snap { position: fixed; z-index: 60; pointer-events: none; }
+.kz-snap, .kz-snap * { animation: none !important; transition: none !important; }
+.kz-snap .kz-out-go { animation: kzScatter .52s steps(1, end) var(--od, 0s) both !important; }
+@keyframes kzScatter {
+  0% { transform: none; opacity: 1; }
+  14% { transform: translate(calc(var(--ox) * .03), calc(var(--oy) * .03 - 8px)) rotate(calc(var(--or) * .12)); }
+  28% { transform: translate(calc(var(--ox) * .12), calc(var(--oy) * .12)) rotate(calc(var(--or) * .3)); }
+  42% { transform: translate(calc(var(--ox) * .26), calc(var(--oy) * .26)) rotate(calc(var(--or) * .5)); }
+  57% { transform: translate(calc(var(--ox) * .45), calc(var(--oy) * .45)) rotate(calc(var(--or) * .68)); }
+  71% { transform: translate(calc(var(--ox) * .66), calc(var(--oy) * .66)) rotate(calc(var(--or) * .84)); opacity: .9; }
+  85% { transform: translate(calc(var(--ox) * .86), calc(var(--oy) * .86)) rotate(var(--or)); opacity: .55; }
+  100% { transform: translate(var(--ox), var(--oy)) rotate(var(--or)); opacity: 0; } }
+/* Новый экран ждёт, пока старое разлетается: содержимое листа скрыто, свои влёты на паузе. */
+.kz-asm-wait > .kz-sheet-body { visibility: hidden; }
+.kz-asm-wait > .kz-sheet-body * { animation-play-state: paused !important; }
+/* Сборка: вырезка слетается сверху сбоку ступеньками, с лёгким перелётом. */
+@keyframes kzAsmIn {
+  0% { transform: translate(var(--ix), var(--iy)) rotate(var(--ir)); opacity: 0; }
+  12% { transform: translate(calc(var(--ix) * .7), calc(var(--iy) * .7)) rotate(calc(var(--ir) * .7)); opacity: 1; }
+  28% { transform: translate(calc(var(--ix) * .4), calc(var(--iy) * .4)) rotate(calc(var(--ir) * .4)); }
+  44% { transform: translate(calc(var(--ix) * .16), calc(var(--iy) * .16)) rotate(calc(var(--ir) * .16)); }
+  60% { transform: translate(calc(var(--ix) * -.03), calc(var(--iy) * -.02 + 4px)) rotate(calc(var(--ir) * -.08)); }
+  78% { transform: translate(calc(var(--ix) * .01), -2px) rotate(calc(var(--ir) * .03)); }
+  100% { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .kz-snap { display: none; } }
+/* s11: зоны head (горчица) и body (бирюза). Бирки зон и разложенные вырезки —
+   светлые: горчичные сливались с горчичной зоной head. Зоны — большие цветные
+   поля, пока Коди говорит, они не бледнеют (канон гасит кнопки до .62). */
+.kz-zone .kz-label-paper { background: #FBF6EA; }
+.stage.is-speaking .stage-content .kz-zone:disabled, .stage .stage-content .kz-zone:disabled { opacity: 1; filter: none; }
+
+/* s11: вырезка, положенная в зону, — бумажка: рваный край (как в лотке), мягкая
+   тень на зону, свой небольшой наклон. Светлая, чтобы читалась на горчице и бирюзе. */
+.kz-zone-item { display: inline-flex; max-width: 100%; rotate: var(--r, 0deg);
+  filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .35)) drop-shadow(0 4px 5px rgba(74, 48, 18, .18)); }
+.kz-zone-item-in { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 6px 12px 7px; background: #FBF6EA; color: #1F2A44;
+  font: 800 clamp(12.5px, 1.9dvh, 16px)/1.2 'Manrope', sans-serif;
+  clip-path: polygon(0 10%, 8% 0, 50% 6%, 92% 0, 100% 12%, 97% 52%, 100% 90%, 90% 100%, 50% 94%, 8% 100%, 0 88%, 3% 50%); }
+.kz-zone-item-in .kz-scrap-code { font-size: clamp(11.5px, 1.75dvh, 15px); }
+/* Зона растёт под разложенные вырезки (на телефоне они идут столбиком) —
+   содержимое в потоке, цветная бумага зоны тянется за ним. */
+.kz-zone-in { position: relative; inset: auto; min-height: 100%; }
+
+/* s12: строки кода горчичные, поэтому светлая подсветка делала строку цвета листа —
+   она будто пропадала. Подсвеченная строка (её читает браузер или о ней говорит
+   Коди) — тёмная, со светлым текстом и полосой цвета своей части слева:
+   html — коралл, head — горчица, body — бирюза. */
+.kz-line.is-read, .kz-line.is-say { background: linear-gradient(90deg, var(--sc, #E0643F) 0 14px, #1F2A44 14px); color: #FBF6EA; filter: none; }
+.kz-line.is-read .kz-tk-n, .kz-line.is-say .kz-tk-n, .kz-line.is-read .kz-txt, .kz-line.is-say .kz-txt { color: #FBF6EA; }
+.kz-line.is-read .kz-tk-b, .kz-line.is-say .kz-tk-b { color: #FF8A65; }
+/* Коллаж страницы (s12, s15): бирки светлые — горчичные сливались с горчичной головой. */
+.kz-collage .kz-label-paper { background: #FBF6EA; }
+
+/* s13: бумажные кнопки ▲ ▼ у правого края поставленной полоски (внутри жёлтой
+   полоски — поверх её края; текст строки под них не заезжает). */
+.kz-line-row { position: relative; display: flex; min-width: 0; }
+.kz-line-row > .kz-line { flex: 1 1 auto; min-width: 0; padding-right: 74px; }
+.kz-move { position: absolute; right: 7px; top: 50%; translate: 0 -50%; z-index: 3; display: flex; gap: 4px; }
+.kz-move.is-hide { visibility: hidden; }
+.kz-move-b { width: 30px; height: 24px; border: none; padding: 0; display: grid; place-items: center; cursor: pointer;
+  background: #FBF6EA; color: #1F2A44;
+  clip-path: polygon(0 10%, 12% 0, 50% 6%, 88% 0, 100% 12%, 96% 52%, 100% 90%, 88% 100%, 50% 94%, 12% 100%, 0 88%, 4% 50%);
+  filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .3)); }
+.kz-move-b.is-down svg { rotate: 180deg; }
+.kz-move-b:active:not(:disabled) { translate: 0 1px; background: #FFE4D8; }
+.kz-move-b:disabled { opacity: .3; cursor: default; }
+@media (max-width: 759px) { .kz-move-b { width: 27px; height: 22px; } .kz-line-row > .kz-line { padding-right: 66px; } .kz-move { right: 5px; gap: 3px; } }
+/* Перестановка, как бумажки: полоска приподнята (крупнее, длинная тень, наклон)
+   и ступенчато проезжает над соседней; соседняя уезжает под ней. --dy — откуда. */
+.kz-line.kz-slide-up { position: relative; z-index: 4; animation: kzSlideUp .5s steps(1, end) both; }
+.kz-line.kz-slide-under { position: relative; z-index: 1; animation: kzSlideUnder .5s steps(1, end) both; }
+@keyframes kzSlideUp {
+  0% { transform: translateY(var(--dy)); filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .26)); }
+  14% { transform: translateY(calc(var(--dy) - 3px)) scale(1.05) rotate(-1.4deg); filter: drop-shadow(0 8px 8px rgba(74, 48, 18, .35)); }
+  30% { transform: translateY(calc(var(--dy) * .72 - 3px)) scale(1.06) rotate(-1.8deg); filter: drop-shadow(0 10px 10px rgba(74, 48, 18, .35)); }
+  46% { transform: translateY(calc(var(--dy) * .42 - 2px)) scale(1.06) rotate(-1.2deg); filter: drop-shadow(0 10px 10px rgba(74, 48, 18, .35)); }
+  62% { transform: translateY(calc(var(--dy) * .15 - 2px)) scale(1.05) rotate(-.6deg); filter: drop-shadow(0 8px 8px rgba(74, 48, 18, .3)); }
+  80% { transform: translateY(1px) scale(1.01); filter: drop-shadow(0 3px 3px rgba(74, 48, 18, .28)); }
+  100% { transform: none; filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .26)); } }
+@keyframes kzSlideUnder {
+  0% { transform: translateY(var(--dy)); }
+  20% { transform: translateY(calc(var(--dy) * .85)) scale(.98); }
+  40% { transform: translateY(calc(var(--dy) * .55)) scale(.98); }
+  60% { transform: translateY(calc(var(--dy) * .25)) scale(.99); }
+  80% { transform: translateY(calc(var(--dy) * .05)); }
+  100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .kz-line.kz-slide-up, .kz-line.kz-slide-under { animation: none; } }

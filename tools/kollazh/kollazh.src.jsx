@@ -79,6 +79,8 @@ const UI = {
   noTags: L3('Bu yerga faqat so‘z yozing, burchakli qavslarsiz.', 'Здесь нужны только слова, без угловых скобок.', 'Only words here, no angle brackets.'),
   again: L3('yangi misol', 'новый пример', 'new example'),
   hintN: L3('Maslahat', 'Подсказка', 'Hint'),
+  up: L3('Yuqoriga', 'Вверх', 'Up'),
+  down: L3('Pastga', 'Вниз', 'Down'),
   swap: L3('Ikki qatorni bosing — ular joy almashadi.', 'Нажми две полоски — они поменяются местами.', 'Tap two strips: they swap places.'),
   finish: L3('Darsni tugatish', 'Завершить урок', 'Finish the lesson')
 };
@@ -431,6 +433,8 @@ Object.assign(NOT_SPOKEN_IN, { cards: { title: 1 }, items: { id: 1, want: 1 } })
 /*@FILE:kollazh-paper.jsx@*/
 
 /*@FILE:kollazh-kit.jsx@*/
+
+/*@FILE:kollazh-trans.jsx@*/
 
 /*@FILE:kollazh-screens.jsx@*/
 

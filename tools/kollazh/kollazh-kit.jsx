@@ -3,7 +3,7 @@
 // бумага с рваным краем (clip-path) и фактурой. Рваный край считается один раз
 // по зерну (seed): одна и та же вырезка всегда одинаковая.
 // =============================================================================
-const KZ = { kraft: '#D8C4A1', paper: '#EFE7D6', cream: '#FBF6EA', coral: '#E0643F', mustard: '#F0B13F', teal: '#2A8C7E', ink: '#1F2A44' };
+const KZ = { kraft: '#D8C4A1', paper: '#EFE7D6', face: '#F2D7BC', cream: '#FBF6EA', coral: '#E0643F', mustard: '#F0B13F', teal: '#2A8C7E', ink: '#1F2A44' };
 const kzRnd = (seed) => { let s = (Math.abs(seed) * 7919 + 104729) % 2147483647 || 1; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; };
 const TORN = {};
 // Рваный прямоугольник: зубцы по четырём сторонам; amp — глубина зубца в % по
@@ -103,20 +103,36 @@ function KzLabel({ t, close, raw, cls, style, onClick, led, on, hl, flow, anim, 
 }
 
 // Код — бумажные полоски. Строка: { k, d, parts: [узлы], cls, onTap, led, disabled }.
+// Строка: { k, d, parts, cls, onTap, led, disabled, place, move }.
+// move — бумажные кнопки ▲ ▼ справа от строки: { up, down } (обработчики или null),
+// { hide: true } — пустое место той же ширины, чтобы строки не прыгали.
 function KzCode({ lines, cls }) {
+  const pick = usePick();
   return (
     <div className={'kz-code' + (cls ? ' ' + cls : '')} translate="no">
       {lines.map((ln, i) => {
-        const st = { '--d': ln.d || 0, '--r': ((i % 2 ? 1 : -1) * (0.25 + (i % 3) * 0.12)).toFixed(2) + 'deg' };
+        const st = Object.assign({ '--d': ln.d || 0, '--r': ((i % 2 ? 1 : -1) * (0.25 + (i % 3) * 0.12)).toFixed(2) + 'deg' }, ln.style || {});
         const c = 'kz-line' + (ln.cls ? ' ' + ln.cls : '');
-        if (ln.onTap) {
-          return (
-            <button key={ln.k || i} type="button" className={c + ' kz-tap'} style={st} disabled={!!ln.disabled} onClick={ln.onTap} data-place={ln.place}>
-              {React.Children.toArray(ln.parts)}<Led on={!!ln.led} />
-            </button>
-          );
-        }
-        return <div key={ln.k || i} className={c} style={st} data-place={ln.place}>{React.Children.toArray(ln.parts)}<Led on={!!ln.led} /></div>;
+        const body = ln.onTap ? (
+          <button key={ln.move ? 'b' : (ln.k || i)} type="button" className={c + ' kz-tap'} style={st} disabled={!!ln.disabled} onClick={ln.onTap} data-place={ln.place}>
+            {React.Children.toArray(ln.parts)}<Led on={!!ln.led} />
+          </button>
+        ) : <div key={ln.move ? 'b' : (ln.k || i)} className={c} style={st} data-place={ln.place}>{React.Children.toArray(ln.parts)}<Led on={!!ln.led} /></div>;
+        if (!ln.move) return body;
+        const mv = ln.move;
+        return (
+          <div key={ln.k || i} className="kz-line-row">
+            {body}
+            <span className={'kz-move' + (mv.hide ? ' is-hide' : '')}>
+              {['up', 'down'].map((d) => (
+                <button key={d} type="button" className={'kz-move-b is-' + d} disabled={mv.hide || !mv[d] || !!ln.disabled}
+                  onClick={mv[d] || undefined} aria-label={pick(d === 'up' ? UI.up : UI.down)} tabIndex={mv.hide ? -1 : undefined}>
+                  <svg viewBox="0 0 12 8" width="12" height="8" aria-hidden="true"><path d="M1.2 6.8 6 2 10.8 6.8" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                </button>
+              ))}
+            </span>
+          </div>
+        );
       })}
     </div>
   );
@@ -142,12 +158,12 @@ function PaperMan({ build = 7, out, headOpen, hl, onHead, onBody, onTitle, title
           onClick={onBody} label="body" />
       ) : null}
       {titleText && !titleGone ? (
-        <Cut c={KZ.cream} seed={46} n={6} amp={8} asp={3} x={24} y={10} w={52} h={12} r={-3} cls="kz-man-title" anim="pop" onClick={onTitle} label="title">
+        <Cut c="var(--kz-piece)" seed={46} n={6} amp={8} asp={3} x={24} y={10} w={52} h={12} r={-3} cls="kz-man-title" anim="pop" onClick={onTitle} label="title">
           <span className="kz-man-title-t">{titleText}</span>
         </Cut>
       ) : null}
       {has('head') ? (
-        <Cut c={KZ.mustard} round seed={47} n={9} amp={4} x={31} y={0} w={38} h={33} {...A('drop', 0.18)} boil hl={hl === 'head'} hlc={KZ.mustard}
+        <Cut c={KZ.face} round seed={47} n={9} amp={4} x={31} y={0} w={38} h={33} {...A('drop', 0.18)} boil hl={hl === 'head'} hlc={KZ.mustard}
           onClick={onHead} label="head" style={{ translate: headOpen ? '0 -38%' : '0 0', transition: 'translate .42s steps(5, end)' }}>
           {has('face') ? (
             <span className={'kz-face' + (out ? '' : anim ? ' kz-a-pop' : '')} style={{ '--dl': '0.55s' }} aria-hidden="true">

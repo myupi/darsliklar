@@ -71,7 +71,7 @@ function S1({ p }) {
 // переворачивается, когда Коди начинает о ней рассказывать. Открытую можно
 // нажать — Коди повторит.
 // =============================================================================
-const CARD_C = [KZ.coral, KZ.mustard, KZ.teal, KZ.cream];
+const CARD_C = [KZ.coral, KZ.mustard, KZ.teal, 'var(--kz-piece)'];
 function S2({ p }) {
   const pick = usePick();
   const c = C.s2;
@@ -107,7 +107,7 @@ function S2({ p }) {
             return (
               <button key={i} type="button" className={'kz-card' + (on ? ' is-open' : '')} disabled={!on || !canTap} onClick={() => again(i)}
                 aria-label={on ? pick(card.title) : String(i + 1)} style={{ '--dl': (i * 0.12) + 's' }}>
-                <Cut c={on ? CARD_C[i] : KZ.cream} seed={80 + i} n={9} amp={3} asp={1.6} cls="kz-card-cut kz-a-drop" r={i % 2 ? 1.2 : -1.4} dl={i * 0.12}
+                <Cut c={on ? CARD_C[i] : 'var(--kz-piece)'} seed={80 + i} n={9} amp={3} asp={1.6} cls="kz-card-cut kz-a-drop" r={i % 2 ? 1.2 : -1.4} dl={i * 0.12}
                   hl={now} hlc={KZ.ink}>
                   <span className="kz-card-face" key={on ? 'o' : 'c'}>
                     {on ? <span className="kz-a-stamp">{pick(card.title)}</span> : <span className="kz-card-n">{i + 1}</span>}
@@ -676,7 +676,11 @@ function S11({ p }) {
       <Cut c={where === 'head' ? KZ.mustard : KZ.teal} seed={where === 'head' ? 91 : 92} n={10} amp={3} asp={1.6} cls="kz-zone-cut" />
       <span className="kz-zone-in">
         <KzLabel t={where} flow />
-        <span className="kz-zone-items">{Object.keys(placed).filter((k) => placed[k] === where).map((k) => <span key={k} className="kz-a-stamp">{k === 'name' ? face(k) : label(k)}</span>)}</span>
+        <span className="kz-zone-items">{Object.keys(placed).filter((k) => placed[k] === where).map((k, j) => (
+          // Разложенная вырезка — та же бумажка, что в лотке: рваный край, тень, свой наклон.
+          <span key={k} className="kz-zone-item kz-a-stamp" style={{ '--r': ['-2deg', '1.6deg', '-1.2deg', '2.2deg'][j % 4] }}>
+            <span className="kz-zone-item-in">{k === 'pic' ? face(k) : k === 'name' ? face(k) : label(k)}</span>
+          </span>))}</span>
       </span>
     </button>
   );
@@ -750,7 +754,8 @@ function S12({ p }) {
     { k: 'htmlc', d: 0, parts: [T_('html', true)] }
   ].map((ln) => {
     const part = sayK && SAY_LINES[sayK][ln.k];
-    return Object.assign(ln, { cls: cur === ln.k ? 'is-read' : part ? 'is-say is-say-' + part : '' });
+    const PART = { doc: 'doc', html: 'html', htmlc: 'html', head: 'head', title: 'head', headc: 'head', body: 'body', text: 'body', bodyc: 'body' };
+    return Object.assign(ln, { cls: cur === ln.k ? 'is-read is-say-' + PART[ln.k] : part ? 'is-say is-say-' + part : '' });
   });
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={read < 0 ? c.ask : c.askDone} nav={navOf(p, canGo)}>
@@ -849,6 +854,28 @@ function S13({ p }) {
     sfx('soft', true); setRes(r); sayNow(c.rules[r.rule], 'think');
     if (st.current.checks >= 2) lad.bump();
   };
+  // ▲ ▼ у поставленной полоски: на строку вверх или вниз (меняется местами с соседней,
+  // в том числе с пустой). Как бумажки на столе: нажатая полоска приподнимается и
+  // ступенчато проезжает над соседней, соседняя уезжает под ней на освободившееся место.
+  const [moved, setMoved] = useState(null);   // { to, from, dy } — dy: откуда приехала полоска
+  const mvT = useRef(0);
+  const hostRef = useRef(null);
+  useEffect(() => () => clearTimeout(mvT.current), []);
+  const move = (k, dir) => {
+    if (!canTap || solved) return;
+    const j = k + dir;
+    if (j < 0 || j > 7) return;
+    const rows = hostRef.current ? hostRef.current.querySelectorAll('.kz-line-row') : [];
+    const a = rows[k + 1], z = rows[j + 1];   // [0] — строка DOCTYPE
+    const dy = a && z ? a.getBoundingClientRect().top - z.getBoundingClientRect().top : 0;
+    const s2 = slots.slice(); const t = s2[j]; s2[j] = s2[k]; s2[k] = t;
+    setSlots(s2); setRes(null); setHeld(null);
+    const ne = s2.indexOf(null);
+    setCur(ne >= 0 ? ne : j);
+    sfx('tap', true);
+    setMoved(reduceMotion() ? null : { to: j, from: k, dy, n: Date.now() });
+    clearTimeout(mvT.current); mvT.current = setTimeout(() => setMoved(null), 560);
+  };
   const dnd = useKzDrag((payload, where) => {
     if (!canTap || solved || where === null) return;
     const k = Number(where);
@@ -862,12 +889,15 @@ function S13({ p }) {
     sfx('tap', true);
   });
   const hint = hintAt(lad.lv, c.hints);
-  const lines = [{ k: 'doc', d: 0, cls: 'kz-fixed', parts: [<span key="d" className="kz-tag"><span className="kz-tk-b">{'<!'}</span><span className="kz-tk-n">DOCTYPE html</span><span className="kz-tk-b">{'>'}</span></span>] }]
+  const lines = [{ k: 'doc', d: 0, cls: 'kz-fixed', move: { hide: true }, parts: [<span key="d" className="kz-tag"><span className="kz-tk-b">{'<!'}</span><span className="kz-tk-n">DOCTYPE html</span><span className="kz-tk-b">{'>'}</span></span>] }]
     .concat(slots.map((id, k) => {
       const marked = res && id && res.mark.indexOf(id) >= 0;
       return {
-        k: 's' + k, d: id ? DEPTH13(slots, k) : 0,
-        cls: (!id && cur === k && !solved ? 'is-cur' : '') + (held === k ? ' is-sel' : '') + (marked ? ' is-mark' : ''),
+        // Новый ключ на каждый сдвиг — анимация перестановки перезапускается и при быстрых нажатиях.
+        k: 's' + k + (moved && (moved.to === k || moved.from === k) ? ':' + moved.n : ''), d: id ? DEPTH13(slots, k) : 0,
+        cls: (!id && cur === k && !solved ? 'is-cur' : '') + (held === k ? ' is-sel' : '') + (marked ? ' is-mark' : '') + (moved && moved.to === k ? ' kz-slide-up' : moved && moved.from === k && slots[k] ? ' kz-slide-under' : ''),
+        style: moved && (moved.to === k || moved.from === k) ? { '--dy': (moved.to === k ? moved.dy : -moved.dy).toFixed(1) + 'px' } : null,
+        move: solved || !id ? { hide: true } : { up: k > 0 ? () => move(k, -1) : null, down: k < 7 ? () => move(k, 1) : null },
         onTap: solved ? null : () => tapSlot(k), disabled: !canTap, led: (led && !id && cur === k) || (lad.lv >= 3 && marked),
         parts: id ? partsOf(id) : [<span key="e" className="kz-dash" aria-label={'slot ' + (k + 2)} />]
       };
@@ -877,11 +907,13 @@ function S13({ p }) {
       <Sheet>
         <KzAsk text={solved ? c.ok : c.ask} hint={solved ? null : (res ? c.rules[res.rule] : hint)} n={solved ? null : slots.filter(Boolean).length + '/8'} />
         <div className="kz-build">
-          <div className="kz-code-host" onPointerDown={(e) => {
+          <div ref={hostRef} className="kz-code-host" onPointerDown={(e) => {
             if (!canTap || solved) return;
+            if (e.target.closest && e.target.closest('.kz-move')) return;   // ▲ ▼ — не перетаскивание
             const ln = e.target.closest && e.target.closest('.kz-line');
             if (!ln) return;
-            const k = [...ln.parentNode.children].indexOf(ln) - 1;
+            const row = ln.closest('.kz-line-row') || ln;
+            const k = [...row.parentNode.children].indexOf(row) - 1;
             if (k >= 0 && slots[k]) dnd.start(e, { from: 'slot', k }, labelOf(slots[k]));
           }}>
             <KzCode lines={lines.map((ln, i) => (i === 0 ? ln : Object.assign(ln, { place: String(i - 1) })))} cls="kz-code-sm kz-code-build" />
@@ -1070,7 +1102,9 @@ export default function HtmlKollazh({ studentName, lang, ttsApiBase, voiceGender
     }, 700);
     return () => clearTimeout(t);
   }, [cur.id, nextId, R.lang]); // eslint-disable-line react-hooks/exhaustive-deps
-  const p = { screen: R.i, total: SCREENS.length, next: R.next, prev: R.i > 0 ? R.prev : null, finish: R.finish, name: R.displayName };
+  // Переход «разбор и сборка» — на «Дальше» и «Назад».
+  const go = useKzTransition(cur.id + ':' + R.runN);
+  const p = { screen: R.i, total: SCREENS.length, next: go(R.next), prev: R.i > 0 ? go(R.prev) : null, finish: R.finish, name: R.displayName };
   return (
     <R.Shell css={LESSON_CSS + CANON_UI_CSS}>
       <SpokenTags>
