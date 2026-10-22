@@ -6,10 +6,11 @@
 // Функции шагов выполняются в странице: только аргумент qa.
 
 const STEPS = [
-  { name: 's1: превратить человечка в страницу', shot: 's1-done', run: async (qa) => {
+  { name: 's1: страница в браузере собирается в человечка', shot: 's1-done', run: async (qa) => {
     await qa.platform.ready();
+    qa.expect(!!qa.q('.kz-br') && !qa.q('.kz-man'), 'сначала бумажная страница в браузере');
     await qa.click('.kz-btn.is-coral', 'Превратить');
-    await qa.waitFor(() => qa.q('.kz-br'), 5000, 'бумажный браузер');
+    await qa.waitFor(() => qa.q('.kz-s1.is-man .kz-man') && !qa.q('.kz-s1 .kz-br'), 5000, 'собрался человечек, браузера нет');
     await qa.platform.ready(30000);
   } },
   { name: 's2: карточки плана открываются сами', shot: 's2-done', run: async (qa) => {

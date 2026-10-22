@@ -6755,23 +6755,23 @@ const UI = {
 const C = {
   s1: {
     eyebrow: L3('Qog‘oz sahifa', 'Бумажная страница', 'A paper page'),
-    say: L3('Salom! Men Kodiman. Bu qog‘oz odamcha. Uni bosing, sizga bir sirni ko‘rsataman.',
-      'Привет! Я Коди. Это бумажный человечек. Нажми на него — покажу секрет.',
-      'Hi! I’m Kodi. This is a paper buddy. Tap him, and I’ll show you a secret.'),
-    // Две реплики подряд: пока звучит первая, подсвечена вкладка, пока вторая — окно.
-    magic: L3('Voy, qarang! Brauzerning tepasidagi yorliqda sahifa nomi paydo bo‘ldi.',
-      'Ого! Смотри: наверху, на вкладке браузера, появилось название страницы.',
-      'Whoa! Look at the top: the page name appeared on the browser tab.'),
-    magicWin: L3('Oynada esa tanadagi hamma narsa ko‘rinyapti.',
-      'А в окне теперь всё, что было в теле.',
-      'And everything from the body is now in the window.'),
+    say: L3('Salom! Men Kodiman. Bu brauzerdagi veb-sahifa. «Aylantirish» tugmasini bosing, sizga bir sirni ko‘rsataman.',
+      'Привет! Я Коди. Это веб-страница в браузере. Нажми «Превратить» — покажу секрет.',
+      'Hi! I’m Kodi. This is a web page in a browser. Tap “Transform”, and I’ll show you a secret.'),
+    // Две реплики подряд: пока звучит первая, подсвечена голова, пока вторая — тело.
+    magic: L3('Voy, qarang! Yorliqdagi sahifa nomi odamchaning boshiga aylandi.',
+      'Ого! Смотри: название с вкладки стало головой человечка.',
+      'Whoa! Look: the page name from the tab became the buddy’s head.'),
+    magicWin: L3('Oynadagi hamma narsa esa uning tanasiga aylandi.',
+      'А всё, что было в окне, стало его телом.',
+      'And everything from the window became his body.'),
     done: L3('Bugun sahifa qanday qismlardan iboratligini bilib olasiz va o‘z sahifangizni yig‘asiz!',
       'Сегодня ты узнаешь, из каких частей состоит страница, и соберёшь свою!',
       'Today you’ll learn what parts a page has and build your own!'),
-    ask: L3('Qog‘oz odamchani bosing', 'Нажми на бумажного человечка', 'Tap the paper buddy'),
-    askDone: L3('Sahifa nomi yorliqda, mazmuni esa oynada ko‘rinadi',
-      'Название страницы — на вкладке, содержимое — в окне',
-      'The page name is on the tab, the content is in the window')
+    ask: L3('«Aylantirish» tugmasini bosing', 'Нажми «Превратить»', 'Tap “Transform”'),
+    askDone: L3('Yorliqdagi nom — boshi, oynadagi mazmun — tanasi',
+      'Название с вкладки — голова, содержимое окна — тело',
+      'The name from the tab is the head, the window content is the body')
   },
   s2: {
     eyebrow: L3('Reja', 'План', 'Plan'),
@@ -8514,67 +8514,137 @@ function useKzTransition(screenKey) {
 }
 
 // =============================================================================
-// S1. КРЮЧОК — бумажный человечек собирается из вырезок; нажали — его части
-// разлетаются и садятся бумажной веб-страницей.
+// S1. КРЮЧОК — сначала бумажная веб-страница в браузере; нажали «Превратить» —
+// браузер распадается на бумажные куски, и из этих же кусков собирается
+// человечек (заказчик, 23.10.2026: «нужен эффект именно сборки»):
+//   · вкладка с названием округляется и становится головой;
+//   · окно со страницей перекрашивается в бирюзу и становится телом;
+//   · тёмная полоса вкладок рвётся пополам — это руки;
+//   · боковые края рамки — ноги.
+// Сначала куски чуть расходятся (разбор), потом ступенчато (stop-motion, с
+// шорохом) летят на места, меняя форму и цвет. Дальше Коди называет связь:
+// голова — вкладка, тело — окно.
 // =============================================================================
+const S1_FLY = 0.9;   // полёт куска к месту, с
 function S1({ p }) {
   const pick = usePick();
   const c = C.s1;
   const [rec, put] = useRec('s1');
   const solved = !!(rec && rec.done);
-  // man — человечек на листе · fly — за ним сел браузер, голова летит на вкладку,
-  // тело — в окно, руки и ноги разлетаются · page — бумажная страница
-  const [phase, setPhase] = useState(solved ? 'page' : 'man');
-  const [fresh, setFresh] = useState(false);   // превратили сейчас — страница влетает, а не стоит готовой
+  // page — страница в браузере · measure — рядом невидимый человечек, по нему
+  // меряются места · morph — куски браузера летят и становятся частями · man — собран
+  const [phase, setPhase] = useState(solved ? 'man' : 'page');
+  const [pieces, setPieces] = useState(null);
+  const [stage, setStage] = useState(0);   // 0 — куски на местах браузера · 1 — разошлись · 2 — на местах человечка
   const [speaker, say, spoken, sayNow] = useVoice([{ text: solved ? c.done : c.say, pose: solved ? 'smile' : 'hello' }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved, spoken);
-  const led = useIdleLed(canTap && phase === 'man', 0);
+  const led = useIdleLed(canTap && phase === 'page', 0);
   const sceneRef = useRef(null);
   const tm = useRef([]);
-  useEffect(() => () => tm.current.forEach(clearTimeout), []);
+  useEffect(() => () => { tm.current.forEach(clearTimeout); paperOff(); }, []);
   const later = (ms, f) => tm.current.push(setTimeout(f, ms));
-  const fly = (el, to) => kzFly(el, to, 780);
+  const land = () => { paperOff(); setPieces(null); put({ done: true }); setPhase('man'); sfx('ok', true); sayNow(c.magic, 'wonder'); say(c.magicWin, 'point'); say(c.done, 'smile'); };
   const turn = () => {
-    if (!canTap || phase !== 'man') return;
+    if (!canTap || phase !== 'page') return;
     sfx('pop', true);
-    setFresh(true);
-    if (reduceMotion()) { put({ done: true }); setPhase('page'); sayNow(c.magic, 'wonder'); say(c.magicWin, 'point'); say(c.done, 'smile'); return; }
-    setPhase('fly');
-    // Браузер сначала садится (≈0,7 с), потом части летят к своим местам.
-    later(720, () => {
-      const sc = sceneRef.current;
-      if (!sc) return;
-      sfx('tap', true);
-      fly(sc.querySelector('.kz-s1-man [aria-label="head"]'), sc.querySelector('.kz-br-tab'));
-      fly(sc.querySelector('.kz-s1-man [aria-label="body"]'), sc.querySelector('.kz-br-body'));
-    });
-    later(1600, () => { put({ done: true }); setPhase('page'); sfx('ok', true); sayNow(c.magic, 'wonder'); say(c.magicWin, 'point'); say(c.done, 'smile'); });
+    if (reduceMotion()) { land(); return; }
+    setPhase('measure');
   };
-  // Подсветка идёт за речью: «на вкладке…» — вкладка, «а в окне…» — окно.
-  const hlTab = phase === 'page' && speaker.text === c.magic;
-  const hlWin = phase === 'page' && speaker.text === c.magicWin;
-  const askText = phase === 'man' ? c.ask : c.askDone;
+  // Куски: откуда (часть браузера) → куда (часть человечка). Координаты — от сцены.
+  useLayoutEffect(() => {
+    if (phase !== 'measure') return;
+    const sc = sceneRef.current;
+    const br = sc && sc.querySelector('.kz-br');
+    const man = sc && sc.querySelector('.kz-s1-man .kz-man');
+    if (!br || !man) { land(); return; }
+    const S = sc.getBoundingClientRect();
+    const B = br.getBoundingClientRect();
+    const Bar = br.querySelector('.kz-br-bar').getBoundingClientRect();
+    const W = br.querySelector('.kz-br-body').getBoundingClientRect();
+    const T = br.querySelector('.kz-br-tab').getBoundingClientRect();
+    const M = man.getBoundingClientRect();
+    const box = (r) => ({ x: r.left - S.left, y: r.top - S.top, w: r.width, h: r.height, r: 0 });
+    const cuts = Array.prototype.slice.call(man.children);
+    const part = (lbl) => cuts.find((el) => el.getAttribute('aria-label') === lbl);
+    const limbs = cuts.filter((el) => !el.getAttribute('aria-label'));   // по порядку: ноги, руки
+    const to = (el) => ({ x: M.left - S.left + el.offsetLeft, y: M.top - S.top + el.offsetTop, w: el.offsetWidth, h: el.offsetHeight,
+      r: parseFloat(getComputedStyle(el).getPropertyValue('--r')) || 0 });
+    const half = B.width / 2;
+    const sideH = B.bottom - Bar.bottom;
+    setPieces([
+      { k: 'legL', c0: KZ.ink, c: KZ.ink, seed: 41, from: { x: B.left - S.left, y: Bar.bottom - S.top, w: Math.max(6, W.left - B.left), h: sideH, r: 0 }, apart: [-12, 4, -5], to: to(limbs[0]), dl: 0.05 },
+      { k: 'legR', c0: KZ.ink, c: KZ.ink, seed: 42, from: { x: W.right - S.left, y: Bar.bottom - S.top, w: Math.max(6, B.right - W.right), h: sideH, r: 0 }, apart: [12, 4, 5], to: to(limbs[1]), dl: 0.1 },
+      { k: 'armL', c0: KZ.ink, c: KZ.ink, seed: 43, from: { x: B.left - S.left, y: B.top - S.top, w: half, h: Bar.bottom - B.top, r: 0 }, apart: [-10, -10, -6], to: to(limbs[2]), dl: 0.16 },
+      { k: 'armR', c0: KZ.ink, c: KZ.ink, seed: 44, from: { x: B.left - S.left + half, y: B.top - S.top, w: half, h: Bar.bottom - B.top, r: 0 }, apart: [10, -10, 6], to: to(limbs[3]), dl: 0.2 },
+      { k: 'body', c0: KZ.cream, c: KZ.teal, seed: 45, lines: true, from: { x: W.left - S.left, y: Bar.bottom - S.top, w: W.width, h: W.bottom - Bar.bottom, r: 0 }, apart: [0, 8, 1.5], to: to(part('body')), dl: 0 },
+      { k: 'head', c0: '#E6DCC6', c: KZ.face, round: true, text: pick(UI.mySite), from: box(T), apart: [-4, -16, -7], to: to(part('head')), dl: 0.3 }
+    ]);
+    setStage(0);
+    setPhase('morph');
+  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Разбор → полёт → человечек.
+  useEffect(() => {
+    if (phase !== 'morph' || !pieces) return undefined;
+    let r1 = requestAnimationFrame(() => { r1 = requestAnimationFrame(() => { setStage(1); paperOn(); sfx('tap', true); }); });
+    later(260, () => setStage(2));
+    later(260 + (0.3 + S1_FLY) * 1000 + 120, land);
+    return () => cancelAnimationFrame(r1);
+  }, [phase, pieces]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pieceStyle = (pc) => {
+    const g = stage === 0 ? pc.from : stage === 1 ? { x: pc.from.x + pc.apart[0], y: pc.from.y + pc.apart[1], w: pc.from.w, h: pc.from.h, r: pc.apart[2] } : pc.to;
+    const fly = stage === 2;
+    const d = fly ? S1_FLY + 's' : '.22s';
+    const dl = fly ? pc.dl + 's' : '0s';
+    const st = fly ? 'steps(9, end)' : 'steps(2, end)';
+    return {
+      left: g.x + 'px', top: g.y + 'px', width: g.w + 'px', height: g.h + 'px', rotate: g.r + 'deg',
+      background: fly ? pc.c : pc.c0,
+      borderRadius: pc.round ? (fly ? '50%' : '6px 6px 0 0') : null,
+      clipPath: pc.round ? null : torn(pc.seed, 6, 2.5, Math.max(0.2, Math.min(5, g.w / Math.max(1, g.h)))),
+      transition: ['left', 'top', 'width', 'height', 'rotate'].map((k) => k + ' ' + d + ' ' + st + ' ' + dl)
+        .concat(['background ' + d + ' steps(4, end) ' + dl, 'border-radius ' + d + ' steps(5, end) ' + dl]).join(', ')
+    };
+  };
+  // Подсветка идёт за речью: «название стало головой» — голова, «окно стало телом» — тело.
+  const hl = phase !== 'man' ? null : speaker.text === c.magic ? 'head' : speaker.text === c.magicWin ? 'body' : null;
+  const askText = phase === 'man' ? c.askDone : c.ask;
+  const busy = phase === 'measure' || phase === 'morph';
   return (
     <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Sheet>
         <KzAsk text={askText} />
-        <div ref={sceneRef} className={'kz-scene kz-s1' + (phase === 'fly' ? ' kz-scatter' : '')}>
+        <div ref={sceneRef} className={'kz-scene kz-s1 kz-s1-rev is-' + phase}>
           {phase !== 'man' ? (
-            <div className={'kz-col kz-s1-page' + (phase === 'fly' ? ' kz-a-drop' : '')}>
-              <PaperBrowser title={phase === 'page' ? pick(UI.mySite) : ''} stamp={phase === 'page' && fresh ? 1 : 0} tabHl={hlTab} pageHl={hlWin}>
-                {phase === 'page' ? <PageBits text={pick(UI.hello)} bits anim={fresh} /> : null}
+            <div className={'kz-col kz-s1-page' + (phase === 'morph' ? ' is-gone' : '')}>
+              <PaperBrowser title={pick(UI.mySite)} pageHl={led}>
+                <PageBits text={pick(UI.hello)} bits />
               </PaperBrowser>
             </div>
           ) : null}
           {phase !== 'page' ? (
-            <div className="kz-stagebox kz-s1-man">
-              <div className="kz-manbox kz-manbox-free"><PaperMan onHead={turn} onBody={turn} hl={led ? 'body' : null} /></div>
+            <div className={'kz-stagebox kz-s1-man' + (phase === 'man' ? '' : ' is-ghost')}>
+              <div className="kz-manbox kz-manbox-free">
+                <PaperMan key={phase === 'man' ? 'm' : 'g'} anim={false} hl={hl} wave={phase === 'man'} />
+              </div>
+            </div>
+          ) : null}
+          {phase === 'morph' && pieces ? (
+            <div className="kz-morph" aria-hidden="true">
+              {pieces.map((pc) => (
+                <span key={pc.k} className={'kz-morph-p is-' + pc.k + (stage === 2 ? ' is-fly' : '')} style={pieceStyle(pc)}>
+                  {pc.text ? <span className="kz-morph-t">{pc.text}</span> : null}
+                  {pc.lines ? <span className="kz-morph-lines"><i /><i /><i /><b /></span> : null}
+                </span>
+              ))}
             </div>
           ) : null}
         </div>
-        {phase === 'man' ? (
-          <div className="kz-row"><button type="button" className="kz-btn is-coral" disabled={!canTap} onClick={turn}>{pick(UI.turn)}<Led on={led} /></button></div>
+        {phase !== 'man' ? (
+          // Кнопка держит место до конца сборки, чтобы сцена не дёргалась.
+          <div className="kz-row" style={busy ? { visibility: 'hidden' } : null}>
+            <button type="button" className="kz-btn is-coral" disabled={!canTap || phase !== 'page'} onClick={turn}>{pick(UI.turn)}<Led on={led} /></button>
+          </div>
         ) : null}
       </Sheet>
     </Stage>
@@ -11104,6 +11174,23 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
    вкладке и окну, руки и ноги разлетаются. */
 .kz-s1 { position: relative; }
 .kz-s1 .kz-s1-man { position: absolute; left: 50%; top: 50%; translate: -50% -50%; z-index: 6; height: min(100%, 62dvh); }
+/* Крючок (23.10.2026): браузер распадается на бумажные куски, из них собирается человечек.
+   Человечек стоит невидимым — по нему меряются места; куски летят слоем поверх сцены. */
+.kz-s1-rev .kz-s1-man.is-ghost { visibility: hidden; }
+.kz-s1-rev .kz-s1-page.is-gone { visibility: hidden; }
+.kz-morph { position: absolute; inset: 0; z-index: 8; pointer-events: none; }
+.kz-morph-p { position: absolute; display: block; overflow: hidden; transform-origin: 50% 50%;
+  filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .32)) drop-shadow(0 5px 7px rgba(74, 48, 18, .14)); }
+.kz-morph-p.is-fly { filter: drop-shadow(0 3px 2px rgba(74, 48, 18, .3)) drop-shadow(0 12px 14px rgba(74, 48, 18, .2)); }
+/* Название на вкладке тает, пока вкладка становится головой; строки страницы — пока окно становится телом. */
+.kz-morph-t { position: absolute; inset: 0; display: flex; align-items: center; padding-left: 28px; font: 600 clamp(12px, 1.8dvh, 15px) 'Manrope', sans-serif;
+  color: #1F2A44; white-space: nowrap; transition: opacity .35s steps(3, end) .25s; }
+.kz-morph-p.is-fly .kz-morph-t { opacity: 0; }
+.kz-morph-lines { position: absolute; inset: 22% 14% 18%; display: flex; flex-direction: column; gap: 9%; transition: opacity .45s steps(3, end) .15s; }
+.kz-morph-lines i { display: block; height: 7%; background: #1F2A44; border-radius: 1px; }
+.kz-morph-lines i:nth-child(1) { width: 46%; height: 10%; } .kz-morph-lines i:nth-child(2) { width: 70%; } .kz-morph-lines i:nth-child(3) { width: 58%; }
+.kz-morph-lines b { display: block; width: 34%; height: 30%; margin-left: auto; background: #2A8C7E; border-radius: 2px; }
+.kz-morph-p.is-fly .kz-morph-lines { opacity: 0; }
 .kz-scatter .kz-s1-man .kz-cut:not([aria-label]) { animation: kzOut .58s steps(1, end) both; animation-delay: .72s; }
 .kz-scatter .kz-s1-man .kz-cut:not([aria-label]):nth-child(2n) { animation-name: kzOutL; }
 @keyframes kzOutL {

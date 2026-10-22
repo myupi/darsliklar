@@ -9711,6 +9711,23 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
    вкладке и окну, руки и ноги разлетаются. */
 .kz-s1 { position: relative; }
 .kz-s1 .kz-s1-man { position: absolute; left: 50%; top: 50%; translate: -50% -50%; z-index: 6; height: min(100%, 62dvh); }
+/* Крючок (23.10.2026): браузер распадается на бумажные куски, из них собирается человечек.
+   Человечек стоит невидимым — по нему меряются места; куски летят слоем поверх сцены. */
+.kz-s1-rev .kz-s1-man.is-ghost { visibility: hidden; }
+.kz-s1-rev .kz-s1-page.is-gone { visibility: hidden; }
+.kz-morph { position: absolute; inset: 0; z-index: 8; pointer-events: none; }
+.kz-morph-p { position: absolute; display: block; overflow: hidden; transform-origin: 50% 50%;
+  filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .32)) drop-shadow(0 5px 7px rgba(74, 48, 18, .14)); }
+.kz-morph-p.is-fly { filter: drop-shadow(0 3px 2px rgba(74, 48, 18, .3)) drop-shadow(0 12px 14px rgba(74, 48, 18, .2)); }
+/* Название на вкладке тает, пока вкладка становится головой; строки страницы — пока окно становится телом. */
+.kz-morph-t { position: absolute; inset: 0; display: flex; align-items: center; padding-left: 28px; font: 600 clamp(12px, 1.8dvh, 15px) 'Manrope', sans-serif;
+  color: #1F2A44; white-space: nowrap; transition: opacity .35s steps(3, end) .25s; }
+.kz-morph-p.is-fly .kz-morph-t { opacity: 0; }
+.kz-morph-lines { position: absolute; inset: 22% 14% 18%; display: flex; flex-direction: column; gap: 9%; transition: opacity .45s steps(3, end) .15s; }
+.kz-morph-lines i { display: block; height: 7%; background: #1F2A44; border-radius: 1px; }
+.kz-morph-lines i:nth-child(1) { width: 46%; height: 10%; } .kz-morph-lines i:nth-child(2) { width: 70%; } .kz-morph-lines i:nth-child(3) { width: 58%; }
+.kz-morph-lines b { display: block; width: 34%; height: 30%; margin-left: auto; background: #2A8C7E; border-radius: 2px; }
+.kz-morph-p.is-fly .kz-morph-lines { opacity: 0; }
 .kz-scatter .kz-s1-man .kz-cut:not([aria-label]) { animation: kzOut .58s steps(1, end) both; animation-delay: .72s; }
 .kz-scatter .kz-s1-man .kz-cut:not([aria-label]):nth-child(2n) { animation-name: kzOutL; }
 @keyframes kzOutL {

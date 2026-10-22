@@ -97,23 +97,23 @@ const UI = {
 const C = {
   s1: {
     eyebrow: L3('Qog‘oz sahifa', 'Бумажная страница', 'A paper page'),
-    say: L3('Salom! Men Kodiman. Bu qog‘oz odamcha. Uni bosing, sizga bir sirni ko‘rsataman.',
-      'Привет! Я Коди. Это бумажный человечек. Нажми на него — покажу секрет.',
-      'Hi! I’m Kodi. This is a paper buddy. Tap him, and I’ll show you a secret.'),
-    // Две реплики подряд: пока звучит первая, подсвечена вкладка, пока вторая — окно.
-    magic: L3('Voy, qarang! Brauzerning tepasidagi yorliqda sahifa nomi paydo bo‘ldi.',
-      'Ого! Смотри: наверху, на вкладке браузера, появилось название страницы.',
-      'Whoa! Look at the top: the page name appeared on the browser tab.'),
-    magicWin: L3('Oynada esa tanadagi hamma narsa ko‘rinyapti.',
-      'А в окне теперь всё, что было в теле.',
-      'And everything from the body is now in the window.'),
+    say: L3('Salom! Men Kodiman. Bu brauzerdagi veb-sahifa. «Aylantirish» tugmasini bosing, sizga bir sirni ko‘rsataman.',
+      'Привет! Я Коди. Это веб-страница в браузере. Нажми «Превратить» — покажу секрет.',
+      'Hi! I’m Kodi. This is a web page in a browser. Tap “Transform”, and I’ll show you a secret.'),
+    // Две реплики подряд: пока звучит первая, подсвечена голова, пока вторая — тело.
+    magic: L3('Voy, qarang! Yorliqdagi sahifa nomi odamchaning boshiga aylandi.',
+      'Ого! Смотри: название с вкладки стало головой человечка.',
+      'Whoa! Look: the page name from the tab became the buddy’s head.'),
+    magicWin: L3('Oynadagi hamma narsa esa uning tanasiga aylandi.',
+      'А всё, что было в окне, стало его телом.',
+      'And everything from the window became his body.'),
     done: L3('Bugun sahifa qanday qismlardan iboratligini bilib olasiz va o‘z sahifangizni yig‘asiz!',
       'Сегодня ты узнаешь, из каких частей состоит страница, и соберёшь свою!',
       'Today you’ll learn what parts a page has and build your own!'),
-    ask: L3('Qog‘oz odamchani bosing', 'Нажми на бумажного человечка', 'Tap the paper buddy'),
-    askDone: L3('Sahifa nomi yorliqda, mazmuni esa oynada ko‘rinadi',
-      'Название страницы — на вкладке, содержимое — в окне',
-      'The page name is on the tab, the content is in the window')
+    ask: L3('«Aylantirish» tugmasini bosing', 'Нажми «Превратить»', 'Tap “Transform”'),
+    askDone: L3('Yorliqdagi nom — boshi, oynadagi mazmun — tanasi',
+      'Название с вкладки — голова, содержимое окна — тело',
+      'The name from the tab is the head, the window content is the body')
   },
   s2: {
     eyebrow: L3('Reja', 'План', 'Plan'),
