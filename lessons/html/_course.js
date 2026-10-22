@@ -15,7 +15,8 @@ export default {
   lessons: [
     { n: 1, slug: 'struktura-dokumenta', title: 'Структура HTML-документа', topics: ['html', 'head', 'body', 'title'],
       practiceTitle: 'Бумажная улица' },
-    { n: 2, slug: 'zagolovki-i-tekst', title: 'Заголовки и текст', topics: ['h1–h6', 'p', 'b', 'i'] },
+    { n: 2, slug: 'zagolovki-i-tekst', title: 'Заголовки и текст', topics: ['h1–h6', 'p', 'b', 'i'],
+      practiceTitle: 'Стенгазета' },
     { n: 3, slug: 'spiski', title: 'Списки', topics: ['ul', 'ol', 'li'] },
     { n: 4, slug: 'ssylki-i-atributy', title: 'Ссылки и атрибуты', topics: ['a', 'href'] },
     { n: 5, slug: 'izobrazheniya', title: 'Изображения', topics: ['img', 'src', 'alt'] },
