@@ -6682,8 +6682,8 @@ const CANON_SCREEN_CSS = CANON_SCREEN_CSS_BASE + CANON_MECH_CSS + CANON_DZ_CSS +
 //   t5 свой дом — внутри готового html написать head с title и body с текстом
 //
 // ОСОБЫЕ ПРАВИЛА ПРАКТИКИ (требования заказчика — навык praktika)
-//   · Коди не рисуется: в шапке только кружок голоса и лампочка; задание всегда
-//     написано строкой-полоской на листе.
+//   · Коди — голова в кружке в шапке, как в уроке 1 на телефоне (22.10.2026); облака
+//     с текстом нет — задание всегда написано строкой-полоской на листе.
 //   · Пишет ученик; кнопки < / > только вставляют символ в место курсора.
 //   · Проверка — только по «Проверить»; браузер обновляется сразу и показывает
 //     честно (текст из незакрытого title уходит на вкладку вместе с тегами).
@@ -8805,23 +8805,19 @@ function Workbench({ spec, st, setSt, inputRef, fx, aids, tools, flash, onPick }
 // =============================================================================
 // КАРКАС ЭКРАНА ПРАКТИКИ — БЕЗ КОДИ И БЕЗ ТЕКСТА РЕПЛИК
 // =============================================================================
-// Заказчик (14–15.10.2026): в практике Коди не рисуется и его слова не
-// печатаются. Голос остаётся; о нём говорит кружок с полосками в шапке.
-// Пузырь героя смонтирован, но спрятан: он ведёт озвучку и зовёт onSpoken.
-// Телефон: голос и лампочка слева, три дома улицы по центру, пауза и счётчик
-// справа. Содержимое — на бумажном листе урока 1.
+// Коди — как в уроке 1 на телефоне (заказчик, 22.10.2026): голова в кружке в
+// шапке рядом с лампочкой (VoiceDot канона): лицо держит эмоцию реплики,
+// вокруг бегут волны, пока звучит голос. Текста реплик нет (заказчик,
+// 14–15.10.2026): пузырь героя смонтирован, но спрятан — он ведёт озвучку и
+// зовёт onSpoken. Телефон: Коди и лампочка слева, три дома улицы по центру,
+// пауза и счётчик справа. Содержимое — на бумажном листе урока 1.
 const PStage = ({ children, eyebrow, screen, total, nav, speaker, done, hint, top }) => {
   const pick = usePick();
-  const audio = useAudio();
   const speaking = useSayBusy();
   useEffect(() => { _hintText = hint || null; return () => { _hintText = null; }; }, [hint]);
   const line = speaker ? pick(speaker.text) : '';
   const idle = useIdleCoach(!!nav, speaking);
-  const voiceDot = (
-    <span className={'speaker-voice p-voice' + (audio && audio.playing ? ' is-on' : '')} aria-hidden="true">
-      <span className="sv-bars"><i /><i /><i /><i /><i /></span>
-    </span>
-  );
+  const voiceDot = speaker ? <VoiceDot pose={speaker.pose} /> : null;
   return (
     <div className={'stage p-stage' + (speaking ? ' is-speaking' : '') + (idle ? ' is-idle is-idle-' + idle : '')}>
       <div className="stage-header">
@@ -10126,8 +10122,9 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
    голос и лампочка | три дома улицы | пауза и счётчик. */
 .p-top, .p-voice-l { display: none; }
 .p-voice-r { display: contents; }
-.p-voice.is-on { animation: pVoiceRing 1.6s ease-out infinite; }
-@keyframes pVoiceRing { 0% { box-shadow: 0 0 0 0 rgba(224, 100, 63, .32); } 100% { box-shadow: 0 0 0 10px rgba(224, 100, 63, 0); } }
+/* Коди в шапке — на любой ширине (канон показывает кружок только на телефоне,
+   а на ноутбуке ставит Коди с облаком справа снизу; в практике облака нет). */
+.p-stage .ctl-voice { display: grid; }
 .p-hidden-hero { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 719px) {
   .p-stage .chrome { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
@@ -10204,6 +10201,6 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 
 /* Меньше движения: смысл остаётся, движение уходит. */
 @media (prefers-reduced-motion: reduce) {
-  .pp-note, .pp-street-h, .pp-street.is-glow .pp-h-art, .pp-stamp, .pp-skill, .pp-gap.is-led, .ed-edit.is-led-in, .tk-input.is-led-in, .p-voice.is-on { animation: none !important; }
+  .pp-note, .pp-street-h, .pp-street.is-glow .pp-h-art, .pp-stamp, .pp-skill, .pp-gap.is-led, .ed-edit.is-led-in, .tk-input.is-led-in { animation: none !important; }
 }
 `;

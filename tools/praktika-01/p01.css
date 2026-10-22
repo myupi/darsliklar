@@ -282,8 +282,9 @@
    голос и лампочка | три дома улицы | пауза и счётчик. */
 .p-top, .p-voice-l { display: none; }
 .p-voice-r { display: contents; }
-.p-voice.is-on { animation: pVoiceRing 1.6s ease-out infinite; }
-@keyframes pVoiceRing { 0% { box-shadow: 0 0 0 0 rgba(224, 100, 63, .32); } 100% { box-shadow: 0 0 0 10px rgba(224, 100, 63, 0); } }
+/* Коди в шапке — на любой ширине (канон показывает кружок только на телефоне,
+   а на ноутбуке ставит Коди с облаком справа снизу; в практике облака нет). */
+.p-stage .ctl-voice { display: grid; }
 .p-hidden-hero { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 719px) {
   .p-stage .chrome { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
@@ -360,5 +361,5 @@
 
 /* Меньше движения: смысл остаётся, движение уходит. */
 @media (prefers-reduced-motion: reduce) {
-  .pp-note, .pp-street-h, .pp-street.is-glow .pp-h-art, .pp-stamp, .pp-skill, .pp-gap.is-led, .ed-edit.is-led-in, .tk-input.is-led-in, .p-voice.is-on { animation: none !important; }
+  .pp-note, .pp-street-h, .pp-street.is-glow .pp-h-art, .pp-stamp, .pp-skill, .pp-gap.is-led, .ed-edit.is-led-in, .tk-input.is-led-in { animation: none !important; }
 }

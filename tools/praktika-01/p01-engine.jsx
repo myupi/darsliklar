@@ -1048,23 +1048,19 @@ function Workbench({ spec, st, setSt, inputRef, fx, aids, tools, flash, onPick }
 // =============================================================================
 // КАРКАС ЭКРАНА ПРАКТИКИ — БЕЗ КОДИ И БЕЗ ТЕКСТА РЕПЛИК
 // =============================================================================
-// Заказчик (14–15.10.2026): в практике Коди не рисуется и его слова не
-// печатаются. Голос остаётся; о нём говорит кружок с полосками в шапке.
-// Пузырь героя смонтирован, но спрятан: он ведёт озвучку и зовёт onSpoken.
-// Телефон: голос и лампочка слева, три дома улицы по центру, пауза и счётчик
-// справа. Содержимое — на бумажном листе урока 1.
+// Коди — как в уроке 1 на телефоне (заказчик, 22.10.2026): голова в кружке в
+// шапке рядом с лампочкой (VoiceDot канона): лицо держит эмоцию реплики,
+// вокруг бегут волны, пока звучит голос. Текста реплик нет (заказчик,
+// 14–15.10.2026): пузырь героя смонтирован, но спрятан — он ведёт озвучку и
+// зовёт onSpoken. Телефон: Коди и лампочка слева, три дома улицы по центру,
+// пауза и счётчик справа. Содержимое — на бумажном листе урока 1.
 const PStage = ({ children, eyebrow, screen, total, nav, speaker, done, hint, top }) => {
   const pick = usePick();
-  const audio = useAudio();
   const speaking = useSayBusy();
   useEffect(() => { _hintText = hint || null; return () => { _hintText = null; }; }, [hint]);
   const line = speaker ? pick(speaker.text) : '';
   const idle = useIdleCoach(!!nav, speaking);
-  const voiceDot = (
-    <span className={'speaker-voice p-voice' + (audio && audio.playing ? ' is-on' : '')} aria-hidden="true">
-      <span className="sv-bars"><i /><i /><i /><i /><i /></span>
-    </span>
-  );
+  const voiceDot = speaker ? <VoiceDot pose={speaker.pose} /> : null;
   return (
     <div className={'stage p-stage' + (speaking ? ' is-speaking' : '') + (idle ? ' is-idle is-idle-' + idle : '')}>
       <div className="stage-header">
