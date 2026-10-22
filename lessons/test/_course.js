@@ -30,5 +30,7 @@ export default {
       topics: ['html', 'head', 'title', 'body'] },
     { n: 13, slug: 'struktura-robot', title: 'Структура HTML-документа — робот Пиксель (прежний урок 1 курса до 22.10.2026)',
       topics: ['html', 'head', 'title', 'body'] },
+    { n: 14, slug: 'zagolovki-robofutbol', title: 'Заголовки и текст — робофутбол (прежний урок 2 курса до 22.10.2026)',
+      topics: ['h1–h6', 'p', 'b', 'i'] },
   ],
 };

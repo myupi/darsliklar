@@ -1,0 +1,169 @@
+/* ── УРОК 2 «Заголовки и текст» — свои части поверх бумажного набора урока 1 ──
+   Префикс z2-. Страница в бумажном браузере — как браузер по умолчанию:
+   Times, заголовки жирные и убывают от h1 к h6, абзацы с отступом. */
+
+/* Страница в окне бумажного браузера */
+/* Без прокрутки: страница помещается целиком (шрифт подгоняет useFitPage). */
+.z2-br .kz-br-page { overflow: hidden; }
+.z2-doc { display: flex; flex-direction: column; align-items: flex-start; gap: 0; overflow-wrap: anywhere; }
+.z2-blk { position: relative; max-width: 100%; transition: background .2s; border-radius: 3px; }
+.z2-h1 { font-size: 1.75em; font-weight: 700; line-height: 1.12; margin: 0 0 .32em; }
+.z2-h2 { font-size: 1.4em; font-weight: 700; line-height: 1.15; margin: .2em 0 .28em; }
+.z2-h3 { font-size: 1.17em; font-weight: 700; margin: .2em 0 .24em; }
+.z2-h4 { font-size: 1em; font-weight: 700; margin: .2em 0 .2em; }
+.z2-h5 { font-size: .83em; font-weight: 700; margin: .2em 0 .2em; }
+.z2-h6 { font-size: .7em; font-weight: 700; margin: .2em 0 .2em; }
+.z2-p { font-weight: 400; margin: 0 0 .62em; line-height: 1.32; }
+.z2-raw { font-weight: 400; line-height: 1.32; }
+.z2-raw-tight { margin-top: -.62em; }   /* строка без тегов прилипает к абзацу выше */
+.z2-p.z2-inh1 { font-size: 1.75em; font-weight: 700; line-height: 1.12; }   /* p внутри незакрытого h1 */
+.z2-big { font-size: 1.12em; }
+.z2-wall { display: block; font-weight: 400; line-height: 1.32; }   /* каша — слитный текст, а не столбик */
+.z2-b { font-weight: 700; }
+.z2-i { font-style: italic; }
+.z2-blk.is-hl, .z2-b.is-hl, .z2-i.is-hl { background: #FFE9A8; box-shadow: 0 0 0 3px #FFE9A8; }
+.z2-b.is-hl, .z2-i.is-hl { border-radius: 2px; }
+.z2-qmark { display: grid; place-items: center; height: 100%; min-height: 2em; font: 800 2em 'Manrope', sans-serif; color: #C9BFAA; }
+
+/* s1 — полёт слов из каши на страницу. Страница стоит невидимой (её места меряются),
+   поверх неё — каша; куски ступенчато едут к своим местам и меняют размер. */
+.z2-s1-box { position: relative; }
+.z2-chunk { display: inline-block; transform-origin: 0 0; }
+.z2-ghostpage { visibility: hidden; }
+.z2-wall-fly { position: absolute; left: 0; top: 0; right: 0; }
+/* В полёте кусок — бумажка: светлая подложка и тень. */
+.z2-wall-fly .z2-chunk { background: #FFFDF5; box-shadow: 0 2px 4px rgba(74, 48, 18, .28); border-radius: 2px; }
+/* Горчичная полоска на «очень» — как в ролике: клеится, когда слово садится. */
+.z2-taped .z2-b { position: relative; z-index: 0; }
+.z2-taped .z2-b::before { content: ''; position: absolute; z-index: -1; left: -.18em; right: -.18em; top: .1em; bottom: -.04em; background: #F0B13F;
+  clip-path: polygon(0 12%, 6% 0, 50% 8%, 96% 0, 100% 14%, 98% 60%, 100% 92%, 92% 100%, 50% 90%, 5% 100%, 0 86%, 2% 48%); rotate: -1.5deg; }
+.z2-taped.is-fresh .z2-b::before { animation: kzStamp .5s steps(1, end) .1s both; }
+
+/* s1 — человечек и страница рядом */
+.z2-s1 { align-items: center; }
+.z2-s1-man { height: min(100%, 38dvh); flex: 0 0 auto; }
+.z2-s1-page { max-width: 640px; flex: 1 1 0; }
+@media (max-width: 759px) {
+  .z2-s1 { flex-direction: column; }
+  .z2-s1-man { display: none; }
+  .z2-s1 .z2-s1-page { width: 100%; align-self: stretch; flex: 0 0 auto; }
+  .z2-s1 .z2-s1-page .kz-br.z2-br { --brh: 34dvh; }   /* правило набора для низких экранов (20dvh) здесь мелко */
+}
+
+/* s3 — бирюзовый лист body с шестью полосками */
+.z2-body { position: relative; width: min(100%, 620px); align-self: center; padding: clamp(26px, 4.5dvh, 40px) clamp(12px, 3vw, 26px) clamp(14px, 2.4dvh, 22px); }
+.kz-cut.z2-body-cut { inset: 0; }
+.kz-label.z2-body-lbl { left: 16px; top: -10px; }
+.z2-body-in { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: flex-start; gap: clamp(5px, 1dvh, 9px); }
+.z2-hstrip { position: relative; display: inline-flex; border: none; background: none; padding: 0; cursor: default; rotate: var(--r, 0deg);
+  filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .3)) drop-shadow(0 4px 6px rgba(20, 60, 55, .25)); }
+.z2-hstrip.is-tap { cursor: pointer; }
+.z2-hstrip-paper { display: inline-flex; align-items: center; gap: .5em; padding: .22em .7em .26em .55em; background: #FBF6EA; color: #1F2A44;
+  clip-path: polygon(0 8%, 6% 0, 50% 5%, 96% 0, 100% 12%, 98% 55%, 100% 92%, 94% 100%, 48% 95%, 4% 100%, 0 88%, 2% 45%); }
+.z2-hstrip .kz-tag { font: 700 clamp(11px, 1.6dvh, 14px) 'JetBrains Mono', monospace; }
+.z2-hstrip-w { font: 800 calc(clamp(24px, 4.6dvh, 42px) * var(--hs, 1)) / 1.1 'Manrope', sans-serif; letter-spacing: -.01em; }
+.z2-hstrip.is-hl .z2-hstrip-paper { background: #FFE9A8; }
+.z2-hstrip .led { top: -4px; right: -4px; }
+.z2-star { position: absolute; right: -16px; top: -14px; font-size: 26px; color: #F0B13F; text-shadow: 0 2px 2px rgba(74, 48, 18, .3); }
+.z2-loupe { position: absolute; right: -30px; top: 50%; translate: 0 -55%; width: 18px; height: 18px; border-radius: 50%; border: 3px solid #1F2A44; background: rgba(251, 246, 234, .7); }
+.z2-loupe::after { content: ''; position: absolute; right: -8px; bottom: -8px; width: 4px; height: 10px; background: #1F2A44; rotate: -45deg; border-radius: 2px; }
+
+/* s5, s6, s12, s14 — код и браузер рядом (на телефоне — в колонку) */
+.z2-s5 { align-items: stretch; }
+.z2-s5 > .kz-col { justify-content: center; }
+@media (max-width: 759px) {
+  .z2-s5 { flex-direction: column; gap: 10px; }
+  .z2-s5 .kz-br.z2-br { --brh: 26dvh; }
+}
+.kz-line.z2-hline { background: #FBF0D2; }
+.kz-line.z2-hline.kz-tap:not(:disabled) { cursor: pointer; }
+.kz-line.is-hover { background: #FFF1C9; outline: 2px dashed #E0643F; outline-offset: 2px; }
+.kz-line.z2-later { opacity: .45; }
+
+/* s7, s10 — поля для тега */
+.z2-slot .tk-input { min-width: 3.6em; }
+.z2-slot.is-act .tk-input { border-bottom-color: #1F2A44; }
+.kz-txt.z2-target { background: #FFE9A8; padding: 0 3px; border-radius: 3px; }
+
+/* s8 — три ответа */
+.z2-pick3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.z2-pick3 .kz-btn { font-size: 22px; }
+
+/* s9 — карточка абзаца с бирками над словами (как в ролике) */
+.z2-pcard { position: relative; align-self: center; width: min(100%, 600px); padding: clamp(18px, 3dvh, 26px) clamp(14px, 3vw, 28px) clamp(12px, 2dvh, 18px); }
+.kz-cut.z2-pcard-cut { inset: 0; }
+.kz-label.z2-pcard-lbl { left: 14px; top: -12px; }
+.z2-pcard-text { position: relative; z-index: 1; margin: 0; padding-top: 1.1em; font: 400 clamp(18px, 2.9dvh, 28px)/2.7 'Times New Roman', Times, serif; color: #1F2A44; }
+@media (max-width: 759px) { .z2-pcard-text { font-size: clamp(16px, 4.6vw, 19px); line-height: 2.9; } }
+.z2-w { position: relative; display: inline-block; line-height: 1.2; }
+.kz-label.z2-w-lbl { left: 50%; bottom: 100%; translate: -50% -4px; rotate: -4deg; }
+.z2-w.is-i .kz-label.z2-w-lbl { rotate: 4deg; }
+.z2-w-lbl .kz-label-paper { font-size: clamp(14px, 2.3dvh, 19px); padding: 2px 9px 3px; }
+.z2-w-txt { position: relative; z-index: 0; display: inline-block; transition: transform .4s steps(4, end); }
+.z2-w.is-b.is-on .z2-w-txt { font-weight: 700; }
+.z2-w.is-b.is-on .z2-w-txt::before { content: ''; position: absolute; z-index: -1; left: -.16em; right: -.16em; top: .12em; bottom: .02em; background: #F0B13F;
+  clip-path: polygon(0 12%, 6% 0, 50% 8%, 96% 0, 100% 14%, 98% 60%, 100% 92%, 92% 100%, 50% 90%, 5% 100%, 0 86%, 2% 48%); rotate: -1.5deg;
+  animation: kzStamp .5s steps(1, end) both; }
+.z2-w.is-i.is-on .z2-w-txt { font-style: italic; transform: skewX(-4deg); }
+.z2-w.is-say .z2-w-txt { text-shadow: 0 0 1px #1F2A44; }
+
+/* s11 — карточка «как должно быть» и кнопки-теги */
+.z2-card { position: relative; padding: 10px 16px 8px; background: #FBF6EA; align-self: center; width: min(100%, 520px);
+  clip-path: polygon(0 6%, 4% 0, 96% 5%, 100% 0, 99% 50%, 100% 100%, 50% 95%, 0 100%, 1% 50%);
+  font: 400 clamp(14px, 2dvh, 18px)/1.35 'Times New Roman', Times, serif; color: #1F2A44; box-shadow: inset 0 0 0 2px #2A8C7E; }
+.z2-card-h { display: block; margin-bottom: 2px; font: 800 11.5px 'Manrope', sans-serif; letter-spacing: .05em; text-transform: uppercase; color: #1E6B5F; }
+.kz-btn.z2-tagbtn .kz-tag { font: 700 22px 'JetBrains Mono', monospace; }
+.kz-btn.z2-tagbtn.is-ghost .kz-tk-n { color: #1F2A44; }
+.kz-btn.z2-tagbtn:not(.is-ghost) .kz-tk-b, .kz-btn.z2-tagbtn:not(.is-ghost) .kz-tk-n { color: #fff; }
+
+/* Ноутбук: браузер крупнее, чтобы страница читалась (лист широкий). */
+@media (min-width: 760px) {
+  .z2-br.kz-br { --brh: 46dvh; }
+  .z2-br.kz-br.is-short { --brh: 34dvh; }
+  .z2-s5 .z2-br.kz-br, .z2-s5 .z2-br.kz-br.is-short { --brh: 50dvh; aspect-ratio: 16 / 11; }
+  .z2-s1 .z2-s1-page .kz-br { --brh: 56dvh; }
+  .kz-s15 .z2-br.kz-br { --brh: 52dvh; }
+  .z2-s5 > .kz-col { max-width: none; }
+  .z2-br .kz-br-page { font-size: clamp(14px, 2.4dvh, 21px); }
+  /* Экраны «браузер над кодом и кнопками»: браузер умеренный, чтобы всё влезло. */
+  .kz-scene-col .z2-br.kz-br.is-short { --brh: 25dvh; }
+}
+/* Клавиатура телефона открыта (видимая высота ~330 px): задание, поле и кнопки на
+   виду; браузер — полоска вкладок и одна строка страницы; строки body и декор уходят. */
+.is-kbd .kz-deco, .is-kbd .kz-line.z2-edge, .is-kbd .kz-line.z2-ctx { display: none; }
+.is-kbd .kz-sheet-body { padding: 6px 8px; gap: 6px; }
+.is-kbd .kz-ask { font-size: 13.5px; padding: 4px 10px 5px; }
+.is-kbd .z2-br.kz-br { aspect-ratio: auto; max-width: 100%; padding-bottom: 6px; }
+.is-kbd .z2-br .kz-br-tool { display: none; }
+.is-kbd .z2-br .kz-br-bar { height: 22px; }
+.is-kbd .z2-br .kz-br-body { flex: 0 0 auto; height: 34px; }
+.is-kbd .z2-br .kz-br-page { inset: 4px 8px; font-size: 13px; }
+.is-kbd .kz-code { gap: 3px; }
+.is-kbd .kz-line { min-height: 26px; padding-top: 2px; padding-bottom: 2px; }
+.is-kbd .keys .key-b { min-height: 38px; }
+/* ══ НОУТБУК: меньше пустого листа — содержимое по центру листа и крупнее ══ */
+@media (min-width: 760px) {
+  .z2-sheet .kz-scene-col { justify-content: center; }
+  .z2-sheet .kz-scene-col > .kz-col { width: min(100%, 760px); }
+  /* Браузер и код — в ряд: лист широкий, а снизу место занимает облако Коди. */
+  .z2-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) { flex-direction: row; align-items: center; gap: clamp(14px, 2vw, 26px); width: 100%; max-width: 1000px; }
+  .z2-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .kz-br { flex: 1 1 0; min-width: 0; --brh: 40dvh; aspect-ratio: 16 / 11; }
+  .z2-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .kz-code { flex: 1.15 1 0; min-width: 0; }
+  .z2-sheet .kz-code { font-size: clamp(15px, 2.3dvh, 20px); gap: 6px; }
+  .z2-sheet .kz-line { min-height: 34px; }
+  .z2-sheet .kz-code.kz-code-sm { font-size: clamp(14px, 2.05dvh, 18px); }
+}
+
+/* ══ ПОЛОМКА ЗАМЕТНЕЕ: браузер вздрагивает, пустое место мигает пунктиром с «?» ══ */
+.z2-broken.kz-br { animation: kzShake .5s steps(1, end) .3s 2; }
+.z2-miss { position: relative; }
+.kz-dash.z2-miss { animation: z2Miss 1.1s steps(1, end) infinite; }
+.z2-miss::after { content: '?'; position: absolute; right: -10px; top: -12px; width: 18px; height: 18px; border-radius: 50%; background: #E0643F; color: #fff;
+  font: 800 12px/18px 'Manrope', sans-serif; text-align: center; box-shadow: 0 0 0 2px #FBF6EA; animation: z2Q 1.1s steps(1, end) infinite; }
+@keyframes z2Miss { 0%, 100% { border-color: #E0643F; } 50% { border-color: rgba(224, 100, 63, .25); } }
+@keyframes z2Q { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .z2-broken.kz-br, .kz-dash.z2-miss, .z2-miss::after { animation: none !important; }
+  .z2-hstrip, .z2-star, .z2-loupe { animation: none !important; }
+}

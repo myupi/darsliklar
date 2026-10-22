@@ -61,7 +61,9 @@ const put = (mark, text) => {
 };
 
 if (src.indexOf('/*@L2_HELPERS@*/') >= 0 || src.indexOf('/*@L2_CSS@*/') >= 0) {
-  const l2 = read(`${root}/lessons/html/02-zagolovki-i-tekst.jsx`);
+  // С 22.10.2026 урок 2 переделан в бумажный стиль; помощники берутся из замороженной
+  // копии прежнего урока 2 («робофутбол») — tools/l2-helpers/urok2-robofutbol.jsx.
+  const l2 = read(`${root}/tools/l2-helpers/urok2-robofutbol.jsx`);
   const helpers = cut(l2, '// ─────────────────────────────────────────────────────────────────────────────\n// ТЕГИ ВСЛУХ',
     '// Артефакт урока для payload', 'помощники урока 2')
     .replace(cut(l2, '// Страница Коди о робофутболе', '// Предложения блока', 'roboDoc'), '')

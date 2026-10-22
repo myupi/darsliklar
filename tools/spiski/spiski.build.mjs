@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 const read = (p) => readFileSync(here(p), 'utf8');
 const canon = read('../../canon/html/canon-v1.jsx').replace(/\n+$/, '');
-const l2 = read('../../lessons/html/02-zagolovki-i-tekst.jsx');
+const l2 = read('../l2-helpers/urok2-robofutbol.jsx');   // замороженная копия прежнего урока 2 (22.10.2026)
 const cut = (s, a, b) => {
   const i = s.indexOf(a), j = s.indexOf(b, i + 1);
   if (i < 0 || j < 0) throw new Error('нет пометки ' + (i < 0 ? a : b));
