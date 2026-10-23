@@ -7601,7 +7601,11 @@ function KzHand({ targets, run, label }) {
 //   { act } — сразу; { wait: мс } — пауза (полёт, чтение браузера).
 // Первые реплики экрана — как обычно, в useVoice; показ начинается, когда они
 // сказаны. run = false (экран уже решён) — показа нет.
-function useKzDemo({ steps, run, spoken, sayNow, say }) {
+function useKzDemo({ steps, run: run0, spoken, sayNow, say }) {
+  // Показ, раз начавшись, доигрывается до конца: экран мог отметиться пройденным
+  // (run стал false) раньше последних реплик — тогда они не звучали.
+  const runRef = useRef(run0);
+  const run = runRef.current;
   const [idx, setIdx] = useState(-1);
   const ran = useRef(-1);
   const tm = useRef([]);

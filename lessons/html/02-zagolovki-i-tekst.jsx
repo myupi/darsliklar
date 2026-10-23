@@ -8336,7 +8336,11 @@ function KzHand({ targets, run, label }) {
 //   { act } — сразу; { wait: мс } — пауза (полёт, чтение браузера).
 // Первые реплики экрана — как обычно, в useVoice; показ начинается, когда они
 // сказаны. run = false (экран уже решён) — показа нет.
-function useKzDemo({ steps, run, spoken, sayNow, say }) {
+function useKzDemo({ steps, run: run0, spoken, sayNow, say }) {
+  // Показ, раз начавшись, доигрывается до конца: экран мог отметиться пройденным
+  // (run стал false) раньше последних реплик — тогда они не звучали.
+  const runRef = useRef(run0);
+  const run = runRef.current;
   const [idx, setIdx] = useState(-1);
   const ran = useRef(-1);
   const tm = useRef([]);
@@ -8808,8 +8812,9 @@ function S3({ p }) {
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
     { look: strip(0), act: () => { sfx('pop', true); setN(1); } },
     { say: [{ text: c.big, pose: 'point' }] },
-    { look: strip(5), act: () => { sfx('ok', true); setN(2); put({ done: true }); } },
-    { say: [{ text: c.small, pose: 'explain' }, { text: c.done, pose: 'smile' }] }
+    { look: strip(5), act: () => { sfx('ok', true); setN(2); } },
+    { say: [{ text: c.small, pose: 'explain' }, { text: c.done, pose: 'smile' }] },
+    { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
   // Строка задания — за речью: пока Коди говорит о h1, она ещё про h1.
@@ -9024,8 +9029,9 @@ function S6({ p }) {
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
     { look: line(0), act: () => wrap(0) },
     { look: line(1), act: () => wrap(1) },
-    { look: line(2), act: () => { wrap(2); put({ done: true }); } },
-    { say: [{ text: c.done, pose: 'smile' }] }
+    { look: line(2), act: () => { wrap(2); } },
+    { say: [{ text: c.done, pose: 'smile' }] },
+    { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
   // Пока Коди говорит про склейку — окно подсвечено.
@@ -9256,8 +9262,9 @@ function S9({ p }) {
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
     { look: lbl('b'), act: () => { sfx('pop', true); setN(1); } },
     { say: [{ text: c.b, pose: 'point' }] },
-    { look: lbl('i'), act: () => { sfx('ok', true); setN(2); put({ done: true }); } },
-    { say: [{ text: c.i, pose: 'explain' }, { text: c.done, pose: 'smile' }] }
+    { look: lbl('i'), act: () => { sfx('ok', true); setN(2); } },
+    { say: [{ text: c.i, pose: 'explain' }, { text: c.done, pose: 'smile' }] },
+    { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
   const src = pick(PAGE.p1);
@@ -9479,8 +9486,9 @@ function S12({ p }) {
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
     { act: run },
     { wait: STEP * READ12.length + 200 },
-    { act: () => { setRead(READ12.length); put({ done: true }); } },
-    { say: ORDER }
+    { act: () => { setRead(READ12.length); } },
+    { say: ORDER },
+    { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
   const sayK = spoken ? null : speaker.text === c.order1 ? ['h1'] : speaker.text === c.order2 ? ['p1'] : speaker.text === c.order3 ? ['h2', 'p2'] : null;

@@ -288,8 +288,9 @@ function S3({ p }) {
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
     { look: line, act: () => wrap(0) },
     { look: line, act: () => wrap(1) },
-    { look: line, act: () => { wrap(2); put({ done: true }); } },
-    { say: [{ text: c.doneUl, pose: 'explain' }, { text: c.doneLi, pose: 'smile' }] }
+    { look: line, act: () => { wrap(2); } },
+    { say: [{ text: c.doneUl, pose: 'explain' }, { text: c.doneLi, pose: 'smile' }] },
+    { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
   const things = TRIP.things.map(pick);
@@ -516,8 +517,9 @@ function S6({ p }) {
     { act: () => { sfx('soft', true); setPhase('mixed'); } },
     { say: [{ text: c.mixed, pose: 'wonder' }] },
     { wait: reduceMotion() ? 200 : 700 },
-    { act: () => { sfx('pop', true); setPhase('back'); put({ done: true }); } },
-    { say: [{ text: c.done, pose: 'smile' }] }
+    { act: () => { sfx('pop', true); setPhase('back'); } },
+    { say: [{ text: c.done, pose: 'smile' }] },
+    { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
   const steps = TRIP.steps.map(pick);
@@ -726,8 +728,9 @@ function S9({ p }) {
     { look: at('.l3-stray-line'), act: () => { sfx('tap', true); setSel(true); } },
     { look: at('[data-place="in"]'), act: () => { if (!reduceMotion()) kzFly(at('.l3-stray-line')(), at('[data-place="in"]')(), 700); } },
     { wait: reduceMotion() ? 0 : 720 },
-    { act: () => { sfx('win', true); setInside(true); setSel(false); put({ done: true }); } },
-    { say: [{ text: c.done, pose: 'smile' }] }
+    { act: () => { sfx('win', true); setInside(true); setSel(false); } },
+    { say: [{ text: c.done, pose: 'smile' }] },
+    { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
   const things = TRIP.things.map(pick);
@@ -966,8 +969,9 @@ function S12({ p }) {
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
     { act: run },
     { wait: STEP * READ12.length + 200 },
-    { act: () => { setRead(READ12.length); put({ done: true }); } },
-    { say: ORDER }
+    { act: () => { setRead(READ12.length); } },
+    { say: ORDER },
+    { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
   const sayK = spoken ? null : speaker.text === c.order1 ? 'h1' : speaker.text === c.order2 ? 'ul' : speaker.text === c.order3 ? 'ol' : null;
