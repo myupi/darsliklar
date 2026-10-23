@@ -8,7 +8,7 @@
 // «уголка «<»»). В речь знак не идёт — иначе сервис читает сырой символ; знак без
 // названия читается словами. Узбекский закрывающий тег — «yopuvchi title tegi»
 // (порядок слов узбекского), а не «yopuvchi teg title».
-const KZ_SIGN_WORD = '(?:qavs|chiziq|скобк|уголк|черт|bracket|slash)[^\\s,.!?:;]*';
+const KZ_SIGN_WORD = '(?:qavs|chiziq|скобк|уголк|уголо|черт|bracket|slash)[^\\s,.!?:;]*';   // «уголок» — тоже (иначе «уголок «>»» звучало «уголок правый уголок»)
 const KZ_SIGN_NAME = { uz: { '<': 'chap burchakli qavs', '>': 'o‘ng burchakli qavs', '/': 'qiya chiziq' },
   ru: { '<': 'левый уголок', '>': 'правый уголок', '/': 'косая черта' }, en: { '<': 'less-than sign', '>': 'greater-than sign', '/': 'slash' } };
 const spokenHtmlL2 = spokenHtml;
@@ -20,8 +20,18 @@ spokenHtml = (text, lang) => {
   const nm = KZ_SIGN_NAME[lang] || KZ_SIGN_NAME.ru;
   s = s.replace(/[«“"]\s*([<>/\\])\s*[»”"]/g, (all, c) => ' ' + (nm[c] || nm['/']) + ' ');
   if (lang === 'uz') s = s.replace(/<\s*\/\s*([a-z][a-z0-9]*)\s*>/gi, (all, t) => 'yopuvchi ' + t + ' tegi');
-  return spokenHtmlL2(s, lang);
+  const out = spokenHtmlL2(s, lang);
+  return lang === 'uz' ? kzTagWord(out) : out;
 };
+// Слово «teg» в узбекской речи — по-английски, как названия тегов html, head, title,
+// body (заказчик, 23.10.2026): корень уходит в сервис английским «tag», узбекское
+// окончание — через дефис («tag-i», «tag-lar»), чтобы «tagi» не прочлось узбекским
+// словом. Только формы слова «teg»: «tegishli» и другие слова не трогаем.
+const KZ_TEG_SUF = /^(i|ni|ga|da|dan|ning|siz|ini|iga|ida|idan|idagi|ining|lar|lari|larni|larga|larda|lardan|larning|larini|lariga)?$/i;
+function kzTagWord(s) {
+  return String(s).replace(/(^|[^A-Za-z‘’'ʻʼ])(teg)([A-Za-z‘’ʻʼ]*)/gi,
+    (all, pre, root, suf) => (KZ_TEG_SUF.test(suf) ? pre + 'tag' + (suf ? '-' + suf.toLowerCase() : '') : all));
+}
 
 // Параллакс слоёв: палец или мышь сдвигают вырезки по углам листа на разную
 // глубину. Значения — ступеньками (как кадры stop-motion), без лишних перерисовок.
@@ -500,6 +510,62 @@ function KzHand({ targets, run, label }) {
     </span>
     </span>
   );
+}
+
+// ПОКАЗ НА ЭКРАНАХ-ОБЪЯСНЕНИЯХ (заказчик, 23.10.2026): на объяснении ученик
+// ничего не делает — всё показывает Коди, а вещи меняются сами, под речь.
+// Руки и кнопок, которые «нажимаются», на объяснениях нет (заказчик, 23.10.2026:
+// «показать, как рука нажимает, очень некрасиво»). Чтобы не было ощущения
+// «смотрю и скучаю»: после каждой короткой фразы что-то происходит — вещь, о
+// которой речь, коротко загорается и сама меняется (штамп, влёт, перелёт),
+// со звуком; «Дальше» загорается по окончании показа, «Повторить» в шапке —
+// посмотреть ещё раз.
+//
+// Сценарий — шаги по порядку:
+//   { say: [{ text, pose }, …] } — Коди говорит; дальше — когда договорил;
+//   { look: () => элемент, act } — элемент коротко загорается, потом act;
+//   { act } — сразу; { wait: мс } — пауза (полёт, чтение браузера).
+// Первые реплики экрана — как обычно, в useVoice; показ начинается, когда они
+// сказаны. run = false (экран уже решён) — показа нет.
+function useKzDemo({ steps, run, spoken, sayNow, say }) {
+  const [idx, setIdx] = useState(-1);
+  const ran = useRef(-1);
+  const tm = useRef([]);
+  const audio = useAudio();
+  const pausedRef = useRef(false);
+  pausedRef.current = !!(audio && audio.paused);
+  useEffect(() => () => tm.current.forEach(clearTimeout), []);
+  const later = (ms, f) => {
+    const go = () => { if (pausedRef.current) { tm.current.push(setTimeout(go, 300)); return; } f(); };
+    tm.current.push(setTimeout(go, ms));
+  };
+  const next = (i) => setIdx((v) => (v === i ? i + 1 : v));
+  // Вещь загорается (мягкое свечение и лёгкий подъём ступеньками), потом меняется.
+  const lookAt = (el, i, act) => {
+    const done = () => { if (act) act(); next(i); };
+    if (!el || !el.classList || reduceMotion()) { done(); return; }
+    el.classList.add('kz-demo-on');
+    later(560, done);
+    later(900, () => el.classList.remove('kz-demo-on'));
+  };
+  useEffect(() => {
+    if (!run) return;
+    if (idx === -1) { if (spoken) setIdx(0); return; }
+    const st = steps[idx];
+    if (!st) return;
+    if (ran.current !== idx) {
+      ran.current = idx;
+      const i = idx;
+      if (st.say) { sayNow(st.say[0].text, st.say[0].pose); st.say.slice(1).forEach((l) => say(l.text, l.pose)); return; }
+      if (st.look) { later(200, () => lookAt(st.look(), i, st.act)); return; }
+      if (st.wait) { if (st.act) st.act(); later(st.wait, () => next(i)); return; }
+      if (st.act) st.act();
+      next(i);
+      return;
+    }
+    if (st.say && spoken) next(idx);
+  }, [idx, spoken, run]); // eslint-disable-line react-hooks/exhaustive-deps
+  return { idx, done: !run || idx >= steps.length, step: Math.max(0, Math.min(idx, steps.length)) };
 }
 
 // Текст ученика (или образец) — сквозной для экранов 7–15.

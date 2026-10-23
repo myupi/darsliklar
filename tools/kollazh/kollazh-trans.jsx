@@ -19,6 +19,34 @@ const kzTop = (nodes) => {
 };
 const kzRand = (a, b) => a + Math.random() * (b - a);
 
+// Всё видимое на листе должно лететь, даже если его нет в KZ_PIECES (своя полоска
+// урока, пунктир, лист body, «?!»…): видимая деталь вне вырезок поднимается до
+// самого верхнего предка, в котором ещё нет вырезок, — он летит отдельной вырезкой.
+// Без этого такие вещи стояли на месте, пока всё вокруг разлеталось, или
+// появлялись рывком (заказчик, 23.10.2026: «в некоторых местах переход не работает»).
+const kzLeaf = (el) => {
+  if (/^(svg|img|canvas|textarea|input|video)$/i.test(el.tagName)) return true;
+  for (let i = 0; i < el.childNodes.length; i += 1) { const c = el.childNodes[i]; if (c.nodeType === 3 && c.textContent.trim()) return true; }
+  const cs = getComputedStyle(el);
+  return cs.backgroundImage !== 'none' || !/^(rgba\(0, 0, 0, 0\)|transparent)$/.test(cs.backgroundColor) || parseFloat(cs.borderTopWidth) > 0 || parseFloat(cs.borderBottomWidth) > 0;
+};
+function kzPiecesOf(body) {
+  const pieces = kzTop(body.querySelectorAll(KZ_PIECES));
+  const inPiece = (el) => pieces.some((p) => p === el || p.contains(el));
+  const hasPiece = (el) => pieces.some((p) => el.contains(p));
+  const extra = [];
+  body.querySelectorAll('*').forEach((el) => {
+    if (el.closest('svg') && el.tagName.toLowerCase() !== 'svg') return;
+    if (inPiece(el) || extra.some((x) => x.contains(el))) return;
+    const b = el.getBoundingClientRect();
+    if (b.width < 2 || b.height < 2 || !kzLeaf(el)) return;
+    let top = el;
+    while (top.parentElement && top.parentElement !== body && !hasPiece(top.parentElement)) top = top.parentElement;
+    extra.push(top);
+  });
+  return kzTop(pieces.concat(extra));
+}
+
 function kzSnapshotOut() {
   const sheet = kzLiveSheet();
   const stage = document.querySelector('.stage');
@@ -26,7 +54,8 @@ function kzSnapshotOut() {
   const r = sheet.getBoundingClientRect();
   const clone = sheet.cloneNode(true);
   // Лист, скотч и вырезки по углам одинаковы на всех экранах — разлетается только содержимое.
-  clone.querySelectorAll('.kz-sheet-wrap, .kz-deco').forEach((e) => e.remove());
+  // Рука-показ не летит: в снимке её нет совсем.
+  clone.querySelectorAll('.kz-sheet-wrap, .kz-deco, .kz-hand-layer').forEach((e) => e.remove());
   // Набранный текст в полях копии (значение textarea не копируется само).
   const src = sheet.querySelectorAll('textarea'), dst = clone.querySelectorAll('textarea');
   dst.forEach((t, i) => { if (src[i]) t.value = src[i].value; });
@@ -41,7 +70,9 @@ function kzSnapshotOut() {
   (stage.parentNode || document.body).appendChild(layer);
   const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
   const reach = Math.max(window.innerWidth, window.innerHeight) * 0.75;
-  kzTop(clone.querySelectorAll(KZ_PIECES)).forEach((el, i) => {
+  const cbody = clone.querySelector('.kz-sheet-body') || clone;
+  kzPiecesOf(cbody).forEach((el, i) => {
+    if (getComputedStyle(el).display === 'inline') el.style.display = 'inline-block';
     const b = el.getBoundingClientRect();
     let dx = b.left + b.width / 2 - cx, dy = b.top + b.height / 2 - cy;
     const len = Math.hypot(dx, dy) || 1;
@@ -70,10 +101,12 @@ function kzAssembleIn() {
   setTimeout(() => {
     const H = window.innerHeight, W = window.innerWidth;
     let n = 0;
-    kzTop(sheet.querySelectorAll(KZ_PIECES)).forEach((el) => {
-      const cs = getComputedStyle(el);
-      // Свой влёт есть — пусть летит им (снимается с паузы вместе со всеми).
-      if (cs.animationName !== 'none' && cs.animationIterationCount.indexOf('infinite') < 0) return;
+    const body = sheet.querySelector('.kz-sheet-body') || sheet;
+    const ownAnim = (el) => { const cs = getComputedStyle(el); return cs.animationName !== 'none' && cs.animationIterationCount.indexOf('infinite') < 0; };
+    kzPiecesOf(body).forEach((el) => {
+      // Свой влёт есть (у неё или у предка) — пусть летит им (снимается с паузы вместе со всеми).
+      for (let e = el; e && e !== body; e = e.parentElement) if (ownAnim(e)) return;
+      if (el.closest('.kz-hand-layer')) return;
       const fromLeft = n % 2 === 0;
       el.style.setProperty('--ix', ((fromLeft ? -1 : 1) * kzRand(0.25, 0.55) * W).toFixed(0) + 'px');
       el.style.setProperty('--iy', (kzRand(-0.55, -0.2) * H).toFixed(0) + 'px');
