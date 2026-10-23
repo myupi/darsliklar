@@ -193,9 +193,19 @@ function S2({ p }) {
 }
 
 // =============================================================================
-// S3. БИРКА ДЛЯ БРАУЗЕРА — человечек в рамке html; две бирки: открывающий и
+// S3. БИРКА ДЛЯ БРАУЗЕРА — бумажный браузер со страницей в рамке html (заказчик,
+// 23.10.2026: на экранах 3–5 браузер вместо человечка); две бирки: открывающий и
 // закрывающий тег. Ученик нажимает бирки по очереди (светится «нажми сюда»).
 // =============================================================================
+// Страница в рамке html (экраны 3–5): бумажный браузер — вкладка и окно.
+const FramedPage = ({ anim }) => {
+  const pick = usePick();
+  return (
+    <PaperBrowser title={pick(UI.mySite)} cls={anim ? 'kz-a-drop' : ''}>
+      <PageBits text={pick(UI.hello)} bits anim={anim} />
+    </PaperBrowser>
+  );
+};
 function S3({ p }) {
   const c = C.s3;
   const [rec, put] = useRec('s3');
@@ -216,7 +226,7 @@ function S3({ p }) {
       <Sheet>
         <KzAsk text={askText} n={solved ? null : n + '/2'} />
         <div className="kz-scene">
-          <ManBox frame frameAnim={!solved} frameHl={speaker.text === c.say} man={<PaperMan anim={!solved} />}
+          <ManBox frame frameAnim={!solved} frameHl={speaker.text === c.say} br={<FramedPage anim={!solved} />}
             labels={<>
               <KzLabel t="html" cls="kz-frame-lbl-top" onClick={tapTop} disabled={!canTap || n !== 0} on={n >= 1} hl={tagHl} led={n === 0 && (led || asking) && canTap} />
               <KzLabel t="html" close cls="kz-frame-lbl-bot" onClick={tapBot} disabled={!canTap || n !== 1} on={n >= 2} hl={tagHl} led={n === 1 && (led || asking) && canTap} />
@@ -228,7 +238,7 @@ function S3({ p }) {
 }
 
 // =============================================================================
-// S4. ЗАКРОЙ РАМКУ — у рамки нет нижнего края; ученик набирает </html>
+// S4. ЗАКРОЙ РАМКУ — у рамки вокруг браузера нет нижнего края; ученик набирает </html>
 // кнопками или с клавиатуры. Верно — край въезжает, бирка приклеивается.
 // =============================================================================
 function S4({ p }) {
@@ -276,7 +286,7 @@ function S4({ p }) {
       <Sheet>
         <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hint)} />
         <div className="kz-scene is-tight">
-          <ManBox frame frameSides={{ top: 1, right: 1, left: 1, bottom: okNow ? 'new' : 0 }} man={<PaperMan anim={false} />}
+          <ManBox frame frameSides={{ top: 1, right: 1, left: 1, bottom: okNow ? 'new' : 0 }} br={<FramedPage anim={false} />}
             labels={<>
               <KzLabel t="html" cls="kz-frame-lbl-top" on={lad.lv >= 1 && !okNow} />
               {okNow ? <KzLabel t="html" close cls="kz-frame-lbl-bot" anim="stamp" />
@@ -291,7 +301,7 @@ function S4({ p }) {
 }
 
 // =============================================================================
-// S5. БИРКИ ПО МЕСТАМ — новый лист: рамка без бирок; три бирки, одна лишняя.
+// S5. БИРКИ ПО МЕСТАМ — новый лист: браузер в рамке без бирок; три бирки, одна лишняя.
 // Нажать бирку, потом место (или перетащить).
 // =============================================================================
 const S5_TAGS = [{ id: 'o', raw: '<html>' }, { id: 'b', raw: '<\\html>' }, { id: 'c', raw: '</html>' }];
@@ -353,7 +363,7 @@ function S5({ p }) {
       <Sheet>
         <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} n={done ? null : ((slots.top ? 1 : 0) + (slots.bot ? 1 : 0)) + '/2'} />
         <div ref={sceneRef} className={'kz-scene is-tight' + (dnd.active || sel ? ' is-dragging' : '')}>
-          <ManBox frame frameAnim={!solved} man={<PaperMan anim={!solved} />} cls="kz-s5-box"
+          <ManBox frame frameAnim={!solved} br={<FramedPage anim={!solved} />} cls="kz-s5-box"
             labels={<>{slotBtn('top', 'kz-slot-top')}{slotBtn('bot', 'kz-slot-bot')}</>} />
         </div>
         <div ref={trayRef} className="kz-tray">

@@ -79,7 +79,6 @@ function tornRound(seed, n, amp) {
   TORN[k] = 'polygon(' + p.join(', ') + ')';
   return TORN[k];
 }
-const TRI = 'polygon(4% 2%, 30% 12%, 62% 22%, 98% 38%, 70% 58%, 44% 76%, 14% 98%, 9% 62%, 6% 30%)';
 
 function Cut({ c, seed = 1, n = 10, amp = 3, asp = 1, round, clip, x, y, w, h, r = 0, anim, dl, cls, hl, hlc, boil, onClick, label, children, style, dp }) {
   const st = Object.assign({}, x !== undefined ? { left: x + '%', top: y + '%', width: w + '%', height: h + '%' } : {},
@@ -95,7 +94,7 @@ function Cut({ c, seed = 1, n = 10, amp = 3, asp = 1, round, clip, x, y, w, h, r
   );
 }
 
-// Лист на крафтовом столе + вырезки по углам (скотч, треугольник, круг) —
+// Лист на крафтовом столе + вырезки по углам (скотч, коралловый клочок, круг) —
 // они сдвигаются за пальцем на разную глубину (параллакс).
 function Sheet({ children, cls }) {
   const cp = torn(5, 30, 1.1, 1.6);
@@ -103,7 +102,8 @@ function Sheet({ children, cls }) {
     <div className={'kz-sheet' + (cls ? ' ' + cls : '')}>
       <div className="kz-sheet-wrap"><div className="kz-sheet-in" style={{ clipPath: cp, WebkitClipPath: cp }} /></div>
       <Cut c={KZ.mustard} seed={11} n={8} amp={10} asp={5} r={-32} cls="kz-deco kz-deco-tape" dp={9} />
-      <Cut c={KZ.coral} clip={TRI} r={8} cls="kz-deco kz-deco-tri" dp={12} />
+      {/* Коралловый клочок вместо треугольника (заказчик, 23.10.2026: треугольник был похож на кнопку «Дальше»). */}
+      <Cut c={KZ.coral} seed={12} n={6} amp={9} asp={1.15} r={16} cls="kz-deco kz-deco-scrap" dp={12} />
       <Cut c={KZ.teal} round seed={13} n={8} amp={5} cls="kz-deco kz-deco-dot" dp={7} />
       <div className="kz-sheet-body">{children}</div>
     </div>
@@ -230,12 +230,14 @@ function Frame({ sides, anim, hl }) {
   );
 }
 
-// Сцена «человечек в рамке»: рамка по краю, человечек внутри.
-function ManBox({ frame, frameSides, frameAnim, frameHl, labels, man, cls, children }) {
+// Сцена «человечек в рамке»: рамка по краю, человечек внутри. br — вместо
+// человечка бумажный браузер (экраны 3–5 урока 1: рамка html обнимает всю
+// страницу — и вкладку, и окно); сцена тогда шире.
+function ManBox({ frame, frameSides, frameAnim, frameHl, labels, man, br, cls, children }) {
   return (
-    <div className={'kz-stagebox' + (cls ? ' ' + cls : '')}>
+    <div className={'kz-stagebox' + (br ? ' is-br' : '') + (cls ? ' ' + cls : '')}>
       {frame ? <Frame sides={frameSides} anim={frameAnim} hl={frameHl} /> : null}
-      <div className="kz-manbox">{man}</div>
+      {br ? <div className="kz-brbox">{br}</div> : <div className="kz-manbox">{man}</div>}
       {labels}
       {children}
     </div>

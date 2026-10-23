@@ -7153,7 +7153,6 @@ function tornRound(seed, n, amp) {
   TORN[k] = 'polygon(' + p.join(', ') + ')';
   return TORN[k];
 }
-const TRI = 'polygon(4% 2%, 30% 12%, 62% 22%, 98% 38%, 70% 58%, 44% 76%, 14% 98%, 9% 62%, 6% 30%)';
 
 function Cut({ c, seed = 1, n = 10, amp = 3, asp = 1, round, clip, x, y, w, h, r = 0, anim, dl, cls, hl, hlc, boil, onClick, label, children, style, dp }) {
   const st = Object.assign({}, x !== undefined ? { left: x + '%', top: y + '%', width: w + '%', height: h + '%' } : {},
@@ -7169,7 +7168,7 @@ function Cut({ c, seed = 1, n = 10, amp = 3, asp = 1, round, clip, x, y, w, h, r
   );
 }
 
-// Лист на крафтовом столе + вырезки по углам (скотч, треугольник, круг) —
+// Лист на крафтовом столе + вырезки по углам (скотч, коралловый клочок, круг) —
 // они сдвигаются за пальцем на разную глубину (параллакс).
 function Sheet({ children, cls }) {
   const cp = torn(5, 30, 1.1, 1.6);
@@ -7177,7 +7176,8 @@ function Sheet({ children, cls }) {
     <div className={'kz-sheet' + (cls ? ' ' + cls : '')}>
       <div className="kz-sheet-wrap"><div className="kz-sheet-in" style={{ clipPath: cp, WebkitClipPath: cp }} /></div>
       <Cut c={KZ.mustard} seed={11} n={8} amp={10} asp={5} r={-32} cls="kz-deco kz-deco-tape" dp={9} />
-      <Cut c={KZ.coral} clip={TRI} r={8} cls="kz-deco kz-deco-tri" dp={12} />
+      {/* Коралловый клочок вместо треугольника (заказчик, 23.10.2026: треугольник был похож на кнопку «Дальше»). */}
+      <Cut c={KZ.coral} seed={12} n={6} amp={9} asp={1.15} r={16} cls="kz-deco kz-deco-scrap" dp={12} />
       <Cut c={KZ.teal} round seed={13} n={8} amp={5} cls="kz-deco kz-deco-dot" dp={7} />
       <div className="kz-sheet-body">{children}</div>
     </div>
@@ -7304,12 +7304,14 @@ function Frame({ sides, anim, hl }) {
   );
 }
 
-// Сцена «человечек в рамке»: рамка по краю, человечек внутри.
-function ManBox({ frame, frameSides, frameAnim, frameHl, labels, man, cls, children }) {
+// Сцена «человечек в рамке»: рамка по краю, человечек внутри. br — вместо
+// человечка бумажный браузер (экраны 3–5 урока 1: рамка html обнимает всю
+// страницу — и вкладку, и окно); сцена тогда шире.
+function ManBox({ frame, frameSides, frameAnim, frameHl, labels, man, br, cls, children }) {
   return (
-    <div className={'kz-stagebox' + (cls ? ' ' + cls : '')}>
+    <div className={'kz-stagebox' + (br ? ' is-br' : '') + (cls ? ' ' + cls : '')}>
       {frame ? <Frame sides={frameSides} anim={frameAnim} hl={frameHl} /> : null}
-      <div className="kz-manbox">{man}</div>
+      {br ? <div className="kz-brbox">{br}</div> : <div className="kz-manbox">{man}</div>}
       {labels}
       {children}
     </div>
@@ -9355,7 +9357,7 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .kz-deco { position: absolute; z-index: 2; pointer-events: none;
   translate: calc(var(--kzx, 0) * var(--dp, 6) * 1px) calc(var(--kzy, 0) * var(--dp, 6) * 1px); }
 .kz-deco-tape { left: -14px; top: 4px; width: clamp(54px, 9vw, 110px); height: clamp(14px, 2.2vw, 22px); }
-.kz-deco-tri { right: -14px; top: 6px; width: clamp(26px, 4vw, 46px); height: clamp(30px, 4.6vw, 52px); }
+.kz-deco-scrap { right: -12px; top: 8px; width: clamp(28px, 4.2vw, 50px); height: clamp(26px, 3.9vw, 46px); }
 .kz-deco-dot { left: -16px; bottom: 10px; width: clamp(30px, 4.6vw, 56px); height: clamp(30px, 4.6vw, 56px); }
 .kz-par { translate: calc(var(--kzx, 0) * var(--dp, 3) * 1px) calc(var(--kzy, 0) * var(--dp, 3) * 1px); }
 
@@ -9528,6 +9530,14 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .kz-man { position: absolute; inset: 0; }
 .kz-man .kz-cut.kz-face-dot { border-radius: 50%; }
 .kz-man-title { z-index: 1; }
+/* Браузер в рамке html (экраны 3–5): сцена шире, браузер — внутри рамки. */
+.kz-stagebox.is-br { aspect-ratio: 16 / 12; }
+.kz-brbox { position: absolute; inset: 9% 6.5% 9% 6.5%; display: flex; align-items: center; justify-content: center; }
+.kz-brbox > .kz-br { width: 100%; max-width: 100%; }
+@media (max-width: 759px) {
+  .kz-scene > .kz-stagebox.is-br { width: min(92%, 40dvh * 1.33); }
+  .kz-scene.is-tight > .kz-stagebox.is-br { width: min(86%, 30dvh * 1.33); }
+}
 .kz-frame-lbl-top { left: -2%; top: -4%; }
 .kz-frame-lbl-bot { right: -2%; bottom: -5%; }
 

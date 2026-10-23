@@ -39,7 +39,7 @@
 .kz-deco { position: absolute; z-index: 2; pointer-events: none;
   translate: calc(var(--kzx, 0) * var(--dp, 6) * 1px) calc(var(--kzy, 0) * var(--dp, 6) * 1px); }
 .kz-deco-tape { left: -14px; top: 4px; width: clamp(54px, 9vw, 110px); height: clamp(14px, 2.2vw, 22px); }
-.kz-deco-tri { right: -14px; top: 6px; width: clamp(26px, 4vw, 46px); height: clamp(30px, 4.6vw, 52px); }
+.kz-deco-scrap { right: -12px; top: 8px; width: clamp(28px, 4.2vw, 50px); height: clamp(26px, 3.9vw, 46px); }
 .kz-deco-dot { left: -16px; bottom: 10px; width: clamp(30px, 4.6vw, 56px); height: clamp(30px, 4.6vw, 56px); }
 .kz-par { translate: calc(var(--kzx, 0) * var(--dp, 3) * 1px) calc(var(--kzy, 0) * var(--dp, 3) * 1px); }
 
@@ -212,6 +212,14 @@
 .kz-man { position: absolute; inset: 0; }
 .kz-man .kz-cut.kz-face-dot { border-radius: 50%; }
 .kz-man-title { z-index: 1; }
+/* Браузер в рамке html (экраны 3–5): сцена шире, браузер — внутри рамки. */
+.kz-stagebox.is-br { aspect-ratio: 16 / 12; }
+.kz-brbox { position: absolute; inset: 9% 6.5% 9% 6.5%; display: flex; align-items: center; justify-content: center; }
+.kz-brbox > .kz-br { width: 100%; max-width: 100%; }
+@media (max-width: 759px) {
+  .kz-scene > .kz-stagebox.is-br { width: min(92%, 40dvh * 1.33); }
+  .kz-scene.is-tight > .kz-stagebox.is-br { width: min(86%, 30dvh * 1.33); }
+}
 .kz-frame-lbl-top { left: -2%; top: -4%; }
 .kz-frame-lbl-bot { right: -2%; bottom: -5%; }
 
