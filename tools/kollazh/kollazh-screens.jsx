@@ -240,9 +240,10 @@ function TG1({ p }) {
     { look: () => stripRef.current && stripRef.current.querySelector('.kz-tg-word'), act: () => { sfx('pop', true); setN(1); } },
     { wait: 700 },
     { say: [{ text: c.pair, pose: 'wonder' }, { text: c.askSlash, pose: 'point' }] },
-    { act: () => { sfx('ok', true); setN(2); put({ done: true }); } },
+    { act: () => { sfx('ok', true); setN(2); } },
     { wait: 900 },
-    { say: [{ text: c.slash, pose: 'explain' }, { text: c.done, pose: 'smile' }] }
+    { say: [{ text: c.slash, pose: 'explain' }, { text: c.done, pose: 'smile' }] },
+    { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
   // Подсветка за речью: «слово показал текстом» — слово и окно; «это тег» — тег; «косая черта» — закрывающий.
@@ -297,8 +298,9 @@ function S3({ p }) {
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
     { look: () => boxRef.current && boxRef.current.querySelector('.kz-frame-lbl-top'), act: () => { sfx('tap', true); setN(1); } },
     { say: [{ text: c.top, pose: 'point' }] },
-    { look: () => boxRef.current && boxRef.current.querySelector('.kz-frame-lbl-bot'), act: () => { sfx('ok', true); setN(2); put({ done: true }); } },
-    { say: [{ text: c.bottom, pose: 'explain' }, { text: c.done, pose: 'smile' }] }
+    { look: () => boxRef.current && boxRef.current.querySelector('.kz-frame-lbl-bot'), act: () => { sfx('ok', true); setN(2); } },
+    { say: [{ text: c.bottom, pose: 'explain' }, { text: c.done, pose: 'smile' }] },
+    { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
   const tagHl = speaker.text === c.sayTag;   // «Тег html показывает…» — оба тега светятся
@@ -500,8 +502,9 @@ function S6({ p }) {
       if (!reduceMotion() && sc && kzFly(sc.querySelector('.kz-man [aria-label="title"]'), sc.querySelector('.kz-br-tab'), 760)) setFlying(true);
     } },
     { wait: 800 },
-    { act: () => { setFlying(false); setStep(2); setStamp((v) => v + 1); sfx('ok', true); put({ done: true }); } },
-    { say: [{ text: c.flew, pose: 'wonder' }, { text: c.done, pose: 'smile' }] }
+    { act: () => { setFlying(false); setStep(2); setStamp((v) => v + 1); sfx('ok', true); } },
+    { say: [{ text: c.flew, pose: 'wonder' }, { text: c.done, pose: 'smile' }] },
+    { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
   const title = pick(UI.mySite);
@@ -747,12 +750,13 @@ function S9({ p }) {
   const tm = useRef([]);
   useEffect(() => () => { tm.current.forEach(clearTimeout); paperOff(); }, []);
   const later = (ms, f) => tm.current.push(setTimeout(f, ms));
-  const land = () => { paperOff(); setPieces(null); setPhase('out'); sfx('ok', true); put({ done: true }); };
+  const land = () => { paperOff(); setPieces(null); setPhase('out'); sfx('ok', true); };
   // Показ: тело загорается — куски страницы вылетают из него в окно.
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
-    { look: () => sceneRef.current && sceneRef.current.querySelector('.kz-man [aria-label="body"]'), act: () => { sfx('pop', true); setPhase(reduceMotion() ? 'out' : 'measure'); if (reduceMotion()) put({ done: true }); } },
+    { look: () => sceneRef.current && sceneRef.current.querySelector('.kz-man [aria-label="body"]'), act: () => { sfx('pop', true); setPhase(reduceMotion() ? 'out' : 'measure'); } },
     { wait: reduceMotion() ? 100 : S9_PEEK + (S9_FLY + 5 * S9_GAP + 0.4) * 1000 },
-    { say: [{ text: c.out, pose: 'wonder' }, { text: c.done, pose: 'smile' }] }
+    { say: [{ text: c.out, pose: 'wonder' }, { text: c.done, pose: 'smile' }] },
+    { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
   // Бирки и места кусков — от сцены.
@@ -983,9 +987,11 @@ function S11({ p }) {
 // именем, тело с текстом. Потом короткими репликами — вложенность перед сборкой
 // (s13): html содержит две целые группы head и body; title — внутри head; head
 // закрывается до открытия body; приветствие — внутри body. Подсветка — за речью.
-// Когда Коди договорил — ученик сам нажимает строку кода или часть коллажа справа
-// (заказчик, 23.10.2026: «всё вышло быстро, не успел рассмотреть»): загораются
-// строки этой части и её блок, Коди говорит, за что она отвечает; счётчик «n/6».
+// Потом Коди сам проходит по частям по порядку (заказчик, 23.10.2026): DOCTYPE,
+// html, head, title, «сначала закрываем head, потом открываем body», body, свой
+// текст — у каждой своя подсветка строк и блока коллажа. После этого по желанию
+// ученик нажимает строку кода или часть коллажа — Коди повторяет объяснение
+// именно этой части. Нажимать не обязательно, «Дальше» доступна.
 // =============================================================================
 const READ12 = ['doc', 'html', 'head', 'title', 'headc', 'body', 'text', 'bodyc', 'htmlc'];
 function S12({ p }) {
@@ -995,29 +1001,32 @@ function S12({ p }) {
   const [rec, put] = useRec('s12');
   const solved = !!(rec && rec.done);
   const [read, setRead] = useState(solved ? READ12.length : -1);
-  const ORDER = [{ text: c.order1, pose: 'point' }, { text: c.order2, pose: 'point' }, { text: c.order3, pose: 'explain' },
-    { text: c.order4, pose: 'point' }, { text: c.order5, pose: 'point' }, { text: c.order6, pose: 'smile' }, { text: c.tapSay, pose: 'curious' }];
+  // Коди сам проходит по частям: у каждой реплики — своя подсвеченная часть (k).
+  const WALK = [{ text: c.parts.doc, pose: 'explain', k: 'doc' }, { text: c.parts.html, pose: 'point', k: 'html' },
+    { text: c.parts.head, pose: 'point', k: 'head' }, { text: c.parts.title, pose: 'point', k: 'title' },
+    { text: c.order5, pose: 'point', k: 'switch' }, { text: c.parts.body, pose: 'point', k: 'body' },
+    { text: c.parts.text, pose: 'smile', k: 'text' }];
+  const ORDER = WALK.map((w) => ({ text: w.text, pose: w.pose })).concat([{ text: c.tapSay, pose: 'curious' }]);
   const [speaker, say, spoken, sayNow] = useVoice(solved ? ORDER : [{ text: c.say, pose: 'explain' }]);
   const timers = useRef([]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
   const STEP = reduceMotion() ? 120 : 620;
   const run = () => { READ12.forEach((k, i) => timers.current.push(setTimeout(() => { setRead(i); sfx('tap', true); }, STEP * i))); };
-  // Показ: строки читаются по очереди сами, потом Коди называет порядок.
+  // Показ: строки читаются по очереди сами, потом Коди объясняет каждую часть.
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
     { act: run },
     { wait: STEP * READ12.length + 200 },
-    { act: () => { setRead(READ12.length); put({ done: true }); } },
-    { say: [{ text: c.doctype, pose: 'explain' }].concat(ORDER) }
+    { act: () => { setRead(READ12.length); } },
+    { say: ORDER },
+    { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
-  // Исследование после показа: нажатая часть подсвечена, пока не нажата другая.
+  // По желанию после показа: нажатая часть подсвечена, Коди повторяет её объяснение.
   const explore = solved || demo.done;
   const [picked, setPicked] = useState(null);
-  const [seen, setSeen] = useState([]);
   const pickPart = (k) => {
     if (!explore || !k) return;
     sfx('tap', true); setPicked(k);
-    setSeen((v) => (v.indexOf(k) >= 0 ? v : v.concat(k)));
     sayNow(c.parts[k], 'point');
   };
   const LINE_PART = { doc: 'doc', html: 'html', htmlc: 'html', head: 'head', headc: 'head', title: 'title', body: 'body', bodyc: 'body', text: 'text' };
@@ -1032,16 +1041,14 @@ function S12({ p }) {
       : t.closest('.kz-col-lbl-html, .kz-col-html') ? 'html' : null;
     pickPart(k);
   };
-  const ledLine = useIdleLed(explore && !seen.length, 0);
+  const ledLine = useIdleLed(explore && !picked, 0);
   const at = (k) => read >= READ12.indexOf(k);
-  // Пока Коди называет порядок — свои строки кода и блоки коллажа подсвечены.
-  const SAY_K = { [c.order1.ru]: 'doc', [c.order2.ru]: 'html', [c.order3.ru]: 'inner', [c.order4.ru]: 'title', [c.order5.ru]: 'switch', [c.order6.ru]: 'text' };
-  const sayK = spoken ? null : ['order1', 'order2', 'order3', 'order4', 'order5', 'order6'].map((k) => c[k]).indexOf(speaker.text) >= 0
-    ? SAY_K[speaker.text.ru] : null;
-  const SAY_LINES = { doc: { doc: 'doc' }, html: { html: 'html', htmlc: 'html' },
-    inner: { head: 'head', title: 'head', headc: 'head', body: 'body', text: 'body', bodyc: 'body' },
-    title: { title: 'head' }, switch: { headc: 'head', body: 'body' }, text: { text: 'body' } };
-  const COLL_HL = { doc: 'doc', html: 'html', inner: ['head', 'body'], title: 'title', switch: ['head', 'body'], text: 'body' };
+  // Пока Коди объясняет часть — её строки кода и блок коллажа подсвечены.
+  const walkNow = spoken || picked ? null : WALK.find((w) => w.text === speaker.text);
+  const sayK = walkNow ? walkNow.k : null;
+  const SAY_LINES = { doc: { doc: 'doc' }, html: { html: 'html', htmlc: 'html' }, head: { head: 'head', title: 'head', headc: 'head' },
+    title: { title: 'head' }, switch: { headc: 'head', body: 'body' }, body: { body: 'body', text: 'body', bodyc: 'body' }, text: { text: 'body' } };
+  const COLL_HL = { doc: 'doc', html: 'html', head: 'head', title: 'title', switch: ['head', 'body'], body: 'body', text: 'body' };
   const cur = read >= 0 && read < READ12.length ? READ12[read] : null;
   const lines = [
     { k: 'doc', d: 0, parts: [<span key="d" className="kz-tag"><span className="kz-tk-b">{'<!'}</span><span className="kz-tk-n">DOCTYPE html</span><span className="kz-tk-b">{'>'}</span></span>] },
@@ -1062,7 +1069,7 @@ function S12({ p }) {
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={read < 0 ? c.ask : explore ? c.askTap : c.askDone} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={read < 0 ? c.ask : explore ? c.askTap : c.askDone} n={explore ? seen.length + '/6' : null} />
+        <KzAsk text={read < 0 ? c.ask : explore ? c.askTap : c.askDone} />
         <div className={'kz-scene kz-s12' + (explore ? ' is-explore' : '')}>
           <div className="kz-col kz-col-code"><KzCode lines={lines} cls="kz-code-sm" /></div>
           <div className="kz-col kz-s12-coll" onClick={explore ? pickColl : undefined}>

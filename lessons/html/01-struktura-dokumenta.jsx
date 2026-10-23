@@ -7025,25 +7025,17 @@ const C = {
     say: L3('Brauzer kodni yuqoridan pastga o‘qiydi va sahifani bo‘lakma-bo‘lak yig‘adi. Kuzating.',
       'Браузер читает код сверху вниз и по кусочкам собирает страницу. Смотри.',
       'The browser reads code from top to bottom and builds the page piece by piece. Watch.'),
-    doctype: L3('Birinchi qator <!DOCTYPE html>. Bu qator brauzerga sahifani zamonaviy HTML qoidalari bo‘yicha ko‘rsatishni aytadi.',
-      'Первая строка — <!DOCTYPE html>. Она говорит браузеру показывать страницу по современным правилам HTML.',
-      'The first line is <!DOCTYPE html>. It tells the browser to show the page by modern HTML rules.'),
-    // Порядок и вложенность — короткими репликами: каждая подсвечивает свои строки кода и блок коллажа.
-    order1: L3('Tartib shunday: avval birinchi qator.', 'Порядок такой: сначала первая строка.', 'Here’s the order: the first line comes first.'),
-    order2: L3('Keyin html keladi.', 'Потом html.', 'Then comes html.'),
-    order3: L3('html ichida ikki qism bor: head va body.', 'Внутри html две части: head и body.', 'Inside html there are two parts: head and body.'),
-    order4: L3('title head ichida turadi.', 'title стоит внутри head.', 'title sits inside head.'),
+    // Коди сам проходит по частям (тексты — в parts); между title и body — когда закрывается head.
     order5: L3('Avval head qismini yopamiz. Keyin body qismini ochamiz.', 'Сначала закрываем head. Потом открываем body.', 'First we close head. Then we open body.'),
-    order6: L3('Salomlashuv matni body ichida turadi.', 'Приветствие стоит внутри body.', 'The greeting sits inside body.'),
     askDone: L3('html ichida: avval head (unda title), keyin body (unda matn)',
       'В html: сначала head (в нём title), потом body (в нём текст)',
       'In html: first head (with title), then body (with the text)'),
     ask: L3('Brauzer qanday o‘qishini kuzating', 'Смотри, как читает браузер', 'Watch how the browser reads'),
     // После показа ученик сам нажимает строку кода или часть страницы справа — Коди объясняет эту часть.
-    tapSay: L3('Endi o‘zingiz bosib ko‘ring: kod qatorini yoki o‘ngdagi qismni. Men u nima qilishini aytaman.',
-      'Теперь нажимай сам: строку кода или часть страницы справа. Я расскажу, за что она отвечает.',
-      'Now try it yourself: tap a code line or a part on the right. I’ll tell you what it does.'),
-    askTap: L3('Kod qatorini yoki o‘ngdagi qismni bosing', 'Нажми строку кода или часть справа', 'Tap a code line or a part on the right'),
+    tapSay: L3('Yana eshitmoqchi bo‘lsangiz, kod qatorini yoki o‘ngdagi qismni bosing.',
+      'Хочешь послушать ещё раз — нажми строку кода или часть страницы справа.',
+      'Want to hear it again? Tap a code line or a part on the right.'),
+    askTap: L3('Qatorni yoki qismni bossangiz, Kodi yana aytadi', 'Нажми строку или часть — Коди повторит', 'Tap a line or a part to hear it again'),
     parts: {
       doc: L3('Bu birinchi qator — <!DOCTYPE html>. U brauzerga sahifani zamonaviy HTML qoidalari bo‘yicha ko‘rsatishni aytadi.',
         'Это первая строка — <!DOCTYPE html>. Она говорит браузеру показывать страницу по современным правилам HTML.',
@@ -7893,7 +7885,7 @@ function GoalCard({ goal, n, total, done, doneText }) {
 }
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { askPair: 1, pair: 1, askSlash: 1, slash: 1, magic: 1, magicHead: 1, magicWin: 1, sayTab: 1, sayWin: 1, sayGo: 1, sayInfo: 1, sayTag: 1, why: 1, opts: 1, rules: 1, miss: 1, askTitle: 1, askRaw: 1, toWin: 1, toTab: 1, tapSay: 1, parts: 1, order1: 1, order2: 1, order3: 1, order4: 1, order5: 1, order6: 1, top: 1, bottom: 1, msgs: 1, opened: 1, flew: 1, out: 1, doctype: 1, back: 1, cards: 1, items: 1 });
+Object.assign(SPOKEN, { askPair: 1, pair: 1, askSlash: 1, slash: 1, magic: 1, magicHead: 1, magicWin: 1, sayTab: 1, sayWin: 1, sayGo: 1, sayInfo: 1, sayTag: 1, why: 1, opts: 1, rules: 1, miss: 1, askTitle: 1, askRaw: 1, toWin: 1, toTab: 1, tapSay: 1, parts: 1, order5: 1, top: 1, bottom: 1, msgs: 1, opened: 1, flew: 1, out: 1, back: 1, cards: 1, items: 1 });
 Object.assign(NOT_SPOKEN_IN, { cards: { title: 1, id: 1, raw: 1, want: 1 }, items: { id: 1, want: 1 }, opts: { t: 1, id: 1, right: 1 } });
 
 // Сгенерировано tools/kollazh/paper-data.mjs из assets/paper.mp3 — не править руками.
@@ -8526,7 +8518,11 @@ function KzHand({ targets, run, label }) {
 //   { act } — сразу; { wait: мс } — пауза (полёт, чтение браузера).
 // Первые реплики экрана — как обычно, в useVoice; показ начинается, когда они
 // сказаны. run = false (экран уже решён) — показа нет.
-function useKzDemo({ steps, run, spoken, sayNow, say }) {
+function useKzDemo({ steps, run: run0, spoken, sayNow, say }) {
+  // Показ, раз начавшись, доигрывается до конца: экран мог отметиться пройденным
+  // (run стал false) раньше последних реплик — тогда они не звучали.
+  const runRef = useRef(run0);
+  const run = runRef.current;
   const [idx, setIdx] = useState(-1);
   const ran = useRef(-1);
   const tm = useRef([]);
@@ -8966,9 +8962,10 @@ function TG1({ p }) {
     { look: () => stripRef.current && stripRef.current.querySelector('.kz-tg-word'), act: () => { sfx('pop', true); setN(1); } },
     { wait: 700 },
     { say: [{ text: c.pair, pose: 'wonder' }, { text: c.askSlash, pose: 'point' }] },
-    { act: () => { sfx('ok', true); setN(2); put({ done: true }); } },
+    { act: () => { sfx('ok', true); setN(2); } },
     { wait: 900 },
-    { say: [{ text: c.slash, pose: 'explain' }, { text: c.done, pose: 'smile' }] }
+    { say: [{ text: c.slash, pose: 'explain' }, { text: c.done, pose: 'smile' }] },
+    { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
   // Подсветка за речью: «слово показал текстом» — слово и окно; «это тег» — тег; «косая черта» — закрывающий.
@@ -9023,8 +9020,9 @@ function S3({ p }) {
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
     { look: () => boxRef.current && boxRef.current.querySelector('.kz-frame-lbl-top'), act: () => { sfx('tap', true); setN(1); } },
     { say: [{ text: c.top, pose: 'point' }] },
-    { look: () => boxRef.current && boxRef.current.querySelector('.kz-frame-lbl-bot'), act: () => { sfx('ok', true); setN(2); put({ done: true }); } },
-    { say: [{ text: c.bottom, pose: 'explain' }, { text: c.done, pose: 'smile' }] }
+    { look: () => boxRef.current && boxRef.current.querySelector('.kz-frame-lbl-bot'), act: () => { sfx('ok', true); setN(2); } },
+    { say: [{ text: c.bottom, pose: 'explain' }, { text: c.done, pose: 'smile' }] },
+    { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
   const tagHl = speaker.text === c.sayTag;   // «Тег html показывает…» — оба тега светятся
@@ -9226,8 +9224,9 @@ function S6({ p }) {
       if (!reduceMotion() && sc && kzFly(sc.querySelector('.kz-man [aria-label="title"]'), sc.querySelector('.kz-br-tab'), 760)) setFlying(true);
     } },
     { wait: 800 },
-    { act: () => { setFlying(false); setStep(2); setStamp((v) => v + 1); sfx('ok', true); put({ done: true }); } },
-    { say: [{ text: c.flew, pose: 'wonder' }, { text: c.done, pose: 'smile' }] }
+    { act: () => { setFlying(false); setStep(2); setStamp((v) => v + 1); sfx('ok', true); } },
+    { say: [{ text: c.flew, pose: 'wonder' }, { text: c.done, pose: 'smile' }] },
+    { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
   const title = pick(UI.mySite);
@@ -9473,12 +9472,13 @@ function S9({ p }) {
   const tm = useRef([]);
   useEffect(() => () => { tm.current.forEach(clearTimeout); paperOff(); }, []);
   const later = (ms, f) => tm.current.push(setTimeout(f, ms));
-  const land = () => { paperOff(); setPieces(null); setPhase('out'); sfx('ok', true); put({ done: true }); };
+  const land = () => { paperOff(); setPieces(null); setPhase('out'); sfx('ok', true); };
   // Показ: тело загорается — куски страницы вылетают из него в окно.
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
-    { look: () => sceneRef.current && sceneRef.current.querySelector('.kz-man [aria-label="body"]'), act: () => { sfx('pop', true); setPhase(reduceMotion() ? 'out' : 'measure'); if (reduceMotion()) put({ done: true }); } },
+    { look: () => sceneRef.current && sceneRef.current.querySelector('.kz-man [aria-label="body"]'), act: () => { sfx('pop', true); setPhase(reduceMotion() ? 'out' : 'measure'); } },
     { wait: reduceMotion() ? 100 : S9_PEEK + (S9_FLY + 5 * S9_GAP + 0.4) * 1000 },
-    { say: [{ text: c.out, pose: 'wonder' }, { text: c.done, pose: 'smile' }] }
+    { say: [{ text: c.out, pose: 'wonder' }, { text: c.done, pose: 'smile' }] },
+    { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
   // Бирки и места кусков — от сцены.
@@ -9709,9 +9709,11 @@ function S11({ p }) {
 // именем, тело с текстом. Потом короткими репликами — вложенность перед сборкой
 // (s13): html содержит две целые группы head и body; title — внутри head; head
 // закрывается до открытия body; приветствие — внутри body. Подсветка — за речью.
-// Когда Коди договорил — ученик сам нажимает строку кода или часть коллажа справа
-// (заказчик, 23.10.2026: «всё вышло быстро, не успел рассмотреть»): загораются
-// строки этой части и её блок, Коди говорит, за что она отвечает; счётчик «n/6».
+// Потом Коди сам проходит по частям по порядку (заказчик, 23.10.2026): DOCTYPE,
+// html, head, title, «сначала закрываем head, потом открываем body», body, свой
+// текст — у каждой своя подсветка строк и блока коллажа. После этого по желанию
+// ученик нажимает строку кода или часть коллажа — Коди повторяет объяснение
+// именно этой части. Нажимать не обязательно, «Дальше» доступна.
 // =============================================================================
 const READ12 = ['doc', 'html', 'head', 'title', 'headc', 'body', 'text', 'bodyc', 'htmlc'];
 function S12({ p }) {
@@ -9721,29 +9723,32 @@ function S12({ p }) {
   const [rec, put] = useRec('s12');
   const solved = !!(rec && rec.done);
   const [read, setRead] = useState(solved ? READ12.length : -1);
-  const ORDER = [{ text: c.order1, pose: 'point' }, { text: c.order2, pose: 'point' }, { text: c.order3, pose: 'explain' },
-    { text: c.order4, pose: 'point' }, { text: c.order5, pose: 'point' }, { text: c.order6, pose: 'smile' }, { text: c.tapSay, pose: 'curious' }];
+  // Коди сам проходит по частям: у каждой реплики — своя подсвеченная часть (k).
+  const WALK = [{ text: c.parts.doc, pose: 'explain', k: 'doc' }, { text: c.parts.html, pose: 'point', k: 'html' },
+    { text: c.parts.head, pose: 'point', k: 'head' }, { text: c.parts.title, pose: 'point', k: 'title' },
+    { text: c.order5, pose: 'point', k: 'switch' }, { text: c.parts.body, pose: 'point', k: 'body' },
+    { text: c.parts.text, pose: 'smile', k: 'text' }];
+  const ORDER = WALK.map((w) => ({ text: w.text, pose: w.pose })).concat([{ text: c.tapSay, pose: 'curious' }]);
   const [speaker, say, spoken, sayNow] = useVoice(solved ? ORDER : [{ text: c.say, pose: 'explain' }]);
   const timers = useRef([]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
   const STEP = reduceMotion() ? 120 : 620;
   const run = () => { READ12.forEach((k, i) => timers.current.push(setTimeout(() => { setRead(i); sfx('tap', true); }, STEP * i))); };
-  // Показ: строки читаются по очереди сами, потом Коди называет порядок.
+  // Показ: строки читаются по очереди сами, потом Коди объясняет каждую часть.
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
     { act: run },
     { wait: STEP * READ12.length + 200 },
-    { act: () => { setRead(READ12.length); put({ done: true }); } },
-    { say: [{ text: c.doctype, pose: 'explain' }].concat(ORDER) }
+    { act: () => { setRead(READ12.length); } },
+    { say: ORDER },
+    { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
-  // Исследование после показа: нажатая часть подсвечена, пока не нажата другая.
+  // По желанию после показа: нажатая часть подсвечена, Коди повторяет её объяснение.
   const explore = solved || demo.done;
   const [picked, setPicked] = useState(null);
-  const [seen, setSeen] = useState([]);
   const pickPart = (k) => {
     if (!explore || !k) return;
     sfx('tap', true); setPicked(k);
-    setSeen((v) => (v.indexOf(k) >= 0 ? v : v.concat(k)));
     sayNow(c.parts[k], 'point');
   };
   const LINE_PART = { doc: 'doc', html: 'html', htmlc: 'html', head: 'head', headc: 'head', title: 'title', body: 'body', bodyc: 'body', text: 'text' };
@@ -9758,16 +9763,14 @@ function S12({ p }) {
       : t.closest('.kz-col-lbl-html, .kz-col-html') ? 'html' : null;
     pickPart(k);
   };
-  const ledLine = useIdleLed(explore && !seen.length, 0);
+  const ledLine = useIdleLed(explore && !picked, 0);
   const at = (k) => read >= READ12.indexOf(k);
-  // Пока Коди называет порядок — свои строки кода и блоки коллажа подсвечены.
-  const SAY_K = { [c.order1.ru]: 'doc', [c.order2.ru]: 'html', [c.order3.ru]: 'inner', [c.order4.ru]: 'title', [c.order5.ru]: 'switch', [c.order6.ru]: 'text' };
-  const sayK = spoken ? null : ['order1', 'order2', 'order3', 'order4', 'order5', 'order6'].map((k) => c[k]).indexOf(speaker.text) >= 0
-    ? SAY_K[speaker.text.ru] : null;
-  const SAY_LINES = { doc: { doc: 'doc' }, html: { html: 'html', htmlc: 'html' },
-    inner: { head: 'head', title: 'head', headc: 'head', body: 'body', text: 'body', bodyc: 'body' },
-    title: { title: 'head' }, switch: { headc: 'head', body: 'body' }, text: { text: 'body' } };
-  const COLL_HL = { doc: 'doc', html: 'html', inner: ['head', 'body'], title: 'title', switch: ['head', 'body'], text: 'body' };
+  // Пока Коди объясняет часть — её строки кода и блок коллажа подсвечены.
+  const walkNow = spoken || picked ? null : WALK.find((w) => w.text === speaker.text);
+  const sayK = walkNow ? walkNow.k : null;
+  const SAY_LINES = { doc: { doc: 'doc' }, html: { html: 'html', htmlc: 'html' }, head: { head: 'head', title: 'head', headc: 'head' },
+    title: { title: 'head' }, switch: { headc: 'head', body: 'body' }, body: { body: 'body', text: 'body', bodyc: 'body' }, text: { text: 'body' } };
+  const COLL_HL = { doc: 'doc', html: 'html', head: 'head', title: 'title', switch: ['head', 'body'], body: 'body', text: 'body' };
   const cur = read >= 0 && read < READ12.length ? READ12[read] : null;
   const lines = [
     { k: 'doc', d: 0, parts: [<span key="d" className="kz-tag"><span className="kz-tk-b">{'<!'}</span><span className="kz-tk-n">DOCTYPE html</span><span className="kz-tk-b">{'>'}</span></span>] },
@@ -9788,7 +9791,7 @@ function S12({ p }) {
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={read < 0 ? c.ask : explore ? c.askTap : c.askDone} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={read < 0 ? c.ask : explore ? c.askTap : c.askDone} n={explore ? seen.length + '/6' : null} />
+        <KzAsk text={read < 0 ? c.ask : explore ? c.askTap : c.askDone} />
         <div className={'kz-scene kz-s12' + (explore ? ' is-explore' : '')}>
           <div className="kz-col kz-col-code"><KzCode lines={lines} cls="kz-code-sm" /></div>
           <div className="kz-col kz-s12-coll" onClick={explore ? pickColl : undefined}>

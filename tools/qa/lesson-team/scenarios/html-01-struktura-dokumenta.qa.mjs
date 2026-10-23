@@ -56,6 +56,8 @@ const STEPS = [
     await qa.platform.next();
     await qa.waitFor(() => qa.text('.kz-br-tab-t') === qa.data.site, 60000, 'показ: карточка title улетела на вкладку');
     await qa.waitFor(() => qa.platform.nextEnabled(), 40000, 'показ закончен');
+    const said = (re) => qa.events('tts').some((e) => re.test((e.data && e.data.text) || ''));
+    qa.expect(said(new RegExp(qa.data.endS6)), 'последняя реплика показа прозвучала (показ не обрывается)');
   } },
   { name: 's7: своё имя в title', shot: 's7-done', run: async (qa) => {
     await qa.platform.next();
@@ -86,6 +88,8 @@ const STEPS = [
     await qa.platform.next();
     await qa.waitFor(() => qa.q('.kz-bit-pic'), 40000, 'показ: картинка вылетела в окно');
     await qa.waitFor(() => qa.platform.nextEnabled(), 40000, 'показ закончен');
+    const said = (re) => qa.events('tts').some((e) => re.test((e.data && e.data.text) || ''));
+    qa.expect(said(new RegExp(qa.data.endS9)), 'последняя реплика показа прозвучала');
   } },
   { name: 's10: привет в body', shot: 's10-done', run: async (qa) => {
     await qa.platform.next();
@@ -113,12 +117,14 @@ const STEPS = [
     qa.expect(!qa.q('.kz-sheet .kz-btn') && !qa.q('.kz-hand'), 'показ: ни кнопок, ни руки');
     await qa.waitFor(() => qa.q('.kz-col-text'), 40000, 'показ: страница собрана');
     await qa.waitFor(() => qa.platform.nextEnabled(), 60000, 'показ закончен');
-    // После показа ученик сам нажимает части: строку кода и блок справа.
-    await qa.waitFor(() => /0\/6/.test(qa.text('.kz-ask-n')), 10000, 'счётчик частей 0/6');
+    // Коди сам объяснил все части; по желанию ученик нажимает строку кода или блок справа — Коди повторяет.
+    const said = (re) => qa.events('tts').some((e) => re.test((e.data && e.data.text) || ''));
+    qa.expect(said(new RegExp(qa.data.walkS12)) && said(new RegExp(qa.data.endS12)), 'Коди прошёл по частям до конца и пригласил нажать');
+    qa.expect(!qa.q('.kz-ask-n'), 'счётчика нет: нажимать не обязательно');
     await qa.click(qa.qa('.kz-line.kz-tap').find((x) => x.textContent.indexOf('<title>') === 0), 'строка title');
-    qa.expect(qa.qa('.kz-line.is-say').length === 1 && /1\/6/.test(qa.text('.kz-ask-n')), 'title: своя строка подсвечена, 1/6');
+    qa.expect(qa.qa('.kz-line.is-say').length === 1, 'title: своя строка подсвечена');
     await qa.click('.kz-col-body', 'блок body справа');
-    qa.expect(qa.qa('.kz-line.is-say').length === 3 && /2\/6/.test(qa.text('.kz-ask-n')), 'body: три строки body подсвечены, 2/6');
+    qa.expect(qa.qa('.kz-line.is-say').length === 3, 'body: три строки body подсвечены');
   } },
   { name: 's13: собрать каркас', shot: 's13-done', run: async (qa) => {
     await qa.platform.next();
@@ -183,9 +189,9 @@ export default {
   inputScreens: [5, 8, 11],
   expectFinish: true,
   data: {
-    ru: { site: 'Мой сайт', myTitle: 'Шахматы', myText: 'Сыграем партию?', hello: 'Привет, мир!', pic: 'картинка', play: 'Играть', robots: 'Роботы', salom: 'Привет!', draft: 'Черновик' },
-    uz: { site: 'Mening saytim', myTitle: 'Shaxmat', myText: 'Bir o‘yin o‘ynaymizmi?', hello: 'Salom, dunyo!', pic: 'rasm', play: 'O‘ynash', robots: 'Robotlar', salom: 'Salom!', draft: 'Qoralama' },
-    en: { site: 'My site', myTitle: 'Chess', myText: 'Shall we play a game?', hello: 'Hello, world!', pic: 'picture', play: 'Play', robots: 'Robots', salom: 'Hello!', draft: 'Draft' }
+    ru: { site: 'Мой сайт', myTitle: 'Шахматы', myText: 'Сыграем партию?', hello: 'Привет, мир!', pic: 'картинка', play: 'Играть', robots: 'Роботы', salom: 'Привет!', draft: 'Черновик', endS6: 'Итак: в head', endS9: 'текст, картинки, кнопки', walkS12: 'Это твой текст', endS12: 'послушать ещё раз' },
+    uz: { site: 'Mening saytim', myTitle: 'Shaxmat', myText: 'Bir o‘yin o‘ynaymizmi?', hello: 'Salom, dunyo!', pic: 'rasm', play: 'O‘ynash', robots: 'Robotlar', salom: 'Salom!', draft: 'Qoralama', endS6: 'title ichida esa sahifa nomi', endS9: 'hamma narsa bor', walkS12: 'Bu sizning matningiz', endS12: 'Yana eshitmoqchi' },
+    en: { site: 'My site', myTitle: 'Chess', myText: 'Shall we play a game?', hello: 'Hello, world!', pic: 'picture', play: 'Play', robots: 'Robots', salom: 'Hello!', draft: 'Draft', endS6: 'the page name is inside title', endS9: 'body holds everything you see', walkS12: 'This is your text', endS12: 'hear it again' }
   },
   steps: STEPS,
   flows: [

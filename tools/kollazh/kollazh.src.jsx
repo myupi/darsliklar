@@ -367,25 +367,17 @@ const C = {
     say: L3('Brauzer kodni yuqoridan pastga o‘qiydi va sahifani bo‘lakma-bo‘lak yig‘adi. Kuzating.',
       'Браузер читает код сверху вниз и по кусочкам собирает страницу. Смотри.',
       'The browser reads code from top to bottom and builds the page piece by piece. Watch.'),
-    doctype: L3('Birinchi qator <!DOCTYPE html>. Bu qator brauzerga sahifani zamonaviy HTML qoidalari bo‘yicha ko‘rsatishni aytadi.',
-      'Первая строка — <!DOCTYPE html>. Она говорит браузеру показывать страницу по современным правилам HTML.',
-      'The first line is <!DOCTYPE html>. It tells the browser to show the page by modern HTML rules.'),
-    // Порядок и вложенность — короткими репликами: каждая подсвечивает свои строки кода и блок коллажа.
-    order1: L3('Tartib shunday: avval birinchi qator.', 'Порядок такой: сначала первая строка.', 'Here’s the order: the first line comes first.'),
-    order2: L3('Keyin html keladi.', 'Потом html.', 'Then comes html.'),
-    order3: L3('html ichida ikki qism bor: head va body.', 'Внутри html две части: head и body.', 'Inside html there are two parts: head and body.'),
-    order4: L3('title head ichida turadi.', 'title стоит внутри head.', 'title sits inside head.'),
+    // Коди сам проходит по частям (тексты — в parts); между title и body — когда закрывается head.
     order5: L3('Avval head qismini yopamiz. Keyin body qismini ochamiz.', 'Сначала закрываем head. Потом открываем body.', 'First we close head. Then we open body.'),
-    order6: L3('Salomlashuv matni body ichida turadi.', 'Приветствие стоит внутри body.', 'The greeting sits inside body.'),
     askDone: L3('html ichida: avval head (unda title), keyin body (unda matn)',
       'В html: сначала head (в нём title), потом body (в нём текст)',
       'In html: first head (with title), then body (with the text)'),
     ask: L3('Brauzer qanday o‘qishini kuzating', 'Смотри, как читает браузер', 'Watch how the browser reads'),
     // После показа ученик сам нажимает строку кода или часть страницы справа — Коди объясняет эту часть.
-    tapSay: L3('Endi o‘zingiz bosib ko‘ring: kod qatorini yoki o‘ngdagi qismni. Men u nima qilishini aytaman.',
-      'Теперь нажимай сам: строку кода или часть страницы справа. Я расскажу, за что она отвечает.',
-      'Now try it yourself: tap a code line or a part on the right. I’ll tell you what it does.'),
-    askTap: L3('Kod qatorini yoki o‘ngdagi qismni bosing', 'Нажми строку кода или часть справа', 'Tap a code line or a part on the right'),
+    tapSay: L3('Yana eshitmoqchi bo‘lsangiz, kod qatorini yoki o‘ngdagi qismni bosing.',
+      'Хочешь послушать ещё раз — нажми строку кода или часть страницы справа.',
+      'Want to hear it again? Tap a code line or a part on the right.'),
+    askTap: L3('Qatorni yoki qismni bossangiz, Kodi yana aytadi', 'Нажми строку или часть — Коди повторит', 'Tap a line or a part to hear it again'),
     parts: {
       doc: L3('Bu birinchi qator — <!DOCTYPE html>. U brauzerga sahifani zamonaviy HTML qoidalari bo‘yicha ko‘rsatishni aytadi.',
         'Это первая строка — <!DOCTYPE html>. Она говорит браузеру показывать страницу по современным правилам HTML.',
@@ -532,7 +524,7 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { askPair: 1, pair: 1, askSlash: 1, slash: 1, magic: 1, magicHead: 1, magicWin: 1, sayTab: 1, sayWin: 1, sayGo: 1, sayInfo: 1, sayTag: 1, why: 1, opts: 1, rules: 1, miss: 1, askTitle: 1, askRaw: 1, toWin: 1, toTab: 1, tapSay: 1, parts: 1, order1: 1, order2: 1, order3: 1, order4: 1, order5: 1, order6: 1, top: 1, bottom: 1, msgs: 1, opened: 1, flew: 1, out: 1, doctype: 1, back: 1, cards: 1, items: 1 });
+Object.assign(SPOKEN, { askPair: 1, pair: 1, askSlash: 1, slash: 1, magic: 1, magicHead: 1, magicWin: 1, sayTab: 1, sayWin: 1, sayGo: 1, sayInfo: 1, sayTag: 1, why: 1, opts: 1, rules: 1, miss: 1, askTitle: 1, askRaw: 1, toWin: 1, toTab: 1, tapSay: 1, parts: 1, order5: 1, top: 1, bottom: 1, msgs: 1, opened: 1, flew: 1, out: 1, back: 1, cards: 1, items: 1 });
 Object.assign(NOT_SPOKEN_IN, { cards: { title: 1, id: 1, raw: 1, want: 1 }, items: { id: 1, want: 1 }, opts: { t: 1, id: 1, right: 1 } });
 
 /*@FILE:kollazh-paper-data.jsx@*/
