@@ -6687,7 +6687,7 @@ const CANON_SCREEN_CSS = CANON_SCREEN_CSS_BASE + CANON_MECH_CSS + CANON_DZ_CSS +
 //   · Конфетти только в финале: похвалы экранов — поза smile.
 //
 // СИСТЕМА СЛОВ. Заголовок (sarlavha) — h1…h6, h1 главный и самый крупный,
-// обычно один — название страницы; h2 — заголовок раздела. Абзац (xatboshi) —
+// обычно один — главный заголовок страницы (не «название»: название страницы — title, урок 1); h2 — заголовок раздела. Абзац (xatboshi) —
 // p. b — жирный (qalin), i — курсив (qiya, kursiv). Как в уроке 1: teg,
 // yorliq — только вкладка, oyna — окно, sahifa nomi — название.
 //
@@ -6729,7 +6729,6 @@ const UI = {
   nextLesson: L3('Keyingi dars', 'Следующий урок', 'Next lesson'),
   next: L3('Ro‘yxatlar', 'Списки', 'Lists'),
   turn: L3('Aylantirish', 'Превратить', 'Transform'),
-  read: L3('Brauzerdek o‘qish', 'Читать как браузер', 'Read like a browser'),
   tab: L3('Yorliq', 'Вкладка', 'Tab'),
   win: L3('Oyna', 'Окно', 'Window'),
   mySite: L3('Mening saytim', 'Мой сайт', 'My site'),
@@ -6772,11 +6771,11 @@ const WRAP_MSGS = {
 // ─────────────────────────────────────────────────────────────────────────────
 const C = {
   s1: {
-    eyebrow: L3('Bo‘tqa matn', 'Каша из текста', 'A wall of text'),
+    eyebrow: L3('Chalkash matn', 'Каша из текста', 'A wall of text'),
     say: L3('Bu odamchaning mushugi haqidagi sahifasi. Lekin hamma so‘zlar bir-biriga yopishib qolgan: qayerda nom, qayerda hikoya, tushunib bo‘lmaydi.',
       'Это страница человечка о его коте. Но все слова слиплись в одну кашу: где название, где рассказ — не понять.',
       'This is the paper buddy’s page about his cat. But all the words are stuck together: you can’t tell the title from the story.'),
-    magic: L3('Voy, qarang! Tepada katta sarlavha paydo bo‘ldi.', 'Ого! Наверху появилось крупное название.', 'Whoa! A big heading appeared at the top.'),
+    magic: L3('Voy, qarang! Tepada katta sarlavha paydo bo‘ldi.', 'Ого! Наверху появился крупный заголовок.', 'Whoa! A big heading appeared at the top.'),
     magicP: L3('Matn xatboshilarga bo‘lindi.', 'Текст разделился на абзацы.', 'The text split into paragraphs.'),
     magicB: L3('Muhim so‘z esa qalin bo‘ldi.', 'А важное слово стало жирным.', 'And the important word turned bold.'),
     done: L3('Bugun matnni shunday bezashni o‘rganasiz va o‘z sahifangizni yasaysiz!', 'Сегодня ты научишься так оформлять текст и сделаешь свою страницу!', 'Today you’ll learn to shape text like this and make your own page!'),
@@ -6802,18 +6801,18 @@ const C = {
   s3: {
     eyebrow: L3('Sarlavhalar', 'Заголовки', 'Headings'),
     say: L3('Sarlavha teglari oltita: h1 dan h6 gacha.', 'Тегов заголовков шесть: от h1 до h6.', 'There are six heading tags: from h1 to h6.'),
-    askBig: L3('Eng katta sarlavhani bosing.', 'Нажми самый крупный заголовок.', 'Tap the biggest heading.'),
-    big: L3('Bu h1. U eng muhim va eng katta sarlavha. Odatda sahifada bitta bo‘ladi: bu sahifaning nomi.',
-      'Это h1 — самый главный и самый крупный заголовок. Обычно он на странице один: это её название.',
-      'This is h1, the most important and biggest heading. A page usually has just one: its title.'),
-    askSmall: L3('Endi eng kichik sarlavhani bosing.', 'Теперь нажми самый маленький.', 'Now tap the smallest one.'),
+    askBig: L3('Qarang: eng katta sarlavha', 'Смотри: самый крупный заголовок', 'Watch: the biggest heading'),
+    big: L3('Bu h1. U eng muhim va eng katta sarlavha. Odatda sahifada h1 bitta bo‘ladi.',
+      'Это h1 — самый главный и самый крупный заголовок. Обычно он на странице один.',
+      'This is h1, the most important and biggest heading. A page usually has just one.'),
+    askSmall: L3('Qarang: eng kichik sarlavha', 'Смотри: самый мелкий заголовок', 'Watch: the smallest heading'),
     small: L3('Bu h6, eng kichik sarlavha. Raqam qancha katta bo‘lsa, sarlavha shuncha kichik.',
       'Это h6 — самый маленький. Чем больше цифра, тем мельче заголовок.',
       'This is h6, the smallest. The bigger the number, the smaller the heading.'),
-    done: L3('Brauzer sarlavhalarni qalin va katta qilib ko‘rsatadi. Qog‘oz chiziqlarni tushunarli bo‘lishi uchun yasadik.',
+    done: L3('Brauzer sarlavhalarni qalin va katta qilib ko‘rsatadi. Qog‘oz tasmalarni esa yaqqol ko‘rinishi uchun yasadik.',
       'Браузер показывает заголовки крупно и жирно. Бумажные полоски мы сделали для наглядности.',
       'The browser shows headings big and bold. We made the paper strips to help you see it.'),
-    ask: L3('Sarlavhalarni bosing', 'Нажми заголовки', 'Tap the headings'),
+    ask: L3('Sarlavhalarga qarang', 'Смотри на заголовки', 'Watch the headings'),
     word: L3('Sarlavha', 'Заголовок', 'Heading')
   },
   s4: {
@@ -6838,22 +6837,22 @@ const C = {
   },
   s5: {
     eyebrow: L3('Qaysi sarlavha?', 'Какой заголовок?', 'Which heading?'),
-    say: L3('Sahifa nomi uchun h1 kerak, bo‘limlar sarlavhalari uchun esa h2. Teglarni o‘z joyiga torting, bittasi ortiqcha.',
-      'Название страницы — это h1, заголовки разделов — h2. Перетащи теги на места, один тег лишний.',
-      'The page title is h1, and section headings are h2. Drag the tags into place; one tag is extra.'),
+    say: L3('Butun sahifaning asosiy sarlavhasi uchun h1 kerak, bo‘lim sarlavhalari uchun esa h2. Teglarni o‘z joyiga torting, bittasi ortiqcha.',
+      'Главный заголовок страницы — это h1, заголовки разделов — h2. Перетащи теги на места, один тег лишний.',
+      'The main heading of the page is h1, and section headings are h2. Drag the tags into place; one tag is extra.'),
     why: {
-      h1sec: L3('h1 sahifada bitta, bu nom. Bo‘lim uchun h2 kerak.', 'h1 на странице один — это название. Для раздела нужен h2.', 'A page has one h1: its title. A section needs h2.'),
-      h2title: L3('Sahifa nomi eng muhimi, unga h1 kerak.', 'Название страницы — самое главное, ему нужен h1.', 'The page title is the most important: it needs h1.'),
+      h1sec: L3('h1 sahifada bitta, bu asosiy sarlavha. Bo‘lim uchun h2 kerak.', 'h1 на странице один — это главный заголовок. Для раздела нужен h2.', 'A page has one h1: the main heading. A section needs h2.'),
+      h2title: L3('Bu butun sahifaning asosiy sarlavhasi, unga h1 kerak.', 'Это главный заголовок всей страницы, ему нужен h1.', 'This is the main heading of the whole page: it needs h1.'),
       h6: L3('h6 eng kichik sarlavha. Bu yerga boshqa teg kerak.', 'h6 — самый мелкий. Здесь нужен другой тег.', 'h6 is the smallest. A different tag goes here.')
     },
     hints: [
-      L3('Qaysi qator butun sahifaning nomi?', 'Какая строка — название всей страницы?', 'Which line is the title of the whole page?'),
-      L3('Nom tepada turadi. Qolgan ikkitasi bo‘limlar.', 'Название стоит сверху. Остальные две строки — разделы.', 'The title is at the top. The other two lines are sections.'),
+      L3('Qaysi qator butun sahifaning asosiy sarlavhasi?', 'Какая строка — главный заголовок всей страницы?', 'Which line is the main heading of the whole page?'),
+      L3('Asosiy sarlavha tepada turadi. Qolgan ikkitasi bo‘limlar.', 'Главный заголовок стоит сверху. Остальные две строки — разделы.', 'The main heading is at the top. The other two lines are sections.'),
       L3('h1 ni tepadagi qatorga, ikkala h2 ni pastdagi qatorlarga qo‘ying.', 'h1 — на верхнюю строку, оба h2 — на две нижние.', 'Put h1 on the top line and both h2 tags on the two lines below.')
     ],
-    ok: L3('To‘g‘ri! Nom katta, bo‘limlar kichikroq: sahifani o‘qish oson.', 'Верно! Название крупно, разделы помельче — страницу легко читать.', 'Right! The title is big, the sections smaller: the page is easy to read.'),
+    ok: L3('To‘g‘ri! Asosiy sarlavha katta, bo‘limlar kichikroq: sahifani o‘qish oson.', 'Верно! Главный заголовок крупно, разделы помельче — страницу легко читать.', 'Right! The main heading is big, the sections smaller: the page is easy to read.'),
     ask: L3('Tegni sarlavhaga torting', 'Перетащи тег на заголовок', 'Drag a tag onto a heading'),
-    askPlace: L3('Endi joyini bosing', 'Теперь нажми место', 'Now tap its place'),
+    askPlace: L3('Endi qatorni bosing', 'Теперь нажми строку', 'Now tap a line'),
     pickFirst: L3('Avval tegni bosing.', 'Сначала нажми тег.', 'Tap a tag first.'),
     lines: [L3('Mening mushugim', 'Мой кот', 'My cat'), L3('U nima yeydi', 'Что он ест', 'What he eats'), L3('U qanday o‘ynaydi', 'Как он играет', 'How he plays')]
   },
@@ -6862,13 +6861,13 @@ const C = {
     say: L3('Kodda uchta qator, brauzer esa ularni bitta qatorga yopishtirdi. Koddagi qator ko‘chishini brauzer ko‘rmaydi.',
       'В коде три строки, а браузер склеил их в одну. Переносы строк в коде браузер не видит.',
       'The code has three lines, but the browser glued them into one. The browser doesn’t see line breaks in code.'),
-    sayP: L3('Matn xatboshi bo‘lishi uchun uni p tegiga o‘raymiz. Har bir qatorni bosing.',
-      'Чтобы текст стал абзацем, его оборачивают в тег p. Нажми каждую строку.',
-      'To make text a paragraph, we wrap it in the p tag. Tap each line.'),
+    sayP: L3('Matn xatboshi bo‘lishi uchun uni p tegiga o‘raymiz. Qarang.',
+      'Чтобы текст стал абзацем, его оборачивают в тег p. Смотри.',
+      'To make text a paragraph, we wrap it in the p tag. Watch.'),
     done: L3('Har bir p alohida xatboshi. Xatboshilar orasida brauzer o‘zi bo‘sh joy qoldiradi.',
       'Каждый p — отдельный абзац. Между абзацами браузер сам делает отступ.',
       'Each p is a separate paragraph. The browser adds space between paragraphs by itself.'),
-    ask: L3('Har bir qatorni bosing', 'Нажми каждую строку', 'Tap each line'),
+    ask: L3('Qarang: qatorlar xatboshilarga aylanadi', 'Смотри: строки становятся абзацами', 'Watch: the lines become paragraphs'),
     lines: [L3('Mushugim kun bo‘yi uxlaydi.', 'Мой кот спит весь день.', 'My cat sleeps all day.'),
       L3('Kechqurun u o‘ynaydi.', 'Вечером он играет.', 'In the evening he plays.'),
       L3('Baliqni yaxshi ko‘radi.', 'Он любит рыбу.', 'He loves fish.')]
@@ -6892,7 +6891,7 @@ const C = {
     eyebrow: L3('Nechta xatboshi?', 'Сколько абзацев?', 'How many paragraphs?'),
     say: L3('Endi brauzer kabi o‘ylang: xatboshilarni qatorlar emas, p teglari belgilaydi.', 'Теперь подумай как браузер: абзацы задают не строки, а теги p.', 'Now think like a browser: paragraphs come from p tags, not from lines.'),
     askQ: L3('Brauzer nechta xatboshi ko‘rsatadi?', 'Сколько абзацев покажет браузер?', 'How many paragraphs will the browser show?'),
-    ok: L3('To‘g‘ri! p nechta bo‘lsa, xatboshi shuncha.', 'Верно! Сколько p — столько и абзацев.', 'Right! As many p tags, as many paragraphs.'),
+    ok: L3('To‘g‘ri! p nechta bo‘lsa, xatboshi shuncha.', 'Верно! Сколько p — столько и абзацев.', 'Right! The number of p tags is the number of paragraphs.'),
     miss: {
       one: L3('Qarang: qatorlar bir nechta, lekin p bitta. Demak, xatboshi ham bitta.', 'Смотри: строк несколько, а p один. Значит, и абзац один.', 'Look: there are several lines, but only one p. So there is one paragraph.'),
       many: L3('Qarang: p teglari bir nechta. Har bir p alohida xatboshi, ular qaysi qatorda turishi muhim emas.', 'Смотри: тегов p несколько. Каждый p — отдельный абзац, неважно, в какой он строке.', 'Look: there are several p tags. Each p is a separate paragraph, whatever line it’s on.')
@@ -6902,12 +6901,12 @@ const C = {
   s9: {
     eyebrow: L3('Qalin va qiya', 'Жирный и курсив', 'Bold and italic'),
     say: L3('Muhim so‘zni ajratish uchun yana ikkita teg bor.', 'Чтобы выделить важное слово, есть ещё два тега.', 'There are two more tags to make a word stand out.'),
-    askB: L3('b tegini bosing.', 'Нажми тег b.', 'Tap the b tag.'),
-    b: L3('b tegi so‘zni qalin qiladi, uni darhol payqashadi.', 'Тег b делает слово жирным, чтобы его заметили.', 'The b tag makes a word bold so people notice it.'),
-    askI: L3('Endi i tegini bosing.', 'Теперь нажми тег i.', 'Now tap the i tag.'),
-    i: L3('i tegi esa so‘zni qiyshaytiradi, bu kursiv.', 'А тег i наклоняет слово — это курсив.', 'And the i tag slants the word: that’s italic.'),
+    askB: L3('Qarang: b tegi', 'Смотри: тег b', 'Watch: the b tag'),
+    b: L3('b tegi so‘zni qalin qiladi, shunda u darhol ko‘zga tashlanadi.', 'Тег b делает слово жирным, чтобы его заметили.', 'The b tag makes a word bold so people notice it.'),
+    askI: L3('Qarang: i tegi', 'Смотри: тег i', 'Watch: the i tag'),
+    i: L3('i tegi esa so‘zni qiya qiladi. Bu kursiv deyiladi.', 'А тег i наклоняет слово — это курсив.', 'And the i tag slants the word: that’s italic.'),
     done: L3('b va i so‘z atrofiga qo‘yiladi: so‘zdan oldin ochuvchi teg, so‘zdan keyin yopuvchi teg.', 'b и i ставят вокруг слова: открывающий тег перед ним, закрывающий после.', 'b and i go around a word: the opening tag before it, the closing tag after.'),
-    ask: L3('b va i teglarini bosing', 'Нажми теги b и i', 'Tap the b and i tags')
+    ask: L3('b va i teglariga qarang', 'Смотри на теги b и i', 'Watch the b and i tags')
   },
   s10: {
     eyebrow: L3('So‘zni ajrating', 'Выдели слово', 'Make a word stand out'),
@@ -6941,25 +6940,25 @@ const C = {
   s12: {
     eyebrow: L3('Yuqoridan pastga', 'Сверху вниз', 'Top to bottom'),
     say: L3('Bu odamchaning butun sahifasi. Brauzer uni qanday o‘qishini ko‘raylik.', 'Это вся страница человечка. Посмотрим, как браузер её читает.', 'This is the buddy’s whole page. Let’s see how the browser reads it.'),
-    order1: L3('Brauzer kodni yuqoridan pastga o‘qiydi. Avval h1, sahifa nomi.', 'Браузер читает код сверху вниз. Сначала h1 — название страницы.', 'The browser reads code from top to bottom. First h1, the page title.'),
-    order2: L3('Keyin xatboshi. Uning ichida qalin va qiya so‘z bor.', 'Потом абзац, а в нём жирное и наклонное слово.', 'Then a paragraph with a bold and a slanted word inside.'),
+    order1: L3('Brauzer kodni yuqoridan pastga o‘qiydi. Avval h1, asosiy sarlavha.', 'Браузер читает код сверху вниз. Сначала h1 — главный заголовок.', 'The browser reads code from top to bottom. First h1, the main heading.'),
+    order2: L3('Keyin xatboshi. Uning ichida qalin so‘z va qiya so‘z bor.', 'Потом абзац, а в нём жирное слово и наклонное слово.', 'Then a paragraph with a bold word and a slanted word inside.'),
     order3: L3('Keyin h2, bo‘lim sarlavhasi, va yana xatboshi.', 'Дальше h2 — заголовок раздела, и снова абзац.', 'Then h2, a section heading, and another paragraph.'),
-    ask: L3('«Brauzerdek o‘qish» tugmasini bosing', 'Нажми «Читать как браузер»', 'Tap “Read like a browser”'),
+    ask: L3('Brauzer qanday o‘qishini kuzating', 'Смотри, как читает браузер', 'Watch how the browser reads'),
     askDone: L3('Brauzer yuqoridan pastga o‘qiydi', 'Браузер читает сверху вниз', 'The browser reads top to bottom')
   },
   s13: {
     eyebrow: L3('O‘z sahifangiz', 'Своя страница', 'Your page'),
-    say: L3('Endi o‘z sahifangizni yasang. Avval h1 ichiga uning nomini yozing: o‘zingizga yoqqan narsa haqida.',
-      'Теперь твоя страница. Сначала напиши в h1 её название — о том, что тебе нравится.',
-      'Now your own page. First, type its title in h1, about something you like.'),
+    say: L3('Endi o‘z sahifangizni yasang. Avval h1 ichiga sarlavha yozing: o‘zingizga yoqqan narsa haqida.',
+      'Теперь твоя страница. Сначала напиши в h1 заголовок — о том, что тебе нравится.',
+      'Now your own page. First, type a heading in h1, about something you like.'),
     sayP: L3('Endi p ichiga bu haqda bitta gap yozing.', 'Теперь напиши в p одно предложение об этом.', 'Now type one sentence about it in p.'),
     ok: L3('Sahifangiz tayyor: sarlavha va xatboshi bor.', 'Твоя страница готова: есть заголовок и абзац.', 'Your page is ready: it has a heading and a paragraph.'),
     hints: [
-      L3('Nom o‘ylab toping: masalan, sevimli o‘yiningiz yoki hayvoningiz.', 'Придумай название: например, любимая игра или животное.', 'Make up a title: your favorite game or animal, for example.'),
+      L3('Sarlavha o‘ylab toping: masalan, sevimli o‘yiningiz yoki hayvoningiz.', 'Придумай заголовок: например, любимая игра или животное.', 'Make up a heading: your favorite game or animal, for example.'),
       L3('Faqat so‘z yozing, teglar allaqachon joyida.', 'Пиши только слова — теги уже на месте.', 'Type only words: the tags are already in place.'),
       L3('Masalan: Futbol. Keyin: Men do‘stlarim bilan futbol o‘ynayman.', 'Например: Футбол. А потом: Я играю в футбол с друзьями.', 'For example: Football. Then: I play football with my friends.')
     ],
-    askTitle: L3('h1 ichiga sahifa nomini yozing', 'Напиши название в h1', 'Type the title in h1'),
+    askTitle: L3('h1 ichiga sarlavha yozing', 'Напиши заголовок в h1', 'Type a heading in h1'),
     askP: L3('p ichiga bitta gap yozing', 'Напиши в p одно предложение', 'Type one sentence in p'),
     phTitle: L3('Masalan: Futbol', 'Например: Футбол', 'For example: Football'),
     phP: L3('Masalan: Men futbol o‘ynayman.', 'Например: Я играю в футбол.', 'For example: I play football.')
@@ -6983,7 +6982,7 @@ const C = {
     eyebrow: L3('Xulosa', 'Вывод', 'Summary'),
     say: [
       { text: L3('Qarang, bu sizning sahifangiz!', 'Посмотри, это твоя страница!', 'Look, this is your page!'), k: null },
-      { text: L3('h1 dan h6 gacha teglar sarlavhalar. h1 eng katta, bu sahifa nomi.', 'Теги от h1 до h6 — заголовки. h1 самый крупный, это название страницы.', 'The tags from h1 to h6 are headings. h1 is the biggest: the page title.'), k: 'h' },
+      { text: L3('h1 dan h6 gacha teglar sarlavhalar. h1 eng katta, bu asosiy sarlavha.', 'Теги от h1 до h6 — заголовки. h1 самый крупный, это главный заголовок.', 'The tags from h1 to h6 are headings. h1 is the biggest: the main heading.'), k: 'h' },
       { text: L3('p tegi xatboshi. Har bir p yangi qatordan boshlanadi.', 'Тег p — абзац. Каждый p начинается с новой строки.', 'The p tag is a paragraph. Each p starts on a new line.'), k: 'p' },
       { text: L3('b so‘zni qalin qiladi, i esa qiya qiladi.', 'b делает слово жирным, а i — наклонным.', 'b makes a word bold, and i makes it slanted.'), k: 'bi' },
       { text: L3('Tabriklayman! Endi sahifangiz o‘z hikoyasini aytib bera oladi.', 'Ура! Теперь твоя страница умеет рассказывать.', 'Hooray! Now your page can tell a story.'), k: null }
@@ -7703,8 +7702,8 @@ function GoalCard({ goal, n, total, done, doneText }) {
 }
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { magic: 1, magicP: 1, magicB: 1, askBig: 1, big: 1, askSmall: 1, small: 1, msgs: 1, sayP: 1, askQ: 1, miss: 1,
-  askB: 1, b: 1, askI: 1, i: 1, order1: 1, order2: 1, order3: 1, cards: 1 });
+Object.assign(SPOKEN, { magic: 1, magicP: 1, magicB: 1, big: 1, small: 1, msgs: 1, sayP: 1, askQ: 1, miss: 1,
+  b: 1, i: 1, order1: 1, order2: 1, order3: 1, cards: 1 });
 Object.assign(NOT_SPOKEN_IN, { cards: { title: 1 } });
 
 // Сгенерировано tools/kollazh/paper-data.mjs из assets/paper.mp3 — не править руками.
@@ -7818,7 +7817,7 @@ function usePaperSound() {
 // «уголка «<»»). В речь знак не идёт — иначе сервис читает сырой символ; знак без
 // названия читается словами. Узбекский закрывающий тег — «yopuvchi title tegi»
 // (порядок слов узбекского), а не «yopuvchi teg title».
-const KZ_SIGN_WORD = '(?:qavs|chiziq|скобк|уголк|черт|bracket|slash)[^\\s,.!?:;]*';
+const KZ_SIGN_WORD = '(?:qavs|chiziq|скобк|уголк|уголо|черт|bracket|slash)[^\\s,.!?:;]*';   // «уголок» — тоже (иначе «уголок «>»» звучало «уголок правый уголок»)
 const KZ_SIGN_NAME = { uz: { '<': 'chap burchakli qavs', '>': 'o‘ng burchakli qavs', '/': 'qiya chiziq' },
   ru: { '<': 'левый уголок', '>': 'правый уголок', '/': 'косая черта' }, en: { '<': 'less-than sign', '>': 'greater-than sign', '/': 'slash' } };
 const spokenHtmlL2 = spokenHtml;
@@ -7830,8 +7829,18 @@ spokenHtml = (text, lang) => {
   const nm = KZ_SIGN_NAME[lang] || KZ_SIGN_NAME.ru;
   s = s.replace(/[«“"]\s*([<>/\\])\s*[»”"]/g, (all, c) => ' ' + (nm[c] || nm['/']) + ' ');
   if (lang === 'uz') s = s.replace(/<\s*\/\s*([a-z][a-z0-9]*)\s*>/gi, (all, t) => 'yopuvchi ' + t + ' tegi');
-  return spokenHtmlL2(s, lang);
+  const out = spokenHtmlL2(s, lang);
+  return lang === 'uz' ? kzTagWord(out) : out;
 };
+// Слово «teg» в узбекской речи — по-английски, как названия тегов html, head, title,
+// body (заказчик, 23.10.2026): корень уходит в сервис английским «tag», узбекское
+// окончание — через дефис («tag-i», «tag-lar»), чтобы «tagi» не прочлось узбекским
+// словом. Только формы слова «teg»: «tegishli» и другие слова не трогаем.
+const KZ_TEG_SUF = /^(i|ni|ga|da|dan|ning|siz|ini|iga|ida|idan|idagi|ining|lar|lari|larni|larga|larda|lardan|larning|larini|lariga)?$/i;
+function kzTagWord(s) {
+  return String(s).replace(/(^|[^A-Za-z‘’'ʻʼ])(teg)([A-Za-z‘’ʻʼ]*)/gi,
+    (all, pre, root, suf) => (KZ_TEG_SUF.test(suf) ? pre + 'tag' + (suf ? '-' + suf.toLowerCase() : '') : all));
+}
 
 // Параллакс слоёв: палец или мышь сдвигают вырезки по углам листа на разную
 // глубину. Значения — ступеньками (как кадры stop-motion), без лишних перерисовок.
@@ -8312,6 +8321,62 @@ function KzHand({ targets, run, label }) {
   );
 }
 
+// ПОКАЗ НА ЭКРАНАХ-ОБЪЯСНЕНИЯХ (заказчик, 23.10.2026): на объяснении ученик
+// ничего не делает — всё показывает Коди, а вещи меняются сами, под речь.
+// Руки и кнопок, которые «нажимаются», на объяснениях нет (заказчик, 23.10.2026:
+// «показать, как рука нажимает, очень некрасиво»). Чтобы не было ощущения
+// «смотрю и скучаю»: после каждой короткой фразы что-то происходит — вещь, о
+// которой речь, коротко загорается и сама меняется (штамп, влёт, перелёт),
+// со звуком; «Дальше» загорается по окончании показа, «Повторить» в шапке —
+// посмотреть ещё раз.
+//
+// Сценарий — шаги по порядку:
+//   { say: [{ text, pose }, …] } — Коди говорит; дальше — когда договорил;
+//   { look: () => элемент, act } — элемент коротко загорается, потом act;
+//   { act } — сразу; { wait: мс } — пауза (полёт, чтение браузера).
+// Первые реплики экрана — как обычно, в useVoice; показ начинается, когда они
+// сказаны. run = false (экран уже решён) — показа нет.
+function useKzDemo({ steps, run, spoken, sayNow, say }) {
+  const [idx, setIdx] = useState(-1);
+  const ran = useRef(-1);
+  const tm = useRef([]);
+  const audio = useAudio();
+  const pausedRef = useRef(false);
+  pausedRef.current = !!(audio && audio.paused);
+  useEffect(() => () => tm.current.forEach(clearTimeout), []);
+  const later = (ms, f) => {
+    const go = () => { if (pausedRef.current) { tm.current.push(setTimeout(go, 300)); return; } f(); };
+    tm.current.push(setTimeout(go, ms));
+  };
+  const next = (i) => setIdx((v) => (v === i ? i + 1 : v));
+  // Вещь загорается (мягкое свечение и лёгкий подъём ступеньками), потом меняется.
+  const lookAt = (el, i, act) => {
+    const done = () => { if (act) act(); next(i); };
+    if (!el || !el.classList || reduceMotion()) { done(); return; }
+    el.classList.add('kz-demo-on');
+    later(560, done);
+    later(900, () => el.classList.remove('kz-demo-on'));
+  };
+  useEffect(() => {
+    if (!run) return;
+    if (idx === -1) { if (spoken) setIdx(0); return; }
+    const st = steps[idx];
+    if (!st) return;
+    if (ran.current !== idx) {
+      ran.current = idx;
+      const i = idx;
+      if (st.say) { sayNow(st.say[0].text, st.say[0].pose); st.say.slice(1).forEach((l) => say(l.text, l.pose)); return; }
+      if (st.look) { later(200, () => lookAt(st.look(), i, st.act)); return; }
+      if (st.wait) { if (st.act) st.act(); later(st.wait, () => next(i)); return; }
+      if (st.act) st.act();
+      next(i);
+      return;
+    }
+    if (st.say && spoken) next(idx);
+  }, [idx, spoken, run]); // eslint-disable-line react-hooks/exhaustive-deps
+  return { idx, done: !run || idx >= steps.length, step: Math.max(0, Math.min(idx, steps.length)) };
+}
+
 // Текст ученика (или образец) — сквозной для экранов 7–15.
 const okText = (s) => hasLetters(s) && !hasTags(s);
 const useMine = () => {
@@ -8347,6 +8412,34 @@ const kzTop = (nodes) => {
 };
 const kzRand = (a, b) => a + Math.random() * (b - a);
 
+// Всё видимое на листе должно лететь, даже если его нет в KZ_PIECES (своя полоска
+// урока, пунктир, лист body, «?!»…): видимая деталь вне вырезок поднимается до
+// самого верхнего предка, в котором ещё нет вырезок, — он летит отдельной вырезкой.
+// Без этого такие вещи стояли на месте, пока всё вокруг разлеталось, или
+// появлялись рывком (заказчик, 23.10.2026: «в некоторых местах переход не работает»).
+const kzLeaf = (el) => {
+  if (/^(svg|img|canvas|textarea|input|video)$/i.test(el.tagName)) return true;
+  for (let i = 0; i < el.childNodes.length; i += 1) { const c = el.childNodes[i]; if (c.nodeType === 3 && c.textContent.trim()) return true; }
+  const cs = getComputedStyle(el);
+  return cs.backgroundImage !== 'none' || !/^(rgba\(0, 0, 0, 0\)|transparent)$/.test(cs.backgroundColor) || parseFloat(cs.borderTopWidth) > 0 || parseFloat(cs.borderBottomWidth) > 0;
+};
+function kzPiecesOf(body) {
+  const pieces = kzTop(body.querySelectorAll(KZ_PIECES));
+  const inPiece = (el) => pieces.some((p) => p === el || p.contains(el));
+  const hasPiece = (el) => pieces.some((p) => el.contains(p));
+  const extra = [];
+  body.querySelectorAll('*').forEach((el) => {
+    if (el.closest('svg') && el.tagName.toLowerCase() !== 'svg') return;
+    if (inPiece(el) || extra.some((x) => x.contains(el))) return;
+    const b = el.getBoundingClientRect();
+    if (b.width < 2 || b.height < 2 || !kzLeaf(el)) return;
+    let top = el;
+    while (top.parentElement && top.parentElement !== body && !hasPiece(top.parentElement)) top = top.parentElement;
+    extra.push(top);
+  });
+  return kzTop(pieces.concat(extra));
+}
+
 function kzSnapshotOut() {
   const sheet = kzLiveSheet();
   const stage = document.querySelector('.stage');
@@ -8354,7 +8447,8 @@ function kzSnapshotOut() {
   const r = sheet.getBoundingClientRect();
   const clone = sheet.cloneNode(true);
   // Лист, скотч и вырезки по углам одинаковы на всех экранах — разлетается только содержимое.
-  clone.querySelectorAll('.kz-sheet-wrap, .kz-deco').forEach((e) => e.remove());
+  // Рука-показ не летит: в снимке её нет совсем.
+  clone.querySelectorAll('.kz-sheet-wrap, .kz-deco, .kz-hand-layer').forEach((e) => e.remove());
   // Набранный текст в полях копии (значение textarea не копируется само).
   const src = sheet.querySelectorAll('textarea'), dst = clone.querySelectorAll('textarea');
   dst.forEach((t, i) => { if (src[i]) t.value = src[i].value; });
@@ -8369,7 +8463,9 @@ function kzSnapshotOut() {
   (stage.parentNode || document.body).appendChild(layer);
   const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
   const reach = Math.max(window.innerWidth, window.innerHeight) * 0.75;
-  kzTop(clone.querySelectorAll(KZ_PIECES)).forEach((el, i) => {
+  const cbody = clone.querySelector('.kz-sheet-body') || clone;
+  kzPiecesOf(cbody).forEach((el, i) => {
+    if (getComputedStyle(el).display === 'inline') el.style.display = 'inline-block';
     const b = el.getBoundingClientRect();
     let dx = b.left + b.width / 2 - cx, dy = b.top + b.height / 2 - cy;
     const len = Math.hypot(dx, dy) || 1;
@@ -8398,10 +8494,12 @@ function kzAssembleIn() {
   setTimeout(() => {
     const H = window.innerHeight, W = window.innerWidth;
     let n = 0;
-    kzTop(sheet.querySelectorAll(KZ_PIECES)).forEach((el) => {
-      const cs = getComputedStyle(el);
-      // Свой влёт есть — пусть летит им (снимается с паузы вместе со всеми).
-      if (cs.animationName !== 'none' && cs.animationIterationCount.indexOf('infinite') < 0) return;
+    const body = sheet.querySelector('.kz-sheet-body') || sheet;
+    const ownAnim = (el) => { const cs = getComputedStyle(el); return cs.animationName !== 'none' && cs.animationIterationCount.indexOf('infinite') < 0; };
+    kzPiecesOf(body).forEach((el) => {
+      // Свой влёт есть (у неё или у предка) — пусть летит им (снимается с паузы вместе со всеми).
+      for (let e = el; e && e !== body; e = e.parentElement) if (ownAnim(e)) return;
+      if (el.closest('.kz-hand-layer')) return;
       const fromLeft = n % 2 === 0;
       el.style.setProperty('--ix', ((fromLeft ? -1 : 1) * kzRand(0.25, 0.55) * W).toFixed(0) + 'px');
       el.style.setProperty('--iy', (kzRand(-0.55, -0.2) * H).toFixed(0) + 'px');
@@ -8683,8 +8781,8 @@ function S2({ p }) {
 
 // =============================================================================
 // S3. ШЕСТЬ ЗАГОЛОВКОВ — на бирюзовом листе body шесть бумажных полосок от h1 до
-// h6, каждая мельче предыдущей (как в ролике). Нажать самую крупную, потом самую
-// мелкую: у h1 появляется звёздочка «главный», у h6 — лупа.
+// h6, каждая мельче предыдущей (как в ролике). Показ: загорается самая крупная,
+// потом самую мелкую; у h1 появляется звёздочка «главный», у h6 — лупа.
 // =============================================================================
 const H_SIZE = [1, 0.84, 0.7, 0.58, 0.48, 0.4];
 function BodySheet({ children, label = true, cls }) {
@@ -8703,36 +8801,38 @@ function S3({ p }) {
   const solved = !!(rec && rec.done);
   const [n, setN] = useState(solved ? 2 : 0);
   const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
-    : [{ text: c.say, pose: 'explain' }, { text: c.askBig, pose: 'point' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved, spoken);
-  const led = useIdleLed(canTap && !solved && n < 2, n);
-  const tapBig = () => { if (!canTap || n !== 0) return; sfx('pop', true); setN(1); sayNow(c.big, 'point'); say(c.askSmall, 'point'); };
-  const tapSmall = () => { if (!canTap || n !== 1) return; sfx('ok', true); setN(2); put({ done: true }); sayNow(c.small, 'explain'); say(c.done, 'smile'); };
-  const asking = speaker.text === c.askBig || speaker.text === c.askSmall;
-  const askText = n === 2 ? c.done : n === 0 ? c.askBig : c.askSmall;
+    : [{ text: c.say, pose: 'explain' }]);
+  const boxRef = useRef(null);
+  const strip = (i) => () => boxRef.current && boxRef.current.querySelectorAll('.z2-hstrip')[i];
+  // Показ: загорается самый крупный заголовок, потом самый мелкий; Коди называет оба.
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { look: strip(0), act: () => { sfx('pop', true); setN(1); } },
+    { say: [{ text: c.big, pose: 'point' }] },
+    { look: strip(5), act: () => { sfx('ok', true); setN(2); put({ done: true }); } },
+    { say: [{ text: c.small, pose: 'explain' }, { text: c.done, pose: 'smile' }] }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
+  // Строка задания — за речью: пока Коди говорит о h1, она ещё про h1.
+  const askText = solved || demo.done ? c.done : demo.idx >= 2 ? c.askSmall : c.askBig;
   // Пока Коди говорит о h1 — светится h1, о h6 — h6.
   const hlI = speaker.text === c.big ? 0 : speaker.text === c.small ? 5 : -1;
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Sheet cls="z2-sheet">
         <KzAsk text={askText} n={solved ? null : n + '/2'} />
-        <div className="kz-scene">
+        <div className="kz-scene" ref={boxRef}>
           <BodySheet cls="z2-s3-body">
             {H_SIZE.map((s, i) => {
-              const tap = i === 0 ? tapBig : i === 5 ? tapSmall : null;
-              const want = (i === 0 && n === 0) || (i === 5 && n === 1);
               return (
-                <button key={i} type="button" className={'z2-hstrip kz-a-left' + (tap ? ' is-tap' : '') + (hlI === i ? ' is-hl' : '')}
-                  style={{ '--hs': s, '--dl': (0.12 * i) + 's', '--r': (i % 2 ? 0.7 : -0.6) + 'deg' }} disabled={!tap || !canTap} onClick={tap || undefined}>
+                <span key={i} className={'z2-hstrip kz-a-left' + (hlI === i ? ' is-hl' : '')}
+                  style={{ '--hs': s, '--dl': (0.12 * i) + 's', '--r': (i % 2 ? 0.7 : -0.6) + 'deg' }}>
                   <span className="z2-hstrip-paper">
                     <TagK t={'h' + (i + 1)} />
                     <span className="z2-hstrip-w">{pick(c.word)}</span>
                   </span>
                   {i === 0 && n >= 1 ? <span className="z2-star kz-a-stamp" aria-hidden="true">★</span> : null}
                   {i === 5 && n >= 2 ? <span className="z2-loupe kz-a-stamp" aria-hidden="true" /> : null}
-                  <Led on={want && (led || asking) && canTap} />
-                </button>
+                </span>
               );
             })}
           </BodySheet>
@@ -8905,8 +9005,8 @@ function S5({ p }) {
 }
 
 // =============================================================================
-// S6. АБЗАЦЫ — три строки кода без тегов: браузер склеил их в одну. Нажатие на
-// строку оборачивает её в p: в окне появляется отдельный абзац с отступом.
+// S6. АБЗАЦЫ — три строки кода без тегов: браузер склеил их в одну. Показ: строки
+// загораются — каждая оборачивается в p, в окне появляется отдельный абзац.
 // =============================================================================
 function S6({ p }) {
   const pick = usePick();
@@ -8916,15 +9016,18 @@ function S6({ p }) {
   const [wrapped, setWrapped] = useState(solved ? [true, true, true] : [false, false, false]);
   const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
     : [{ text: c.say, pose: 'explain' }, { text: c.sayP, pose: 'point' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved, spoken);
   const n = wrapped.filter(Boolean).length;
-  const led = useIdleLed(canTap && n < 3, n);
-  const wrap = (k) => {
-    if (!canTap || wrapped[k]) return;
-    const w = wrapped.slice(); w[k] = true; setWrapped(w); sfx('pop', true);
-    if (w.every(Boolean)) { put({ done: true }); sayNow(c.done, 'smile'); }
-  };
+  const wrap = (k) => { setWrapped((w) => { const x = w.slice(); x[k] = true; return x; }); sfx('pop', true); };
+  const codeRef = useRef(null);
+  const line = (k) => () => codeRef.current && codeRef.current.querySelectorAll('.kz-line.z2-hline')[0];
+  // Показ: строки по очереди загораются — каждая оборачивается в p.
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { look: line(0), act: () => wrap(0) },
+    { look: line(1), act: () => wrap(1) },
+    { look: line(2), act: () => { wrap(2); put({ done: true }); } },
+    { say: [{ text: c.done, pose: 'smile' }] }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
   // Пока Коди говорит про склейку — окно подсвечено.
   const glued = speaker.text === c.say && !solved;
   // Честно: подряд идущие строки без тегов склеиваются, каждый p — отдельный абзац.
@@ -8940,10 +9043,9 @@ function S6({ p }) {
       <Sheet cls="z2-sheet">
         <KzAsk text={n === 3 ? c.done : c.ask} n={n === 3 ? null : n + '/3'} />
         <div className="kz-scene z2-s5">
-          <div className="kz-col">
+          <div className="kz-col" ref={codeRef}>
             <KzCode lines={[{ k: 'b', d: 0, cls: 'z2-edge', parts: [T_('body')] }].concat(c.lines.map((ln, k) => ({
-              k: 'l' + k + (wrapped[k] ? 'w' : ''), d: 1, cls: wrapped[k] ? 'is-new' : 'z2-hline',
-              onTap: wrapped[k] ? null : () => wrap(k), disabled: !canTap, led: !wrapped[k] && k === nextK && (led || speaker.text === c.sayP) && canTap,
+              k: 'l' + k + (wrapped[k] ? 'w' : ''), d: 1, cls: wrapped[k] ? 'is-new' : 'z2-hline' + (k === nextK && speaker.text === c.sayP ? ' is-read' : ''),
               parts: wrapped[k] ? [T_('p'), W_(pick(ln)), T_('p', true)] : [W_(pick(ln))]
             }))).concat([{ k: 'bc', d: 0, cls: 'z2-edge', parts: [T_('body', true)] }])} />
           </div>
@@ -8957,7 +9059,8 @@ function S6({ p }) {
 }
 
 // =============================================================================
-// S7. НАПИШИ АБЗАЦ — строка без тегов приклеилась к абзацу выше. Два поля:
+// S7. НАПИШИ АБЗАЦ — две строки без тегов: браузер честно склеил их в одну (как
+// на экране 6). Вторую ученик оборачивает в p — она встаёт отдельным абзацем. Два поля:
 // перед текстом и после; кнопки < / p > вставляют в поле с курсором.
 // =============================================================================
 function S7({ p }) {
@@ -8990,9 +9093,10 @@ function S7({ p }) {
     if (st.current.misses >= 2) lad.bump();
   };
   const prev = pick(c.prev), text = pick(c.text);
-  // Честно: пока строка без тегов, браузер не делает её отдельным абзацем.
-  const blocks = okNow ? [{ t: 'p', parts: [prev] }, { t: 'p', parts: [text], cls: 'kz-a-stamp' }]
-    : [{ t: 'p', parts: [prev] }, { t: 'raw', parts: [text], cls: 'z2-raw-tight' }];
+  // Честно, как в настоящем браузере: две строки без тегов — одна строка текста;
+  // строка в p — отдельный абзац с отступом, первая остаётся простым текстом.
+  const blocks = okNow ? [{ t: 'raw', parts: [prev] }, { t: 'p', parts: [text], cls: 'kz-a-stamp' }]
+    : [{ t: 'raw', parts: [prev, ' ' + text] }];
   const blink = !okNow && led;
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
@@ -9003,7 +9107,7 @@ function S7({ p }) {
             <PaperBrowser title={pick(PAGE.title)} short cls="z2-br" pageHl={!okNow}><PageDoc blocks={blocks} /></PaperBrowser>
             <KzCode lines={[
               { k: 'b', d: 0, cls: 'z2-edge', parts: [T_('body')] },
-              { k: 'p', d: 1, cls: 'z2-ctx', parts: [T_('p'), W_(prev), T_('p', true)] },
+              { k: 'p', d: 1, cls: 'z2-ctx', parts: [W_(prev)] },
               { k: 'x', d: 1, cls: okNow ? 'is-new' : 'is-hl', parts: okNow ? [T_('p'), W_(text), T_('p', true)] : [
                 <Slot key="a" ty={sl.a} on={sl.act === 'a'} onFocus={() => sl.setAct('a')} blink={blink} label={c.ask} onEnter={check} />,
                 W_(text),
@@ -9024,7 +9128,7 @@ function S7({ p }) {
 // несколько, а p один. Промах — дополнительный раунд того же типа.
 // =============================================================================
 const S8_W = [L3('Mushugim uxlaydi.', 'Кот спит.', 'The cat sleeps.'), L3('U baliq yeydi.', 'Он ест рыбу.', 'He eats fish.'),
-  L3('U o‘ynaydi.', 'Он играет.', 'He plays.'), L3('Bugun quyosh.', 'Сегодня солнце.', 'It’s sunny today.'), L3('Biz sayr qilamiz.', 'Мы гуляем.', 'We go for a walk.')];
+  L3('U o‘ynaydi.', 'Он играет.', 'He plays.'), L3('Bugun havo quyoshli.', 'Сегодня солнце.', 'It’s sunny today.'), L3('Biz sayr qilamiz.', 'Мы гуляем.', 'We go for a walk.')];
 // lines — строки кода: массив абзацев на строке; abz — сколько абзацев; type — какая ловушка.
 const S8_ROUNDS = [
   { lines: [['p0', 'p1']], abz: 2, type: 'many' },
@@ -9133,9 +9237,9 @@ function S8({ p }) {
 
 // =============================================================================
 // S9. ЖИРНЫЙ И КУРСИВ — как в ролике: бумажная карточка абзаца с биркой <p>, над
-// словами «очень» и «спать» на скотче приклеены бирки <b> и <i>. Нажать бирку b —
-// слово становится жирным, под него ступенчато клеится горчичная полоска; нажать
-// i — слово наклоняется. Строка кода под карточкой обновляется по шагу.
+// словами «очень» и «спать» на скотче приклеены бирки <b> и <i>. Показ: загорается
+// бирка b — слово становится жирным, под него ступенчато клеится горчичная полоска;
+// потом бирка i — слово наклоняется. Строка кода под карточкой обновляется по шагу.
 // Карточка — образ (как рамка в уроке 1); в браузере так же — жирный и курсив.
 // =============================================================================
 function S9({ p }) {
@@ -9145,17 +9249,22 @@ function S9({ p }) {
   const solved = !!(rec && rec.done);
   const [n, setN] = useState(solved ? 2 : 0);
   const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
-    : [{ text: c.say, pose: 'explain' }, { text: c.askB, pose: 'point' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved, spoken);
-  const led = useIdleLed(canTap && n < 2, n);
-  const tapB = () => { if (!canTap || n !== 0) return; sfx('pop', true); setN(1); sayNow(c.b, 'point'); say(c.askI, 'point'); };
-  const tapI = () => { if (!canTap || n !== 1) return; sfx('ok', true); setN(2); put({ done: true }); sayNow(c.i, 'explain'); say(c.done, 'smile'); };
+    : [{ text: c.say, pose: 'explain' }]);
+  const cardRef = useRef(null);
+  const lbl = (k) => () => cardRef.current && cardRef.current.querySelector('.z2-w.is-' + k + ' .kz-label');
+  // Показ: загорается бирка b — слово жирное; потом бирка i — слово наклонное.
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { look: lbl('b'), act: () => { sfx('pop', true); setN(1); } },
+    { say: [{ text: c.b, pose: 'point' }] },
+    { look: lbl('i'), act: () => { sfx('ok', true); setN(2); put({ done: true }); } },
+    { say: [{ text: c.i, pose: 'explain' }, { text: c.done, pose: 'smile' }] }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
   const src = pick(PAGE.p1);
-  // До нажатия слово ещё без тега: в коде — части по шагу.
+  // Пока бирка не сработала, слово ещё без тега: в коде — части по шагу.
   const parts = src.map((x) => (typeof x === 'string' ? x : x.b !== undefined ? (n >= 1 ? x : x.b) : (n >= 2 ? x : x.i)));
-  const asking = speaker.text === c.askB || speaker.text === c.askI;
-  const askText = n === 2 ? c.done : n === 0 ? c.askB : c.askI;
+  // Строка задания — за речью: пока Коди говорит о b, она ещё про b.
+  const askText = solved || demo.done ? c.done : demo.idx >= 2 ? c.askI : c.askB;
   // Пока Коди говорит о b — светится бирка b и её слово; о i — бирка i.
   const sayK = speaker.text === c.b ? 'b' : speaker.text === c.i ? 'i' : null;
   return (
@@ -9164,7 +9273,7 @@ function S9({ p }) {
         <KzAsk text={askText} n={solved ? null : n + '/2'} />
         <div className="kz-scene kz-scene-col">
           <div className="kz-col">
-            <div className="z2-pcard kz-piece kz-a-drop">
+            <div className="z2-pcard kz-piece kz-a-drop" ref={cardRef}>
               <Cut c="#FBF6EA" seed={430} n={14} amp={1.4} asp={3} cls="z2-pcard-cut" />
               <KzLabel t="p" cls="z2-pcard-lbl" />
               <p className="z2-pcard-text">
@@ -9174,11 +9283,9 @@ function S9({ p }) {
                   if (typeof x === 'string') return <React.Fragment key={j}>{j > 0 && typeof src[j - 1] !== 'string' ? x.slice(punct(j).length) : x}</React.Fragment>;
                   const isB = x.b !== undefined;
                   const on = isB ? n >= 1 : n >= 2;
-                  const want = isB ? n === 0 : n === 1;
                   return (
                     <span key={j} className={'z2-w' + (isB ? ' is-b' : ' is-i') + (on ? ' is-on' : '') + (sayK === (isB ? 'b' : 'i') ? ' is-say' : '')}>
-                      <KzLabel t={isB ? 'b' : 'i'} cls="z2-w-lbl" onClick={isB ? tapB : tapI} disabled={!canTap || !want}
-                        on={on} hl={sayK === (isB ? 'b' : 'i')} led={want && (led || asking) && canTap} />
+                      <KzLabel t={isB ? 'b' : 'i'} cls="z2-w-lbl" on={on} hl={sayK === (isB ? 'b' : 'i')} />
                       <span className="z2-w-txt">{isB ? x.b : x.i}</span>{punct(j + 1)}
                     </span>
                   );
@@ -9352,7 +9459,7 @@ function S11({ p }) {
 }
 
 // =============================================================================
-// S12. СВЕРХУ ВНИЗ — «Читать как браузер»: строки кода страницы о коте
+// S12. СВЕРХУ ВНИЗ — показ: браузер сам читает код; строки кода страницы о коте
 // подсвечиваются по очереди, страница собирается в окне.
 // =============================================================================
 const READ12 = ['h1', 'p1', 'h2', 'p2'];
@@ -9364,17 +9471,18 @@ function S12({ p }) {
   const [read, setRead] = useState(solved ? READ12.length : -1);
   const ORDER = [{ text: c.order1, pose: 'point' }, { text: c.order2, pose: 'point' }, { text: c.order3, pose: 'smile' }];
   const [speaker, say, spoken, sayNow] = useVoice(solved ? ORDER : [{ text: c.say, pose: 'explain' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved, spoken);
-  const led = useIdleLed(canTap && read < 0, 0);
   const timers = useRef([]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
-  const run = () => {
-    if (!canTap || read >= 0) return;
-    const step = reduceMotion() ? 120 : 700;
-    READ12.forEach((k, i) => timers.current.push(setTimeout(() => { setRead(i); sfx('tap', true); }, step * i)));
-    timers.current.push(setTimeout(() => { setRead(READ12.length); put({ done: true }); sayNow(ORDER[0].text, 'point'); say(ORDER[1].text, 'point'); say(ORDER[2].text, 'smile'); }, step * READ12.length + 200));
-  };
+  const STEP = reduceMotion() ? 120 : 700;
+  const run = () => { READ12.forEach((k, i) => timers.current.push(setTimeout(() => { setRead(i); sfx('tap', true); }, STEP * i))); };
+  // Показ: строки читаются по очереди сами, потом Коди называет порядок.
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { act: run },
+    { wait: STEP * READ12.length + 200 },
+    { act: () => { setRead(READ12.length); put({ done: true }); } },
+    { say: ORDER }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
   const sayK = spoken ? null : speaker.text === c.order1 ? ['h1'] : speaker.text === c.order2 ? ['p1'] : speaker.text === c.order3 ? ['h2', 'p2'] : null;
   const cur = read >= 0 && read < READ12.length ? READ12[read] : null;
   const on = (k) => (sayK ? sayK.indexOf(k) >= 0 : cur === k);
@@ -9404,7 +9512,6 @@ function S12({ p }) {
             <PaperBrowser title={pick(PAGE.title)} cls="z2-br">{blocks.length ? <PageDoc blocks={blocks} anim={!solved} /> : null}</PaperBrowser>
           </div>
         </div>
-        {read < 0 ? <div className="kz-row"><button type="button" className="kz-btn is-coral" disabled={!canTap} onClick={run}>{pick(UI.read)}<Led on={led} /></button></div> : null}
       </Sheet>
     </Stage>
   );
@@ -9464,7 +9571,7 @@ function S13({ p }) {
         <KzAsk text={askText} hint={step === 2 ? null : (bad || hintAt(lad.lv, c.hints))} n={step === 2 ? null : (step + 1) + '/2'} />
         <div className="kz-scene kz-scene-col">
           <div className="kz-col">
-            <PaperBrowser title={tShow || pick(UI.mySite)} short cls="z2-br" pageHl={step < 2}>{blocks.length ? <PageDoc blocks={blocks} /> : null}</PaperBrowser>
+            <PaperBrowser title={pick(UI.mySite)} short cls="z2-br" pageHl={step < 2}>{blocks.length ? <PageDoc blocks={blocks} /> : null}</PaperBrowser>
             <KzCode lines={[
               { k: 'b', d: 0, cls: 'z2-edge', parts: [T_('body')] },
               { k: 'h', d: 1, cls: step === 0 ? 'is-hl' : '', parts: [T_('h1'),
@@ -9531,7 +9638,7 @@ function S14({ p }) {
         <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : msg} />
         <div className="kz-scene z2-s5">
           <div className="kz-col">
-            <PaperBrowser title={mine.title} cls={'z2-br' + (okNow ? '' : ' z2-broken')} pageHl={!okNow}><PageDoc blocks={blocks} /></PaperBrowser>
+            <PaperBrowser title={pick(UI.mySite)} cls={'z2-br' + (okNow ? '' : ' z2-broken')} pageHl={!okNow}><PageDoc blocks={blocks} /></PaperBrowser>
           </div>
           <div className="kz-col">
             <KzCode lines={[
@@ -9584,7 +9691,7 @@ function S15({ p }) {
       <Sheet cls="z2-sheet">
         <div className="kz-scene kz-s15">
           <div className="kz-col kz-s15-left">
-            <PaperBrowser title={mine.title} cls="z2-br"><PageDoc blocks={blocks} anim /></PaperBrowser>
+            <PaperBrowser title={pick(UI.mySite)} cls="z2-br"><PageDoc blocks={blocks} anim /></PaperBrowser>
             <div className="kz-s15-man"><div className="kz-manbox kz-manbox-free"><PaperMan anim wave /></div></div>
           </div>
           <div className="kz-col kz-s15-side">
@@ -11173,6 +11280,8 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-morph-t { position: absolute; inset: 0; display: flex; align-items: center; padding-left: 28px; font: 600 clamp(12px, 1.8dvh, 15px) 'Manrope', sans-serif;
   color: #1F2A44; white-space: nowrap; transition: opacity .35s steps(3, end) .25s; }
 .kz-morph-p.is-fly .kz-morph-t { opacity: 0; }
+/* Вкладка с названием влетает в голову и видна до конца полёта (хук урока 1). */
+.kz-morph-p.is-name.is-fly .kz-morph-t { opacity: 1; padding: 0 4px; justify-content: center; font-size: clamp(9px, 1.4dvh, 12px); }
 .kz-morph-lines { position: absolute; inset: 22% 14% 18%; display: flex; flex-direction: column; gap: 9%; transition: opacity .45s steps(3, end) .15s; }
 .kz-morph-lines i { display: block; height: 7%; background: #1F2A44; border-radius: 1px; }
 .kz-morph-lines i:nth-child(1) { width: 46%; height: 10%; } .kz-morph-lines i:nth-child(2) { width: 70%; } .kz-morph-lines i:nth-child(3) { width: 58%; }
@@ -11244,6 +11353,24 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 /* Слой руки: кисть может свисать за край листа, но не раздувает экран
    (overflow: clip не добавляет прокрутку; запас видимости — clip-margin). */
 .kz-hand-layer { position: absolute; inset: 0; z-index: 40; pointer-events: none; overflow: clip; overflow-clip-margin: 90px; }
+/* Рука показа на объяснениях: подходит к вещи за 1 с ступеньками (как у KzHand). */
+.kz-tg-in .kz-tk-b { display: inline-block; }
+.kz-tg-in .kz-tag > .kz-tk-b:first-child { animation: kzBrL .66s steps(7, end) both; }
+.kz-tg-in .kz-tag > .kz-tk-b:last-child { animation: kzBrR .66s steps(7, end) both; }
+.kz-tg-in .kz-tg-slash { animation: kzSlash .6s steps(6, end) .3s both; }
+.kz-tg-in.is-new .kz-tk-n { display: inline-block; animation: kzTgName .4s steps(4, end) .1s both; }
+.kz-tg-in .kz-tg-cap { animation: kzTgName .3s steps(3, end) .6s both; }
+@keyframes kzBrL { 0% { translate: -2.2em -.7em; rotate: -35deg; opacity: 0; } 30% { opacity: 1; } 100% { translate: 0 0; rotate: 0deg; opacity: 1; } }
+@keyframes kzBrR { 0% { translate: 2.2em -.7em; rotate: 35deg; opacity: 0; } 30% { opacity: 1; } 100% { translate: 0 0; rotate: 0deg; opacity: 1; } }
+@keyframes kzSlash { 0% { translate: .2em -1.8em; rotate: 40deg; opacity: 0; } 40% { opacity: 1; } 100% { translate: 0 0; rotate: 0deg; opacity: 1; } }
+@keyframes kzTgName { 0% { opacity: 0; scale: .6; } 100% { opacity: 1; scale: 1; } }
+.kz-demo-on { animation: kzDemoOn .9s steps(6, end) both !important; transform-box: fill-box; transform-origin: center; }
+@keyframes kzDemoOn {
+  0% { filter: none; scale: 1; }
+  35% { filter: drop-shadow(0 0 7px rgba(255, 196, 92, .95)) brightness(1.06); scale: 1.06; }
+  70% { filter: drop-shadow(0 0 5px rgba(255, 196, 92, .7)); scale: 1.03; }
+  100% { filter: none; scale: 1; }
+}
 @media (min-width: 760px) {
   /* s11: зоны головы и тела выше — на ноутбуке под ними было пусто. */
   .kz-zone { min-height: clamp(150px, 36dvh, 340px); }
@@ -11361,6 +11488,82 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
   80% { transform: translateY(calc(var(--dy) * .05)); }
   100% { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .kz-line.kz-slide-up, .kz-line.kz-slide-under { animation: none; } }
+
+/* ══ «ЧТО ТАКОЕ ТЕГ» (23.10.2026) — экран tg1 ═══════════════════════════════
+   Строка кода — большая горчичная полоска; тег — коралловые скобки и черта,
+   имя чернилами; рядом честный бумажный браузер. */
+.kz-tg { flex-direction: column; justify-content: center; align-items: center; gap: clamp(12px, 2.4dvh, 26px); }
+.kz-tg-strip { position: relative; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 1.05em .4em; max-width: 100%;
+  padding: .45em .8em 1.15em; background: var(--kz-piece); color: #1F2A44; font: 700 clamp(22px, 4.4dvh, 42px)/1.15 'JetBrains Mono', ui-monospace, monospace;
+  clip-path: polygon(0 8%, 4% 0, 50% 5%, 96% 0, 100% 10%, 98% 55%, 100% 92%, 95% 100%, 50% 95%, 3% 100%, 0 90%, 1.5% 45%);
+  filter: drop-shadow(0 2px 2px rgba(74, 48, 18, .3)); }
+.kz-tg-word { padding: 0 .12em; border-radius: 6px; transition: background .2s; }
+.kz-tg-word.is-hl { background: #1F2A44; color: #FBF6EA; }
+.kz-tg-text { font: 800 .6em 'Manrope', sans-serif; }
+.kz-tg-tag { position: relative; display: inline-flex; flex-direction: column; align-items: center; }
+.kz-tg-tag .kz-tag { font: inherit; padding: 0 .1em; border-radius: 6px; transition: background .2s; }
+.kz-tg-tag.is-hl .kz-tag { background: #1F2A44; }
+.kz-tg-tag.is-hl .kz-tk-n { color: #FBF6EA; }
+.kz-tg-slash { display: inline-block; transition: scale .3s steps(3, end); }
+.kz-tg-slash.is-hl { scale: 1.35; color: #FFB199; }
+.kz-tg-cap { position: absolute; top: 100%; margin-top: 1px; font: 800 clamp(10px, 1.5dvh, 13px) 'Manrope', sans-serif; font-style: normal; color: #5B4300;
+  letter-spacing: .02em; white-space: nowrap; }
+.kz-tg-br.kz-br { --brh: 30dvh; }
+.kz-tg-page { font-size: 1.2em; }
+.kz-tg-mark { background: #FFE9A8; box-shadow: 0 0 0 3px #FFE9A8; border-radius: 2px; }
+/* Кнопки-кусочки «< >» и «/» */
+@media (max-width: 759px) {
+  .kz-tg-strip { font-size: clamp(19px, 3.6dvh, 26px); }
+}
+@media (min-width: 760px) {
+  .kz-tg-strip { font-size: clamp(26px, 4.8dvh, 50px); }
+  .kz-tg-br.kz-br { --brh: 32dvh; }
+  .kz-tg { gap: clamp(10px, 2dvh, 22px); }
+}
+
+/* ── Итоговая проверка урока 1 (q1, q2) ──────────────────────────────────── */
+.kz-q1-slot { position: relative; padding: 0; font: inherit; cursor: pointer; vertical-align: middle; }
+.kz-q1-slot:disabled { cursor: default; }
+.kz-q2 .kz-code { align-self: center; }
+.kz-q2-close .kz-tag { background: #1F2A44; border-radius: 6px; padding: 0 .12em; }
+.kz-q2-close .kz-tk-n { color: #FBF6EA; }
+.kz-quiz { display: flex; flex-direction: column; gap: 10px; width: min(100%, 520px); align-self: center; margin-top: clamp(10px, 2.2dvh, 22px); }
+.kz-quiz .kz-btn { width: 100%; min-height: 52px; white-space: normal; line-height: 1.25; padding: 10px 18px; text-align: center; justify-content: center; }
+@media (max-width: 759px) { .kz-quiz .kz-btn { min-height: 48px; font-size: 15px; } }
+
+/* ── Экран «Часть body» (s9): куски страницы вылетают из тела в окно ───────── */
+.kz-s9-ghost { visibility: hidden; height: 100%; }
+.kz-s9-p { position: absolute; display: block; overflow: hidden; z-index: 9; transform-origin: 50% 50%;
+  filter: drop-shadow(0 3px 2px rgba(74, 48, 18, .3)) drop-shadow(0 10px 12px rgba(74, 48, 18, .18)); }
+.kz-s9-p.is-text { background: #FBF6EA; border-radius: 3px; }
+.kz-s9-p-t { display: flex; align-items: center; height: 100%; padding: 0 3px; white-space: nowrap; font-weight: 700; color: #1F2A44; }
+.kz-s9-p.is-line { background: #1F2A44; border-radius: 2px; }
+.kz-s9-p.is-pic { background: #2A8C7E; border-radius: 3px; }
+.kz-s9-p.is-btn { background: #E0643F; border-radius: 3px; }
+.kz-s9-p-b { position: absolute; inset: 0; display: grid; place-items: center; font: 800 clamp(10px, 1.6dvh, 13px) 'Manrope', sans-serif; color: #fff; }
+.kz-label.kz-s9-lbl { z-index: 10; pointer-events: none; }
+.kz-label.kz-s9-lbl.is-man { translate: -50% -70%; }
+.kz-label.kz-s9-lbl.is-win { translate: -100% -70%; }
+
+/* ── Открытая клавиатура телефона (is-kbd): экраны со своим текстом урока 1 ──
+   Поле, вкладка и окно видны: браузер ужимается до полосы с вкладкой и строки
+   окна, строки кода и «Готово» ниже, вырезки по углам листа прячутся. */
+.is-kbd .kz-deco { display: none; }
+.is-kbd .kz-typed .kz-sheet-body { padding: 6px 8px; gap: 6px; }
+.is-kbd .kz-typed .kz-ask { font-size: 13.5px; padding: 4px 10px 5px; }
+.is-kbd .kz-typed .kz-br { aspect-ratio: auto; max-width: 100%; padding-bottom: 6px; }
+.is-kbd .kz-typed .kz-br-tool { display: none; }
+.is-kbd .kz-typed .kz-br-bar { height: 22px; }
+.is-kbd .kz-typed .kz-br-body { flex: 0 0 auto; height: 34px; }
+.is-kbd .kz-typed .kz-br-page { inset: 4px 8px; font-size: 13px; }
+.is-kbd .kz-typed .kz-bits-row { display: none; }
+.is-kbd .kz-typed .kz-code { gap: 3px; }
+.is-kbd .kz-typed .kz-line { min-height: 26px; padding-top: 2px; padding-bottom: 2px; }
+.is-kbd .kz-typed .kz-row { margin-top: 2px; }
+.is-kbd .kz-typed .kz-ready { min-height: 38px; padding: 6px 18px; }
+
+/* Экран «Сверху вниз» (s12) после показа: части коллажа нажимаются. */
+.kz-s12.is-explore .kz-collage, .kz-s12.is-explore .kz-collage * { cursor: pointer; }
 /* ── УРОК 2 «Заголовки и текст» — свои части поверх бумажного набора урока 1 ──
    Префикс z2-. Страница в бумажном браузере — как браузер по умолчанию:
    Times, заголовки жирные и убывают от h1 к h6, абзацы с отступом. */
@@ -11378,7 +11581,6 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .z2-h6 { font-size: .7em; font-weight: 700; margin: .2em 0 .2em; }
 .z2-p { font-weight: 400; margin: 0 0 .62em; line-height: 1.32; }
 .z2-raw { font-weight: 400; line-height: 1.32; }
-.z2-raw-tight { margin-top: -.62em; }   /* строка без тегов прилипает к абзацу выше */
 .z2-p.z2-inh1 { font-size: 1.75em; font-weight: 700; line-height: 1.12; }   /* p внутри незакрытого h1 */
 .z2-big { font-size: 1.12em; }
 .z2-wall { display: block; font-weight: 400; line-height: 1.32; }   /* каша — слитный текст, а не столбик */

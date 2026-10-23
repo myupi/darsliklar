@@ -22,8 +22,8 @@ const STEPS = [
     await qa.platform.next();
     await qa.platform.ready(30000);
     qa.expect(!!qa.q('.kz-br-page .l3-txt') && !qa.q('.kz-br-page .l3-li'), 'вещи склеены в строку, точек нет');
-    for (let k = 0; k < 3; k += 1) { await qa.click('.kz-line.kz-tap', 'вещь'); await qa.sleep(250); }
-    await qa.waitFor(() => qa.platform.nextEnabled(), 30000, 'засчитано');
+    qa.expect(!qa.q('.kz-line.kz-tap'), 'показ: строки не нажимаются');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 60000, 'показ закончен');
     qa.expect(qa.qa('.kz-br-page .l3-li').length === 3, 'три пункта с точками');
     qa.expect(qa.qa('.kz-br-page').every((pg) => pg.scrollHeight <= pg.clientHeight + 1), 'страница в окне целиком, без прокрутки');
   } },
@@ -55,9 +55,9 @@ const STEPS = [
     await qa.platform.next();
     await qa.platform.ready(30000);
     qa.expect(qa.qa('.kz-br-page .l3-ol .l3-li').length === 3, 'рецепт — список с номерами');
-    await qa.click('.kz-btn.is-coral', 'Перемешать');
-    await qa.waitFor(() => qa.q('.l3-oops'), 3000, 'шаги перепутались — «?!»');
-    await qa.waitFor(() => qa.platform.nextEnabled(), 40000, 'рассказано');
+    qa.expect(!qa.q('.kz-sheet .kz-btn') && !qa.q('.kz-hand'), 'показ: ни кнопок, ни руки');
+    await qa.waitFor(() => qa.q('.l3-oops'), 40000, 'рука перемешала — «?!»');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 60000, 'показ закончен');
     qa.expect(!qa.q('.l3-oops'), 'шаги вернулись по местам');
   } },
   { name: 's7: <ol> сверху и </ol> снизу', shot: 's7-done', run: async (qa) => {
@@ -85,9 +85,8 @@ const STEPS = [
     await qa.platform.next();
     await qa.platform.ready(30000);
     qa.expect(!!qa.q('.kz-br-page .l3-stray'), 'пункт выпал из списка');
-    await qa.click('.kz-line.l3-stray-line', 'выпавший пункт');
-    await qa.click('.kz-line[data-place="in"]', 'место внутри списка');
-    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано');
+    qa.expect(!qa.q('.kz-line.kz-tap'), 'показ: строки не нажимаются');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 60000, 'показ закончен');
     qa.expect(!qa.q('.kz-br-page .l3-stray') && qa.qa('.kz-br-page .l3-li').length === 3, 'все пункты внутри списка');
     qa.expect(qa.qa('.kz-br-page').every((pg) => pg.scrollHeight <= pg.clientHeight + 1), 'страница в окне целиком, без прокрутки');
   } },
@@ -119,9 +118,9 @@ const STEPS = [
   { name: 's12: читать как браузер', shot: 's12-done', run: async (qa) => {
     await qa.platform.next();
     await qa.platform.ready();
-    await qa.click('.kz-btn.is-coral', 'Читать как браузер');
-    await qa.waitFor(() => qa.qa('.kz-br-page .l3-list').length === 2, 12000, 'страница собрана');
-    await qa.waitFor(() => qa.platform.nextEnabled(), 40000, 'засчитано');
+    qa.expect(!qa.q('.kz-sheet .kz-btn') && !qa.q('.kz-hand'), 'показ: ни кнопок, ни руки');
+    await qa.waitFor(() => qa.qa('.kz-br-page .l3-list').length === 2, 40000, 'страница собрана');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 60000, 'показ закончен');
     qa.expect(qa.qa('.kz-br-page').every((pg) => pg.scrollHeight <= pg.clientHeight + 1), 'страница в окне целиком, без прокрутки');
   } },
   { name: 's13: свой список', shot: 's13-done', run: async (qa) => {

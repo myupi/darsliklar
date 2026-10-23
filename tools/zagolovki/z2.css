@@ -15,7 +15,6 @@
 .z2-h6 { font-size: .7em; font-weight: 700; margin: .2em 0 .2em; }
 .z2-p { font-weight: 400; margin: 0 0 .62em; line-height: 1.32; }
 .z2-raw { font-weight: 400; line-height: 1.32; }
-.z2-raw-tight { margin-top: -.62em; }   /* строка без тегов прилипает к абзацу выше */
 .z2-p.z2-inh1 { font-size: 1.75em; font-weight: 700; line-height: 1.12; }   /* p внутри незакрытого h1 */
 .z2-big { font-size: 1.12em; }
 .z2-wall { display: block; font-weight: 400; line-height: 1.32; }   /* каша — слитный текст, а не столбик */

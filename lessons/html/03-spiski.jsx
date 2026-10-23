@@ -6723,8 +6723,6 @@ const UI = {
   nextLesson: L3('Keyingi dars', 'Следующий урок', 'Next lesson'),
   next: L3('Havolalar', 'Ссылки', 'Links'),
   sort: L3('Saralash', 'Разложить', 'Sort'),
-  shuffle: L3('Chalkashtirish', 'Перемешать', 'Shuffle'),
-  read: L3('Brauzerdek o‘qish', 'Читать как браузер', 'Read like a browser'),
   things: L3('Narsalar', 'Вещи', 'Things'),
   cocoa: L3('Kakao', 'Какао', 'Cocoa'),
   mySite: L3('Mening ro‘yxatim', 'Мой список', 'My list'),
@@ -6754,8 +6752,8 @@ const LIST_MSGS = {
   openSlash: L3('Bu yopuvchi teg. Tepada qiya chiziqsiz ochuvchi teg turadi.', 'Это закрывающий тег. Сверху ставят открывающий, без косой черты.', 'That’s a closing tag. The opening tag goes on top, without a slash.'),
   needClose: L3('Bandlardan keyin yopuvchi {tag} tegi kerak.', 'После пунктов нужен закрывающий тег {tag}.', 'After the items you need the closing {tag} tag.'),
   needSlash: L3('Bu ochuvchi teg. Yopuvchi tegda {tag} dan oldin qiya chiziq «/» turadi.', 'Это открывающий тег. В закрывающем перед {tag} стоит косая черта «/».', 'That’s an opening tag. The closing one has a slash “/” before {tag}.'),
-  needLt: L3('Teg chap «<» qavs bilan boshlanadi.', 'Тег начинается с уголка «<».', 'A tag starts with the bracket “<”.'),
-  needGt: L3('Teg oxirida o‘ng «>» qavs turadi.', 'В конце тега нужен уголок «>».', 'A tag ends with the bracket “>”.'),
+  needLt: L3('Teg burchakli qavs «<» bilan boshlanadi.', 'Тег начинается с уголка «<».', 'A tag starts with the bracket “<”.'),
+  needGt: L3('Teg oxirida burchakli qavs «>» turadi.', 'В конце тега нужен уголок «>».', 'A tag ends with the bracket “>”.'),
   wrongName: L3('Teg ichida {tag} bo‘lishi kerak.', 'Внутри тега должно быть {tag}.', 'The tag should say {tag}.')
 };
 // Пункт, набранный в два поля (s4).
@@ -6789,7 +6787,7 @@ const C = {
         say: L3('Avval nuqtali ro‘yxat yasaymiz: sayohat uchun narsalar.', 'Сначала сделаем список с точками — вещи в поход.', 'First we’ll make a list with dots: things for the trip.') },
       { title: L3('Raqamli ro‘yxat', 'Список с номерами', 'A numbered list'),
         say: L3('Keyin raqamli ro‘yxat: qadamlar tartib bilan.', 'Потом список с номерами: шаги по порядку.', 'Then a numbered list: steps in order.') },
-      { title: L3('Ro‘yxatni tuzatish', 'Починим список', 'Fixing lists'),
+      { title: L3('Ro‘yxatni tuzatish', 'Починка списка', 'Fixing lists'),
         say: L3('Uchinchi qadamda buzilgan ro‘yxatlarni tuzatamiz.', 'Третий шаг — починим сломанные списки.', 'Step three: we’ll fix broken lists.') },
       { title: L3('O‘z ro‘yxatingiz', 'Свой список', 'Your own list'),
         say: L3('Oxirida esa o‘z ro‘yxatingizni tuzasiz!', 'А в конце ты соберёшь свой список!', 'And at the end you’ll build your own list!') }
@@ -6802,14 +6800,15 @@ const C = {
     say: L3('Bu sayohat uchun narsalar ro‘yxati. Ular ul tegi ichida turibdi, lekin brauzer hammasini bitta qatorga yopishtirdi.',
       'Это список вещей в поход. Они стоят внутри тега ul, но браузер склеил их в одну строку.',
       'This is a list of things for the trip. They sit inside the ul tag, but the browser glued them into one line.'),
-    sayLi: L3('Ro‘yxatning har bir bandi li tegiga o‘raladi. Har bir narsani bosing.', 'Каждый пункт списка оборачивают в тег li. Нажми каждую вещь.', 'Each list item is wrapped in the li tag. Tap each thing.'),
+    sayLi: L3('Ro‘yxatning har bir bandi li tegiga o‘raladi. Qarang.', 'Каждый пункт списка оборачивают в тег li. Смотри.', 'Each list item is wrapped in the li tag. Watch.'),
     doneUl: L3('ul — nuqtali ro‘yxat. Brauzer har bir band oldiga nuqta qo‘yadi.', 'ul — это список с точками. Браузер ставит точку перед каждым пунктом.', 'ul is a list with dots. The browser puts a dot before each item.'),
-    doneLi: L3('li esa ro‘yxatning bitta bandi. Nechta li bo‘lsa, shuncha band.', 'А li — один пункт списка. Сколько li — столько пунктов.', 'And li is one list item. As many li tags, as many items.'),
-    ask: L3('Har bir narsani bosing', 'Нажми каждую вещь', 'Tap each thing')
+    doneLi: L3('li esa ro‘yxatning bitta bandi. Nechta li bo‘lsa, shuncha band.', 'А li — один пункт списка. Сколько li — столько пунктов.', 'And li is one list item. One li, one item.'),
+    ask: L3('Qarang: har bir narsa li ga o‘raladi', 'Смотри: каждая вещь уходит в li', 'Watch: each thing goes into li'),
+    askDone: L3('ul — nuqtali ro‘yxat, li — uning bandi', 'ul — список с точками, li — его пункт', 'ul is a list with dots, li is its item')
   },
   s4: {
     eyebrow: L3('Band qo‘shing', 'Добавь пункт', 'Add an item'),
-    say: L3('Uxlash xaltasi ham kerak. Lekin uning oldida nuqta yo‘q: u hali band emas. Uni li tegiga o‘rang: so‘zdan oldin ochuvchi tegni, keyin yopuvchi tegni yozing.',
+    say: L3('Uxlash xaltasi ham kerak. Lekin uning oldida nuqta yo‘q: u hali band emas. Uni li tegiga o‘rang: so‘zdan oldin ochuvchi tegni, so‘zdan keyin esa yopuvchi tegni yozing.',
       'Ещё нужен спальник. Но точки перед ним нет: это ещё не пункт. Оберни его в тег li: перед словом напиши открывающий тег, после — закрывающий.',
       'We also need a sleeping bag. But there’s no dot before it: it’s not an item yet. Wrap it in li: type the opening tag before the word and the closing tag after it.'),
     hints: [
@@ -6825,9 +6824,9 @@ const C = {
     eyebrow: L3('Nechta nuqta?', 'Сколько точек?', 'How many dots?'),
     say: L3('Endi brauzer kabi o‘ylang: nuqtalarni qatorlar emas, li teglari qo‘yadi.', 'Теперь подумай как браузер: точки ставят не строки, а теги li.', 'Now think like a browser: dots come from li tags, not from lines.'),
     askQ: L3('Brauzer nechta nuqta ko‘rsatadi?', 'Сколько точек покажет браузер?', 'How many dots will the browser show?'),
-    ok: L3('To‘g‘ri! li nechta bo‘lsa, nuqta shuncha.', 'Верно! Сколько li — столько и точек.', 'Right! As many li tags, as many dots.'),
+    ok: L3('To‘g‘ri! li nechta bo‘lsa, nuqta shuncha.', 'Верно! Сколько li — столько и точек.', 'Right! One li, one dot.'),
     miss: {
-      many: L3('Qarang: qator bitta, lekin li ikkita. Har bir li o‘z nuqtasini oladi.', 'Смотри: строка одна, а li два. Каждый li получает свою точку.', 'Look: one line, but two li tags. Each li gets its own dot.'),
+      many: L3('Qarang: qator bitta, lekin li bir nechta. Har bir li o‘z nuqtasini oladi.', 'Смотри: строка одна, а li несколько. Каждый li получает свою точку.', 'Look: one line, but several li tags. Each li gets its own dot.'),
       one: L3('Qarang: qatorlar ikkita, lekin li bitta. Demak, band ham bitta.', 'Смотри: строк две, а li один. Значит, и пункт один.', 'Look: two lines, but only one li. So there is one item.'),
       bare: L3('Qarang: li siz matn oldida nuqta yo‘q. Nuqtani faqat li qo‘yadi.', 'Смотри: у текста без li точки нет. Точку ставит только li.', 'Look: text without li gets no dot. Only li puts a dot.')
     },
@@ -6836,10 +6835,10 @@ const C = {
   s6: {
     eyebrow: L3('Raqamli ro‘yxat', 'Список с номерами', 'Numbered list'),
     say: L3('Bu kakao retsepti. U ol tegida yozilgan: bu raqamli ro‘yxat.', 'Это рецепт какао. Он записан в теге ol — это список с номерами.', 'This is a cocoa recipe. It’s written in the ol tag: a numbered list.'),
-    sayN: L3('Raqamlarni brauzer o‘zi qo‘yadi. «Chalkashtirish» tugmasini bosing.', 'Номера браузер ставит сам. Нажми «Перемешать».', 'The browser adds the numbers by itself. Tap “Shuffle”.'),
+    sayN: L3('Raqamlarni brauzer o‘zi qo‘yadi. Qatorlarni chalkashtirsak nima bo‘ladi?', 'Номера браузер ставит сам. А что, если перемешать строки?', 'The browser adds the numbers by itself. What if we shuffle the lines?'),
     mixed: L3('Voy! Raqamlar joyida, qadamlar esa chalkashib ketdi. Sut quymasdan aralashtirib bo‘lmaydi!', 'Ой! Номера на месте, а шаги перепутались. Размешивать раньше молока — ерунда!', 'Whoa! The numbers stayed, but the steps got mixed up. Stirring before the milk makes no sense!'),
     done: L3('ol da qatorlar tartibi muhim. ul da esa tartib muhim emas.', 'В ol важен порядок строк. А в ul порядок не важен.', 'In ol, the order of lines matters. In ul, it doesn’t.'),
-    ask: L3('«Chalkashtirish» tugmasini bosing', 'Нажми «Перемешать»', 'Tap “Shuffle”'),
+    ask: L3('Qarang: qatorlarni chalkashtiramiz', 'Смотри: перемешаем строки', 'Watch: we shuffle the lines'),
     askDone: L3('ol da tartib muhim', 'В ol важен порядок', 'In ol, order matters')
   },
   s7: {
@@ -6866,7 +6865,7 @@ const C = {
       'Here are four lists. Drag the ones where order matters into ol, and the others into ul.'),
     hints: [
       L3('O‘zingizdan so‘rang: qaysi band birinchi turishi muhimmi?', 'Спроси себя: важно, какой пункт идёт первым?', 'Ask yourself: does it matter which item comes first?'),
-      L3('Qadamlar va topdagi o‘rinlar tartib bilan boradi: bu ol. Xarid va do‘stlar ro‘yxati esa ul.', 'Шаги и места в топе идут по порядку — это ol. Покупки и друзья — это ul.', 'Steps and places in a top list go in order: that’s ol. Shopping and friends: ul.'),
+      L3('Ertalabki ishlar va topdagi o‘rinlar tartib bilan boradi: bu ol. Xaridlar va do‘stlar esa ul.', 'Утренние дела и места в топе идут по порядку — это ol. Покупки и друзья — это ul.', 'Morning things and places in a top list go in order: that’s ol. Shopping and friends: ul.'),
       L3('Yonib turgan ro‘yxatni yonib turgan varaqqa torting.', 'Перетащи светящийся список на светящийся лист.', 'Drag the glowing list onto the glowing sheet.')
     ],
     ok: L3('To‘g‘ri! Har bir ro‘yxat o‘z joyida.', 'Верно! Каждый список на своём месте.', 'Right! Every list is in its place.'),
@@ -6874,7 +6873,7 @@ const C = {
     askPlace: L3('Endi ul yoki ol varag‘ini bosing', 'Теперь нажми лист ul или ol', 'Now tap the ul or ol sheet'),
     pickFirst: L3('Avval ro‘yxatni bosing.', 'Сначала нажми список.', 'Tap a list first.'),
     cards: [
-      { id: 'shop', want: 'ul', title: L3('Do‘kondan', 'Купить', 'Shopping'),
+      { id: 'shop', want: 'ul', title: L3('Xaridlar', 'Купить', 'Shopping'),
         items: L3(['non', 'pishloq', 'olma'], ['хлеб', 'сыр', 'яблоки'], ['bread', 'cheese', 'apples']),
         why: L3('Xaridda tartib muhim emas: baribir hammasini olasiz. Bu ul.', 'В покупках порядок не важен: купишь всё. Это ul.', 'Order doesn’t matter for shopping: you’ll buy it all. That’s ul.') },
       { id: 'morning', want: 'ol', title: L3('Ertalab', 'Утро', 'Morning'),
@@ -6890,15 +6889,13 @@ const C = {
   },
   s9: {
     eyebrow: L3('Band ro‘yxat ichida', 'Пункт внутри списка', 'Item inside the list'),
-    say: L3('Qarang: buterbrodlar bandi ro‘yxatdan tushib qoldi. U yopuvchi ul tegidan keyin turibdi, shuning uchun boshqalar bilan bir qatorda emas.',
+    say: L3('Qarang: buterbrodlar bandi ro‘yxatdan tushib qoldi. U yopuvchi ul tegidan keyin turibdi, shuning uchun boshqalar bilan bir tekis turmaydi.',
       'Смотри: пункт с бутербродами выпал из списка. Он стоит после закрывающего тега ul, поэтому и не в ряд с остальными.',
       'Look: the sandwiches item fell out of the list. It’s after the closing ul tag, so it doesn’t line up with the others.'),
-    sayDo: L3('li faqat ul yoki ol ichida turadi, papkadagi varaq kabi. Bandni ro‘yxat ichiga torting.', 'li живёт только внутри ul или ol, как листок в папке. Перетащи пункт обратно в список.', 'li lives only inside ul or ol, like a sheet in a folder. Drag the item back into the list.'),
-    done: L3('Qaytdi! Endi hamma bandlar ul ichida va bir qatorda.', 'Вернулся! Теперь все пункты внутри ul и стоят ровно.', 'It’s back! Now every item is inside ul and lines up.'),
-    ask: L3('Bandni ro‘yxat ichiga torting', 'Перетащи пункт внутрь списка', 'Drag the item into the list'),
-    askPlace: L3('Endi ro‘yxat ichidagi joyni bosing', 'Теперь нажми место внутри списка', 'Now tap the spot inside the list'),
-    pickFirst: L3('Avval tushib qolgan bandni bosing.', 'Сначала нажми выпавший пункт.', 'Tap the fallen item first.'),
-    wrong: L3('Bu joy ro‘yxatdan tashqarida. Band ochuvchi va yopuvchi ul orasida turishi kerak.', 'Это место снаружи списка. Пункт должен стоять между открывающим и закрывающим ul.', 'That spot is outside the list. The item must go between the opening and closing ul.')
+    sayDo: L3('li faqat ul yoki ol ichida turadi, papkadagi varaq kabi. Bandni ro‘yxatga qaytaramiz.', 'li живёт только внутри ul или ol, как листок в папке. Вернём пункт обратно в список.', 'li lives only inside ul or ol, like a sheet in a folder. Let’s put the item back into the list.'),
+    done: L3('Qaytdi! Endi hamma bandlar ul ichida va bir tekis turibdi.', 'Вернулся! Теперь все пункты внутри ul и стоят ровно.', 'It’s back! Now every item is inside ul and lines up.'),
+    ask: L3('Qarang: tushib qolgan band', 'Смотри: выпавший пункт', 'Watch: the fallen item'),
+    askPlace: L3('Qarang: band ro‘yxat ichiga qaytadi', 'Смотри: пункт возвращается внутрь списка', 'Watch: the item goes back inside the list')
   },
   s10: {
     eyebrow: L3('Ro‘yxatni yoping', 'Закрой список', 'Close the list'),
@@ -6937,24 +6934,24 @@ const C = {
   },
   s12: {
     eyebrow: L3('Yuqoridan pastga', 'Сверху вниз', 'Top to bottom'),
-    say: L3('Bu sayohat sahifasining kodi. Brauzer uni qanday o‘qishini ko‘raylik.', 'Это вся страница похода. Посмотрим, как браузер её читает.', 'This is the whole trip page. Let’s see how the browser reads it.'),
-    order1: L3('Brauzer kodni yuqoridan pastga o‘qiydi. Avval h1, sahifa nomi.', 'Браузер читает код сверху вниз. Сначала h1 — название страницы.', 'The browser reads code from top to bottom. First h1, the page title.'),
+    say: L3('Bu sayohat sahifasining kodi. Brauzer uni qanday o‘qishini ko‘raylik.', 'Это код страницы похода. Посмотрим, как браузер его читает.', 'This is the code of the trip page. Let’s see how the browser reads it.'),
+    order1: L3('Brauzer kodni yuqoridan pastga o‘qiydi. Avval h1, asosiy sarlavha.', 'Браузер читает код сверху вниз. Сначала h1 — главный заголовок.', 'The browser reads code from top to bottom. First h1, the main heading.'),
     order2: L3('Keyin ul ro‘yxati: har bir li oldida nuqta.', 'Потом список ul: у каждого li — точка.', 'Then the ul list: each li gets a dot.'),
     order3: L3('Keyin ol ro‘yxati: har bir li ga brauzer raqam beradi.', 'Дальше список ol: каждому li браузер даёт номер.', 'Then the ol list: the browser gives each li a number.'),
-    ask: L3('«Brauzerdek o‘qish» tugmasini bosing', 'Нажми «Читать как браузер»', 'Tap “Read like a browser”'),
+    ask: L3('Brauzer qanday o‘qishini kuzating', 'Смотри, как читает браузер', 'Watch how the browser reads'),
     askDone: L3('Brauzer yuqoridan pastga o‘qiydi', 'Браузер читает сверху вниз', 'The browser reads top to bottom')
   },
   s13: {
     eyebrow: L3('O‘z ro‘yxatingiz', 'Свой список', 'Your list'),
-    say: L3('Endi o‘z ro‘yxatingizni tuzing. Avval h1 ichiga uning nomini yozing: masalan, sevimli o‘yinlaringiz.', 'Теперь твой список. Сначала напиши в h1 его название — например, любимые игры.', 'Now your own list. First type its title in h1: your favorite games, for example.'),
+    say: L3('Endi o‘z ro‘yxatingizni tuzing. Avval h1 ichiga uning nomini yozing: masalan, sevimli o‘yinlaringiz.', 'Теперь твой список. Сначала напиши в h1 его название — например, любимые игры.', 'Now your own list. First type its name in h1: your favorite games, for example.'),
     sayItems: L3('Endi uchta li ichiga uchta band yozing.', 'Теперь напиши три пункта — по одному в каждый li.', 'Now type three items, one in each li.'),
-    ok: L3('Ro‘yxatingiz tayyor: nom va uchta band bor.', 'Твой список готов: есть название и три пункта.', 'Your list is ready: a title and three items.'),
+    ok: L3('Ro‘yxatingiz tayyor: nom va uchta band bor.', 'Твой список готов: есть название и три пункта.', 'Your list is ready: a name and three items.'),
     hints: [
-      L3('Ro‘yxat nomini o‘ylab toping: sevimli o‘yinlar, taomlar yoki filmlar.', 'Придумай название: любимые игры, еда или фильмы.', 'Make up a title: favorite games, food or films.'),
+      L3('Ro‘yxat nomini o‘ylab toping: sevimli o‘yinlar, taomlar yoki filmlar.', 'Придумай название: любимые игры, еда или фильмы.', 'Make up a name: favorite games, food or films.'),
       L3('Faqat so‘z yozing, teglar allaqachon joyida.', 'Пиши только слова — теги уже на месте.', 'Type only words: the tags are already in place.'),
       L3('Masalan: Sevimli o‘yinlarim. Bandlar: futbol, shaxmat, Minecraft.', 'Например: Мои любимые игры. Пункты: футбол, шахматы, Minecraft.', 'For example: My favorite games. Items: football, chess, Minecraft.')
     ],
-    askTitle: L3('h1 ichiga ro‘yxat nomini yozing', 'Напиши название в h1', 'Type the title in h1'),
+    askTitle: L3('h1 ichiga ro‘yxat nomini yozing', 'Напиши название в h1', 'Type the list name in h1'),
     askItems: L3('Har bir li ichiga bitta band yozing', 'Напиши по пункту в каждый li', 'Type one item in each li'),
     phTitle: L3('Masalan: Sevimli o‘yinlarim', 'Например: Мои любимые игры', 'For example: My favorite games'),
     phItem: L3('band', 'пункт', 'item')
@@ -7697,7 +7694,7 @@ function GoalCard({ goal, n, total, done, doneText }) {
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
 Object.assign(SPOKEN, { magicUl: 1, magicOl: 1, sayLi: 1, doneUl: 1, doneLi: 1, msgs: 1, askQ: 1, miss: 1, sayN: 1, mixed: 1,
-  sayDo: 1, wrong: 1, fine: 1, order1: 1, order2: 1, order3: 1, sayItems: 1, cards: 1, pickFirst: 1 });
+  sayDo: 1, fine: 1, order1: 1, order2: 1, order3: 1, sayItems: 1, cards: 1, pickFirst: 1 });
 Object.assign(NOT_SPOKEN_IN, { cards: { title: 1, items: 1, id: 1, want: 1 } });
 // Теги урока вслух — по-английски во всех языках (заказчик, 17.10.2026).
 Object.assign(TAG_SAY.ru, { ul: 'U L', ol: 'O L', li: 'L I' });
@@ -7815,7 +7812,7 @@ function usePaperSound() {
 // «уголка «<»»). В речь знак не идёт — иначе сервис читает сырой символ; знак без
 // названия читается словами. Узбекский закрывающий тег — «yopuvchi title tegi»
 // (порядок слов узбекского), а не «yopuvchi teg title».
-const KZ_SIGN_WORD = '(?:qavs|chiziq|скобк|уголк|черт|bracket|slash)[^\\s,.!?:;]*';
+const KZ_SIGN_WORD = '(?:qavs|chiziq|скобк|уголк|уголо|черт|bracket|slash)[^\\s,.!?:;]*';   // «уголок» — тоже (иначе «уголок «>»» звучало «уголок правый уголок»)
 const KZ_SIGN_NAME = { uz: { '<': 'chap burchakli qavs', '>': 'o‘ng burchakli qavs', '/': 'qiya chiziq' },
   ru: { '<': 'левый уголок', '>': 'правый уголок', '/': 'косая черта' }, en: { '<': 'less-than sign', '>': 'greater-than sign', '/': 'slash' } };
 const spokenHtmlL2 = spokenHtml;
@@ -7827,8 +7824,18 @@ spokenHtml = (text, lang) => {
   const nm = KZ_SIGN_NAME[lang] || KZ_SIGN_NAME.ru;
   s = s.replace(/[«“"]\s*([<>/\\])\s*[»”"]/g, (all, c) => ' ' + (nm[c] || nm['/']) + ' ');
   if (lang === 'uz') s = s.replace(/<\s*\/\s*([a-z][a-z0-9]*)\s*>/gi, (all, t) => 'yopuvchi ' + t + ' tegi');
-  return spokenHtmlL2(s, lang);
+  const out = spokenHtmlL2(s, lang);
+  return lang === 'uz' ? kzTagWord(out) : out;
 };
+// Слово «teg» в узбекской речи — по-английски, как названия тегов html, head, title,
+// body (заказчик, 23.10.2026): корень уходит в сервис английским «tag», узбекское
+// окончание — через дефис («tag-i», «tag-lar»), чтобы «tagi» не прочлось узбекским
+// словом. Только формы слова «teg»: «tegishli» и другие слова не трогаем.
+const KZ_TEG_SUF = /^(i|ni|ga|da|dan|ning|siz|ini|iga|ida|idan|idagi|ining|lar|lari|larni|larga|larda|lardan|larning|larini|lariga)?$/i;
+function kzTagWord(s) {
+  return String(s).replace(/(^|[^A-Za-z‘’'ʻʼ])(teg)([A-Za-z‘’ʻʼ]*)/gi,
+    (all, pre, root, suf) => (KZ_TEG_SUF.test(suf) ? pre + 'tag' + (suf ? '-' + suf.toLowerCase() : '') : all));
+}
 
 // Параллакс слоёв: палец или мышь сдвигают вырезки по углам листа на разную
 // глубину. Значения — ступеньками (как кадры stop-motion), без лишних перерисовок.
@@ -8309,6 +8316,62 @@ function KzHand({ targets, run, label }) {
   );
 }
 
+// ПОКАЗ НА ЭКРАНАХ-ОБЪЯСНЕНИЯХ (заказчик, 23.10.2026): на объяснении ученик
+// ничего не делает — всё показывает Коди, а вещи меняются сами, под речь.
+// Руки и кнопок, которые «нажимаются», на объяснениях нет (заказчик, 23.10.2026:
+// «показать, как рука нажимает, очень некрасиво»). Чтобы не было ощущения
+// «смотрю и скучаю»: после каждой короткой фразы что-то происходит — вещь, о
+// которой речь, коротко загорается и сама меняется (штамп, влёт, перелёт),
+// со звуком; «Дальше» загорается по окончании показа, «Повторить» в шапке —
+// посмотреть ещё раз.
+//
+// Сценарий — шаги по порядку:
+//   { say: [{ text, pose }, …] } — Коди говорит; дальше — когда договорил;
+//   { look: () => элемент, act } — элемент коротко загорается, потом act;
+//   { act } — сразу; { wait: мс } — пауза (полёт, чтение браузера).
+// Первые реплики экрана — как обычно, в useVoice; показ начинается, когда они
+// сказаны. run = false (экран уже решён) — показа нет.
+function useKzDemo({ steps, run, spoken, sayNow, say }) {
+  const [idx, setIdx] = useState(-1);
+  const ran = useRef(-1);
+  const tm = useRef([]);
+  const audio = useAudio();
+  const pausedRef = useRef(false);
+  pausedRef.current = !!(audio && audio.paused);
+  useEffect(() => () => tm.current.forEach(clearTimeout), []);
+  const later = (ms, f) => {
+    const go = () => { if (pausedRef.current) { tm.current.push(setTimeout(go, 300)); return; } f(); };
+    tm.current.push(setTimeout(go, ms));
+  };
+  const next = (i) => setIdx((v) => (v === i ? i + 1 : v));
+  // Вещь загорается (мягкое свечение и лёгкий подъём ступеньками), потом меняется.
+  const lookAt = (el, i, act) => {
+    const done = () => { if (act) act(); next(i); };
+    if (!el || !el.classList || reduceMotion()) { done(); return; }
+    el.classList.add('kz-demo-on');
+    later(560, done);
+    later(900, () => el.classList.remove('kz-demo-on'));
+  };
+  useEffect(() => {
+    if (!run) return;
+    if (idx === -1) { if (spoken) setIdx(0); return; }
+    const st = steps[idx];
+    if (!st) return;
+    if (ran.current !== idx) {
+      ran.current = idx;
+      const i = idx;
+      if (st.say) { sayNow(st.say[0].text, st.say[0].pose); st.say.slice(1).forEach((l) => say(l.text, l.pose)); return; }
+      if (st.look) { later(200, () => lookAt(st.look(), i, st.act)); return; }
+      if (st.wait) { if (st.act) st.act(); later(st.wait, () => next(i)); return; }
+      if (st.act) st.act();
+      next(i);
+      return;
+    }
+    if (st.say && spoken) next(idx);
+  }, [idx, spoken, run]); // eslint-disable-line react-hooks/exhaustive-deps
+  return { idx, done: !run || idx >= steps.length, step: Math.max(0, Math.min(idx, steps.length)) };
+}
+
 // Текст ученика (или образец) — сквозной для экранов 7–15.
 const okText = (s) => hasLetters(s) && !hasTags(s);
 const useMine = () => {
@@ -8344,6 +8407,34 @@ const kzTop = (nodes) => {
 };
 const kzRand = (a, b) => a + Math.random() * (b - a);
 
+// Всё видимое на листе должно лететь, даже если его нет в KZ_PIECES (своя полоска
+// урока, пунктир, лист body, «?!»…): видимая деталь вне вырезок поднимается до
+// самого верхнего предка, в котором ещё нет вырезок, — он летит отдельной вырезкой.
+// Без этого такие вещи стояли на месте, пока всё вокруг разлеталось, или
+// появлялись рывком (заказчик, 23.10.2026: «в некоторых местах переход не работает»).
+const kzLeaf = (el) => {
+  if (/^(svg|img|canvas|textarea|input|video)$/i.test(el.tagName)) return true;
+  for (let i = 0; i < el.childNodes.length; i += 1) { const c = el.childNodes[i]; if (c.nodeType === 3 && c.textContent.trim()) return true; }
+  const cs = getComputedStyle(el);
+  return cs.backgroundImage !== 'none' || !/^(rgba\(0, 0, 0, 0\)|transparent)$/.test(cs.backgroundColor) || parseFloat(cs.borderTopWidth) > 0 || parseFloat(cs.borderBottomWidth) > 0;
+};
+function kzPiecesOf(body) {
+  const pieces = kzTop(body.querySelectorAll(KZ_PIECES));
+  const inPiece = (el) => pieces.some((p) => p === el || p.contains(el));
+  const hasPiece = (el) => pieces.some((p) => el.contains(p));
+  const extra = [];
+  body.querySelectorAll('*').forEach((el) => {
+    if (el.closest('svg') && el.tagName.toLowerCase() !== 'svg') return;
+    if (inPiece(el) || extra.some((x) => x.contains(el))) return;
+    const b = el.getBoundingClientRect();
+    if (b.width < 2 || b.height < 2 || !kzLeaf(el)) return;
+    let top = el;
+    while (top.parentElement && top.parentElement !== body && !hasPiece(top.parentElement)) top = top.parentElement;
+    extra.push(top);
+  });
+  return kzTop(pieces.concat(extra));
+}
+
 function kzSnapshotOut() {
   const sheet = kzLiveSheet();
   const stage = document.querySelector('.stage');
@@ -8351,7 +8442,8 @@ function kzSnapshotOut() {
   const r = sheet.getBoundingClientRect();
   const clone = sheet.cloneNode(true);
   // Лист, скотч и вырезки по углам одинаковы на всех экранах — разлетается только содержимое.
-  clone.querySelectorAll('.kz-sheet-wrap, .kz-deco').forEach((e) => e.remove());
+  // Рука-показ не летит: в снимке её нет совсем.
+  clone.querySelectorAll('.kz-sheet-wrap, .kz-deco, .kz-hand-layer').forEach((e) => e.remove());
   // Набранный текст в полях копии (значение textarea не копируется само).
   const src = sheet.querySelectorAll('textarea'), dst = clone.querySelectorAll('textarea');
   dst.forEach((t, i) => { if (src[i]) t.value = src[i].value; });
@@ -8366,7 +8458,9 @@ function kzSnapshotOut() {
   (stage.parentNode || document.body).appendChild(layer);
   const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
   const reach = Math.max(window.innerWidth, window.innerHeight) * 0.75;
-  kzTop(clone.querySelectorAll(KZ_PIECES)).forEach((el, i) => {
+  const cbody = clone.querySelector('.kz-sheet-body') || clone;
+  kzPiecesOf(cbody).forEach((el, i) => {
+    if (getComputedStyle(el).display === 'inline') el.style.display = 'inline-block';
     const b = el.getBoundingClientRect();
     let dx = b.left + b.width / 2 - cx, dy = b.top + b.height / 2 - cy;
     const len = Math.hypot(dx, dy) || 1;
@@ -8395,10 +8489,12 @@ function kzAssembleIn() {
   setTimeout(() => {
     const H = window.innerHeight, W = window.innerWidth;
     let n = 0;
-    kzTop(sheet.querySelectorAll(KZ_PIECES)).forEach((el) => {
-      const cs = getComputedStyle(el);
-      // Свой влёт есть — пусть летит им (снимается с паузы вместе со всеми).
-      if (cs.animationName !== 'none' && cs.animationIterationCount.indexOf('infinite') < 0) return;
+    const body = sheet.querySelector('.kz-sheet-body') || sheet;
+    const ownAnim = (el) => { const cs = getComputedStyle(el); return cs.animationName !== 'none' && cs.animationIterationCount.indexOf('infinite') < 0; };
+    kzPiecesOf(body).forEach((el) => {
+      // Свой влёт есть (у неё или у предка) — пусть летит им (снимается с паузы вместе со всеми).
+      for (let e = el; e && e !== body; e = e.parentElement) if (ownAnim(e)) return;
+      if (el.closest('.kz-hand-layer')) return;
       const fromLeft = n % 2 === 0;
       el.style.setProperty('--ix', ((fromLeft ? -1 : 1) * kzRand(0.25, 0.55) * W).toFixed(0) + 'px');
       el.style.setProperty('--iy', (kzRand(-0.55, -0.2) * H).toFixed(0) + 'px');
@@ -8704,8 +8800,8 @@ function S2({ p }) {
 
 // =============================================================================
 // S3. ПУНКТЫ СПИСКА — вещи стоят внутри ul без li: браузер честно склеил их в
-// одну строку без точек. Нажатие на вещь оборачивает её в li — в окне у неё
-// появляется точка. Потом Коди называет ul и li (подсветка за речью).
+// одну строку без точек. Показ: вещи по очереди загораются — каждая оборачивается в li,
+// в окне у неё появляется точка. Потом Коди называет ul и li (подсветка за речью).
 // =============================================================================
 function S3({ p }) {
   const pick = usePick();
@@ -8715,15 +8811,18 @@ function S3({ p }) {
   const [wrapped, setWrapped] = useState(solved ? [true, true, true] : [false, false, false]);
   const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.doneUl, pose: 'explain' }, { text: c.doneLi, pose: 'smile' }]
     : [{ text: c.say, pose: 'explain' }, { text: c.sayLi, pose: 'point' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved, spoken);
   const n = wrapped.filter(Boolean).length;
-  const led = useIdleLed(canTap && n < 3, n);
-  const wrap = (k) => {
-    if (!canTap || wrapped[k]) return;
-    const w = wrapped.slice(); w[k] = true; setWrapped(w); sfx('pop', true);
-    if (w.every(Boolean)) { put({ done: true }); sayNow(c.doneUl, 'explain'); say(c.doneLi, 'smile'); }
-  };
+  const wrap = (k) => { setWrapped((w) => { const x = w.slice(); x[k] = true; return x; }); sfx('pop', true); };
+  const codeRef = useRef(null);
+  const line = () => codeRef.current && codeRef.current.querySelector('.kz-line.l3-hline');
+  // Показ: вещи по очереди загораются — каждая оборачивается в li.
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { look: line, act: () => wrap(0) },
+    { look: line, act: () => wrap(1) },
+    { look: line, act: () => { wrap(2); put({ done: true }); } },
+    { say: [{ text: c.doneUl, pose: 'explain' }, { text: c.doneLi, pose: 'smile' }] }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
   const things = TRIP.things.map(pick);
   const glued = speaker.text === c.say && !solved;
   const hlUl = speaker.text === c.doneUl;
@@ -8732,14 +8831,13 @@ function S3({ p }) {
   const kids = things.map((s, k) => (wrapped[k] ? { li: true, s, k: 'i' + k, cls: 'kz-a-stamp', hl: hlLi } : { txt: s, k: 't' + k }));
   const ulLine = (close) => ({ k: close ? 'uc' : 'uo', d: 0, cls: hlUl ? 'is-read' : '', parts: [T_('ul', close)] });
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={n === 3 ? c.doneLi : c.ask} nav={navOf(p, canGo)}>
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={n === 3 ? c.askDone : c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="l3-sheetpage">
-        <KzAsk text={n === 3 ? c.doneLi : c.ask} n={n === 3 ? null : n + '/3'} />
+        <KzAsk text={n === 3 ? c.askDone : c.ask} n={n === 3 ? null : n + '/3'} />
         <div className="kz-scene l3-duo">
-          <div className="kz-col">
+          <div className="kz-col" ref={codeRef}>
             <KzCode lines={[ulLine(false)].concat(things.map((s, k) => ({
-              k: 'l' + k + (wrapped[k] ? 'w' : ''), d: 1, cls: wrapped[k] ? 'is-new' + (hlLi ? ' is-read' : '') : 'l3-hline',
-              onTap: wrapped[k] ? null : () => wrap(k), disabled: !canTap, led: !wrapped[k] && k === nextK && (led || speaker.text === c.sayLi) && canTap,
+              k: 'l' + k + (wrapped[k] ? 'w' : ''), d: 1, cls: wrapped[k] ? 'is-new' + (hlLi ? ' is-read' : '') : 'l3-hline' + (k === nextK && speaker.text === c.sayLi ? ' is-read' : ''),
               parts: wrapped[k] ? liParts(s) : [W_(s)]
             }))).concat([ulLine(true)])} />
           </div>
@@ -8931,7 +9029,7 @@ function S5({ p }) {
 }
 
 // =============================================================================
-// S6. СПИСОК С НОМЕРАМИ — рецепт какао в ol. «Перемешать»: строки кода
+// S6. СПИСОК С НОМЕРАМИ — рецепт какао в ol. Показ: строки кода сами
 // ступенчато меняются местами, номера в окне остаются 1, 2, 3 — шаги
 // перепутались, над окном «?!». Потом строки встают на места сами.
 // =============================================================================
@@ -8944,15 +9042,15 @@ function S6({ p }) {
   const [phase, setPhase] = useState(solved ? 'back' : 'calm');   // calm · mixed · back
   const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
     : [{ text: c.say, pose: 'explain' }, { text: c.sayN, pose: 'point' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved || phase === 'back', spoken);
-  const led = useIdleLed(canTap && phase === 'calm', 0);
-  const mix = () => { if (!canTap || phase !== 'calm') return; sfx('soft', true); setPhase('mixed'); sayNow(c.mixed, 'wonder'); };
-  useEffect(() => {
-    if (phase !== 'mixed' || !spoken) return undefined;
-    const t = setTimeout(() => { sfx('pop', true); setPhase('back'); put({ done: true }); sayNow(c.done, 'smile'); }, reduceMotion() ? 200 : 700);
-    return () => clearTimeout(t);
-  }, [phase, spoken]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Показ: строки сами перемешиваются — шаги путаются, Коди удивляется; потом встают на места.
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { act: () => { sfx('soft', true); setPhase('mixed'); } },
+    { say: [{ text: c.mixed, pose: 'wonder' }] },
+    { wait: reduceMotion() ? 200 : 700 },
+    { act: () => { sfx('pop', true); setPhase('back'); put({ done: true }); } },
+    { say: [{ text: c.done, pose: 'smile' }] }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
   const steps = TRIP.steps.map(pick);
   const order = phase === 'mixed' ? S6_MIX : [0, 1, 2];
   const hlOl = speaker.text === c.say;
@@ -8975,7 +9073,6 @@ function S6({ p }) {
             {phase === 'mixed' ? <span className="l3-oops kz-a-stamp" aria-hidden="true">?!</span> : null}
           </div>
         </div>
-        {phase === 'calm' ? <div className="kz-row"><button type="button" className="kz-btn is-coral" disabled={!canTap} onClick={mix}>{pick(UI.shuffle)}<Led on={led} /></button></div> : null}
       </Sheet>
     </Stage>
   );
@@ -9141,57 +9238,47 @@ function S8({ p }) {
 
 // =============================================================================
 // S9. ПУНКТ ВНУТРИ СПИСКА — li «бутерброды» стоит после </ul>: в окне он без
-// отступа, не в ряд с остальными. Перетащить строку в место внутри списка (или
-// нажать строку, потом место). Рука сначала показывает.
+// отступа, не в ряд с остальными. Показ: выпавшая строка загорается и перелетает
+// в место внутри списка, Коди объясняет.
 // =============================================================================
 function S9({ p }) {
   const pick = usePick();
-  const log = useLog();
   const c = C.s9;
   const [rec, put] = useRec('s9');
   const solved = !!(rec && rec.done);
   const [inside, setInside] = useState(solved);
   const [sel, setSel] = useState(false);
-  const [msg, setMsg] = useState(null);
   const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
     : [{ text: c.say, pose: 'explain' }, { text: c.sayDo, pose: 'point' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved || inside, spoken);
-  const st = useRef({ tries: 0 });
-  const led = useIdleLed(canTap && !inside, sel ? 1 : 0);
-  const drop = (where) => {
-    if (!canTap || inside) return false;
-    st.current.tries += 1;
-    if (where !== 'in') { sfx('soft', true); setMsg(c.wrong); sayNow(c.wrong, 'think'); return false; }
-    sfx('win', true); setInside(true); setSel(false); setMsg(null); put({ done: true });
-    log({ screenId: 's9', type: 'move-li', correct: true, firstTry: st.current.tries === 1, attempts: st.current.tries });
-    sayNow(c.done, 'smile');
-    return true;
-  };
-  const dnd = useKzDrag((id, where) => drop(where));
   const codeRef = useRef(null);
+  const at = (q) => () => codeRef.current && codeRef.current.querySelector(q);
+  // Показ: загорается выпавший пункт, потом место внутри списка — строка перелетает на место.
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { look: at('.l3-stray-line'), act: () => { sfx('tap', true); setSel(true); } },
+    { look: at('[data-place="in"]'), act: () => { if (!reduceMotion()) kzFly(at('.l3-stray-line')(), at('[data-place="in"]')(), 700); } },
+    { wait: reduceMotion() ? 0 : 720 },
+    { act: () => { sfx('win', true); setInside(true); setSel(false); put({ done: true }); } },
+    { say: [{ text: c.done, pose: 'smile' }] }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
   const things = TRIP.things.map(pick);
-  const callIn = !inside && (sel || dnd.active);
   const lines = [
     { k: 'uo', d: 0, parts: [T_('ul')] },
     { k: 'l0', d: 1, parts: liParts(things[0]) },
     { k: 'l1', d: 1, parts: liParts(things[1]) },
     inside ? { k: 'l2', d: 1, cls: 'is-new', parts: liParts(things[2]) }
-      : { k: 'gap', d: 1, place: 'in', cls: 'l3-dropline' + (dnd.hover === 'in' ? ' is-hover' : '') + (callIn ? ' is-call' : ''),
-        onTap: () => { if (sel) drop('in'); else { setMsg(c.pickFirst); } }, disabled: !canTap, led: callIn && led,
-        parts: [<span key="d" className="kz-dash l3-dash" />] },
-    { k: 'uc', d: 0, place: inside ? undefined : 'out', parts: [T_('ul', true)] },
-    inside ? null : { k: 'stray', d: 0, cls: 'l3-stray-line' + (sel ? ' is-sel' : ''), disabled: !canTap, led: led && !sel,
-      onTap: () => { setSel(!sel); setMsg(null); sfx('tap', true); },
-      parts: [<span key="g" className="l3-grabspan" onPointerDown={(e) => { if (canTap && !inside) dnd.start(e, 'li', '<li>' + things[2] + '</li>'); }}>{liParts(things[2])}</span>] }
+      : { k: 'gap', d: 1, place: 'in', cls: 'l3-dropline' + (sel ? ' is-call' : ''), parts: [<span key="d" className="kz-dash l3-dash" />] },
+    { k: 'uc', d: 0, parts: [T_('ul', true)] },
+    inside ? null : { k: 'stray', d: 0, cls: 'l3-stray-line' + (sel ? ' is-sel' : ''), parts: liParts(things[2]) }
   ].filter(Boolean);
   const blocks = [{ t: 'ul', kids: things.slice(0, inside ? 3 : 2).map((s, i) => ({ li: true, s, k: 'i' + i, cls: inside && i === 2 ? 'kz-a-stamp' : '' })) }]
     .concat(inside ? [] : [{ t: 'stray', s: things[2], k: 'st', hl: speaker.text === c.say }]);
+  const askText = inside ? c.done : sel ? c.askPlace : c.ask;
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={inside ? c.done : sel ? c.askPlace : c.ask} nav={navOf(p, canGo)}>
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Sheet cls="l3-sheetpage">
-        <KzAsk text={inside ? c.done : sel ? c.askPlace : c.ask} hint={inside ? null : msg} />
-        <div className={'kz-scene l3-duo' + (callIn ? ' is-dragging' : '')}>
+        <KzAsk text={askText} />
+        <div className="kz-scene l3-duo">
           <div className="kz-col" ref={codeRef}>
             <KzCode lines={lines} />
           </div>
@@ -9199,10 +9286,7 @@ function S9({ p }) {
             <PaperBrowser title={pick(TRIP.title)} short cls="l3-br"><ListPage blocks={blocks} /></PaperBrowser>
           </div>
         </div>
-        <KzHand label={'<li>'} run={canTap && !inside && !sel && !dnd.active}
-          targets={[() => codeRef.current && codeRef.current.querySelector('.l3-stray-line'), () => codeRef.current && codeRef.current.querySelector('[data-place="in"]')]} />
       </Sheet>
-      <KzGhost ghost={dnd.ghost} />
     </Stage>
   );
 }
@@ -9393,7 +9477,7 @@ function S11({ p }) {
 }
 
 // =============================================================================
-// S12. СВЕРХУ ВНИЗ — «Читать как браузер»: части кода страницы похода
+// S12. СВЕРХУ ВНИЗ — показ: браузер сам читает код; части кода страницы похода
 // подсвечиваются по очереди, страница собирается в окне.
 // =============================================================================
 const READ12 = ['h1', 'ul', 'ol'];
@@ -9405,17 +9489,18 @@ function S12({ p }) {
   const [read, setRead] = useState(solved ? READ12.length : -1);
   const ORDER = [{ text: c.order1, pose: 'point' }, { text: c.order2, pose: 'point' }, { text: c.order3, pose: 'smile' }];
   const [speaker, say, spoken, sayNow] = useVoice(solved ? ORDER : [{ text: c.say, pose: 'explain' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved, spoken);
-  const led = useIdleLed(canTap && read < 0, 0);
   const timers = useRef([]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
-  const run = () => {
-    if (!canTap || read >= 0) return;
-    const step = reduceMotion() ? 120 : 800;
-    READ12.forEach((k, i) => timers.current.push(setTimeout(() => { setRead(i); sfx('tap', true); }, step * i)));
-    timers.current.push(setTimeout(() => { setRead(READ12.length); put({ done: true }); sayNow(ORDER[0].text, 'point'); say(ORDER[1].text, 'point'); say(ORDER[2].text, 'smile'); }, step * READ12.length + 200));
-  };
+  const STEP = reduceMotion() ? 120 : 800;
+  const run = () => { READ12.forEach((k, i) => timers.current.push(setTimeout(() => { setRead(i); sfx('tap', true); }, STEP * i))); };
+  // Показ: части читаются по очереди сами, потом Коди называет порядок.
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { act: run },
+    { wait: STEP * READ12.length + 200 },
+    { act: () => { setRead(READ12.length); put({ done: true }); } },
+    { say: ORDER }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
   const sayK = spoken ? null : speaker.text === c.order1 ? 'h1' : speaker.text === c.order2 ? 'ul' : speaker.text === c.order3 ? 'ol' : null;
   const cur = read >= 0 && read < READ12.length ? READ12[read] : null;
   const on = (k) => (sayK ? sayK === k : cur === k);
@@ -9445,7 +9530,6 @@ function S12({ p }) {
             <PaperBrowser title={pick(TRIP.title)} cls="l3-br">{blocks.length ? <ListPage blocks={blocks} anim={!solved} /> : null}</PaperBrowser>
           </div>
         </div>
-        {read < 0 ? <div className="kz-row"><button type="button" className="kz-btn is-coral" disabled={!canTap} onClick={run}>{pick(UI.read)}<Led on={led} /></button></div> : null}
       </Sheet>
     </Stage>
   );
@@ -9517,7 +9601,7 @@ function S13({ p }) {
         <KzAsk text={askText} hint={step === 2 ? null : (bad || hintAt(lad.lv, c.hints))} n={step === 2 ? null : (step + 1) + '/2'} />
         <div className="kz-scene kz-scene-col">
           <div className="kz-col">
-            <PaperBrowser title={tShow || pick(UI.mySite)} short cls="l3-br" pageHl={step < 2}>{blocks.length ? <ListPage blocks={blocks} /> : null}</PaperBrowser>
+            <PaperBrowser title={pick(UI.mySite)} short cls="l3-br" pageHl={step < 2}>{blocks.length ? <ListPage blocks={blocks} /> : null}</PaperBrowser>
             <KzCode cls="kz-code-sm" lines={[
               { k: 'h', d: 0, cls: step === 0 ? 'is-hl' : step === 1 ? 'l3-edge' : '', parts: [T_('h1'),
                 <span key="g" className={'kz-gap' + (led && step === 0 ? ' kz-gap-led' : '')}><InlineInput value={title} onChange={setTitle} placeholder={c.phTitle} label={c.askTitle} max={30} /></span>,
@@ -9575,7 +9659,7 @@ function S14({ p }) {
         <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : msg} />
         <div className="kz-scene l3-duo">
           <div className="kz-col">
-            <PaperBrowser title={mine.title} short cls="l3-br" pageHl={!okNow}>
+            <PaperBrowser title={pick(UI.mySite)} short cls="l3-br" pageHl={!okNow}>
               <ListPage blocks={[{ t: 'h1', s: mine.title, k: 'h' }, { t: kind, k: kind, cls: okNow ? 'kz-a-stamp' : '', kids: mine.items.map((s, i) => ({ li: true, s, k: 'i' + i })) }]} />
             </PaperBrowser>
           </div>
@@ -9630,7 +9714,7 @@ function S15({ p }) {
       <Sheet cls="l3-sheetpage">
         <div className="kz-scene kz-s15">
           <div className="kz-col kz-s15-left">
-            <PaperBrowser title={mine.title} cls="l3-br"><ListPage blocks={blocks} anim /></PaperBrowser>
+            <PaperBrowser title={pick(UI.mySite)} cls="l3-br"><ListPage blocks={blocks} anim /></PaperBrowser>
             <div className="l3-pair l3-pair-sm">
               <ListSheet kind="ul" items={things} tag hl={curK === 'ul'} />
               <ListSheet kind="ol" items={steps} tag hl={curK === 'ol'} />
@@ -11223,6 +11307,8 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-morph-t { position: absolute; inset: 0; display: flex; align-items: center; padding-left: 28px; font: 600 clamp(12px, 1.8dvh, 15px) 'Manrope', sans-serif;
   color: #1F2A44; white-space: nowrap; transition: opacity .35s steps(3, end) .25s; }
 .kz-morph-p.is-fly .kz-morph-t { opacity: 0; }
+/* Вкладка с названием влетает в голову и видна до конца полёта (хук урока 1). */
+.kz-morph-p.is-name.is-fly .kz-morph-t { opacity: 1; padding: 0 4px; justify-content: center; font-size: clamp(9px, 1.4dvh, 12px); }
 .kz-morph-lines { position: absolute; inset: 22% 14% 18%; display: flex; flex-direction: column; gap: 9%; transition: opacity .45s steps(3, end) .15s; }
 .kz-morph-lines i { display: block; height: 7%; background: #1F2A44; border-radius: 1px; }
 .kz-morph-lines i:nth-child(1) { width: 46%; height: 10%; } .kz-morph-lines i:nth-child(2) { width: 70%; } .kz-morph-lines i:nth-child(3) { width: 58%; }
@@ -11294,6 +11380,24 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 /* Слой руки: кисть может свисать за край листа, но не раздувает экран
    (overflow: clip не добавляет прокрутку; запас видимости — clip-margin). */
 .kz-hand-layer { position: absolute; inset: 0; z-index: 40; pointer-events: none; overflow: clip; overflow-clip-margin: 90px; }
+/* Рука показа на объяснениях: подходит к вещи за 1 с ступеньками (как у KzHand). */
+.kz-tg-in .kz-tk-b { display: inline-block; }
+.kz-tg-in .kz-tag > .kz-tk-b:first-child { animation: kzBrL .66s steps(7, end) both; }
+.kz-tg-in .kz-tag > .kz-tk-b:last-child { animation: kzBrR .66s steps(7, end) both; }
+.kz-tg-in .kz-tg-slash { animation: kzSlash .6s steps(6, end) .3s both; }
+.kz-tg-in.is-new .kz-tk-n { display: inline-block; animation: kzTgName .4s steps(4, end) .1s both; }
+.kz-tg-in .kz-tg-cap { animation: kzTgName .3s steps(3, end) .6s both; }
+@keyframes kzBrL { 0% { translate: -2.2em -.7em; rotate: -35deg; opacity: 0; } 30% { opacity: 1; } 100% { translate: 0 0; rotate: 0deg; opacity: 1; } }
+@keyframes kzBrR { 0% { translate: 2.2em -.7em; rotate: 35deg; opacity: 0; } 30% { opacity: 1; } 100% { translate: 0 0; rotate: 0deg; opacity: 1; } }
+@keyframes kzSlash { 0% { translate: .2em -1.8em; rotate: 40deg; opacity: 0; } 40% { opacity: 1; } 100% { translate: 0 0; rotate: 0deg; opacity: 1; } }
+@keyframes kzTgName { 0% { opacity: 0; scale: .6; } 100% { opacity: 1; scale: 1; } }
+.kz-demo-on { animation: kzDemoOn .9s steps(6, end) both !important; transform-box: fill-box; transform-origin: center; }
+@keyframes kzDemoOn {
+  0% { filter: none; scale: 1; }
+  35% { filter: drop-shadow(0 0 7px rgba(255, 196, 92, .95)) brightness(1.06); scale: 1.06; }
+  70% { filter: drop-shadow(0 0 5px rgba(255, 196, 92, .7)); scale: 1.03; }
+  100% { filter: none; scale: 1; }
+}
 @media (min-width: 760px) {
   /* s11: зоны головы и тела выше — на ноутбуке под ними было пусто. */
   .kz-zone { min-height: clamp(150px, 36dvh, 340px); }
@@ -11411,6 +11515,82 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
   80% { transform: translateY(calc(var(--dy) * .05)); }
   100% { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .kz-line.kz-slide-up, .kz-line.kz-slide-under { animation: none; } }
+
+/* ══ «ЧТО ТАКОЕ ТЕГ» (23.10.2026) — экран tg1 ═══════════════════════════════
+   Строка кода — большая горчичная полоска; тег — коралловые скобки и черта,
+   имя чернилами; рядом честный бумажный браузер. */
+.kz-tg { flex-direction: column; justify-content: center; align-items: center; gap: clamp(12px, 2.4dvh, 26px); }
+.kz-tg-strip { position: relative; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 1.05em .4em; max-width: 100%;
+  padding: .45em .8em 1.15em; background: var(--kz-piece); color: #1F2A44; font: 700 clamp(22px, 4.4dvh, 42px)/1.15 'JetBrains Mono', ui-monospace, monospace;
+  clip-path: polygon(0 8%, 4% 0, 50% 5%, 96% 0, 100% 10%, 98% 55%, 100% 92%, 95% 100%, 50% 95%, 3% 100%, 0 90%, 1.5% 45%);
+  filter: drop-shadow(0 2px 2px rgba(74, 48, 18, .3)); }
+.kz-tg-word { padding: 0 .12em; border-radius: 6px; transition: background .2s; }
+.kz-tg-word.is-hl { background: #1F2A44; color: #FBF6EA; }
+.kz-tg-text { font: 800 .6em 'Manrope', sans-serif; }
+.kz-tg-tag { position: relative; display: inline-flex; flex-direction: column; align-items: center; }
+.kz-tg-tag .kz-tag { font: inherit; padding: 0 .1em; border-radius: 6px; transition: background .2s; }
+.kz-tg-tag.is-hl .kz-tag { background: #1F2A44; }
+.kz-tg-tag.is-hl .kz-tk-n { color: #FBF6EA; }
+.kz-tg-slash { display: inline-block; transition: scale .3s steps(3, end); }
+.kz-tg-slash.is-hl { scale: 1.35; color: #FFB199; }
+.kz-tg-cap { position: absolute; top: 100%; margin-top: 1px; font: 800 clamp(10px, 1.5dvh, 13px) 'Manrope', sans-serif; font-style: normal; color: #5B4300;
+  letter-spacing: .02em; white-space: nowrap; }
+.kz-tg-br.kz-br { --brh: 30dvh; }
+.kz-tg-page { font-size: 1.2em; }
+.kz-tg-mark { background: #FFE9A8; box-shadow: 0 0 0 3px #FFE9A8; border-radius: 2px; }
+/* Кнопки-кусочки «< >» и «/» */
+@media (max-width: 759px) {
+  .kz-tg-strip { font-size: clamp(19px, 3.6dvh, 26px); }
+}
+@media (min-width: 760px) {
+  .kz-tg-strip { font-size: clamp(26px, 4.8dvh, 50px); }
+  .kz-tg-br.kz-br { --brh: 32dvh; }
+  .kz-tg { gap: clamp(10px, 2dvh, 22px); }
+}
+
+/* ── Итоговая проверка урока 1 (q1, q2) ──────────────────────────────────── */
+.kz-q1-slot { position: relative; padding: 0; font: inherit; cursor: pointer; vertical-align: middle; }
+.kz-q1-slot:disabled { cursor: default; }
+.kz-q2 .kz-code { align-self: center; }
+.kz-q2-close .kz-tag { background: #1F2A44; border-radius: 6px; padding: 0 .12em; }
+.kz-q2-close .kz-tk-n { color: #FBF6EA; }
+.kz-quiz { display: flex; flex-direction: column; gap: 10px; width: min(100%, 520px); align-self: center; margin-top: clamp(10px, 2.2dvh, 22px); }
+.kz-quiz .kz-btn { width: 100%; min-height: 52px; white-space: normal; line-height: 1.25; padding: 10px 18px; text-align: center; justify-content: center; }
+@media (max-width: 759px) { .kz-quiz .kz-btn { min-height: 48px; font-size: 15px; } }
+
+/* ── Экран «Часть body» (s9): куски страницы вылетают из тела в окно ───────── */
+.kz-s9-ghost { visibility: hidden; height: 100%; }
+.kz-s9-p { position: absolute; display: block; overflow: hidden; z-index: 9; transform-origin: 50% 50%;
+  filter: drop-shadow(0 3px 2px rgba(74, 48, 18, .3)) drop-shadow(0 10px 12px rgba(74, 48, 18, .18)); }
+.kz-s9-p.is-text { background: #FBF6EA; border-radius: 3px; }
+.kz-s9-p-t { display: flex; align-items: center; height: 100%; padding: 0 3px; white-space: nowrap; font-weight: 700; color: #1F2A44; }
+.kz-s9-p.is-line { background: #1F2A44; border-radius: 2px; }
+.kz-s9-p.is-pic { background: #2A8C7E; border-radius: 3px; }
+.kz-s9-p.is-btn { background: #E0643F; border-radius: 3px; }
+.kz-s9-p-b { position: absolute; inset: 0; display: grid; place-items: center; font: 800 clamp(10px, 1.6dvh, 13px) 'Manrope', sans-serif; color: #fff; }
+.kz-label.kz-s9-lbl { z-index: 10; pointer-events: none; }
+.kz-label.kz-s9-lbl.is-man { translate: -50% -70%; }
+.kz-label.kz-s9-lbl.is-win { translate: -100% -70%; }
+
+/* ── Открытая клавиатура телефона (is-kbd): экраны со своим текстом урока 1 ──
+   Поле, вкладка и окно видны: браузер ужимается до полосы с вкладкой и строки
+   окна, строки кода и «Готово» ниже, вырезки по углам листа прячутся. */
+.is-kbd .kz-deco { display: none; }
+.is-kbd .kz-typed .kz-sheet-body { padding: 6px 8px; gap: 6px; }
+.is-kbd .kz-typed .kz-ask { font-size: 13.5px; padding: 4px 10px 5px; }
+.is-kbd .kz-typed .kz-br { aspect-ratio: auto; max-width: 100%; padding-bottom: 6px; }
+.is-kbd .kz-typed .kz-br-tool { display: none; }
+.is-kbd .kz-typed .kz-br-bar { height: 22px; }
+.is-kbd .kz-typed .kz-br-body { flex: 0 0 auto; height: 34px; }
+.is-kbd .kz-typed .kz-br-page { inset: 4px 8px; font-size: 13px; }
+.is-kbd .kz-typed .kz-bits-row { display: none; }
+.is-kbd .kz-typed .kz-code { gap: 3px; }
+.is-kbd .kz-typed .kz-line { min-height: 26px; padding-top: 2px; padding-bottom: 2px; }
+.is-kbd .kz-typed .kz-row { margin-top: 2px; }
+.is-kbd .kz-typed .kz-ready { min-height: 38px; padding: 6px 18px; }
+
+/* Экран «Сверху вниз» (s12) после показа: части коллажа нажимаются. */
+.kz-s12.is-explore .kz-collage, .kz-s12.is-explore .kz-collage * { cursor: pointer; }
 /* ── УРОК 3 «Списки» — свои части поверх бумажного набора урока 1 ────────────
    Префикс l3-. Страница в бумажном браузере — как браузер по умолчанию: Times,
    список с отступом, точка или номер перед каждым li. Бумажные листы списков —

@@ -24,9 +24,10 @@ const STEPS = [
     await qa.platform.next();
     await qa.platform.ready(30000);
     qa.expect(qa.qa('.z2-hstrip').length === 6, 'шесть полосок h1–h6');
-    await qa.clickNth('.z2-hstrip.is-tap', 0, 'h1'); await qa.platform.ready(30000);
-    await qa.clickNth('.z2-hstrip.is-tap', 1, 'h6');
-    await qa.waitFor(() => qa.platform.nextEnabled(), 30000, 'засчитано');
+    qa.expect(!qa.q('button.z2-hstrip'), 'показ: полоски не нажимаются');
+    await qa.waitFor(() => qa.q('.z2-star'), 40000, 'рука нажала h1');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 60000, 'показ закончен');
+    qa.expect(!!qa.q('.z2-loupe'), 'у h6 лупа');
     qa.expect(qa.qa('.kz-br-page').every((pg) => pg.scrollHeight <= pg.clientHeight + 1), 'страница в окне целиком, без прокрутки');
   } },
   { name: 's4: набрать </h1>', shot: 's4-done', run: async (qa) => {
@@ -52,19 +53,20 @@ const STEPS = [
     await qa.platform.next();
     await qa.platform.ready(30000);
     qa.expect(!!qa.q('.z2-raw'), 'три строки склеены в одну');
-    for (let k = 0; k < 3; k += 1) { await qa.click('.kz-line.kz-tap', 'строка'); await qa.sleep(250); }
-    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано');
+    qa.expect(!qa.q('.kz-line.kz-tap'), 'показ: строки не нажимаются');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 60000, 'показ закончен');
     qa.expect(qa.qa('.z2-p').length === 3, 'три абзаца в окне');
     qa.expect(qa.qa('.kz-br-page').every((pg) => pg.scrollHeight <= pg.clientHeight + 1), 'страница в окне целиком, без прокрутки');
   } },
   { name: 's7: <p> и </p> вокруг строки', shot: 's7-done', run: async (qa) => {
     await qa.platform.next();
     await qa.platform.ready();
+    qa.expect(qa.qa('.kz-br-page .z2-raw').length === 1 && !qa.q('.kz-br-page .z2-p'), 'честно: две строки без тегов — одна строка текста');
     const f = qa.qa('.z2-slot textarea');
     qa.type(f[0], '<p>', 'перед текстом'); qa.type(f[1], '</p>', 'после текста');
     await qa.click('.key-go', 'Проверить');
     await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано');
-    qa.expect(qa.qa('.z2-p').length === 2, 'два абзаца в окне');
+    qa.expect(qa.qa('.kz-br-page .z2-p').length === 1 && qa.qa('.kz-br-page .z2-raw').length === 1, 'вторая строка — отдельный абзац, первая осталась текстом');
     qa.expect(qa.qa('.kz-br-page').every((pg) => pg.scrollHeight <= pg.clientHeight + 1), 'страница в окне целиком, без прокрутки');
   } },
   { name: 's8: сколько абзацев', shot: 's8-done', run: async (qa) => {
@@ -87,9 +89,8 @@ const STEPS = [
   { name: 's9: теги b и i', shot: 's9-done', run: async (qa) => {
     await qa.platform.next();
     await qa.platform.ready(30000);
-    await qa.click('.z2-w.is-b .kz-label', 'бирка b над словом'); await qa.platform.ready(30000);
-    await qa.click('.z2-w.is-i .kz-label', 'бирка i над словом');
-    await qa.waitFor(() => qa.platform.nextEnabled(), 30000, 'засчитано');
+    await qa.waitFor(() => qa.q('.z2-w.is-b.is-on'), 40000, 'рука нажала бирку b');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 60000, 'показ закончен');
     qa.expect(!!qa.q('.z2-w.is-b.is-on') && !!qa.q('.z2-w.is-i.is-on'), 'слово жирное с полоской и слово курсивом');
     qa.expect(qa.qa('.kz-br-page').every((pg) => pg.scrollHeight <= pg.clientHeight + 1), 'страница в окне целиком, без прокрутки');
   } },
@@ -120,9 +121,9 @@ const STEPS = [
   { name: 's12: читать как браузер', shot: 's12-done', run: async (qa) => {
     await qa.platform.next();
     await qa.platform.ready();
-    await qa.click('.kz-btn.is-coral', 'Читать как браузер');
-    await qa.waitFor(() => qa.qa('.kz-br-page .z2-blk').length === 4, 12000, 'страница собрана');
-    await qa.waitFor(() => qa.platform.nextEnabled(), 40000, 'засчитано');
+    qa.expect(!qa.q('.kz-sheet .kz-btn') && !qa.q('.kz-hand'), 'показ: ни кнопок, ни руки');
+    await qa.waitFor(() => qa.qa('.kz-br-page .z2-blk').length === 4, 40000, 'страница собрана');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 60000, 'показ закончен');
     qa.expect(qa.qa('.kz-br-page').every((pg) => pg.scrollHeight <= pg.clientHeight + 1), 'страница в окне целиком, без прокрутки');
   } },
   { name: 's13: своя страница', shot: 's13-done', run: async (qa) => {

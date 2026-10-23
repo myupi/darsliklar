@@ -65,8 +65,6 @@ const UI = {
   nextLesson: L3('Keyingi dars', 'Следующий урок', 'Next lesson'),
   next: L3('Havolalar', 'Ссылки', 'Links'),
   sort: L3('Saralash', 'Разложить', 'Sort'),
-  shuffle: L3('Chalkashtirish', 'Перемешать', 'Shuffle'),
-  read: L3('Brauzerdek o‘qish', 'Читать как браузер', 'Read like a browser'),
   things: L3('Narsalar', 'Вещи', 'Things'),
   cocoa: L3('Kakao', 'Какао', 'Cocoa'),
   mySite: L3('Mening ro‘yxatim', 'Мой список', 'My list'),
@@ -96,8 +94,8 @@ const LIST_MSGS = {
   openSlash: L3('Bu yopuvchi teg. Tepada qiya chiziqsiz ochuvchi teg turadi.', 'Это закрывающий тег. Сверху ставят открывающий, без косой черты.', 'That’s a closing tag. The opening tag goes on top, without a slash.'),
   needClose: L3('Bandlardan keyin yopuvchi {tag} tegi kerak.', 'После пунктов нужен закрывающий тег {tag}.', 'After the items you need the closing {tag} tag.'),
   needSlash: L3('Bu ochuvchi teg. Yopuvchi tegda {tag} dan oldin qiya chiziq «/» turadi.', 'Это открывающий тег. В закрывающем перед {tag} стоит косая черта «/».', 'That’s an opening tag. The closing one has a slash “/” before {tag}.'),
-  needLt: L3('Teg chap «<» qavs bilan boshlanadi.', 'Тег начинается с уголка «<».', 'A tag starts with the bracket “<”.'),
-  needGt: L3('Teg oxirida o‘ng «>» qavs turadi.', 'В конце тега нужен уголок «>».', 'A tag ends with the bracket “>”.'),
+  needLt: L3('Teg burchakli qavs «<» bilan boshlanadi.', 'Тег начинается с уголка «<».', 'A tag starts with the bracket “<”.'),
+  needGt: L3('Teg oxirida burchakli qavs «>» turadi.', 'В конце тега нужен уголок «>».', 'A tag ends with the bracket “>”.'),
   wrongName: L3('Teg ichida {tag} bo‘lishi kerak.', 'Внутри тега должно быть {tag}.', 'The tag should say {tag}.')
 };
 // Пункт, набранный в два поля (s4).
@@ -131,7 +129,7 @@ const C = {
         say: L3('Avval nuqtali ro‘yxat yasaymiz: sayohat uchun narsalar.', 'Сначала сделаем список с точками — вещи в поход.', 'First we’ll make a list with dots: things for the trip.') },
       { title: L3('Raqamli ro‘yxat', 'Список с номерами', 'A numbered list'),
         say: L3('Keyin raqamli ro‘yxat: qadamlar tartib bilan.', 'Потом список с номерами: шаги по порядку.', 'Then a numbered list: steps in order.') },
-      { title: L3('Ro‘yxatni tuzatish', 'Починим список', 'Fixing lists'),
+      { title: L3('Ro‘yxatni tuzatish', 'Починка списка', 'Fixing lists'),
         say: L3('Uchinchi qadamda buzilgan ro‘yxatlarni tuzatamiz.', 'Третий шаг — починим сломанные списки.', 'Step three: we’ll fix broken lists.') },
       { title: L3('O‘z ro‘yxatingiz', 'Свой список', 'Your own list'),
         say: L3('Oxirida esa o‘z ro‘yxatingizni tuzasiz!', 'А в конце ты соберёшь свой список!', 'And at the end you’ll build your own list!') }
@@ -144,14 +142,15 @@ const C = {
     say: L3('Bu sayohat uchun narsalar ro‘yxati. Ular ul tegi ichida turibdi, lekin brauzer hammasini bitta qatorga yopishtirdi.',
       'Это список вещей в поход. Они стоят внутри тега ul, но браузер склеил их в одну строку.',
       'This is a list of things for the trip. They sit inside the ul tag, but the browser glued them into one line.'),
-    sayLi: L3('Ro‘yxatning har bir bandi li tegiga o‘raladi. Har bir narsani bosing.', 'Каждый пункт списка оборачивают в тег li. Нажми каждую вещь.', 'Each list item is wrapped in the li tag. Tap each thing.'),
+    sayLi: L3('Ro‘yxatning har bir bandi li tegiga o‘raladi. Qarang.', 'Каждый пункт списка оборачивают в тег li. Смотри.', 'Each list item is wrapped in the li tag. Watch.'),
     doneUl: L3('ul — nuqtali ro‘yxat. Brauzer har bir band oldiga nuqta qo‘yadi.', 'ul — это список с точками. Браузер ставит точку перед каждым пунктом.', 'ul is a list with dots. The browser puts a dot before each item.'),
-    doneLi: L3('li esa ro‘yxatning bitta bandi. Nechta li bo‘lsa, shuncha band.', 'А li — один пункт списка. Сколько li — столько пунктов.', 'And li is one list item. As many li tags, as many items.'),
-    ask: L3('Har bir narsani bosing', 'Нажми каждую вещь', 'Tap each thing')
+    doneLi: L3('li esa ro‘yxatning bitta bandi. Nechta li bo‘lsa, shuncha band.', 'А li — один пункт списка. Сколько li — столько пунктов.', 'And li is one list item. One li, one item.'),
+    ask: L3('Qarang: har bir narsa li ga o‘raladi', 'Смотри: каждая вещь уходит в li', 'Watch: each thing goes into li'),
+    askDone: L3('ul — nuqtali ro‘yxat, li — uning bandi', 'ul — список с точками, li — его пункт', 'ul is a list with dots, li is its item')
   },
   s4: {
     eyebrow: L3('Band qo‘shing', 'Добавь пункт', 'Add an item'),
-    say: L3('Uxlash xaltasi ham kerak. Lekin uning oldida nuqta yo‘q: u hali band emas. Uni li tegiga o‘rang: so‘zdan oldin ochuvchi tegni, keyin yopuvchi tegni yozing.',
+    say: L3('Uxlash xaltasi ham kerak. Lekin uning oldida nuqta yo‘q: u hali band emas. Uni li tegiga o‘rang: so‘zdan oldin ochuvchi tegni, so‘zdan keyin esa yopuvchi tegni yozing.',
       'Ещё нужен спальник. Но точки перед ним нет: это ещё не пункт. Оберни его в тег li: перед словом напиши открывающий тег, после — закрывающий.',
       'We also need a sleeping bag. But there’s no dot before it: it’s not an item yet. Wrap it in li: type the opening tag before the word and the closing tag after it.'),
     hints: [
@@ -167,9 +166,9 @@ const C = {
     eyebrow: L3('Nechta nuqta?', 'Сколько точек?', 'How many dots?'),
     say: L3('Endi brauzer kabi o‘ylang: nuqtalarni qatorlar emas, li teglari qo‘yadi.', 'Теперь подумай как браузер: точки ставят не строки, а теги li.', 'Now think like a browser: dots come from li tags, not from lines.'),
     askQ: L3('Brauzer nechta nuqta ko‘rsatadi?', 'Сколько точек покажет браузер?', 'How many dots will the browser show?'),
-    ok: L3('To‘g‘ri! li nechta bo‘lsa, nuqta shuncha.', 'Верно! Сколько li — столько и точек.', 'Right! As many li tags, as many dots.'),
+    ok: L3('To‘g‘ri! li nechta bo‘lsa, nuqta shuncha.', 'Верно! Сколько li — столько и точек.', 'Right! One li, one dot.'),
     miss: {
-      many: L3('Qarang: qator bitta, lekin li ikkita. Har bir li o‘z nuqtasini oladi.', 'Смотри: строка одна, а li два. Каждый li получает свою точку.', 'Look: one line, but two li tags. Each li gets its own dot.'),
+      many: L3('Qarang: qator bitta, lekin li bir nechta. Har bir li o‘z nuqtasini oladi.', 'Смотри: строка одна, а li несколько. Каждый li получает свою точку.', 'Look: one line, but several li tags. Each li gets its own dot.'),
       one: L3('Qarang: qatorlar ikkita, lekin li bitta. Demak, band ham bitta.', 'Смотри: строк две, а li один. Значит, и пункт один.', 'Look: two lines, but only one li. So there is one item.'),
       bare: L3('Qarang: li siz matn oldida nuqta yo‘q. Nuqtani faqat li qo‘yadi.', 'Смотри: у текста без li точки нет. Точку ставит только li.', 'Look: text without li gets no dot. Only li puts a dot.')
     },
@@ -178,10 +177,10 @@ const C = {
   s6: {
     eyebrow: L3('Raqamli ro‘yxat', 'Список с номерами', 'Numbered list'),
     say: L3('Bu kakao retsepti. U ol tegida yozilgan: bu raqamli ro‘yxat.', 'Это рецепт какао. Он записан в теге ol — это список с номерами.', 'This is a cocoa recipe. It’s written in the ol tag: a numbered list.'),
-    sayN: L3('Raqamlarni brauzer o‘zi qo‘yadi. «Chalkashtirish» tugmasini bosing.', 'Номера браузер ставит сам. Нажми «Перемешать».', 'The browser adds the numbers by itself. Tap “Shuffle”.'),
+    sayN: L3('Raqamlarni brauzer o‘zi qo‘yadi. Qatorlarni chalkashtirsak nima bo‘ladi?', 'Номера браузер ставит сам. А что, если перемешать строки?', 'The browser adds the numbers by itself. What if we shuffle the lines?'),
     mixed: L3('Voy! Raqamlar joyida, qadamlar esa chalkashib ketdi. Sut quymasdan aralashtirib bo‘lmaydi!', 'Ой! Номера на месте, а шаги перепутались. Размешивать раньше молока — ерунда!', 'Whoa! The numbers stayed, but the steps got mixed up. Stirring before the milk makes no sense!'),
     done: L3('ol da qatorlar tartibi muhim. ul da esa tartib muhim emas.', 'В ol важен порядок строк. А в ul порядок не важен.', 'In ol, the order of lines matters. In ul, it doesn’t.'),
-    ask: L3('«Chalkashtirish» tugmasini bosing', 'Нажми «Перемешать»', 'Tap “Shuffle”'),
+    ask: L3('Qarang: qatorlarni chalkashtiramiz', 'Смотри: перемешаем строки', 'Watch: we shuffle the lines'),
     askDone: L3('ol da tartib muhim', 'В ol важен порядок', 'In ol, order matters')
   },
   s7: {
@@ -208,7 +207,7 @@ const C = {
       'Here are four lists. Drag the ones where order matters into ol, and the others into ul.'),
     hints: [
       L3('O‘zingizdan so‘rang: qaysi band birinchi turishi muhimmi?', 'Спроси себя: важно, какой пункт идёт первым?', 'Ask yourself: does it matter which item comes first?'),
-      L3('Qadamlar va topdagi o‘rinlar tartib bilan boradi: bu ol. Xarid va do‘stlar ro‘yxati esa ul.', 'Шаги и места в топе идут по порядку — это ol. Покупки и друзья — это ul.', 'Steps and places in a top list go in order: that’s ol. Shopping and friends: ul.'),
+      L3('Ertalabki ishlar va topdagi o‘rinlar tartib bilan boradi: bu ol. Xaridlar va do‘stlar esa ul.', 'Утренние дела и места в топе идут по порядку — это ol. Покупки и друзья — это ul.', 'Morning things and places in a top list go in order: that’s ol. Shopping and friends: ul.'),
       L3('Yonib turgan ro‘yxatni yonib turgan varaqqa torting.', 'Перетащи светящийся список на светящийся лист.', 'Drag the glowing list onto the glowing sheet.')
     ],
     ok: L3('To‘g‘ri! Har bir ro‘yxat o‘z joyida.', 'Верно! Каждый список на своём месте.', 'Right! Every list is in its place.'),
@@ -216,7 +215,7 @@ const C = {
     askPlace: L3('Endi ul yoki ol varag‘ini bosing', 'Теперь нажми лист ul или ol', 'Now tap the ul or ol sheet'),
     pickFirst: L3('Avval ro‘yxatni bosing.', 'Сначала нажми список.', 'Tap a list first.'),
     cards: [
-      { id: 'shop', want: 'ul', title: L3('Do‘kondan', 'Купить', 'Shopping'),
+      { id: 'shop', want: 'ul', title: L3('Xaridlar', 'Купить', 'Shopping'),
         items: L3(['non', 'pishloq', 'olma'], ['хлеб', 'сыр', 'яблоки'], ['bread', 'cheese', 'apples']),
         why: L3('Xaridda tartib muhim emas: baribir hammasini olasiz. Bu ul.', 'В покупках порядок не важен: купишь всё. Это ul.', 'Order doesn’t matter for shopping: you’ll buy it all. That’s ul.') },
       { id: 'morning', want: 'ol', title: L3('Ertalab', 'Утро', 'Morning'),
@@ -232,15 +231,13 @@ const C = {
   },
   s9: {
     eyebrow: L3('Band ro‘yxat ichida', 'Пункт внутри списка', 'Item inside the list'),
-    say: L3('Qarang: buterbrodlar bandi ro‘yxatdan tushib qoldi. U yopuvchi ul tegidan keyin turibdi, shuning uchun boshqalar bilan bir qatorda emas.',
+    say: L3('Qarang: buterbrodlar bandi ro‘yxatdan tushib qoldi. U yopuvchi ul tegidan keyin turibdi, shuning uchun boshqalar bilan bir tekis turmaydi.',
       'Смотри: пункт с бутербродами выпал из списка. Он стоит после закрывающего тега ul, поэтому и не в ряд с остальными.',
       'Look: the sandwiches item fell out of the list. It’s after the closing ul tag, so it doesn’t line up with the others.'),
-    sayDo: L3('li faqat ul yoki ol ichida turadi, papkadagi varaq kabi. Bandni ro‘yxat ichiga torting.', 'li живёт только внутри ul или ol, как листок в папке. Перетащи пункт обратно в список.', 'li lives only inside ul or ol, like a sheet in a folder. Drag the item back into the list.'),
-    done: L3('Qaytdi! Endi hamma bandlar ul ichida va bir qatorda.', 'Вернулся! Теперь все пункты внутри ul и стоят ровно.', 'It’s back! Now every item is inside ul and lines up.'),
-    ask: L3('Bandni ro‘yxat ichiga torting', 'Перетащи пункт внутрь списка', 'Drag the item into the list'),
-    askPlace: L3('Endi ro‘yxat ichidagi joyni bosing', 'Теперь нажми место внутри списка', 'Now tap the spot inside the list'),
-    pickFirst: L3('Avval tushib qolgan bandni bosing.', 'Сначала нажми выпавший пункт.', 'Tap the fallen item first.'),
-    wrong: L3('Bu joy ro‘yxatdan tashqarida. Band ochuvchi va yopuvchi ul orasida turishi kerak.', 'Это место снаружи списка. Пункт должен стоять между открывающим и закрывающим ul.', 'That spot is outside the list. The item must go between the opening and closing ul.')
+    sayDo: L3('li faqat ul yoki ol ichida turadi, papkadagi varaq kabi. Bandni ro‘yxatga qaytaramiz.', 'li живёт только внутри ul или ol, как листок в папке. Вернём пункт обратно в список.', 'li lives only inside ul or ol, like a sheet in a folder. Let’s put the item back into the list.'),
+    done: L3('Qaytdi! Endi hamma bandlar ul ichida va bir tekis turibdi.', 'Вернулся! Теперь все пункты внутри ul и стоят ровно.', 'It’s back! Now every item is inside ul and lines up.'),
+    ask: L3('Qarang: tushib qolgan band', 'Смотри: выпавший пункт', 'Watch: the fallen item'),
+    askPlace: L3('Qarang: band ro‘yxat ichiga qaytadi', 'Смотри: пункт возвращается внутрь списка', 'Watch: the item goes back inside the list')
   },
   s10: {
     eyebrow: L3('Ro‘yxatni yoping', 'Закрой список', 'Close the list'),
@@ -279,24 +276,24 @@ const C = {
   },
   s12: {
     eyebrow: L3('Yuqoridan pastga', 'Сверху вниз', 'Top to bottom'),
-    say: L3('Bu sayohat sahifasining kodi. Brauzer uni qanday o‘qishini ko‘raylik.', 'Это вся страница похода. Посмотрим, как браузер её читает.', 'This is the whole trip page. Let’s see how the browser reads it.'),
-    order1: L3('Brauzer kodni yuqoridan pastga o‘qiydi. Avval h1, sahifa nomi.', 'Браузер читает код сверху вниз. Сначала h1 — название страницы.', 'The browser reads code from top to bottom. First h1, the page title.'),
+    say: L3('Bu sayohat sahifasining kodi. Brauzer uni qanday o‘qishini ko‘raylik.', 'Это код страницы похода. Посмотрим, как браузер его читает.', 'This is the code of the trip page. Let’s see how the browser reads it.'),
+    order1: L3('Brauzer kodni yuqoridan pastga o‘qiydi. Avval h1, asosiy sarlavha.', 'Браузер читает код сверху вниз. Сначала h1 — главный заголовок.', 'The browser reads code from top to bottom. First h1, the main heading.'),
     order2: L3('Keyin ul ro‘yxati: har bir li oldida nuqta.', 'Потом список ul: у каждого li — точка.', 'Then the ul list: each li gets a dot.'),
     order3: L3('Keyin ol ro‘yxati: har bir li ga brauzer raqam beradi.', 'Дальше список ol: каждому li браузер даёт номер.', 'Then the ol list: the browser gives each li a number.'),
-    ask: L3('«Brauzerdek o‘qish» tugmasini bosing', 'Нажми «Читать как браузер»', 'Tap “Read like a browser”'),
+    ask: L3('Brauzer qanday o‘qishini kuzating', 'Смотри, как читает браузер', 'Watch how the browser reads'),
     askDone: L3('Brauzer yuqoridan pastga o‘qiydi', 'Браузер читает сверху вниз', 'The browser reads top to bottom')
   },
   s13: {
     eyebrow: L3('O‘z ro‘yxatingiz', 'Свой список', 'Your list'),
-    say: L3('Endi o‘z ro‘yxatingizni tuzing. Avval h1 ichiga uning nomini yozing: masalan, sevimli o‘yinlaringiz.', 'Теперь твой список. Сначала напиши в h1 его название — например, любимые игры.', 'Now your own list. First type its title in h1: your favorite games, for example.'),
+    say: L3('Endi o‘z ro‘yxatingizni tuzing. Avval h1 ichiga uning nomini yozing: masalan, sevimli o‘yinlaringiz.', 'Теперь твой список. Сначала напиши в h1 его название — например, любимые игры.', 'Now your own list. First type its name in h1: your favorite games, for example.'),
     sayItems: L3('Endi uchta li ichiga uchta band yozing.', 'Теперь напиши три пункта — по одному в каждый li.', 'Now type three items, one in each li.'),
-    ok: L3('Ro‘yxatingiz tayyor: nom va uchta band bor.', 'Твой список готов: есть название и три пункта.', 'Your list is ready: a title and three items.'),
+    ok: L3('Ro‘yxatingiz tayyor: nom va uchta band bor.', 'Твой список готов: есть название и три пункта.', 'Your list is ready: a name and three items.'),
     hints: [
-      L3('Ro‘yxat nomini o‘ylab toping: sevimli o‘yinlar, taomlar yoki filmlar.', 'Придумай название: любимые игры, еда или фильмы.', 'Make up a title: favorite games, food or films.'),
+      L3('Ro‘yxat nomini o‘ylab toping: sevimli o‘yinlar, taomlar yoki filmlar.', 'Придумай название: любимые игры, еда или фильмы.', 'Make up a name: favorite games, food or films.'),
       L3('Faqat so‘z yozing, teglar allaqachon joyida.', 'Пиши только слова — теги уже на месте.', 'Type only words: the tags are already in place.'),
       L3('Masalan: Sevimli o‘yinlarim. Bandlar: futbol, shaxmat, Minecraft.', 'Например: Мои любимые игры. Пункты: футбол, шахматы, Minecraft.', 'For example: My favorite games. Items: football, chess, Minecraft.')
     ],
-    askTitle: L3('h1 ichiga ro‘yxat nomini yozing', 'Напиши название в h1', 'Type the title in h1'),
+    askTitle: L3('h1 ichiga ro‘yxat nomini yozing', 'Напиши название в h1', 'Type the list name in h1'),
     askItems: L3('Har bir li ichiga bitta band yozing', 'Напиши по пункту в каждый li', 'Type one item in each li'),
     phTitle: L3('Masalan: Sevimli o‘yinlarim', 'Например: Мои любимые игры', 'For example: My favorite games'),
     phItem: L3('band', 'пункт', 'item')
@@ -336,7 +333,7 @@ const C = {
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
 Object.assign(SPOKEN, { magicUl: 1, magicOl: 1, sayLi: 1, doneUl: 1, doneLi: 1, msgs: 1, askQ: 1, miss: 1, sayN: 1, mixed: 1,
-  sayDo: 1, wrong: 1, fine: 1, order1: 1, order2: 1, order3: 1, sayItems: 1, cards: 1, pickFirst: 1 });
+  sayDo: 1, fine: 1, order1: 1, order2: 1, order3: 1, sayItems: 1, cards: 1, pickFirst: 1 });
 Object.assign(NOT_SPOKEN_IN, { cards: { title: 1, items: 1, id: 1, want: 1 } });
 // Теги урока вслух — по-английски во всех языках (заказчик, 17.10.2026).
 Object.assign(TAG_SAY.ru, { ul: 'U L', ol: 'O L', li: 'L I' });

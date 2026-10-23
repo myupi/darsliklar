@@ -29,7 +29,7 @@
 //   · Конфетти только в финале: похвалы экранов — поза smile.
 //
 // СИСТЕМА СЛОВ. Заголовок (sarlavha) — h1…h6, h1 главный и самый крупный,
-// обычно один — название страницы; h2 — заголовок раздела. Абзац (xatboshi) —
+// обычно один — главный заголовок страницы (не «название»: название страницы — title, урок 1); h2 — заголовок раздела. Абзац (xatboshi) —
 // p. b — жирный (qalin), i — курсив (qiya, kursiv). Как в уроке 1: teg,
 // yorliq — только вкладка, oyna — окно, sahifa nomi — название.
 //
@@ -71,7 +71,6 @@ const UI = {
   nextLesson: L3('Keyingi dars', 'Следующий урок', 'Next lesson'),
   next: L3('Ro‘yxatlar', 'Списки', 'Lists'),
   turn: L3('Aylantirish', 'Превратить', 'Transform'),
-  read: L3('Brauzerdek o‘qish', 'Читать как браузер', 'Read like a browser'),
   tab: L3('Yorliq', 'Вкладка', 'Tab'),
   win: L3('Oyna', 'Окно', 'Window'),
   mySite: L3('Mening saytim', 'Мой сайт', 'My site'),
@@ -114,11 +113,11 @@ const WRAP_MSGS = {
 // ─────────────────────────────────────────────────────────────────────────────
 const C = {
   s1: {
-    eyebrow: L3('Bo‘tqa matn', 'Каша из текста', 'A wall of text'),
+    eyebrow: L3('Chalkash matn', 'Каша из текста', 'A wall of text'),
     say: L3('Bu odamchaning mushugi haqidagi sahifasi. Lekin hamma so‘zlar bir-biriga yopishib qolgan: qayerda nom, qayerda hikoya, tushunib bo‘lmaydi.',
       'Это страница человечка о его коте. Но все слова слиплись в одну кашу: где название, где рассказ — не понять.',
       'This is the paper buddy’s page about his cat. But all the words are stuck together: you can’t tell the title from the story.'),
-    magic: L3('Voy, qarang! Tepada katta sarlavha paydo bo‘ldi.', 'Ого! Наверху появилось крупное название.', 'Whoa! A big heading appeared at the top.'),
+    magic: L3('Voy, qarang! Tepada katta sarlavha paydo bo‘ldi.', 'Ого! Наверху появился крупный заголовок.', 'Whoa! A big heading appeared at the top.'),
     magicP: L3('Matn xatboshilarga bo‘lindi.', 'Текст разделился на абзацы.', 'The text split into paragraphs.'),
     magicB: L3('Muhim so‘z esa qalin bo‘ldi.', 'А важное слово стало жирным.', 'And the important word turned bold.'),
     done: L3('Bugun matnni shunday bezashni o‘rganasiz va o‘z sahifangizni yasaysiz!', 'Сегодня ты научишься так оформлять текст и сделаешь свою страницу!', 'Today you’ll learn to shape text like this and make your own page!'),
@@ -144,18 +143,18 @@ const C = {
   s3: {
     eyebrow: L3('Sarlavhalar', 'Заголовки', 'Headings'),
     say: L3('Sarlavha teglari oltita: h1 dan h6 gacha.', 'Тегов заголовков шесть: от h1 до h6.', 'There are six heading tags: from h1 to h6.'),
-    askBig: L3('Eng katta sarlavhani bosing.', 'Нажми самый крупный заголовок.', 'Tap the biggest heading.'),
-    big: L3('Bu h1. U eng muhim va eng katta sarlavha. Odatda sahifada bitta bo‘ladi: bu sahifaning nomi.',
-      'Это h1 — самый главный и самый крупный заголовок. Обычно он на странице один: это её название.',
-      'This is h1, the most important and biggest heading. A page usually has just one: its title.'),
-    askSmall: L3('Endi eng kichik sarlavhani bosing.', 'Теперь нажми самый маленький.', 'Now tap the smallest one.'),
+    askBig: L3('Qarang: eng katta sarlavha', 'Смотри: самый крупный заголовок', 'Watch: the biggest heading'),
+    big: L3('Bu h1. U eng muhim va eng katta sarlavha. Odatda sahifada h1 bitta bo‘ladi.',
+      'Это h1 — самый главный и самый крупный заголовок. Обычно он на странице один.',
+      'This is h1, the most important and biggest heading. A page usually has just one.'),
+    askSmall: L3('Qarang: eng kichik sarlavha', 'Смотри: самый мелкий заголовок', 'Watch: the smallest heading'),
     small: L3('Bu h6, eng kichik sarlavha. Raqam qancha katta bo‘lsa, sarlavha shuncha kichik.',
       'Это h6 — самый маленький. Чем больше цифра, тем мельче заголовок.',
       'This is h6, the smallest. The bigger the number, the smaller the heading.'),
-    done: L3('Brauzer sarlavhalarni qalin va katta qilib ko‘rsatadi. Qog‘oz chiziqlarni tushunarli bo‘lishi uchun yasadik.',
+    done: L3('Brauzer sarlavhalarni qalin va katta qilib ko‘rsatadi. Qog‘oz tasmalarni esa yaqqol ko‘rinishi uchun yasadik.',
       'Браузер показывает заголовки крупно и жирно. Бумажные полоски мы сделали для наглядности.',
       'The browser shows headings big and bold. We made the paper strips to help you see it.'),
-    ask: L3('Sarlavhalarni bosing', 'Нажми заголовки', 'Tap the headings'),
+    ask: L3('Sarlavhalarga qarang', 'Смотри на заголовки', 'Watch the headings'),
     word: L3('Sarlavha', 'Заголовок', 'Heading')
   },
   s4: {
@@ -180,22 +179,22 @@ const C = {
   },
   s5: {
     eyebrow: L3('Qaysi sarlavha?', 'Какой заголовок?', 'Which heading?'),
-    say: L3('Sahifa nomi uchun h1 kerak, bo‘limlar sarlavhalari uchun esa h2. Teglarni o‘z joyiga torting, bittasi ortiqcha.',
-      'Название страницы — это h1, заголовки разделов — h2. Перетащи теги на места, один тег лишний.',
-      'The page title is h1, and section headings are h2. Drag the tags into place; one tag is extra.'),
+    say: L3('Butun sahifaning asosiy sarlavhasi uchun h1 kerak, bo‘lim sarlavhalari uchun esa h2. Teglarni o‘z joyiga torting, bittasi ortiqcha.',
+      'Главный заголовок страницы — это h1, заголовки разделов — h2. Перетащи теги на места, один тег лишний.',
+      'The main heading of the page is h1, and section headings are h2. Drag the tags into place; one tag is extra.'),
     why: {
-      h1sec: L3('h1 sahifada bitta, bu nom. Bo‘lim uchun h2 kerak.', 'h1 на странице один — это название. Для раздела нужен h2.', 'A page has one h1: its title. A section needs h2.'),
-      h2title: L3('Sahifa nomi eng muhimi, unga h1 kerak.', 'Название страницы — самое главное, ему нужен h1.', 'The page title is the most important: it needs h1.'),
+      h1sec: L3('h1 sahifada bitta, bu asosiy sarlavha. Bo‘lim uchun h2 kerak.', 'h1 на странице один — это главный заголовок. Для раздела нужен h2.', 'A page has one h1: the main heading. A section needs h2.'),
+      h2title: L3('Bu butun sahifaning asosiy sarlavhasi, unga h1 kerak.', 'Это главный заголовок всей страницы, ему нужен h1.', 'This is the main heading of the whole page: it needs h1.'),
       h6: L3('h6 eng kichik sarlavha. Bu yerga boshqa teg kerak.', 'h6 — самый мелкий. Здесь нужен другой тег.', 'h6 is the smallest. A different tag goes here.')
     },
     hints: [
-      L3('Qaysi qator butun sahifaning nomi?', 'Какая строка — название всей страницы?', 'Which line is the title of the whole page?'),
-      L3('Nom tepada turadi. Qolgan ikkitasi bo‘limlar.', 'Название стоит сверху. Остальные две строки — разделы.', 'The title is at the top. The other two lines are sections.'),
+      L3('Qaysi qator butun sahifaning asosiy sarlavhasi?', 'Какая строка — главный заголовок всей страницы?', 'Which line is the main heading of the whole page?'),
+      L3('Asosiy sarlavha tepada turadi. Qolgan ikkitasi bo‘limlar.', 'Главный заголовок стоит сверху. Остальные две строки — разделы.', 'The main heading is at the top. The other two lines are sections.'),
       L3('h1 ni tepadagi qatorga, ikkala h2 ni pastdagi qatorlarga qo‘ying.', 'h1 — на верхнюю строку, оба h2 — на две нижние.', 'Put h1 on the top line and both h2 tags on the two lines below.')
     ],
-    ok: L3('To‘g‘ri! Nom katta, bo‘limlar kichikroq: sahifani o‘qish oson.', 'Верно! Название крупно, разделы помельче — страницу легко читать.', 'Right! The title is big, the sections smaller: the page is easy to read.'),
+    ok: L3('To‘g‘ri! Asosiy sarlavha katta, bo‘limlar kichikroq: sahifani o‘qish oson.', 'Верно! Главный заголовок крупно, разделы помельче — страницу легко читать.', 'Right! The main heading is big, the sections smaller: the page is easy to read.'),
     ask: L3('Tegni sarlavhaga torting', 'Перетащи тег на заголовок', 'Drag a tag onto a heading'),
-    askPlace: L3('Endi joyini bosing', 'Теперь нажми место', 'Now tap its place'),
+    askPlace: L3('Endi qatorni bosing', 'Теперь нажми строку', 'Now tap a line'),
     pickFirst: L3('Avval tegni bosing.', 'Сначала нажми тег.', 'Tap a tag first.'),
     lines: [L3('Mening mushugim', 'Мой кот', 'My cat'), L3('U nima yeydi', 'Что он ест', 'What he eats'), L3('U qanday o‘ynaydi', 'Как он играет', 'How he plays')]
   },
@@ -204,13 +203,13 @@ const C = {
     say: L3('Kodda uchta qator, brauzer esa ularni bitta qatorga yopishtirdi. Koddagi qator ko‘chishini brauzer ko‘rmaydi.',
       'В коде три строки, а браузер склеил их в одну. Переносы строк в коде браузер не видит.',
       'The code has three lines, but the browser glued them into one. The browser doesn’t see line breaks in code.'),
-    sayP: L3('Matn xatboshi bo‘lishi uchun uni p tegiga o‘raymiz. Har bir qatorni bosing.',
-      'Чтобы текст стал абзацем, его оборачивают в тег p. Нажми каждую строку.',
-      'To make text a paragraph, we wrap it in the p tag. Tap each line.'),
+    sayP: L3('Matn xatboshi bo‘lishi uchun uni p tegiga o‘raymiz. Qarang.',
+      'Чтобы текст стал абзацем, его оборачивают в тег p. Смотри.',
+      'To make text a paragraph, we wrap it in the p tag. Watch.'),
     done: L3('Har bir p alohida xatboshi. Xatboshilar orasida brauzer o‘zi bo‘sh joy qoldiradi.',
       'Каждый p — отдельный абзац. Между абзацами браузер сам делает отступ.',
       'Each p is a separate paragraph. The browser adds space between paragraphs by itself.'),
-    ask: L3('Har bir qatorni bosing', 'Нажми каждую строку', 'Tap each line'),
+    ask: L3('Qarang: qatorlar xatboshilarga aylanadi', 'Смотри: строки становятся абзацами', 'Watch: the lines become paragraphs'),
     lines: [L3('Mushugim kun bo‘yi uxlaydi.', 'Мой кот спит весь день.', 'My cat sleeps all day.'),
       L3('Kechqurun u o‘ynaydi.', 'Вечером он играет.', 'In the evening he plays.'),
       L3('Baliqni yaxshi ko‘radi.', 'Он любит рыбу.', 'He loves fish.')]
@@ -234,7 +233,7 @@ const C = {
     eyebrow: L3('Nechta xatboshi?', 'Сколько абзацев?', 'How many paragraphs?'),
     say: L3('Endi brauzer kabi o‘ylang: xatboshilarni qatorlar emas, p teglari belgilaydi.', 'Теперь подумай как браузер: абзацы задают не строки, а теги p.', 'Now think like a browser: paragraphs come from p tags, not from lines.'),
     askQ: L3('Brauzer nechta xatboshi ko‘rsatadi?', 'Сколько абзацев покажет браузер?', 'How many paragraphs will the browser show?'),
-    ok: L3('To‘g‘ri! p nechta bo‘lsa, xatboshi shuncha.', 'Верно! Сколько p — столько и абзацев.', 'Right! As many p tags, as many paragraphs.'),
+    ok: L3('To‘g‘ri! p nechta bo‘lsa, xatboshi shuncha.', 'Верно! Сколько p — столько и абзацев.', 'Right! The number of p tags is the number of paragraphs.'),
     miss: {
       one: L3('Qarang: qatorlar bir nechta, lekin p bitta. Demak, xatboshi ham bitta.', 'Смотри: строк несколько, а p один. Значит, и абзац один.', 'Look: there are several lines, but only one p. So there is one paragraph.'),
       many: L3('Qarang: p teglari bir nechta. Har bir p alohida xatboshi, ular qaysi qatorda turishi muhim emas.', 'Смотри: тегов p несколько. Каждый p — отдельный абзац, неважно, в какой он строке.', 'Look: there are several p tags. Each p is a separate paragraph, whatever line it’s on.')
@@ -244,12 +243,12 @@ const C = {
   s9: {
     eyebrow: L3('Qalin va qiya', 'Жирный и курсив', 'Bold and italic'),
     say: L3('Muhim so‘zni ajratish uchun yana ikkita teg bor.', 'Чтобы выделить важное слово, есть ещё два тега.', 'There are two more tags to make a word stand out.'),
-    askB: L3('b tegini bosing.', 'Нажми тег b.', 'Tap the b tag.'),
-    b: L3('b tegi so‘zni qalin qiladi, uni darhol payqashadi.', 'Тег b делает слово жирным, чтобы его заметили.', 'The b tag makes a word bold so people notice it.'),
-    askI: L3('Endi i tegini bosing.', 'Теперь нажми тег i.', 'Now tap the i tag.'),
-    i: L3('i tegi esa so‘zni qiyshaytiradi, bu kursiv.', 'А тег i наклоняет слово — это курсив.', 'And the i tag slants the word: that’s italic.'),
+    askB: L3('Qarang: b tegi', 'Смотри: тег b', 'Watch: the b tag'),
+    b: L3('b tegi so‘zni qalin qiladi, shunda u darhol ko‘zga tashlanadi.', 'Тег b делает слово жирным, чтобы его заметили.', 'The b tag makes a word bold so people notice it.'),
+    askI: L3('Qarang: i tegi', 'Смотри: тег i', 'Watch: the i tag'),
+    i: L3('i tegi esa so‘zni qiya qiladi. Bu kursiv deyiladi.', 'А тег i наклоняет слово — это курсив.', 'And the i tag slants the word: that’s italic.'),
     done: L3('b va i so‘z atrofiga qo‘yiladi: so‘zdan oldin ochuvchi teg, so‘zdan keyin yopuvchi teg.', 'b и i ставят вокруг слова: открывающий тег перед ним, закрывающий после.', 'b and i go around a word: the opening tag before it, the closing tag after.'),
-    ask: L3('b va i teglarini bosing', 'Нажми теги b и i', 'Tap the b and i tags')
+    ask: L3('b va i teglariga qarang', 'Смотри на теги b и i', 'Watch the b and i tags')
   },
   s10: {
     eyebrow: L3('So‘zni ajrating', 'Выдели слово', 'Make a word stand out'),
@@ -283,25 +282,25 @@ const C = {
   s12: {
     eyebrow: L3('Yuqoridan pastga', 'Сверху вниз', 'Top to bottom'),
     say: L3('Bu odamchaning butun sahifasi. Brauzer uni qanday o‘qishini ko‘raylik.', 'Это вся страница человечка. Посмотрим, как браузер её читает.', 'This is the buddy’s whole page. Let’s see how the browser reads it.'),
-    order1: L3('Brauzer kodni yuqoridan pastga o‘qiydi. Avval h1, sahifa nomi.', 'Браузер читает код сверху вниз. Сначала h1 — название страницы.', 'The browser reads code from top to bottom. First h1, the page title.'),
-    order2: L3('Keyin xatboshi. Uning ichida qalin va qiya so‘z bor.', 'Потом абзац, а в нём жирное и наклонное слово.', 'Then a paragraph with a bold and a slanted word inside.'),
+    order1: L3('Brauzer kodni yuqoridan pastga o‘qiydi. Avval h1, asosiy sarlavha.', 'Браузер читает код сверху вниз. Сначала h1 — главный заголовок.', 'The browser reads code from top to bottom. First h1, the main heading.'),
+    order2: L3('Keyin xatboshi. Uning ichida qalin so‘z va qiya so‘z bor.', 'Потом абзац, а в нём жирное слово и наклонное слово.', 'Then a paragraph with a bold word and a slanted word inside.'),
     order3: L3('Keyin h2, bo‘lim sarlavhasi, va yana xatboshi.', 'Дальше h2 — заголовок раздела, и снова абзац.', 'Then h2, a section heading, and another paragraph.'),
-    ask: L3('«Brauzerdek o‘qish» tugmasini bosing', 'Нажми «Читать как браузер»', 'Tap “Read like a browser”'),
+    ask: L3('Brauzer qanday o‘qishini kuzating', 'Смотри, как читает браузер', 'Watch how the browser reads'),
     askDone: L3('Brauzer yuqoridan pastga o‘qiydi', 'Браузер читает сверху вниз', 'The browser reads top to bottom')
   },
   s13: {
     eyebrow: L3('O‘z sahifangiz', 'Своя страница', 'Your page'),
-    say: L3('Endi o‘z sahifangizni yasang. Avval h1 ichiga uning nomini yozing: o‘zingizga yoqqan narsa haqida.',
-      'Теперь твоя страница. Сначала напиши в h1 её название — о том, что тебе нравится.',
-      'Now your own page. First, type its title in h1, about something you like.'),
+    say: L3('Endi o‘z sahifangizni yasang. Avval h1 ichiga sarlavha yozing: o‘zingizga yoqqan narsa haqida.',
+      'Теперь твоя страница. Сначала напиши в h1 заголовок — о том, что тебе нравится.',
+      'Now your own page. First, type a heading in h1, about something you like.'),
     sayP: L3('Endi p ichiga bu haqda bitta gap yozing.', 'Теперь напиши в p одно предложение об этом.', 'Now type one sentence about it in p.'),
     ok: L3('Sahifangiz tayyor: sarlavha va xatboshi bor.', 'Твоя страница готова: есть заголовок и абзац.', 'Your page is ready: it has a heading and a paragraph.'),
     hints: [
-      L3('Nom o‘ylab toping: masalan, sevimli o‘yiningiz yoki hayvoningiz.', 'Придумай название: например, любимая игра или животное.', 'Make up a title: your favorite game or animal, for example.'),
+      L3('Sarlavha o‘ylab toping: masalan, sevimli o‘yiningiz yoki hayvoningiz.', 'Придумай заголовок: например, любимая игра или животное.', 'Make up a heading: your favorite game or animal, for example.'),
       L3('Faqat so‘z yozing, teglar allaqachon joyida.', 'Пиши только слова — теги уже на месте.', 'Type only words: the tags are already in place.'),
       L3('Masalan: Futbol. Keyin: Men do‘stlarim bilan futbol o‘ynayman.', 'Например: Футбол. А потом: Я играю в футбол с друзьями.', 'For example: Football. Then: I play football with my friends.')
     ],
-    askTitle: L3('h1 ichiga sahifa nomini yozing', 'Напиши название в h1', 'Type the title in h1'),
+    askTitle: L3('h1 ichiga sarlavha yozing', 'Напиши заголовок в h1', 'Type a heading in h1'),
     askP: L3('p ichiga bitta gap yozing', 'Напиши в p одно предложение', 'Type one sentence in p'),
     phTitle: L3('Masalan: Futbol', 'Например: Футбол', 'For example: Football'),
     phP: L3('Masalan: Men futbol o‘ynayman.', 'Например: Я играю в футбол.', 'For example: I play football.')
@@ -325,7 +324,7 @@ const C = {
     eyebrow: L3('Xulosa', 'Вывод', 'Summary'),
     say: [
       { text: L3('Qarang, bu sizning sahifangiz!', 'Посмотри, это твоя страница!', 'Look, this is your page!'), k: null },
-      { text: L3('h1 dan h6 gacha teglar sarlavhalar. h1 eng katta, bu sahifa nomi.', 'Теги от h1 до h6 — заголовки. h1 самый крупный, это название страницы.', 'The tags from h1 to h6 are headings. h1 is the biggest: the page title.'), k: 'h' },
+      { text: L3('h1 dan h6 gacha teglar sarlavhalar. h1 eng katta, bu asosiy sarlavha.', 'Теги от h1 до h6 — заголовки. h1 самый крупный, это главный заголовок.', 'The tags from h1 to h6 are headings. h1 is the biggest: the main heading.'), k: 'h' },
       { text: L3('p tegi xatboshi. Har bir p yangi qatordan boshlanadi.', 'Тег p — абзац. Каждый p начинается с новой строки.', 'The p tag is a paragraph. Each p starts on a new line.'), k: 'p' },
       { text: L3('b so‘zni qalin qiladi, i esa qiya qiladi.', 'b делает слово жирным, а i — наклонным.', 'b makes a word bold, and i makes it slanted.'), k: 'bi' },
       { text: L3('Tabriklayman! Endi sahifangiz o‘z hikoyasini aytib bera oladi.', 'Ура! Теперь твоя страница умеет рассказывать.', 'Hooray! Now your page can tell a story.'), k: null }
@@ -342,8 +341,8 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { magic: 1, magicP: 1, magicB: 1, askBig: 1, big: 1, askSmall: 1, small: 1, msgs: 1, sayP: 1, askQ: 1, miss: 1,
-  askB: 1, b: 1, askI: 1, i: 1, order1: 1, order2: 1, order3: 1, cards: 1 });
+Object.assign(SPOKEN, { magic: 1, magicP: 1, magicB: 1, big: 1, small: 1, msgs: 1, sayP: 1, askQ: 1, miss: 1,
+  b: 1, i: 1, order1: 1, order2: 1, order3: 1, cards: 1 });
 Object.assign(NOT_SPOKEN_IN, { cards: { title: 1 } });
 
 /*@FILE:../kollazh/kollazh-paper-data.jsx@*/

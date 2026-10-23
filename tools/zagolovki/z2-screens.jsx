@@ -245,8 +245,8 @@ function S2({ p }) {
 
 // =============================================================================
 // S3. ШЕСТЬ ЗАГОЛОВКОВ — на бирюзовом листе body шесть бумажных полосок от h1 до
-// h6, каждая мельче предыдущей (как в ролике). Нажать самую крупную, потом самую
-// мелкую: у h1 появляется звёздочка «главный», у h6 — лупа.
+// h6, каждая мельче предыдущей (как в ролике). Показ: загорается самая крупная,
+// потом самую мелкую; у h1 появляется звёздочка «главный», у h6 — лупа.
 // =============================================================================
 const H_SIZE = [1, 0.84, 0.7, 0.58, 0.48, 0.4];
 function BodySheet({ children, label = true, cls }) {
@@ -265,36 +265,38 @@ function S3({ p }) {
   const solved = !!(rec && rec.done);
   const [n, setN] = useState(solved ? 2 : 0);
   const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
-    : [{ text: c.say, pose: 'explain' }, { text: c.askBig, pose: 'point' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved, spoken);
-  const led = useIdleLed(canTap && !solved && n < 2, n);
-  const tapBig = () => { if (!canTap || n !== 0) return; sfx('pop', true); setN(1); sayNow(c.big, 'point'); say(c.askSmall, 'point'); };
-  const tapSmall = () => { if (!canTap || n !== 1) return; sfx('ok', true); setN(2); put({ done: true }); sayNow(c.small, 'explain'); say(c.done, 'smile'); };
-  const asking = speaker.text === c.askBig || speaker.text === c.askSmall;
-  const askText = n === 2 ? c.done : n === 0 ? c.askBig : c.askSmall;
+    : [{ text: c.say, pose: 'explain' }]);
+  const boxRef = useRef(null);
+  const strip = (i) => () => boxRef.current && boxRef.current.querySelectorAll('.z2-hstrip')[i];
+  // Показ: загорается самый крупный заголовок, потом самый мелкий; Коди называет оба.
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { look: strip(0), act: () => { sfx('pop', true); setN(1); } },
+    { say: [{ text: c.big, pose: 'point' }] },
+    { look: strip(5), act: () => { sfx('ok', true); setN(2); put({ done: true }); } },
+    { say: [{ text: c.small, pose: 'explain' }, { text: c.done, pose: 'smile' }] }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
+  // Строка задания — за речью: пока Коди говорит о h1, она ещё про h1.
+  const askText = solved || demo.done ? c.done : demo.idx >= 2 ? c.askSmall : c.askBig;
   // Пока Коди говорит о h1 — светится h1, о h6 — h6.
   const hlI = speaker.text === c.big ? 0 : speaker.text === c.small ? 5 : -1;
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Sheet cls="z2-sheet">
         <KzAsk text={askText} n={solved ? null : n + '/2'} />
-        <div className="kz-scene">
+        <div className="kz-scene" ref={boxRef}>
           <BodySheet cls="z2-s3-body">
             {H_SIZE.map((s, i) => {
-              const tap = i === 0 ? tapBig : i === 5 ? tapSmall : null;
-              const want = (i === 0 && n === 0) || (i === 5 && n === 1);
               return (
-                <button key={i} type="button" className={'z2-hstrip kz-a-left' + (tap ? ' is-tap' : '') + (hlI === i ? ' is-hl' : '')}
-                  style={{ '--hs': s, '--dl': (0.12 * i) + 's', '--r': (i % 2 ? 0.7 : -0.6) + 'deg' }} disabled={!tap || !canTap} onClick={tap || undefined}>
+                <span key={i} className={'z2-hstrip kz-a-left' + (hlI === i ? ' is-hl' : '')}
+                  style={{ '--hs': s, '--dl': (0.12 * i) + 's', '--r': (i % 2 ? 0.7 : -0.6) + 'deg' }}>
                   <span className="z2-hstrip-paper">
                     <TagK t={'h' + (i + 1)} />
                     <span className="z2-hstrip-w">{pick(c.word)}</span>
                   </span>
                   {i === 0 && n >= 1 ? <span className="z2-star kz-a-stamp" aria-hidden="true">★</span> : null}
                   {i === 5 && n >= 2 ? <span className="z2-loupe kz-a-stamp" aria-hidden="true" /> : null}
-                  <Led on={want && (led || asking) && canTap} />
-                </button>
+                </span>
               );
             })}
           </BodySheet>
@@ -467,8 +469,8 @@ function S5({ p }) {
 }
 
 // =============================================================================
-// S6. АБЗАЦЫ — три строки кода без тегов: браузер склеил их в одну. Нажатие на
-// строку оборачивает её в p: в окне появляется отдельный абзац с отступом.
+// S6. АБЗАЦЫ — три строки кода без тегов: браузер склеил их в одну. Показ: строки
+// загораются — каждая оборачивается в p, в окне появляется отдельный абзац.
 // =============================================================================
 function S6({ p }) {
   const pick = usePick();
@@ -478,15 +480,18 @@ function S6({ p }) {
   const [wrapped, setWrapped] = useState(solved ? [true, true, true] : [false, false, false]);
   const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
     : [{ text: c.say, pose: 'explain' }, { text: c.sayP, pose: 'point' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved, spoken);
   const n = wrapped.filter(Boolean).length;
-  const led = useIdleLed(canTap && n < 3, n);
-  const wrap = (k) => {
-    if (!canTap || wrapped[k]) return;
-    const w = wrapped.slice(); w[k] = true; setWrapped(w); sfx('pop', true);
-    if (w.every(Boolean)) { put({ done: true }); sayNow(c.done, 'smile'); }
-  };
+  const wrap = (k) => { setWrapped((w) => { const x = w.slice(); x[k] = true; return x; }); sfx('pop', true); };
+  const codeRef = useRef(null);
+  const line = (k) => () => codeRef.current && codeRef.current.querySelectorAll('.kz-line.z2-hline')[0];
+  // Показ: строки по очереди загораются — каждая оборачивается в p.
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { look: line(0), act: () => wrap(0) },
+    { look: line(1), act: () => wrap(1) },
+    { look: line(2), act: () => { wrap(2); put({ done: true }); } },
+    { say: [{ text: c.done, pose: 'smile' }] }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
   // Пока Коди говорит про склейку — окно подсвечено.
   const glued = speaker.text === c.say && !solved;
   // Честно: подряд идущие строки без тегов склеиваются, каждый p — отдельный абзац.
@@ -502,10 +507,9 @@ function S6({ p }) {
       <Sheet cls="z2-sheet">
         <KzAsk text={n === 3 ? c.done : c.ask} n={n === 3 ? null : n + '/3'} />
         <div className="kz-scene z2-s5">
-          <div className="kz-col">
+          <div className="kz-col" ref={codeRef}>
             <KzCode lines={[{ k: 'b', d: 0, cls: 'z2-edge', parts: [T_('body')] }].concat(c.lines.map((ln, k) => ({
-              k: 'l' + k + (wrapped[k] ? 'w' : ''), d: 1, cls: wrapped[k] ? 'is-new' : 'z2-hline',
-              onTap: wrapped[k] ? null : () => wrap(k), disabled: !canTap, led: !wrapped[k] && k === nextK && (led || speaker.text === c.sayP) && canTap,
+              k: 'l' + k + (wrapped[k] ? 'w' : ''), d: 1, cls: wrapped[k] ? 'is-new' : 'z2-hline' + (k === nextK && speaker.text === c.sayP ? ' is-read' : ''),
               parts: wrapped[k] ? [T_('p'), W_(pick(ln)), T_('p', true)] : [W_(pick(ln))]
             }))).concat([{ k: 'bc', d: 0, cls: 'z2-edge', parts: [T_('body', true)] }])} />
           </div>
@@ -519,7 +523,8 @@ function S6({ p }) {
 }
 
 // =============================================================================
-// S7. НАПИШИ АБЗАЦ — строка без тегов приклеилась к абзацу выше. Два поля:
+// S7. НАПИШИ АБЗАЦ — две строки без тегов: браузер честно склеил их в одну (как
+// на экране 6). Вторую ученик оборачивает в p — она встаёт отдельным абзацем. Два поля:
 // перед текстом и после; кнопки < / p > вставляют в поле с курсором.
 // =============================================================================
 function S7({ p }) {
@@ -552,9 +557,10 @@ function S7({ p }) {
     if (st.current.misses >= 2) lad.bump();
   };
   const prev = pick(c.prev), text = pick(c.text);
-  // Честно: пока строка без тегов, браузер не делает её отдельным абзацем.
-  const blocks = okNow ? [{ t: 'p', parts: [prev] }, { t: 'p', parts: [text], cls: 'kz-a-stamp' }]
-    : [{ t: 'p', parts: [prev] }, { t: 'raw', parts: [text], cls: 'z2-raw-tight' }];
+  // Честно, как в настоящем браузере: две строки без тегов — одна строка текста;
+  // строка в p — отдельный абзац с отступом, первая остаётся простым текстом.
+  const blocks = okNow ? [{ t: 'raw', parts: [prev] }, { t: 'p', parts: [text], cls: 'kz-a-stamp' }]
+    : [{ t: 'raw', parts: [prev, ' ' + text] }];
   const blink = !okNow && led;
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
@@ -565,7 +571,7 @@ function S7({ p }) {
             <PaperBrowser title={pick(PAGE.title)} short cls="z2-br" pageHl={!okNow}><PageDoc blocks={blocks} /></PaperBrowser>
             <KzCode lines={[
               { k: 'b', d: 0, cls: 'z2-edge', parts: [T_('body')] },
-              { k: 'p', d: 1, cls: 'z2-ctx', parts: [T_('p'), W_(prev), T_('p', true)] },
+              { k: 'p', d: 1, cls: 'z2-ctx', parts: [W_(prev)] },
               { k: 'x', d: 1, cls: okNow ? 'is-new' : 'is-hl', parts: okNow ? [T_('p'), W_(text), T_('p', true)] : [
                 <Slot key="a" ty={sl.a} on={sl.act === 'a'} onFocus={() => sl.setAct('a')} blink={blink} label={c.ask} onEnter={check} />,
                 W_(text),
@@ -586,7 +592,7 @@ function S7({ p }) {
 // несколько, а p один. Промах — дополнительный раунд того же типа.
 // =============================================================================
 const S8_W = [L3('Mushugim uxlaydi.', 'Кот спит.', 'The cat sleeps.'), L3('U baliq yeydi.', 'Он ест рыбу.', 'He eats fish.'),
-  L3('U o‘ynaydi.', 'Он играет.', 'He plays.'), L3('Bugun quyosh.', 'Сегодня солнце.', 'It’s sunny today.'), L3('Biz sayr qilamiz.', 'Мы гуляем.', 'We go for a walk.')];
+  L3('U o‘ynaydi.', 'Он играет.', 'He plays.'), L3('Bugun havo quyoshli.', 'Сегодня солнце.', 'It’s sunny today.'), L3('Biz sayr qilamiz.', 'Мы гуляем.', 'We go for a walk.')];
 // lines — строки кода: массив абзацев на строке; abz — сколько абзацев; type — какая ловушка.
 const S8_ROUNDS = [
   { lines: [['p0', 'p1']], abz: 2, type: 'many' },
@@ -695,9 +701,9 @@ function S8({ p }) {
 
 // =============================================================================
 // S9. ЖИРНЫЙ И КУРСИВ — как в ролике: бумажная карточка абзаца с биркой <p>, над
-// словами «очень» и «спать» на скотче приклеены бирки <b> и <i>. Нажать бирку b —
-// слово становится жирным, под него ступенчато клеится горчичная полоска; нажать
-// i — слово наклоняется. Строка кода под карточкой обновляется по шагу.
+// словами «очень» и «спать» на скотче приклеены бирки <b> и <i>. Показ: загорается
+// бирка b — слово становится жирным, под него ступенчато клеится горчичная полоска;
+// потом бирка i — слово наклоняется. Строка кода под карточкой обновляется по шагу.
 // Карточка — образ (как рамка в уроке 1); в браузере так же — жирный и курсив.
 // =============================================================================
 function S9({ p }) {
@@ -707,17 +713,22 @@ function S9({ p }) {
   const solved = !!(rec && rec.done);
   const [n, setN] = useState(solved ? 2 : 0);
   const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
-    : [{ text: c.say, pose: 'explain' }, { text: c.askB, pose: 'point' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved, spoken);
-  const led = useIdleLed(canTap && n < 2, n);
-  const tapB = () => { if (!canTap || n !== 0) return; sfx('pop', true); setN(1); sayNow(c.b, 'point'); say(c.askI, 'point'); };
-  const tapI = () => { if (!canTap || n !== 1) return; sfx('ok', true); setN(2); put({ done: true }); sayNow(c.i, 'explain'); say(c.done, 'smile'); };
+    : [{ text: c.say, pose: 'explain' }]);
+  const cardRef = useRef(null);
+  const lbl = (k) => () => cardRef.current && cardRef.current.querySelector('.z2-w.is-' + k + ' .kz-label');
+  // Показ: загорается бирка b — слово жирное; потом бирка i — слово наклонное.
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { look: lbl('b'), act: () => { sfx('pop', true); setN(1); } },
+    { say: [{ text: c.b, pose: 'point' }] },
+    { look: lbl('i'), act: () => { sfx('ok', true); setN(2); put({ done: true }); } },
+    { say: [{ text: c.i, pose: 'explain' }, { text: c.done, pose: 'smile' }] }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
   const src = pick(PAGE.p1);
-  // До нажатия слово ещё без тега: в коде — части по шагу.
+  // Пока бирка не сработала, слово ещё без тега: в коде — части по шагу.
   const parts = src.map((x) => (typeof x === 'string' ? x : x.b !== undefined ? (n >= 1 ? x : x.b) : (n >= 2 ? x : x.i)));
-  const asking = speaker.text === c.askB || speaker.text === c.askI;
-  const askText = n === 2 ? c.done : n === 0 ? c.askB : c.askI;
+  // Строка задания — за речью: пока Коди говорит о b, она ещё про b.
+  const askText = solved || demo.done ? c.done : demo.idx >= 2 ? c.askI : c.askB;
   // Пока Коди говорит о b — светится бирка b и её слово; о i — бирка i.
   const sayK = speaker.text === c.b ? 'b' : speaker.text === c.i ? 'i' : null;
   return (
@@ -726,7 +737,7 @@ function S9({ p }) {
         <KzAsk text={askText} n={solved ? null : n + '/2'} />
         <div className="kz-scene kz-scene-col">
           <div className="kz-col">
-            <div className="z2-pcard kz-piece kz-a-drop">
+            <div className="z2-pcard kz-piece kz-a-drop" ref={cardRef}>
               <Cut c="#FBF6EA" seed={430} n={14} amp={1.4} asp={3} cls="z2-pcard-cut" />
               <KzLabel t="p" cls="z2-pcard-lbl" />
               <p className="z2-pcard-text">
@@ -736,11 +747,9 @@ function S9({ p }) {
                   if (typeof x === 'string') return <React.Fragment key={j}>{j > 0 && typeof src[j - 1] !== 'string' ? x.slice(punct(j).length) : x}</React.Fragment>;
                   const isB = x.b !== undefined;
                   const on = isB ? n >= 1 : n >= 2;
-                  const want = isB ? n === 0 : n === 1;
                   return (
                     <span key={j} className={'z2-w' + (isB ? ' is-b' : ' is-i') + (on ? ' is-on' : '') + (sayK === (isB ? 'b' : 'i') ? ' is-say' : '')}>
-                      <KzLabel t={isB ? 'b' : 'i'} cls="z2-w-lbl" onClick={isB ? tapB : tapI} disabled={!canTap || !want}
-                        on={on} hl={sayK === (isB ? 'b' : 'i')} led={want && (led || asking) && canTap} />
+                      <KzLabel t={isB ? 'b' : 'i'} cls="z2-w-lbl" on={on} hl={sayK === (isB ? 'b' : 'i')} />
                       <span className="z2-w-txt">{isB ? x.b : x.i}</span>{punct(j + 1)}
                     </span>
                   );
@@ -914,7 +923,7 @@ function S11({ p }) {
 }
 
 // =============================================================================
-// S12. СВЕРХУ ВНИЗ — «Читать как браузер»: строки кода страницы о коте
+// S12. СВЕРХУ ВНИЗ — показ: браузер сам читает код; строки кода страницы о коте
 // подсвечиваются по очереди, страница собирается в окне.
 // =============================================================================
 const READ12 = ['h1', 'p1', 'h2', 'p2'];
@@ -926,17 +935,18 @@ function S12({ p }) {
   const [read, setRead] = useState(solved ? READ12.length : -1);
   const ORDER = [{ text: c.order1, pose: 'point' }, { text: c.order2, pose: 'point' }, { text: c.order3, pose: 'smile' }];
   const [speaker, say, spoken, sayNow] = useVoice(solved ? ORDER : [{ text: c.say, pose: 'explain' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved, spoken);
-  const led = useIdleLed(canTap && read < 0, 0);
   const timers = useRef([]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
-  const run = () => {
-    if (!canTap || read >= 0) return;
-    const step = reduceMotion() ? 120 : 700;
-    READ12.forEach((k, i) => timers.current.push(setTimeout(() => { setRead(i); sfx('tap', true); }, step * i)));
-    timers.current.push(setTimeout(() => { setRead(READ12.length); put({ done: true }); sayNow(ORDER[0].text, 'point'); say(ORDER[1].text, 'point'); say(ORDER[2].text, 'smile'); }, step * READ12.length + 200));
-  };
+  const STEP = reduceMotion() ? 120 : 700;
+  const run = () => { READ12.forEach((k, i) => timers.current.push(setTimeout(() => { setRead(i); sfx('tap', true); }, STEP * i))); };
+  // Показ: строки читаются по очереди сами, потом Коди называет порядок.
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { act: run },
+    { wait: STEP * READ12.length + 200 },
+    { act: () => { setRead(READ12.length); put({ done: true }); } },
+    { say: ORDER }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
   const sayK = spoken ? null : speaker.text === c.order1 ? ['h1'] : speaker.text === c.order2 ? ['p1'] : speaker.text === c.order3 ? ['h2', 'p2'] : null;
   const cur = read >= 0 && read < READ12.length ? READ12[read] : null;
   const on = (k) => (sayK ? sayK.indexOf(k) >= 0 : cur === k);
@@ -966,7 +976,6 @@ function S12({ p }) {
             <PaperBrowser title={pick(PAGE.title)} cls="z2-br">{blocks.length ? <PageDoc blocks={blocks} anim={!solved} /> : null}</PaperBrowser>
           </div>
         </div>
-        {read < 0 ? <div className="kz-row"><button type="button" className="kz-btn is-coral" disabled={!canTap} onClick={run}>{pick(UI.read)}<Led on={led} /></button></div> : null}
       </Sheet>
     </Stage>
   );
@@ -1026,7 +1035,7 @@ function S13({ p }) {
         <KzAsk text={askText} hint={step === 2 ? null : (bad || hintAt(lad.lv, c.hints))} n={step === 2 ? null : (step + 1) + '/2'} />
         <div className="kz-scene kz-scene-col">
           <div className="kz-col">
-            <PaperBrowser title={tShow || pick(UI.mySite)} short cls="z2-br" pageHl={step < 2}>{blocks.length ? <PageDoc blocks={blocks} /> : null}</PaperBrowser>
+            <PaperBrowser title={pick(UI.mySite)} short cls="z2-br" pageHl={step < 2}>{blocks.length ? <PageDoc blocks={blocks} /> : null}</PaperBrowser>
             <KzCode lines={[
               { k: 'b', d: 0, cls: 'z2-edge', parts: [T_('body')] },
               { k: 'h', d: 1, cls: step === 0 ? 'is-hl' : '', parts: [T_('h1'),
@@ -1093,7 +1102,7 @@ function S14({ p }) {
         <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : msg} />
         <div className="kz-scene z2-s5">
           <div className="kz-col">
-            <PaperBrowser title={mine.title} cls={'z2-br' + (okNow ? '' : ' z2-broken')} pageHl={!okNow}><PageDoc blocks={blocks} /></PaperBrowser>
+            <PaperBrowser title={pick(UI.mySite)} cls={'z2-br' + (okNow ? '' : ' z2-broken')} pageHl={!okNow}><PageDoc blocks={blocks} /></PaperBrowser>
           </div>
           <div className="kz-col">
             <KzCode lines={[
@@ -1146,7 +1155,7 @@ function S15({ p }) {
       <Sheet cls="z2-sheet">
         <div className="kz-scene kz-s15">
           <div className="kz-col kz-s15-left">
-            <PaperBrowser title={mine.title} cls="z2-br"><PageDoc blocks={blocks} anim /></PaperBrowser>
+            <PaperBrowser title={pick(UI.mySite)} cls="z2-br"><PageDoc blocks={blocks} anim /></PaperBrowser>
             <div className="kz-s15-man"><div className="kz-manbox kz-manbox-free"><PaperMan anim wave /></div></div>
           </div>
           <div className="kz-col kz-s15-side">

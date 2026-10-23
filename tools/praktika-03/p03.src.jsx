@@ -121,7 +121,7 @@ const UI = {
   target: L3('Brauzerda shunday bo‘ladi', 'Как должно быть', 'How it should look'),
   left: L3('Tuzatish kerak: {n}', 'Осталось исправить: {n}', 'Left to fix: {n}'),
   allFixed: L3('Hammasi tuzatildi', 'Всё исправлено', 'All fixed'),
-  needH1: L3('h1 — ro‘yxat nomi', 'h1 — название', 'h1 — the title'),
+  needH1: L3('h1 — ro‘yxat nomi', 'h1 — название', 'h1 — the list name'),
   needList: L3('ul yoki ol — ro‘yxat', 'ul или ol — список', 'ul or ol — the list'),
   need3: L3('kamida 3 ta li band', 'хотя бы 3 пункта li', 'at least 3 li items'),
   needClosed: L3('hamma teglar yopilgan', 'все теги закрыты', 'all tags are closed'),
@@ -144,7 +144,7 @@ const FB = {
   unclosedIn: L3('{tag} hali yopilmagan, {next} esa allaqachon tugayapti.', '{tag} ещё не закрыт, а {next} уже заканчивается.', '{tag} isn’t closed yet, but {next} is already ending.'),
   blockInBlock: L3('{tag} hali tugamadi, {next} esa boshlanyapti. Avval {tag} ni yoping.', '{tag} ещё не закончился, а {next} уже начинается. Сначала закрой {tag}.', '{tag} hasn’t ended, but {next} is already starting. Close {tag} first.'),
   inlineOutside: L3('{tag} so‘z atrofiga qo‘yiladi: xatboshi yoki sarlavha ichida.', '{tag} ставят вокруг слова — внутри абзаца или заголовка.', '{tag} goes around a word, inside a paragraph or a heading.'),
-  textOutside: L3('Matn teglardan tashqarida turibdi. Uni o‘z tegiga qo‘ying: nom h1 ga, band li ga.', 'Текст стоит снаружи тегов. Поставь его в свой тег: название — в h1, пункт — в li.', 'The text is outside the tags. Put it in its tag: the title in h1, an item in li.'),
+  textOutside: L3('Matn teglardan tashqarida turibdi. Uni o‘z tegiga qo‘ying: nom h1 ga, band li ga.', 'Текст стоит снаружи тегов. Поставь его в свой тег: название — в h1, пункт — в li.', 'The text is outside the tags. Put it in its tag: the list name in h1, an item in li.'),
   noGt: L3('{tag} tegi oxirida o‘ng «>» qavs yetishmayapti.', 'У тега {tag} в конце не хватает уголка «>».', 'The {tag} tag is missing the bracket “>” at the end.'),
   noLt: L3('{tag} oldida chap «<» qavs yetishmayapti.', 'Перед {tag} не хватает уголка «<».', 'The bracket “<” is missing before {tag}.'),
   unknown: L3('«{raw}» tegida harflar adashgan: {tag} kerak.', 'В теге «{raw}» перепутаны буквы: нужно {tag}.', 'The letters in “{raw}” are mixed up: it should be {tag}.'),
@@ -180,8 +180,8 @@ const FB = {
   // t4 — починить пункты
   keepList: L3('Bandlar tuzaldi! Faqat avvalgidek qaytaring: {tag} ro‘yxati va o‘sha qadamlar.', 'Пункты починены! Только верни как было: список {tag} и те же шаги.', 'The items are fixed! Just keep it as it was: a {tag} list with the same steps.'),
   // t5 — свой список
-  artEmpty: L3('Hozircha bo‘sh. Ro‘yxat nomini h1 ga yozishdan boshlang.', 'Пока пусто. Начни с названия списка в h1.', 'It’s empty so far. Start with the list title in h1.'),
-  needH1: L3('Tepaga h1 sarlavha kerak: ro‘yxatingiz nomi.', 'Сверху нужен заголовок h1 — название твоего списка.', 'You need an h1 heading on top: your list’s title.'),
+  artEmpty: L3('Hozircha bo‘sh. Ro‘yxat nomini h1 ga yozishdan boshlang.', 'Пока пусто. Начни с названия списка в h1.', 'It’s empty so far. Start with the list name in h1.'),
+  needH1: L3('Tepaga h1 sarlavha kerak: ro‘yxatingiz nomi.', 'Сверху нужен заголовок h1 — название твоего списка.', 'You need an h1 heading on top: your list’s name.'),
   needList: L3('Sarlavha ostiga ro‘yxat kerak: ul yoki ol.', 'Под заголовком нужен список: ul или ol.', 'Under the heading you need a list: ul or ol.'),
   needItems: L3('Ro‘yxatda kamida uchta matnli li bandi bo‘lsin.', 'В списке нужно хотя бы три пункта li с текстом.', 'The list needs at least three li items with text.'),
   needOl: L3('Qadamlar uchun raqamli ro‘yxat kerak: ol.', 'Для шагов нужен список с номерами — ol.', 'Steps need a numbered list: ol.')
@@ -274,18 +274,18 @@ const C = {
 
   // 5 · своё с нуля: h1 (урок 2) и список с тремя пунктами — по живому списку.
   t5: {
-    order: L3('O‘z ro‘yxatingizni yozing: h1 nom, ro‘yxat va kamida uchta band', 'Напиши свой список: название h1, список и хотя бы три пункта', 'Write your list: an h1 title, a list and at least three items'),
+    order: L3('O‘z ro‘yxatingizni yozing: h1 nom, ro‘yxat va kamida uchta band', 'Напиши свой список: название h1, список и хотя бы три пункта', 'Write your list: an h1 name, a list and at least three items'),
     say: L3('So‘qmoq tiklandi! Endi sizning ro‘yxatingiz. Mavzuni o‘zingiz tanlang: h1 nom yozing, ostiga ul yoki ol ro‘yxat, unda kamida uchta li band.',
       'Тропа восстановлена! Теперь твой список. Тему выбери сам: напиши название h1, под ним список ul или ol, а в нём хотя бы три пункта li.',
-      'The trail is restored! Now your list. Pick any topic: type an h1 title, then a ul or ol list under it, with at least three li items.'),
+      'The trail is restored! Now your list. Pick any topic: type a name in h1, then a ul or ol list under it, with at least three li items.'),
     empty: L3('Ro‘yxatingiz shu yerda chiqadi', 'Здесь появится твой список', 'Your list will appear here'),
     hints: [
       L3('Sahifa sarlavhadan boshlanadi, ostida ro‘yxat. Tartib muhim bo‘lsa ol, bo‘lmasa ul.', 'Страница начинается с заголовка, под ним список. Важен порядок — ol, не важен — ul.', 'The page starts with a heading, the list goes under it. If order matters, use ol; if not, ul.'),
-      L3('h1 juftidan boshlang va ichiga ro‘yxat nomini yozing.', 'Начни с пары h1 и напиши внутри название списка.', 'Start with an h1 pair and type the list title inside.'),
+      L3('h1 juftidan boshlang va ichiga ro‘yxat nomini yozing.', 'Начни с пары h1 и напиши внутри название списка.', 'Start with an h1 pair and type the list name inside.'),
       L3('Mana boshqa ro‘yxat. O‘zingiznikini ham shunday tuzing, faqat o‘z mavzuingizda.', 'Вот другой список. Свой построй так же, но о своём.', 'Here’s another list. Build yours the same way, about your own topic.')
     ],
     hint2: {
-      h1: L3('h1 juftidan boshlang va ichiga ro‘yxat nomini yozing.', 'Начни с пары h1 и напиши внутри название списка.', 'Start with an h1 pair and type the list title inside.'),
+      h1: L3('h1 juftidan boshlang va ichiga ro‘yxat nomini yozing.', 'Начни с пары h1 и напиши внутри название списка.', 'Start with an h1 pair and type the list name inside.'),
       list: L3('Sarlavhadan keyin ul yoki ol ni oching, oxirida uni yoping.', 'После заголовка открой ul или ol, а в конце закрой.', 'After the heading, open ul or ol, and close it at the end.'),
       items: L3('Ro‘yxat ichiga uchta li yozing: har birida bitta band.', 'Внутри списка напиши три li — в каждом по пункту.', 'Inside the list, write three li, one item in each.'),
       tag: L3('Teglarni tekshiring: har bir ochilgan teg o‘z jufti bilan yopilishi kerak.', 'Проверь теги: каждый открытый тег должен закрыться своей парой.', 'Check the tags: every opened tag must close with its pair.')
