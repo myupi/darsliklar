@@ -1,14 +1,16 @@
 // =============================================================================
-// S1. КРЮЧОК — сначала бумажная веб-страница в браузере; нажали «Превратить» —
-// браузер распадается на бумажные куски, и из этих же кусков собирается
-// человечек (заказчик, 23.10.2026: «нужен эффект именно сборки»):
-//   · вкладка с названием округляется и становится головой;
+// S1. КРЮЧОК — сначала бумажная веб-страница в браузере. Коди показывает вкладку
+// (подсвечена) и окно (подсвечено) — до того, как эти слова понадобятся. Нажали
+// «Превратить» — браузер распадается на бумажные куски, и из этих же кусков
+// собирается человечек (заказчик, 23.10.2026: «нужен эффект именно сборки»):
+//   · верхняя тёмная полоса браузера округляется и становится головой, а вкладка
+//     с названием влетает внутрь головы — название лишь одно из сведений о
+//     странице, которые хранит голова (образ head; голова ≠ название);
 //   · окно со страницей перекрашивается в бирюзу и становится телом;
-//   · тёмная полоса вкладок рвётся пополам — это руки;
-//   · боковые края рамки — ноги.
+//   · адресная строка рвётся пополам — это руки; боковые края рамки — ноги.
 // Сначала куски чуть расходятся (разбор), потом ступенчато (stop-motion, с
-// шорохом) летят на места, меняя форму и цвет. Дальше Коди называет связь:
-// голова — вкладка, тело — окно.
+// шорохом) летят на места, меняя форму и цвет. Дальше Коди: в голове — сведения
+// о странице (например, название), в теле — всё, что видно в окне.
 // =============================================================================
 const S1_FLY = 0.9;   // полёт куска к месту, с
 function S1({ p }) {
@@ -21,7 +23,8 @@ function S1({ p }) {
   const [phase, setPhase] = useState(solved ? 'man' : 'page');
   const [pieces, setPieces] = useState(null);
   const [stage, setStage] = useState(0);   // 0 — куски на местах браузера · 1 — разошлись · 2 — на местах человечка
-  const [speaker, say, spoken, sayNow] = useVoice([{ text: solved ? c.done : c.say, pose: solved ? 'smile' : 'hello' }]);
+  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
+    : [{ text: c.say, pose: 'hello' }, { text: c.sayTab, pose: 'point' }, { text: c.sayWin, pose: 'point' }, { text: c.sayGo, pose: 'smile' }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved, spoken);
   const led = useIdleLed(canTap && phase === 'page', 0);
@@ -29,7 +32,7 @@ function S1({ p }) {
   const tm = useRef([]);
   useEffect(() => () => { tm.current.forEach(clearTimeout); paperOff(); }, []);
   const later = (ms, f) => tm.current.push(setTimeout(f, ms));
-  const land = () => { paperOff(); setPieces(null); put({ done: true }); setPhase('man'); sfx('ok', true); sayNow(c.magic, 'wonder'); say(c.magicWin, 'point'); say(c.done, 'smile'); };
+  const land = () => { paperOff(); setPieces(null); put({ done: true }); setPhase('man'); sfx('ok', true); sayNow(c.magic, 'wonder'); say(c.magicHead, 'point'); say(c.magicWin, 'point'); say(c.done, 'smile'); };
   const turn = () => {
     if (!canTap || phase !== 'page') return;
     sfx('pop', true);
@@ -48,6 +51,7 @@ function S1({ p }) {
     const Bar = br.querySelector('.kz-br-bar').getBoundingClientRect();
     const W = br.querySelector('.kz-br-body').getBoundingClientRect();
     const T = br.querySelector('.kz-br-tab').getBoundingClientRect();
+    const Tool = br.querySelector('.kz-br-tool').getBoundingClientRect();
     const M = man.getBoundingClientRect();
     const box = (r) => ({ x: r.left - S.left, y: r.top - S.top, w: r.width, h: r.height, r: 0 });
     const cuts = Array.prototype.slice.call(man.children);
@@ -57,13 +61,18 @@ function S1({ p }) {
       r: parseFloat(getComputedStyle(el).getPropertyValue('--r')) || 0 });
     const half = B.width / 2;
     const sideH = B.bottom - Bar.bottom;
+    const head = to(part('head'));
     setPieces([
       { k: 'legL', c0: KZ.ink, c: KZ.ink, seed: 41, from: { x: B.left - S.left, y: Bar.bottom - S.top, w: Math.max(6, W.left - B.left), h: sideH, r: 0 }, apart: [-12, 4, -5], to: to(limbs[0]), dl: 0.05 },
       { k: 'legR', c0: KZ.ink, c: KZ.ink, seed: 42, from: { x: W.right - S.left, y: Bar.bottom - S.top, w: Math.max(6, B.right - W.right), h: sideH, r: 0 }, apart: [12, 4, 5], to: to(limbs[1]), dl: 0.1 },
-      { k: 'armL', c0: KZ.ink, c: KZ.ink, seed: 43, from: { x: B.left - S.left, y: B.top - S.top, w: half, h: Bar.bottom - B.top, r: 0 }, apart: [-10, -10, -6], to: to(limbs[2]), dl: 0.16 },
-      { k: 'armR', c0: KZ.ink, c: KZ.ink, seed: 44, from: { x: B.left - S.left + half, y: B.top - S.top, w: half, h: Bar.bottom - B.top, r: 0 }, apart: [10, -10, 6], to: to(limbs[3]), dl: 0.2 },
-      { k: 'body', c0: KZ.cream, c: KZ.teal, seed: 45, lines: true, from: { x: W.left - S.left, y: Bar.bottom - S.top, w: W.width, h: W.bottom - Bar.bottom, r: 0 }, apart: [0, 8, 1.5], to: to(part('body')), dl: 0 },
-      { k: 'head', c0: '#E6DCC6', c: KZ.face, round: true, text: pick(UI.mySite), from: box(T), apart: [-4, -16, -7], to: to(part('head')), dl: 0.3 }
+      { k: 'armL', c0: '#E6DCC6', c: KZ.ink, seed: 43, from: { x: B.left - S.left, y: Tool.top - S.top, w: half, h: Tool.height, r: 0 }, apart: [-10, -6, -6], to: to(limbs[2]), dl: 0.16 },
+      { k: 'armR', c0: '#E6DCC6', c: KZ.ink, seed: 44, from: { x: B.left - S.left + half, y: Tool.top - S.top, w: half, h: Tool.height, r: 0 }, apart: [10, -6, 6], to: to(limbs[3]), dl: 0.2 },
+      { k: 'body', c0: KZ.cream, c: KZ.teal, seed: 45, lines: true, from: { x: W.left - S.left, y: Tool.bottom - S.top, w: W.width, h: W.bottom - Tool.bottom, r: 0 }, apart: [0, 8, 1.5], to: to(part('body')), dl: 0 },
+      // Голова — из всей верхней полосы браузера (не из одной вкладки).
+      { k: 'head', c0: KZ.ink, c: KZ.face, round: true, from: { x: B.left - S.left, y: B.top - S.top, w: B.width, h: Bar.bottom - B.top, r: 0 }, apart: [0, -16, -4], to: head, dl: 0.24 },
+      // Вкладка с названием влетает внутрь головы и прячется в ней: название — одно из сведений, которые хранит голова.
+      { k: 'name', c0: '#E6DCC6', c: '#E6DCC6', round: true, text: pick(UI.mySite), fade: true, from: box(T), apart: [-4, -26, -7],
+        to: { x: head.x + head.w * 0.18, y: head.y + head.h * 0.36, w: head.w * 0.64, h: head.h * 0.26, r: -4 }, dl: 0.34 }
     ]);
     setStage(0);
     setPhase('morph');
@@ -85,15 +94,20 @@ function S1({ p }) {
     return {
       left: g.x + 'px', top: g.y + 'px', width: g.w + 'px', height: g.h + 'px', rotate: g.r + 'deg',
       background: fly ? pc.c : pc.c0,
-      borderRadius: pc.round ? (fly ? '50%' : '6px 6px 0 0') : null,
+      borderRadius: pc.round ? (fly ? (pc.fade ? '6px' : '50%') : '6px 6px 0 0') : null,
+      opacity: pc.fade && fly ? 0 : 1,
       clipPath: pc.round ? null : torn(pc.seed, 6, 2.5, Math.max(0.2, Math.min(5, g.w / Math.max(1, g.h)))),
       transition: ['left', 'top', 'width', 'height', 'rotate'].map((k) => k + ' ' + d + ' ' + st + ' ' + dl)
-        .concat(['background ' + d + ' steps(4, end) ' + dl, 'border-radius ' + d + ' steps(5, end) ' + dl]).join(', ')
+        .concat(['background ' + d + ' steps(4, end) ' + dl, 'border-radius ' + d + ' steps(5, end) ' + dl])
+        .concat(pc.fade ? ['opacity .2s steps(2, end) ' + (pc.dl + S1_FLY - 0.05).toFixed(2) + 's'] : []).join(', ')
     };
   };
-  // Подсветка идёт за речью: «название стало головой» — голова, «окно стало телом» — тело.
-  const hl = phase !== 'man' ? null : speaker.text === c.magic ? 'head' : speaker.text === c.magicWin ? 'body' : null;
-  const askText = phase === 'man' ? c.askDone : c.ask;
+  // Подсветка идёт за речью: до превращения — вкладка, потом окно; после — голова
+  // («сведения о странице»), потом тело («всё, что в окне»).
+  const hl = phase !== 'man' ? null : speaker.text === c.magicHead ? 'head' : speaker.text === c.magicWin ? 'body' : null;
+  const tabNow = phase === 'page' && speaker.text === c.sayTab;
+  const winNow = phase === 'page' && speaker.text === c.sayWin;
+  const askText = phase === 'man' ? c.askDone : spoken ? c.ask : c.askLook;
   const busy = phase === 'measure' || phase === 'morph';
   return (
     <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
@@ -102,7 +116,7 @@ function S1({ p }) {
         <div ref={sceneRef} className={'kz-scene kz-s1 kz-s1-rev is-' + phase}>
           {phase !== 'man' ? (
             <div className={'kz-col kz-s1-page' + (phase === 'morph' ? ' is-gone' : '')}>
-              <PaperBrowser title={pick(UI.mySite)} pageHl={led}>
+              <PaperBrowser title={pick(UI.mySite)} tabHl={tabNow} pageHl={winNow || led}>
                 <PageBits text={pick(UI.hello)} bits />
               </PaperBrowser>
             </div>
@@ -193,9 +207,74 @@ function S2({ p }) {
 }
 
 // =============================================================================
-// S3. БИРКА ДЛЯ БРАУЗЕРА — бумажный браузер со страницей в рамке html (заказчик,
-// 23.10.2026: на экранах 3–5 браузер вместо человечка); две бирки: открывающий и
-// закрывающий тег. Ученик нажимает бирки по очереди (светится «нажми сюда»).
+// ЧТО ТАКОЕ ТЕГ (заказчик, 23.10.2026): до рамки html — зачем угловые скобки и
+// что значит косая черта. Только объяснение, без «сам делает» и закрепления
+// (исключение из троек — так решил заказчик). Браузер рядом честный: слово без
+// скобок он показывает текстом, тег — нет.
+// =============================================================================
+// Тег из кусочков: коралловые скобки и черта, имя чернилами (как TagK).
+const TgTag = ({ close, hl, cap, slashHl, cls }) => (
+  <span className={'kz-tg-tag' + (hl ? ' is-hl' : '') + (cls ? ' ' + cls : '')} translate="no">
+    <span className="kz-tag"><span className="kz-tk-b">{'<'}</span>{close ? <span className={'kz-tk-b kz-tg-slash' + (slashHl ? ' is-hl' : '')}>/</span> : null}<span className="kz-tk-n">html</span><span className="kz-tk-b">{'>'}</span></span>
+    {cap ? <i className="kz-tg-cap">{cap}</i> : null}
+  </span>
+);
+
+// =============================================================================
+// TG1. ЧТО ТАКОЕ ТЕГ — в коде «html Привет, мир!»: браузер честно показывает
+// слово html текстом. Показ (ученик смотрит, кнопок нет): к слову слетаются
+// угловые скобки — оно пропало со страницы: это тег; в конце строки влетает
+// закрывающий тег, косая черта падает сверху.
+// =============================================================================
+function TG1({ p }) {
+  const pick = usePick();
+  const c = C.tg1;
+  const [rec, put] = useRec('tg1');
+  const solved = !!(rec && rec.done);
+  const [n, setN] = useState(solved ? 2 : 0);   // 0 — слово · 1 — <html> · 2 — и </html>
+  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
+    : [{ text: c.say, pose: 'explain' }, { text: c.askPair, pose: 'point' }]);
+  const stripRef = useRef(null);
+  // Показ: слово загорается, к нему слетаются скобки — тег; потом влетает закрывающий тег.
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { look: () => stripRef.current && stripRef.current.querySelector('.kz-tg-word'), act: () => { sfx('pop', true); setN(1); } },
+    { wait: 700 },
+    { say: [{ text: c.pair, pose: 'wonder' }, { text: c.askSlash, pose: 'point' }] },
+    { act: () => { sfx('ok', true); setN(2); put({ done: true }); } },
+    { wait: 900 },
+    { say: [{ text: c.slash, pose: 'explain' }, { text: c.done, pose: 'smile' }] }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
+  // Подсветка за речью: «слово показал текстом» — слово и окно; «это тег» — тег; «косая черта» — закрывающий.
+  const hlWord = speaker.text === c.say;
+  const hlOpen = speaker.text === c.pair;
+  const hlClose = speaker.text === c.slash;
+  const text = pick(c.text);
+  const askText = n === 2 ? c.aDone : n === 1 && speaker.text === c.askSlash ? c.aSlash : c.aPair;
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+      <Sheet>
+        <KzAsk text={askText} n={solved || n === 2 ? null : n + '/2'} />
+        <div className="kz-scene kz-tg kz-tg1">
+          <div className="kz-tg-strip kz-a-drop" translate="no" ref={stripRef}>
+            {n === 0 ? <span className={'kz-tg-word' + (hlWord ? ' is-hl' : '')}>html</span>
+              : <TgTag hl={hlOpen} cap={pick(c.open)} cls={n === 1 && !solved ? 'kz-tg-in' : ''} />}
+            <span className="kz-tg-text">{text}</span>
+            {n === 2 ? <TgTag close hl={hlClose} slashHl={hlClose} cap={pick(c.close)} cls={solved ? '' : 'kz-tg-in is-new'} /> : null}
+          </div>
+          <PaperBrowser title="" cls="kz-tg-br" pageHl={hlWord || hlOpen}>
+            <div className="kz-tg-page" key={n === 0 ? 'w' : 't'}>{n === 0 ? <><span className={hlWord ? 'kz-tg-mark' : ''}>html</span> {text}</> : <span className={n === 1 ? 'kz-a-pop' : ''}>{text}</span>}</div>
+          </PaperBrowser>
+        </div>
+      </Sheet>
+    </Stage>
+  );
+}
+
+// =============================================================================
+// S3. ТЕГ HTML — бумажный браузер со страницей в рамке html (заказчик,
+// 23.10.2026: браузер вместо человечка); две бирки — открывающий и закрывающий
+// тег. Показ: бирки по очереди загораются и становятся жёлтыми, Коди называет каждую.
 // =============================================================================
 // Страница в рамке html (экраны 3–5): бумажный браузер — вкладка и окно.
 const FramedPage = ({ anim }) => {
@@ -212,24 +291,27 @@ function S3({ p }) {
   const solved = !!(rec && rec.done);
   const [n, setN] = useState(solved ? 2 : 0);
   const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
-    : [{ text: c.say, pose: 'explain' }, { text: c.sayTag, pose: 'explain' }, { text: c.sayAsk, pose: 'point' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved, spoken);
-  const led = useIdleLed(canTap && !solved, n);
-  const tagHl = speaker.text === c.sayTag;   // «Тег — это слово в угловых скобках…» — оба тега светятся
-  const tapTop = () => { if (!canTap || n !== 0) return; sfx('tap', true); setN(1); sayNow(c.top, 'point'); say(c.bottomAsk, 'point'); };
-  const tapBot = () => { if (!canTap || n !== 1) return; sfx('ok', true); setN(2); put({ done: true }); sayNow(c.bottom, 'explain'); say(c.done, 'smile'); };
-  const asking = speaker.text === c.sayAsk || speaker.text === c.bottomAsk;
-  const askText = solved || n === 2 ? c.done : n === 0 ? c.sayAsk : c.bottomAsk;
+    : [{ text: c.say, pose: 'explain' }, { text: c.sayTag, pose: 'explain' }]);
+  const boxRef = useRef(null);
+  // Показ: загорается верхняя бирка, Коди называет её; потом нижняя.
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { look: () => boxRef.current && boxRef.current.querySelector('.kz-frame-lbl-top'), act: () => { sfx('tap', true); setN(1); } },
+    { say: [{ text: c.top, pose: 'point' }] },
+    { look: () => boxRef.current && boxRef.current.querySelector('.kz-frame-lbl-bot'), act: () => { sfx('ok', true); setN(2); put({ done: true }); } },
+    { say: [{ text: c.bottom, pose: 'explain' }, { text: c.done, pose: 'smile' }] }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
+  const tagHl = speaker.text === c.sayTag;   // «Тег html показывает…» — оба тега светятся
+  const askText = solved || n === 2 ? c.askDone : c.ask;
   return (
     <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Sheet>
         <KzAsk text={askText} n={solved ? null : n + '/2'} />
-        <div className="kz-scene">
+        <div className="kz-scene" ref={boxRef}>
           <ManBox frame frameAnim={!solved} frameHl={speaker.text === c.say} br={<FramedPage anim={!solved} />}
             labels={<>
-              <KzLabel t="html" cls="kz-frame-lbl-top" onClick={tapTop} disabled={!canTap || n !== 0} on={n >= 1} hl={tagHl} led={n === 0 && (led || asking) && canTap} />
-              <KzLabel t="html" close cls="kz-frame-lbl-bot" onClick={tapBot} disabled={!canTap || n !== 1} on={n >= 2} hl={tagHl} led={n === 1 && (led || asking) && canTap} />
+              <KzLabel t="html" cls="kz-frame-lbl-top" on={n >= 1} hl={tagHl || speaker.text === c.top} />
+              <KzLabel t="html" close cls="kz-frame-lbl-bot" on={n >= 2} hl={tagHl || speaker.text === c.bottom} />
             </>} />
         </div>
       </Sheet>
@@ -391,8 +473,10 @@ function S5({ p }) {
 }
 
 // =============================================================================
-// S6. ГОЛОВА СТРАНИЦЫ — нажать голову: она приподнимается, внутри карточка
-// title; нажать карточку — она улетает на вкладку бумажного браузера.
+// S6. ГОЛОВА СТРАНИЦЫ — показ короткими шагами, у каждого своя подсветка:
+// «голова напоминает head» — голова и строки head; «в окне не видно» — окно;
+// голова приподнимается, внутри карточка title, в коде — строка title; карточка
+// улетает на вкладку — вкладка; «в head — title, в title — название».
 // =============================================================================
 function S6({ p }) {
   const pick = usePick();
@@ -403,101 +487,134 @@ function S6({ p }) {
   const [stamp, setStamp] = useState(0);
   const [flying, setFlying] = useState(false);   // карточка title летит на вкладку
   const sceneRef = useRef(null);
-  const tm = useRef(0);
-  useEffect(() => () => clearTimeout(tm.current), []);
-  const [speaker, say, spoken, sayNow] = useVoice([{ text: solved ? c.done : c.say, pose: solved ? 'smile' : 'explain' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved, spoken);
-  const led = useIdleLed(canTap && step < 2, step);
-  const openHead = () => { if (!canTap || step !== 0) return; sfx('pop', true); setStep(1); sayNow(c.opened, 'point'); };
-  const flyTitle = () => {
-    if (!canTap || step !== 1 || flying) return;
-    sfx('tap', true);
-    const land = () => { setFlying(false); setStep(2); setStamp((s) => s + 1); sfx('ok', true); put({ done: true }); sayNow(c.flew, 'wonder'); say(c.done, 'smile'); };
-    const sc = sceneRef.current;
-    const went = !reduceMotion() && sc && kzFly(sc.querySelector('.kz-man [aria-label="title"]'), sc.querySelector('.kz-br-tab'), 760);
-    if (!went) { land(); return; }
-    setFlying(true);
-    tm.current = setTimeout(land, 800);
-  };
+  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
+    : [{ text: c.say, pose: 'explain' }, { text: c.sayInfo, pose: 'explain' }]);
+  const q = (sel) => () => sceneRef.current && sceneRef.current.querySelector(sel);
+  // Показ: голова загорается и открывается; карточка title загорается и летит на вкладку.
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { look: q('.kz-man [aria-label="head"]'), act: () => { sfx('pop', true); setStep(1); } },
+    { say: [{ text: c.opened, pose: 'point' }] },
+    { look: q('.kz-man [aria-label="title"]'), act: () => {
+      sfx('tap', true);
+      const sc = sceneRef.current;
+      if (!reduceMotion() && sc && kzFly(sc.querySelector('.kz-man [aria-label="title"]'), sc.querySelector('.kz-br-tab'), 760)) setFlying(true);
+    } },
+    { wait: 800 },
+    { act: () => { setFlying(false); setStep(2); setStamp((v) => v + 1); sfx('ok', true); put({ done: true }); } },
+    { say: [{ text: c.flew, pose: 'wonder' }, { text: c.done, pose: 'smile' }] }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
   const title = pick(UI.mySite);
+  const askText = step === 0 ? c.ask : step === 1 ? c.askCard : c.done;
+  // Подсветка за речью: голова и строки head → окно → строка title → вкладка.
+  const hlHead = speaker.text === c.say;
+  const hlWin = speaker.text === c.sayInfo;
+  const hlTitle = speaker.text === c.opened;
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={step === 0 ? c.ask : step === 1 ? c.askCard : c.done} nav={navOf(p, canGo)}>
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={step === 0 ? c.ask : step === 1 ? c.askCard : c.done} n={solved ? null : step + '/2'} />
+        <KzAsk text={askText} n={solved ? null : step + '/2'} />
         <div ref={sceneRef} className={'kz-scene' + (flying ? ' is-flying' : '')}>
-          <ManBox man={<PaperMan anim={false} headOpen={step === 1} hl={step === 0 && led ? 'head' : null}
-            onHead={openHead} titleText={step === 1 ? title : null} onTitle={flyTitle} />} cls="kz-s6-box" />
+          <ManBox man={<PaperMan anim={false} headOpen={step === 1} hl={hlHead ? 'head' : null}
+            titleText={step === 1 ? title : null} />} cls="kz-s6-box" />
           <div className="kz-col">
-            <PaperBrowser title={step >= 2 ? title : ''} stamp={stamp} tabHl={step >= 2 && speaker.text === c.flew}>
+            <PaperBrowser title={step >= 2 ? title : ''} stamp={stamp} tabHl={step >= 2 && speaker.text === c.flew} pageHl={hlWin}>
               <PageBits text={pick(UI.hello)} />
             </PaperBrowser>
             <KzCode lines={[
-              { k: 'h', d: 0, cls: step >= 1 ? 'is-hl' : '', parts: [T_('head')] },
-              { k: 't', d: 1, cls: step >= 2 ? 'is-new' : '', parts: step >= 2 ? [T_('title'), W_(title), T_('title', true)] : [<span key="d" className="kz-dim">…</span>] },
-              { k: 'hc', d: 0, cls: step >= 1 ? 'is-hl' : '', parts: [T_('head', true)] }
+              { k: 'h', d: 0, cls: hlHead || step === 1 ? 'is-hl' : '', parts: [T_('head')] },
+              { k: 't', d: 1, cls: hlTitle ? 'is-read' : step >= 2 ? 'is-new' : '', parts: step >= 1 ? [T_('title'), W_(title), T_('title', true)] : [<span key="d" className="kz-dim">…</span>] },
+              { k: 'hc', d: 0, cls: hlHead || step === 1 ? 'is-hl' : '', parts: [T_('head', true)] }
             ]} />
           </div>
         </div>
-        {step === 1 ? <div className="kz-row" style={flying ? { visibility: 'hidden' } : null}><button type="button" className="kz-btn is-ghost" disabled={!canTap} onClick={flyTitle}>title<Led on={led} /></button></div> : null}
       </Sheet>
     </Stage>
   );
 }
 
 // =============================================================================
+// СВОЙ ТЕКСТ УЧЕНИКА (s7 — название, s10 — приветствие). Предпросмотр — сразу
+// при наборе; засчитывается только по кнопке «Готово» (заказчик, 23.10.2026:
+// пауза в наборе не завершает задание — ребёнок мог остановиться после первой
+// буквы). Пустое поле, одни пробелы и теги не принимаются. Похвала и событие в
+// журнале — один раз. После засчёта правка сохраняется сама (страница и
+// итоговый артефакт берут новый текст), «Готово» её отмечает, без новой похвалы.
+// =============================================================================
+function useTypedDone({ storeKey, screenId, type, lad }) {
+  const log = useLog();
+  const store = useStore();
+  const [rec, put] = useRec(screenId);
+  const solved = !!(rec && rec.done);
+  const [val, setVal] = useState(store.get(storeKey) || '');
+  const [saved, setSaved] = useState(store.get(storeKey) || '');
+  const [stamp, setStamp] = useState(0);
+  const doneRef = useRef(solved);
+  useEffect(() => {
+    if (!doneRef.current || !okText(val) || val.trim() === saved) return;
+    store.set(storeKey, val.trim()); setSaved(val.trim());
+  }, [val]); // eslint-disable-line react-hooks/exhaustive-deps
+  const ready = okText(val);   // повторное «Готово» после засчёта только отмечает текст: похвала и журнал — один раз
+  const commit = (first) => {
+    if (!okText(val)) return false;
+    const v = val.trim();
+    store.set(storeKey, v); setSaved(v); setStamp((x) => x + 1); sfx('ok', true);
+    if (!doneRef.current) {
+      doneRef.current = true;
+      put({ done: true });
+      log({ screenId, type, correct: true, hints: lad.asked.current, depth: lad.lv });
+      if (first) first();
+    }
+    return true;
+  };
+  return { solved, val, setVal, saved, stamp, ready, commit, shown: okText(val) ? val : saved };
+}
+// Кнопка «Готово» под кодом: горит, когда текст можно засчитать.
+function ReadyBtn({ on, glow, onClick }) {
+  const pick = usePick();
+  return (
+    <div className="kz-row">
+      <button type="button" className="kz-btn is-coral kz-ready" disabled={!on} onClick={onClick}>{pick(UI.ready)}<Led on={glow} /></button>
+    </div>
+  );
+}
+
+// =============================================================================
 // S7. ИМЯ НА ВКЛАДКЕ — поле внутри title; вкладка меняется по ходу набора,
-// засчитывается после паузы.
+// засчитывается по «Готово».
 // =============================================================================
 function S7({ p }) {
   const pick = usePick();
-  const log = useLog();
-  const store = useStore();
   const c = C.s7;
-  const [rec, put] = useRec('s7');
-  const solved = !!(rec && rec.done);
-  const [val, setVal] = useState(store.get('myTitle') || '');
-  const [stamp, setStamp] = useState(0);
-  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'point' }]);
+  const [rec] = useRec('s7');
+  const solved0 = !!(rec && rec.done);
+  const lad = useKzLadder(!solved0);
+  const ty = useTypedDone({ storeKey: 'myTitle', screenId: 's7', type: 'write-title', lad });
+  const [speaker, , spoken, sayNow] = useVoice([{ text: ty.solved ? c.ok : c.say, pose: ty.solved ? 'smile' : 'point' }]);
   const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved, spoken);
-  const lad = useKzLadder(!solved);
-  const led = useIdleLed(canTap && !solved && !val.trim(), 0);
-  const committed = useRef(store.get('myTitle') || '');
-  useEffect(() => {
-    if (!okText(val) || val.trim() === committed.current) return undefined;
-    const t = setTimeout(() => {
-      committed.current = val.trim();
-      store.set('myTitle', val.trim());
-      setStamp((s) => s + 1); sfx('ok', true);
-      if (!solved) {
-        put({ done: true });
-        log({ screenId: 's7', type: 'write-title', correct: true, hints: lad.asked.current, depth: lad.lv });
-        sayNow(c.ok, 'smile');
-      }
-    }, 1100);
-    return () => clearTimeout(t);
-  }, [val]); // eslint-disable-line react-hooks/exhaustive-deps
-  const shown = okText(val) ? val : committed.current;
-  const hint = hasTags(val) ? UI.noTags : hintAt(lad.lv, c.hints);
+  const canGo = useAdvanceGate(ty.solved, spoken);
+  const led = useIdleLed(canTap && !ty.solved && !ty.val.trim(), 0);
+  const confirm = () => { if (canTap && ty.ready) ty.commit(() => sayNow(c.ok, 'smile')); };
+  const hint = hasTags(ty.val) ? UI.noTags : hintAt(lad.lv, c.hints);
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
-      <Sheet>
-        <KzAsk text={c.ask} hint={hint} />
+      <Sheet cls="kz-typed">
+        <KzAsk text={ty.solved ? c.ok : c.ask} hint={ty.solved && !hasTags(ty.val) ? null : hint} />
         <div className="kz-scene kz-scene-col">
           <div className="kz-col">
-            <PaperBrowser title={shown} stamp={stamp} tabHl={!solved} short>
+            <PaperBrowser title={ty.shown} stamp={ty.stamp} tabHl={!ty.solved} short>
               <PageBits text={pick(UI.hello)} />
             </PaperBrowser>
             <KzCode lines={[
               { k: 'h', d: 0, parts: [T_('head')] },
               { k: 't', d: 1, cls: 'is-hl', parts: [T_('title'),
-                <span key="g" className={'kz-gap' + (led ? ' kz-gap-led' : '')}><InlineInput value={val} onChange={setVal} placeholder={L3('Masalan: Futbol', 'Например: Футбол', 'For example: Football')} label={c.ask} max={30} /></span>,
+                <span key="g" className={'kz-gap' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={ty.setVal} onEnter={confirm} placeholder={L3('Masalan: Futbol', 'Например: Футбол', 'For example: Football')} label={c.ask} max={30} /></span>,
                 T_('title', true)] },
               { k: 'hc', d: 0, parts: [T_('head', true)] }
             ]} />
           </div>
         </div>
+        <ReadyBtn on={canTap && ty.ready} glow={canTap && ty.ready && !ty.solved} onClick={confirm} />
       </Sheet>
     </Stage>
   );
@@ -602,37 +719,123 @@ function S8({ p }) {
 }
 
 // =============================================================================
-// S9. ТЕЛО СТРАНИЦЫ — нажать тело человечка: текст, картинка и кнопка
-// выезжают в окно бумажного браузера.
+// S9. ТЕЛО СТРАНИЦЫ — показ без слов о механике (заказчик, 23.10.2026: «показать
+// с анимацией, не словами, что выходит именно оттуда»): тело человечка
+// загорается, на него клеится бирка body; из тела по очереди вылетают бумажные
+// куски страницы — строка текста, полоски, картинка, кнопка — и ступенчато
+// ложатся на свои места в окне. Окно обводится той же бирюзой, что и тело, на
+// окно клеится такая же бирка body, в коде загораются строки body. Тело = body =
+// всё, что видно в окне.
 // =============================================================================
+const S9_FLY = 1.1;   // полёт куска из тела в окно, с
+const S9_PEEK = 450;  // куски сначала видны на теле (выглядывают), мс
+const S9_GAP = 0.2;   // лесенка: каждый следующий кусок вылетает позже, с
 function S9({ p }) {
   const pick = usePick();
   const c = C.s9;
-  const mine = useMine();
   const [rec, put] = useRec('s9');
   const solved = !!(rec && rec.done);
-  const [out, setOut] = useState(solved);
+  const mine = useMine();
+  // idle — тело на месте · measure — содержимое окна невидимо, по нему меряются места ·
+  // fly — куски летят из тела · out — содержимое в окне
+  const [phase, setPhase] = useState(solved ? 'out' : 'idle');
+  const [pieces, setPieces] = useState(null);
+  const [stage, setStage] = useState(0);
+  const [lbl, setLbl] = useState(null);   // где бирки body: на теле и на окне
   const [speaker, say, spoken, sayNow] = useVoice([{ text: solved ? c.done : c.say, pose: solved ? 'smile' : 'explain' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved, spoken);
-  const led = useIdleLed(canTap && !out, 0);
-  const tap = () => { if (!canTap || out) return; sfx('pop', true); setOut(true); put({ done: true }); sayNow(c.out, 'wonder'); say(c.done, 'smile'); };
+  const sceneRef = useRef(null);
+  const tm = useRef([]);
+  useEffect(() => () => { tm.current.forEach(clearTimeout); paperOff(); }, []);
+  const later = (ms, f) => tm.current.push(setTimeout(f, ms));
+  const land = () => { paperOff(); setPieces(null); setPhase('out'); sfx('ok', true); put({ done: true }); };
+  // Показ: тело загорается — куски страницы вылетают из него в окно.
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { look: () => sceneRef.current && sceneRef.current.querySelector('.kz-man [aria-label="body"]'), act: () => { sfx('pop', true); setPhase(reduceMotion() ? 'out' : 'measure'); if (reduceMotion()) put({ done: true }); } },
+    { wait: reduceMotion() ? 100 : S9_PEEK + (S9_FLY + 5 * S9_GAP + 0.4) * 1000 },
+    { say: [{ text: c.out, pose: 'wonder' }, { text: c.done, pose: 'smile' }] }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
+  // Бирки и места кусков — от сцены.
+  const measure = () => {
+    const sc = sceneRef.current;
+    const body = sc && sc.querySelector('.kz-man [aria-label="body"]');
+    const win = sc && sc.querySelector('.kz-br-body');
+    if (!body || !win) return null;
+    const S = sc.getBoundingClientRect(), B = body.getBoundingClientRect(), W = win.getBoundingClientRect();
+    return { S, B, W, box: (r) => ({ x: r.left - S.left, y: r.top - S.top, w: r.width, h: r.height }) };
+  };
+  useLayoutEffect(() => {
+    if (phase !== 'out' && phase !== 'measure') return;
+    const m = measure();
+    if (!m) return;
+    setLbl({ body: { x: m.B.left - m.S.left + m.B.width / 2, y: m.B.top - m.S.top }, win: { x: m.W.right - m.S.left - 8, y: m.W.top - m.S.top } });
+    if (phase !== 'measure') return;
+    const sc = sceneRef.current;
+    const q = (sel) => Array.prototype.slice.call(sc.querySelectorAll('.kz-s9-ghost ' + sel));
+    const B = m.box(m.B);
+    // На теле куски лежат стопкой сверху вниз (уменьшены, чтобы поместиться): видно, откуда они.
+    const from = (i, w, h) => { const k = Math.min(0.6, (B.w * 0.8) / Math.max(1, w)); return { x: B.x + B.w / 2 - (w * k) / 2 + (i % 2 ? 4 : -4), y: B.y + B.h * (0.14 + 0.12 * i), w: w * k, h: Math.max(4, h * k) }; };
+    const list = [];
+    q('.kz-br-text').forEach((el) => list.push({ k: 'text', el }));
+    q('.kz-bit-line').forEach((el, i) => list.push({ k: 'line' + i, el }));
+    q('.kz-bit-pic').forEach((el) => list.push({ k: 'pic', el }));
+    q('.kz-bit-btn').forEach((el) => list.push({ k: 'btn', el }));
+    if (!list.length) { land(); return; }
+    setPieces(list.map((it, i) => { const t = m.box(it.el.getBoundingClientRect()); return { k: it.k, to: t, from: from(i, t.w, t.h), dl: i * S9_GAP, r: (i % 2 ? 7 : -7) }; }));
+    setStage(0);
+    setPhase('fly');
+  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (phase !== 'fly' || !pieces) return undefined;
+    let r1 = requestAnimationFrame(() => { r1 = requestAnimationFrame(() => { setStage(1); sfx('tap', true); }); });
+    later(S9_PEEK, () => { setStage(2); paperOn(); });
+    later(S9_PEEK + Math.round((S9_FLY + pieces[pieces.length - 1].dl) * 1000) + 160, land);
+    return () => cancelAnimationFrame(r1);
+  }, [phase, pieces]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pieceStyle = (pc) => {
+    // 0 — ещё не видны · 1 — выглянули на теле стопкой · 2 — летят на свои места в окне
+    const g = stage === 2 ? pc.to : pc.from;
+    const d = S9_FLY + 's', dl = pc.dl + 's';
+    return {
+      left: g.x + 'px', top: g.y + 'px', width: g.w + 'px', height: g.h + 'px', rotate: (stage === 2 ? 0 : pc.r) + 'deg', opacity: stage ? 1 : 0,
+      transition: stage === 2
+        ? ['left', 'top', 'width', 'height', 'rotate'].map((k) => k + ' ' + d + ' steps(10, end) ' + dl).join(', ')
+        : 'opacity .2s steps(2, end) ' + (pc.dl * 0.5).toFixed(2) + 's'
+    };
+  };
+  const out = phase === 'out';
+  const going = phase === 'fly' || out;   // тело уже отдаёт содержимое: окно и код body горят
+  const hello = pick(UI.hello);
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={out ? c.done : c.ask} nav={navOf(p, canGo)}>
       <Sheet>
         <KzAsk text={out ? c.done : c.ask} />
-        <div className="kz-scene">
-          <ManBox man={<PaperMan anim={false} hl={!out && led ? 'body' : out ? 'body' : null} onBody={tap} />} cls="kz-s6-box" />
+        <div className="kz-scene kz-s9" ref={sceneRef}>
+          <ManBox man={<PaperMan anim={false} hl={speaker.text === c.say || going ? 'body' : null} />} cls="kz-s6-box" />
           <div className="kz-col">
-            <PaperBrowser title={mine.title} pageHl={out}>
-              {out ? <PageBits text={pick(UI.hello)} bits anim={!solved} /> : null}
+            <PaperBrowser title={mine.title} pageHl={going}>
+              {out ? <PageBits text={hello} bits />
+                : phase === 'measure' || phase === 'fly' ? <div className="kz-s9-ghost"><PageBits text={hello} bits /></div> : null}
             </PaperBrowser>
             <KzCode lines={[
-              { k: 'b', d: 0, cls: out ? 'is-hl' : '', parts: [T_('body')] },
-              { k: 'x', d: 1, cls: out ? 'is-new' : '', parts: out ? [W_(pick(UI.hello)), <span key="p" className="kz-dim">{' + ' + pick(UI.pic) + ' + ' + pick(UI.play)}</span>] : [<span key="d" className="kz-dim">…</span>] },
-              { k: 'bc', d: 0, cls: out ? 'is-hl' : '', parts: [T_('body', true)] }
+              { k: 'b', d: 0, cls: going ? 'is-hl' : '', parts: [T_('body')] },
+              { k: 'x', d: 1, cls: out ? 'is-new' : '', parts: out ? [W_(hello), <span key="p" className="kz-dim">{' + ' + pick(UI.pic) + ' + ' + pick(UI.play)}</span>] : [<span key="d" className="kz-dim">…</span>] },
+              { k: 'bc', d: 0, cls: going ? 'is-hl' : '', parts: [T_('body', true)] }
             ]} />
           </div>
+          {lbl && going ? <KzLabel t="body" cls="kz-s9-lbl is-man" anim={solved ? null : 'stamp'} style={{ left: lbl.body.x + 'px', top: lbl.body.y + 'px' }} /> : null}
+          {lbl && out ? <KzLabel t="body" cls="kz-s9-lbl is-win" anim={solved ? null : 'stamp'} style={{ left: lbl.win.x + 'px', top: lbl.win.y + 'px' }} /> : null}
+          {phase === 'fly' && pieces ? (
+            <div className="kz-morph" aria-hidden="true">
+              {pieces.map((pc) => (
+                <span key={pc.k} className={'kz-s9-p is-' + pc.k.replace(/\d+$/, '')} style={pieceStyle(pc)}>
+                  {pc.k === 'text' ? <span className="kz-s9-p-t">{hello}</span> : null}
+                  {pc.k === 'btn' ? <span className="kz-s9-p-b">{pick(UI.play)}</span> : null}
+                  {pc.k === 'pic' ? <><span className="kz-pic-sun" /><span className="kz-pic-mnt" /></> : null}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
       </Sheet>
     </Stage>
@@ -640,55 +843,39 @@ function S9({ p }) {
 }
 
 // =============================================================================
-// S10. ПРИВЕТ В ОКНЕ — поле внутри body; окно меняется по ходу набора.
+// S10. ПРИВЕТ В ОКНЕ — поле внутри body; окно меняется по ходу набора,
+// засчитывается по «Готово».
 // =============================================================================
 function S10({ p }) {
-  const log = useLog();
-  const store = useStore();
   const c = C.s10;
   const mine = useMine();
-  const [rec, put] = useRec('s10');
-  const solved = !!(rec && rec.done);
-  const [val, setVal] = useState(store.get('myText') || '');
-  const [flash, setFlash] = useState(0);
-  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'point' }]);
+  const [rec] = useRec('s10');
+  const solved0 = !!(rec && rec.done);
+  const lad = useKzLadder(!solved0);
+  const ty = useTypedDone({ storeKey: 'myText', screenId: 's10', type: 'write-body', lad });
+  const [speaker, , spoken, sayNow] = useVoice([{ text: ty.solved ? c.ok : c.say, pose: ty.solved ? 'smile' : 'point' }]);
   const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved, spoken);
-  const lad = useKzLadder(!solved);
-  const led = useIdleLed(canTap && !solved && !val.trim(), 0);
-  const committed = useRef(store.get('myText') || '');
-  useEffect(() => {
-    if (!okText(val) || val.trim() === committed.current) return undefined;
-    const t = setTimeout(() => {
-      committed.current = val.trim();
-      store.set('myText', val.trim());
-      setFlash((f) => f + 1); sfx('ok', true);
-      if (!solved) {
-        put({ done: true });
-        log({ screenId: 's10', type: 'write-body', correct: true, hints: lad.asked.current, depth: lad.lv });
-        sayNow(c.ok, 'smile');
-      }
-    }, 1200);
-    return () => clearTimeout(t);
-  }, [val]); // eslint-disable-line react-hooks/exhaustive-deps
-  const shown = okText(val) ? val : committed.current;
-  const hint = hasTags(val) ? UI.noTags : hintAt(lad.lv, c.hints);
+  const canGo = useAdvanceGate(ty.solved, spoken);
+  const led = useIdleLed(canTap && !ty.solved && !ty.val.trim(), 0);
+  const confirm = () => { if (canTap && ty.ready) ty.commit(() => sayNow(c.ok, 'smile')); };
+  const hint = hasTags(ty.val) ? UI.noTags : hintAt(lad.lv, c.hints);
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
-      <Sheet>
-        <KzAsk text={c.ask} hint={hint} />
+      <Sheet cls="kz-typed">
+        <KzAsk text={ty.solved ? c.ok : c.ask} hint={ty.solved && !hasTags(ty.val) ? null : hint} />
         <div className="kz-scene kz-scene-col">
           <div className="kz-col">
-            <PaperBrowser title={mine.title} short pageHl={!solved}>
-              <div className={'kz-br-text' + (flash ? ' kz-a-stamp' : '')} key={'f' + flash}>{shown}</div>
+            <PaperBrowser title={mine.title} short pageHl={!ty.solved}>
+              <div className={'kz-br-text' + (ty.stamp ? ' kz-a-stamp' : '')} key={'f' + ty.stamp}>{ty.shown}</div>
             </PaperBrowser>
             <KzCode lines={[
               { k: 'b', d: 0, parts: [T_('body')] },
-              { k: 'x', d: 1, cls: 'is-hl', parts: [<span key="g" className={'kz-gap' + (led ? ' kz-gap-led' : '')}><InlineInput value={val} onChange={setVal} placeholder={L3('Masalan: Salom!', 'Например: Привет!', 'For example: Hello!')} label={c.ask} max={60} /></span>] },
+              { k: 'x', d: 1, cls: 'is-hl', parts: [<span key="g" className={'kz-gap' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={ty.setVal} onEnter={confirm} placeholder={L3('Masalan: Salom!', 'Например: Привет!', 'For example: Hello!')} label={c.ask} max={60} /></span>] },
               { k: 'bc', d: 0, parts: [T_('body', true)] }
             ]} />
           </div>
         </div>
+        <ReadyBtn on={canTap && ty.ready} glow={canTap && ty.ready && !ty.solved} onClick={confirm} />
       </Sheet>
     </Stage>
   );
@@ -791,9 +978,14 @@ function S11({ p }) {
 }
 
 // =============================================================================
-// S12. СВЕРХУ ВНИЗ — «Читать как браузер»: строки кода подсвечиваются по
+// S12. СВЕРХУ ВНИЗ — показ: браузер сам читает код; строки кода подсвечиваются по
 // очереди, и страница собирается вырезками: первая строка, рамка, голова с
-// именем, тело с текстом.
+// именем, тело с текстом. Потом короткими репликами — вложенность перед сборкой
+// (s13): html содержит две целые группы head и body; title — внутри head; head
+// закрывается до открытия body; приветствие — внутри body. Подсветка — за речью.
+// Когда Коди договорил — ученик сам нажимает строку кода или часть коллажа справа
+// (заказчик, 23.10.2026: «всё вышло быстро, не успел рассмотреть»): загораются
+// строки этой части и её блок, Коди говорит, за что она отвечает; счётчик «n/6».
 // =============================================================================
 const READ12 = ['doc', 'html', 'head', 'title', 'headc', 'body', 'text', 'bodyc', 'htmlc'];
 function S12({ p }) {
@@ -803,24 +995,53 @@ function S12({ p }) {
   const [rec, put] = useRec('s12');
   const solved = !!(rec && rec.done);
   const [read, setRead] = useState(solved ? READ12.length : -1);
-  const ORDER = [{ text: c.order1, pose: 'point' }, { text: c.order2, pose: 'point' }, { text: c.order3, pose: 'smile' }];
+  const ORDER = [{ text: c.order1, pose: 'point' }, { text: c.order2, pose: 'point' }, { text: c.order3, pose: 'explain' },
+    { text: c.order4, pose: 'point' }, { text: c.order5, pose: 'point' }, { text: c.order6, pose: 'smile' }, { text: c.tapSay, pose: 'curious' }];
   const [speaker, say, spoken, sayNow] = useVoice(solved ? ORDER : [{ text: c.say, pose: 'explain' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved, spoken);
-  const led = useIdleLed(canTap && read < 0, 0);
   const timers = useRef([]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
-  const run = () => {
-    if (!canTap || read >= 0) return;
-    const step = reduceMotion() ? 120 : 620;
-    READ12.forEach((k, i) => timers.current.push(setTimeout(() => { setRead(i); sfx('tap', true); }, step * i)));
-    timers.current.push(setTimeout(() => { setRead(READ12.length); put({ done: true }); sayNow(c.doctype, 'explain'); ORDER.forEach((x) => say(x.text, x.pose)); }, step * READ12.length + 200));
+  const STEP = reduceMotion() ? 120 : 620;
+  const run = () => { READ12.forEach((k, i) => timers.current.push(setTimeout(() => { setRead(i); sfx('tap', true); }, STEP * i))); };
+  // Показ: строки читаются по очереди сами, потом Коди называет порядок.
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { act: run },
+    { wait: STEP * READ12.length + 200 },
+    { act: () => { setRead(READ12.length); put({ done: true }); } },
+    { say: [{ text: c.doctype, pose: 'explain' }].concat(ORDER) }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
+  // Исследование после показа: нажатая часть подсвечена, пока не нажата другая.
+  const explore = solved || demo.done;
+  const [picked, setPicked] = useState(null);
+  const [seen, setSeen] = useState([]);
+  const pickPart = (k) => {
+    if (!explore || !k) return;
+    sfx('tap', true); setPicked(k);
+    setSeen((v) => (v.indexOf(k) >= 0 ? v : v.concat(k)));
+    sayNow(c.parts[k], 'point');
   };
+  const LINE_PART = { doc: 'doc', html: 'html', htmlc: 'html', head: 'head', headc: 'head', title: 'title', body: 'body', bodyc: 'body', text: 'text' };
+  const PICK_LINES = { doc: { doc: 'doc' }, html: { html: 'html', htmlc: 'html' }, head: { head: 'head', title: 'head', headc: 'head' },
+    title: { title: 'head' }, body: { body: 'body', text: 'body', bodyc: 'body' }, text: { text: 'body' } };
+  const PICK_COLL = { doc: 'doc', html: 'html', head: 'head', title: 'title', body: 'body', text: 'body' };
+  const pickColl = (e) => {
+    const t = e.target && e.target.closest ? e.target : null;
+    if (!t) return;
+    const k = t.closest('.kz-col-title') ? 'title' : t.closest('.kz-col-text') ? 'text' : t.closest('.kz-col-doc') ? 'doc'
+      : t.closest('.kz-col-lbl-head, .kz-col-head') ? 'head' : t.closest('.kz-col-lbl-body, .kz-col-body') ? 'body'
+      : t.closest('.kz-col-lbl-html, .kz-col-html') ? 'html' : null;
+    pickPart(k);
+  };
+  const ledLine = useIdleLed(explore && !seen.length, 0);
   const at = (k) => read >= READ12.indexOf(k);
   // Пока Коди называет порядок — свои строки кода и блоки коллажа подсвечены.
-  const sayK = spoken ? null : speaker.text === c.order1 ? 'doc' : speaker.text === c.order2 ? 'html' : speaker.text === c.order3 ? 'inner' : null;
+  const SAY_K = { [c.order1.ru]: 'doc', [c.order2.ru]: 'html', [c.order3.ru]: 'inner', [c.order4.ru]: 'title', [c.order5.ru]: 'switch', [c.order6.ru]: 'text' };
+  const sayK = spoken ? null : ['order1', 'order2', 'order3', 'order4', 'order5', 'order6'].map((k) => c[k]).indexOf(speaker.text) >= 0
+    ? SAY_K[speaker.text.ru] : null;
   const SAY_LINES = { doc: { doc: 'doc' }, html: { html: 'html', htmlc: 'html' },
-    inner: { head: 'head', title: 'head', headc: 'head', body: 'body', text: 'body', bodyc: 'body' } };
+    inner: { head: 'head', title: 'head', headc: 'head', body: 'body', text: 'body', bodyc: 'body' },
+    title: { title: 'head' }, switch: { headc: 'head', body: 'body' }, text: { text: 'body' } };
+  const COLL_HL = { doc: 'doc', html: 'html', inner: ['head', 'body'], title: 'title', switch: ['head', 'body'], text: 'body' };
   const cur = read >= 0 && read < READ12.length ? READ12[read] : null;
   const lines = [
     { k: 'doc', d: 0, parts: [<span key="d" className="kz-tag"><span className="kz-tk-b">{'<!'}</span><span className="kz-tk-n">DOCTYPE html</span><span className="kz-tk-b">{'>'}</span></span>] },
@@ -833,22 +1054,22 @@ function S12({ p }) {
     { k: 'bodyc', d: 1, parts: [T_('body', true)] },
     { k: 'htmlc', d: 0, parts: [T_('html', true)] }
   ].map((ln) => {
-    const part = sayK && SAY_LINES[sayK][ln.k];
+    const part = picked ? PICK_LINES[picked][ln.k] : sayK && SAY_LINES[sayK][ln.k];
     const PART = { doc: 'doc', html: 'html', htmlc: 'html', head: 'head', title: 'head', headc: 'head', body: 'body', text: 'body', bodyc: 'body' };
-    return Object.assign(ln, { cls: cur === ln.k ? 'is-read is-say-' + PART[ln.k] : part ? 'is-say is-say-' + part : '' });
+    return Object.assign(ln, { cls: cur === ln.k ? 'is-read is-say-' + PART[ln.k] : part ? 'is-say is-say-' + part : '',
+      onTap: explore ? () => pickPart(LINE_PART[ln.k]) : null, led: ln.k === 'head' && ledLine });
   });
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={read < 0 ? c.ask : c.askDone} nav={navOf(p, canGo)}>
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={read < 0 ? c.ask : explore ? c.askTap : c.askDone} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={read < 0 ? c.ask : c.askDone} />
-        <div className="kz-scene kz-s12">
+        <KzAsk text={read < 0 ? c.ask : explore ? c.askTap : c.askDone} n={explore ? seen.length + '/6' : null} />
+        <div className={'kz-scene kz-s12' + (explore ? ' is-explore' : '')}>
           <div className="kz-col kz-col-code"><KzCode lines={lines} cls="kz-code-sm" /></div>
-          <div className="kz-col">
-            <PageCollage title={mine.title} text={mine.text} anim={!solved} hl={cur === 'doc' ? 'doc' : sayK === 'inner' ? ['head', 'body'] : sayK}
+          <div className="kz-col kz-s12-coll" onClick={explore ? pickColl : undefined}>
+            <PageCollage title={mine.title} text={mine.text} anim={!solved} hl={cur === 'doc' ? 'doc' : picked ? PICK_COLL[picked] : sayK ? COLL_HL[sayK] : null}
               show={{ doc: at('doc'), html: at('html'), head: at('head'), title: at('title'), body: at('body'), text: at('text') }} />
           </div>
         </div>
-        {read < 0 ? <div className="kz-row"><button type="button" className="kz-btn is-coral" disabled={!canTap} onClick={run}>{pick(UI.read)}<Led on={led} /></button></div> : null}
       </Sheet>
     </Stage>
   );
@@ -1091,6 +1312,165 @@ function S14({ p }) {
 }
 
 // =============================================================================
+// Q1. ИТОГОВАЯ ПРОВЕРКА: ВКЛАДКА И ОКНО — новый пример без подсказки до первой
+// попытки: на вкладке должно быть «Robotlar», в окне — «Salom!». Ученик сам
+// решает, какую фразу в title, какую в body (перетащить или нажать фразу, потом
+// место). Не туда — браузер честно на миг показывает фразу там, куда она попала,
+// Коди называет причину, фраза возвращается. Подсказки — по лампочке.
+// =============================================================================
+function Q1({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.q1;
+  const [rec, put] = useRec('q1');
+  const solved = !!(rec && rec.done);
+  const [slots, setSlots] = useState(solved ? { tab: 't', win: 'w' } : { tab: null, win: null });
+  const [sel, setSel] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [shake, setShake] = useState(null);
+  const [peek, setPeek] = useState(null);   // { where, id } — куда на миг попала фраза при ошибке
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'curious' }]);
+  const canTap = useCanAnswer(spoken);
+  const done = !!(slots.tab && slots.win);
+  const canGo = useAdvanceGate(solved || done, spoken);
+  const lad = useKzLadder(!done);
+  const st = useRef({ tries: 0, misses: 0 });
+  const peekT = useRef(0);
+  useEffect(() => () => clearTimeout(peekT.current), []);
+  const led = useIdleLed(canTap && !done, (slots.tab ? 1 : 0) + (slots.win ? 1 : 0) + (sel ? 10 : 0));
+  const word = (id) => pick(id === 't' ? c.tabWord : c.winWord);
+  const place = (id, where) => {
+    if (!canTap || done || !id || !where || slots[where]) return false;
+    st.current.tries += 1;
+    if ((where === 'tab') !== (id === 't')) {
+      st.current.misses += 1;
+      sfx('soft', true); setShake(id); setTimeout(() => setShake(null), 520);
+      clearTimeout(peekT.current); setPeek({ where, id }); peekT.current = setTimeout(() => setPeek(null), 1800);
+      const m = fillL(where === 'win' ? c.toWin : c.toTab, { w: id === 't' ? c.tabWord : c.winWord });
+      setMsg(m); setSel(null); sayNow(m, 'think');
+      if (st.current.misses >= 2) lad.bump();
+      return false;
+    }
+    sfx('pop', true);
+    const ns = Object.assign({}, slots, { [where]: id });
+    setSlots(ns); setSel(null); setMsg(null); setPeek(null);
+    if (ns.tab && ns.win) {
+      put({ done: true });
+      log({ screenId: 'q1', type: 'tab-or-window', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
+      sayNow(c.ok, 'smile');
+    }
+    return true;
+  };
+  const dnd = useKzDrag((id, where) => place(id, where));
+  const pickSlot = (where) => { if (!sel) { setMsg(c.pickFirst); return; } place(sel, where); };
+  // Третья ступень подсказки — светятся фраза и её место; до этого ответ не подсвечивается.
+  const lit = lad.lv >= 3;
+  const nextId = !slots.tab ? 't' : 'w';
+  const slot = (where) => (slots[where] ? <span key={where} className="kz-a-stamp">{W_(word(slots[where]))}</span> : (
+    <button key={where} type="button" data-place={where} disabled={!canTap || done} onClick={() => pickSlot(where)}
+      className={'kz-dash kz-drop kz-q1-slot' + (dnd.hover === where ? ' is-hover' : '') + (dnd.active || sel ? ' is-call' : '')}>
+      <Led on={(led && !!sel) || (lit && (where === 'tab') === (nextId === 't'))} />
+    </button>
+  ));
+  const tabText = slots.tab ? word(slots.tab) : peek && peek.where === 'tab' ? word(peek.id) : '';
+  const winText = slots.win ? word(slots.win) : peek && peek.where === 'win' ? word(peek.id) : '';
+  const hint = hintAt(lad.lv, c.hints);
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+      <Sheet>
+        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} n={done ? null : ((slots.tab ? 1 : 0) + (slots.win ? 1 : 0)) + '/2'} />
+        <div className={'kz-scene kz-q1' + (dnd.active || sel ? ' is-dragging' : '')}>
+          <div className="kz-col">
+            <PaperBrowser title={tabText} stamp={(slots.tab ? 1 : 0) + (peek && peek.where === 'tab' ? 2 : 0)} short tabHl={!!(peek && peek.where === 'tab')} pageHl={!!(peek && peek.where === 'win')}>
+              {winText ? <div className="kz-br-text kz-a-drop" key={'w' + winText}>{winText}</div> : null}
+            </PaperBrowser>
+          </div>
+          <div className="kz-col">
+            <KzCode lines={[
+              { k: 'h', d: 0, parts: [T_('head')] },
+              { k: 't', d: 1, parts: [T_('title'), slot('tab'), T_('title', true)] },
+              { k: 'hc', d: 0, parts: [T_('head', true)] },
+              { k: 'b', d: 0, parts: [T_('body')] },
+              { k: 'x', d: 1, parts: [slot('win')] },
+              { k: 'bc', d: 0, parts: [T_('body', true)] }
+            ]} cls="kz-code-sm" />
+          </div>
+        </div>
+        {!done ? (
+          <div className="kz-tray">
+            {['t', 'w'].map((id, i) => (slots.tab === id || slots.win === id ? null : (
+              <button key={id} type="button" disabled={!canTap} data-id={id}
+                className={'kz-scrap' + (sel === id ? ' is-sel' : '') + (shake === id ? ' kz-a-shake' : '') + (lit && id === nextId ? ' is-led' : '')}
+                style={{ '--r': (i ? 2 : -2) + 'deg' }}
+                onPointerDown={(e) => { if (canTap && !done) dnd.start(e, id, word(id)); }}
+                onClick={() => { setSel(sel === id ? null : id); setMsg(null); sfx('tap', true); }}>
+                <span>{word(id)}</span><Led on={led && !sel} />
+              </button>
+            )))}
+          </div>
+        ) : null}
+      </Sheet>
+      <KzGhost ghost={dnd.ghost} />
+    </Stage>
+  );
+}
+
+// =============================================================================
+// Q2. ЗАЧЕМ НУЖЕН </title>? — три варианта, верный не первый. До первой попытки
+// ничего не подсвечено; неверный вариант гаснет, Коди называет причину, можно
+// выбрать снова. Подсказки — по лампочке (третья ступень подсвечивает ответ).
+// =============================================================================
+function Q2({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.q2;
+  const mine = useMine();
+  const [rec, put] = useRec('q2');
+  const solved = !!(rec && rec.done);
+  const [off, setOff] = useState([]);
+  const [okNow, setOkNow] = useState(solved);
+  const [msg, setMsg] = useState(null);
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'curious' }]);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(solved || okNow, spoken);
+  const lad = useKzLadder(!okNow);
+  const led = useIdleLed(canTap && !okNow, off.length);
+  const choose = (o) => {
+    if (!canTap || okNow || off.indexOf(o.id) >= 0) return;
+    if (o.right) {
+      sfx('win', true); setOkNow(true); setMsg(null); put({ done: true });
+      log({ screenId: 'q2', type: 'why-close-title', correct: true, firstTry: off.length === 0 && lad.asked.current === 0, attempts: off.length + 1, hints: lad.asked.current, depth: lad.lv });
+      sayNow(c.ok, 'smile');
+      return;
+    }
+    sfx('soft', true); setOff(off.concat(o.id)); setMsg(o.why); sayNow(o.why, 'think');
+    if (off.length + 1 >= 2) lad.bump();
+  };
+  const lit = lad.lv >= 3;
+  const hint = hintAt(lad.lv, c.hints);
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+      <Sheet>
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hint)} />
+        <div className="kz-scene kz-scene-col kz-q2">
+          <div className="kz-col">
+            <KzCode lines={[{ k: 't', d: 0, cls: 'kz-q2-line', parts: [T_('title'), W_(mine.title), <span key="c" className="kz-q2-close">{T_('title', true)}</span>] }]} />
+            <div className="kz-quiz">
+              {c.opts.map((o) => (
+                <button key={o.id} type="button" disabled={!canTap || okNow || off.indexOf(o.id) >= 0} onClick={() => choose(o)}
+                  className={'kz-btn ' + (okNow && o.right ? 'is-ok' : off.indexOf(o.id) >= 0 ? 'is-off' : 'is-ghost') + (lit && o.right && !okNow ? ' is-led' : '')}>
+                  {pick(o.t)}<Led on={led && !okNow && off.indexOf(o.id) < 0} />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Sheet>
+    </Stage>
+  );
+}
+
+// =============================================================================
 // S15. ВЫВОД — своя бумажная страница ученика собирается вырезками; роли
 // html, head, title, body загораются, пока Коди их называет. Единственный
 // праздник урока.
@@ -1133,15 +1513,17 @@ function S15({ p }) {
 // =============================================================================
 const SCREENS = [
   { id: 's1', code: 'HOOK', Comp: S1 }, { id: 's2', code: 'MISSION', Comp: S2 },
+  { id: 'tg1', code: 'SHOW', Comp: TG1 },
   { id: 's3', code: 'SHOW', Comp: S3 }, { id: 's4', code: 'LEVEL-1', Comp: S4 }, { id: 's5', code: 'CHECK-1', Comp: S5 },
   { id: 's6', code: 'SHOW', Comp: S6 }, { id: 's7', code: 'LEVEL-2', Comp: S7 }, { id: 's8', code: 'PREDICT', Comp: S8 },
   { id: 's9', code: 'SHOW', Comp: S9 }, { id: 's10', code: 'LEVEL-3', Comp: S10 }, { id: 's11', code: 'CHECK-2', Comp: S11 },
   { id: 's12', code: 'SHOW', Comp: S12 }, { id: 's13', code: 'LEVEL-4', Comp: S13 }, { id: 's14', code: 'CHECK-3', Comp: S14 },
+  { id: 'q1', code: 'CHECK-4', Comp: Q1 }, { id: 'q2', code: 'QUIZ', Comp: Q2 },
   { id: 's15', code: 'ACHIEVEMENT', Comp: S15 }
 ];
 // «Повторить» стирает только экран; имя и текст ученика (myTitle, myText) остаются.
-const SCREEN_RESET = { s1: ['s1'], s2: ['s2'], s3: ['s3'], s4: ['s4'], s5: ['s5'], s6: ['s6'], s7: ['s7'], s8: ['s8'], s9: ['s9'],
-  s10: ['s10'], s11: ['s11'], s12: ['s12'], s13: ['s13'], s14: ['s14'] };
+const SCREEN_RESET = { s1: ['s1'], s2: ['s2'], tg1: ['tg1'], s3: ['s3'], s4: ['s4'], s5: ['s5'], s6: ['s6'], s7: ['s7'], s8: ['s8'], s9: ['s9'],
+  s10: ['s10'], s11: ['s11'], s12: ['s12'], s13: ['s13'], s14: ['s14'], q1: ['q1'], q2: ['q2'] };
 
 export default function HtmlKollazh({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
