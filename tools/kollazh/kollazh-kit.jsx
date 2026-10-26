@@ -155,8 +155,9 @@ function KzLabel({ t, close, raw, cls, style, onClick, led, on, hl, flow, anim, 
 
 // Код — бумажные полоски. Строка: { k, d, parts: [узлы], cls, onTap, led, disabled }.
 // Строка: { k, d, parts, cls, onTap, led, disabled, place, move }.
-// move — бумажные кнопки ▲ ▼ справа от строки: { up, down } (обработчики или null),
-// { hide: true } — пустое место той же ширины, чтобы строки не прыгали.
+// move — бумажные кнопки ▲ ▼ справа от строки: { up, down, hl } (обработчики или null;
+// hl — стрелки мигают, пока Коди о них говорит), { hide: true } — пустое место
+// той же ширины, чтобы строки не прыгали.
 function KzCode({ lines, cls }) {
   const pick = usePick();
   return (
@@ -174,7 +175,7 @@ function KzCode({ lines, cls }) {
         return (
           <div key={ln.k || i} className="kz-line-row">
             {body}
-            <span className={'kz-move' + (mv.hide ? ' is-hide' : '')}>
+            <span className={'kz-move' + (mv.hide ? ' is-hide' : '') + (mv.hl ? ' is-hl' : '')}>
               {['up', 'down'].map((d) => (
                 <button key={d} type="button" className={'kz-move-b is-' + d} disabled={mv.hide || !mv[d] || !!ln.disabled}
                   onClick={mv[d] || undefined} aria-label={pick(d === 'up' ? UI.up : UI.down)} tabIndex={mv.hide ? -1 : undefined}>
@@ -195,18 +196,25 @@ const W_ = (s) => <span className="kz-txt">{s}</span>;
 // build — сколько частей уже на листе (каждая влетает своим движением).
 // out — части разлетаются (превращение в страницу).
 const MAN_PARTS = ['body', 'head', 'armL', 'armR', 'legL', 'legR', 'face'];
-function PaperMan({ build = 7, out, headOpen, hl, onHead, onBody, onTitle, titleText, titleGone, anim = true, wave }) {
+// spot — «прожектор» (заказчик, 26.10.2026: подсветку было плохо видно): пока Коди
+// говорит о части (hl), она крупнее, остальные части притухают.
+// bits — на теле видно, из чего оно собрано: строки текста, картинка и кнопка
+// страницы (хук урока 1: «тело собралось из того, что видно на странице»).
+// nameIn — внутри головы видна бумажка с названием страницы (хук: «название спряталось в голове»).
+function PaperMan({ build = 7, out, headOpen, hl, spot, bits, nameIn, onHead, onBody, onTitle, titleText, titleGone, anim = true, wave }) {
   const has = (k) => MAN_PARTS.indexOf(k) < build;
   const A = (a, d) => (out ? { anim: 'out', dl: d * 0.07 } : anim ? { anim: a, dl: d } : {});
   return (
-    <div className="kz-man">
+    <div className={'kz-man' + (spot && hl ? ' is-spot' : '')}>
       {has('legL') ? <Cut c={KZ.ink} seed={41} n={4} amp={9} asp={0.3} x={38} y={64} w={7.5} h={27} r={-2} {...A('rise', 0.1)} /> : null}
       {has('legR') ? <Cut c={KZ.ink} seed={42} n={4} amp={9} asp={0.3} x={54.5} y={64} w={7.5} h={27} r={2} {...A('rise', 0.2)} /> : null}
       {has('armL') ? <Cut c={KZ.ink} seed={43} n={5} amp={12} asp={5} x={4} y={37} w={26} h={5.5} r={22} cls={wave ? 'kz-wave-l' : ''} {...A('left', 0)} /> : null}
       {has('armR') ? <Cut c={KZ.ink} seed={44} n={5} amp={12} asp={5} x={70} y={37} w={26} h={5.5} r={-22} cls={wave ? 'kz-wave-r' : ''} {...A('right', 0.08)} /> : null}
       {has('body') ? (
         <Cut c={KZ.teal} seed={45} n={9} amp={3} asp={1.15} x={27} y={29} w={46} h={38} r={-1} {...A('drop', 0)} boil hl={hl === 'body'} hlc={KZ.teal}
-          onClick={onBody} label="body" />
+          onClick={onBody} label="body">
+          {bits ? <span className="kz-man-bits" aria-hidden="true"><i /><i /><i /><b><s /></b><em /></span> : null}
+        </Cut>
       ) : null}
       {titleText && !titleGone ? (
         <Cut c="var(--kz-piece)" seed={46} n={6} amp={8} asp={3} x={24} y={10} w={52} h={12} r={-3} cls="kz-man-title" anim="pop" onClick={onTitle} label="title">
@@ -216,6 +224,7 @@ function PaperMan({ build = 7, out, headOpen, hl, onHead, onBody, onTitle, title
       {has('head') ? (
         <Cut c={KZ.face} round seed={47} n={9} amp={4} x={31} y={0} w={38} h={33} {...A('drop', 0.18)} boil hl={hl === 'head'} hlc={KZ.mustard}
           onClick={onHead} label="head" style={{ translate: headOpen ? '0 -38%' : '0 0', transition: 'translate .42s steps(5, end)' }}>
+          {nameIn ? <span className="kz-man-name kz-a-stamp"><span>{nameIn}</span></span> : null}
           {has('face') ? (
             <span className={'kz-face' + (out ? '' : anim ? ' kz-a-pop' : '')} style={{ '--dl': '0.55s' }} aria-hidden="true">
               <i className="kz-eye" style={{ left: '33%' }} /><i className="kz-eye" style={{ left: '60%' }} /><i className="kz-smile" />
@@ -241,8 +250,9 @@ function Frame({ sides, anim, hl }) {
 }
 
 // Сцена «человечек в рамке»: рамка по краю, человечек внутри. br — вместо
-// человечка бумажный браузер (экраны 3–5 урока 1: рамка html обнимает всю
-// страницу — и вкладку, и окно); сцена тогда шире.
+// человечка бумажный браузер (экраны 3–5 урока 1: рамка html обнимает весь
+// браузер — и вкладку, и окно; заказчик, 26.10.2026: «как раньше, вместе с
+// вкладками»); сцена тогда шире.
 function ManBox({ frame, frameSides, frameAnim, frameHl, labels, man, br, cls, children }) {
   return (
     <div className={'kz-stagebox' + (br ? ' is-br' : '') + (cls ? ' ' + cls : '')}>
@@ -257,10 +267,32 @@ function ManBox({ frame, frameSides, frameAnim, frameHl, labels, man, br, cls, c
 // БУМАЖНЫЙ БРАУЗЕР — узнаваемый Chrome в Windows, только из бумаги: тёмная
 // полоса вкладок (вкладка с значком, именем и крестиком, «+»), кнопки окна
 // «– □ ×», полоса со стрелками и адресной строкой, под ней страница.
-function PaperBrowser({ title, children, tabHl, pageHl, stamp, short, cls, tabRef, pageRef }) {
+// url — файл открытой страницы в адресной строке (урок 4: ссылка меняет адрес),
+// urlHl — подсветить адрес, onBack — стрелка «назад» нажимается.
+// spot — «прожектор» на вкладку ('tab') или окно ('page'), пока Коди о них говорит
+// (заказчик, 26.10.2026: смены цвета вкладки было не видно): вкладка крупнее, вокруг —
+// круг, обведённый «от руки» (KzRing); окно — лист приподнимается и светится бирюзой
+// (круг на окне выглядел странно); остальной браузер притухает.
+function PaperBrowser({ title, children, tabHl, pageHl, stamp, short, cls, tabRef, pageRef, url, urlHl, onBack, spot }) {
   const t = title != null && String(title).trim() !== '' ? String(title) : '';
+  const rootRef = useRef(null);
+  const [ring, setRing] = useState(null);
+  useLayoutEffect(() => {
+    // Круг «от руки» — только у вкладки; окно в прожекторе само приподнимается и светится.
+    if (spot !== 'tab') { setRing(null); return; }
+    const root = rootRef.current;
+    const el = root && root.querySelector(spot === 'tab' ? '.kz-br-tab' : '.kz-br-body');
+    if (!el) return;
+    let x = 0, y = 0, n = el;
+    while (n && n !== root) { x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent; }
+    const w = el.offsetWidth, h = el.offsetHeight;
+    // Вкладка в прожекторе растёт от левого нижнего угла (kzSpotTab в kollazh.css) — круг вокруг уже большой.
+    const k = spot === 'tab' ? 1.3 : 1;
+    const pad = spot === 'tab' ? 9 : 7;
+    setRing({ x: x - pad, y: y + h - h * k - pad, w: w * k + pad * 2, h: h * k + pad * 2, c: spot === 'tab' ? '#E0643F' : '#2A8C7E' });
+  }, [spot, t]);
   return (
-    <div className={'kz-br' + (short ? ' is-short' : '') + (pageHl ? ' is-hl-page' : '') + (cls ? ' ' + cls : '')}>
+    <div ref={rootRef} className={'kz-br' + (short ? ' is-short' : '') + (pageHl ? ' is-hl-page' : '') + (spot ? ' is-spot-' + spot : '') + (cls ? ' ' + cls : '')}>
       <Cut c={KZ.ink} seed={31} n={16} amp={1.4} asp={1.6} cls="kz-br-frame" />
       <div className="kz-br-bar">
         <span ref={tabRef} key={'tab' + (stamp || 0)} className={'kz-br-tab' + (tabHl ? ' is-hl' : '') + (stamp ? ' kz-a-stamp' : '')}>
@@ -273,14 +305,24 @@ function PaperBrowser({ title, children, tabHl, pageHl, stamp, short, cls, tabRe
       </div>
       <div className="kz-br-tool">
         <Cut c="#E6DCC6" seed={33} n={12} amp={6} asp={12} cls="kz-br-tool-bg" />
-        <span className="kz-br-arrows" aria-hidden="true"><i className="kz-ar-l" /><i className="kz-ar-r" /></span>
-        <span className="kz-br-url"><i className="kz-br-lock" aria-hidden="true" /><span>index.html</span></span>
+        <span className="kz-br-arrows">{onBack ? <button type="button" className="kz-ar-l kz-ar-btn" onClick={onBack} aria-label="Back" /> : <i className="kz-ar-l" aria-hidden="true" />}<i className="kz-ar-r" aria-hidden="true" /></span>
+        <span className={'kz-br-url' + (urlHl ? ' is-hl' : '')}><i className="kz-br-lock" aria-hidden="true" /><span key={'u' + (url || '')} className={'kz-br-url-t' + (stamp && url ? ' kz-a-stamp' : '')}>{url || 'index.html'}</span></span>
       </div>
       <div className="kz-br-body">
         <Cut c={KZ.cream} seed={32} n={16} amp={1.1} asp={1.6} cls="kz-br-paper" />
         <div ref={pageRef} className="kz-br-page">{children}</div>
       </div>
+      {ring ? <KzRing key={spot} box={ring} /> : null}
     </div>
+  );
+}
+// Круг «от руки»: овал с заходом конца за начало, рисуется ступеньками, как маркером.
+function KzRing({ box }) {
+  return (
+    <svg className="kz-ring" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"
+      style={{ left: box.x + 'px', top: box.y + 'px', width: box.w + 'px', height: box.h + 'px', '--rc': box.c }}>
+      <path pathLength="100" d="M9 60C4 30 30 6 58 7C86 9 99 30 95 55C91 82 62 96 36 93C12 90 1 72 6 46C9 31 21 18 40 13" />
+    </svg>
   );
 }
 // Содержимое страницы — бумажные вырезки: строки текста, картинка, кнопка.
@@ -579,6 +621,53 @@ const useMine = () => {
   const pick = usePick();
   return { title: store.get('myTitle') || pick(UI.mySite), text: store.get('myText') || pick(UI.hello) };
 };
+// =============================================================================
+// СВОЙ ТЕКСТ УЧЕНИКА (урок 1: s7 — название, s10 — приветствие; урок 2: свой заголовок
+// и свой абзац). Общий для бумажных уроков. Предпросмотр — сразу
+// при наборе; засчитывается только по кнопке «Готово» (заказчик, 23.10.2026:
+// пауза в наборе не завершает задание — ребёнок мог остановиться после первой
+// буквы). Пустое поле, одни пробелы и теги не принимаются. Похвала и событие в
+// журнале — один раз. После засчёта правка сохраняется сама (страница и
+// итоговый артефакт берут новый текст), «Готово» её отмечает, без новой похвалы.
+// =============================================================================
+function useTypedDone({ storeKey, screenId, type, lad }) {
+  const log = useLog();
+  const store = useStore();
+  const [rec, put] = useRec(screenId);
+  const solved = !!(rec && rec.done);
+  const [val, setVal] = useState(store.get(storeKey) || '');
+  const [saved, setSaved] = useState(store.get(storeKey) || '');
+  const [stamp, setStamp] = useState(0);
+  const doneRef = useRef(solved);
+  useEffect(() => {
+    if (!doneRef.current || !okText(val) || val.trim() === saved) return;
+    store.set(storeKey, val.trim()); setSaved(val.trim());
+  }, [val]); // eslint-disable-line react-hooks/exhaustive-deps
+  const ready = okText(val);   // повторное «Готово» после засчёта только отмечает текст: похвала и журнал — один раз
+  const commit = (first) => {
+    if (!okText(val)) return false;
+    const v = val.trim();
+    store.set(storeKey, v); setSaved(v); setStamp((x) => x + 1); sfx('ok', true);
+    if (!doneRef.current) {
+      doneRef.current = true;
+      put({ done: true });
+      log({ screenId, type, correct: true, hints: lad.asked.current, depth: lad.lv });
+      if (first) first();
+    }
+    return true;
+  };
+  return { solved, val, setVal, saved, stamp, ready, commit, shown: okText(val) ? val : saved };
+}
+// Кнопка «Готово» под кодом: горит, когда текст можно засчитать.
+function ReadyBtn({ on, glow, onClick }) {
+  const pick = usePick();
+  return (
+    <div className="kz-row">
+      <button type="button" className="kz-btn is-coral kz-ready" disabled={!on} onClick={onClick}>{pick(UI.ready)}<Led on={glow} /></button>
+    </div>
+  );
+}
+
 function makeArtifact(store) {
   const t = store.get('myTitle'), x = store.get('myText');
   if (!t && !x) return null;

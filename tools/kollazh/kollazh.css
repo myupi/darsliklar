@@ -144,6 +144,51 @@
   font: 700 clamp(11.5px, 1.7dvh, 14px)/1 'Manrope', sans-serif; color: #1F2A44;
   clip-path: polygon(0 100%, 3% 30%, 7% 6%, 13% 0, 87% 0, 93% 6%, 97% 30%, 100% 100%); }
 .kz-br-tab.is-hl { background: #F0B13F; box-shadow: 0 0 0 2px #FBF6EA, 0 0 10px 2px rgba(240, 177, 63, .9); }
+/* «Прожектор» (заказчик, 26.10.2026: подсветку вкладки и тела было плохо видно): пока Коди
+   говорит о вкладке или окне, вещь растёт, вокруг — круг «от руки», остальное притухает. */
+.kz-br-tool, .kz-br-page, .kz-br-win, .kz-br-plus, .kz-br-bar { transition: opacity .3s steps(3, end), filter .3s steps(3, end); }
+.kz-br-tab { transform-origin: 0 100%; transition: scale .3s steps(3, end); }
+.kz-br.is-spot-tab .kz-br-bar { overflow: visible; z-index: 4; }
+.kz-br.is-spot-tab .kz-br-tab { z-index: 3; scale: 1.3; background: #F0B13F; animation: kzSpotTab .5s steps(5, end) both; }
+/* Притухает содержимое, а не бумага: лист окна остаётся светлым, иначе сквозь него темнеет рамка браузера. */
+.kz-br.is-spot-tab .kz-br-page, .kz-br.is-spot-tab .kz-br-win, .kz-br.is-spot-tab .kz-br-plus { opacity: .25; }
+.kz-br.is-spot-tab .kz-br-tool { filter: saturate(.2) opacity(.45); }
+.kz-br.is-spot-page .kz-br-tab, .kz-br.is-spot-page .kz-br-win, .kz-br.is-spot-page .kz-br-plus { opacity: .3; }
+.kz-br.is-spot-page .kz-br-tool { filter: saturate(.2) opacity(.45); }
+/* Окно в прожекторе: лист приподнимается (крупнее, длинная тень) и светится бирюзой; прямой рамки нет. */
+.kz-br.is-spot-page .kz-br-body { z-index: 3; scale: 1.07; animation: kzSpotPage .5s steps(5, end) both; }
+.kz-br.is-spot-page .kz-cut.kz-br-paper { filter: drop-shadow(0 0 0 #2A8C7E) drop-shadow(0 0 3px #2A8C7E) drop-shadow(0 0 3px #2A8C7E) drop-shadow(0 12px 14px rgba(74, 48, 18, .35)); }
+.kz-br.is-spot-page .kz-cut.kz-br-paper > .kz-cut-in { background: #DDF1EC !important; transition: background .3s steps(3, end); }
+.kz-br.is-hl-page.is-spot-page .kz-br-page { outline: none; }
+@keyframes kzSpotTab { 0% { scale: 1; } 60% { scale: 1.42; } 100% { scale: 1.3; } }
+@keyframes kzSpotPage { 0% { scale: 1; } 60% { scale: 1.11; } 100% { scale: 1.07; } }
+.kz-ring { position: absolute; z-index: 6; overflow: visible; pointer-events: none; }
+.kz-ring path { fill: none; stroke: var(--rc, #E0643F); stroke-width: 4; stroke-linecap: round; vector-effect: non-scaling-stroke;
+  stroke-dasharray: 100; stroke-dashoffset: 100; animation: kzRingDraw .55s steps(8, end) .1s forwards;
+  filter: drop-shadow(0 1px 0 rgba(74, 48, 18, .25)); }
+@keyframes kzRingDraw { to { stroke-dashoffset: 0; } }
+/* Человечек: часть, о которой речь, крупнее и ярче, остальные притухают. */
+.kz-man > .kz-cut { transition: opacity .3s steps(3, end), scale .3s steps(3, end); }
+.kz-man.is-spot > .kz-cut:not(.is-hl):not(.kz-man-title) { opacity: .3; }
+/* Голова в хуке: внутри видна бумажка с названием страницы. */
+.kz-man-name { position: absolute; left: 5%; right: 5%; top: 12%; height: 24%; filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .4)); }
+.kz-man-name span { position: absolute; inset: 0; display: grid; place-items: center; background: #FBF6EA; rotate: -3deg;
+  font: 800 clamp(8px, 1.35dvh, 14px)/1 'Manrope', sans-serif; color: #1F2A44; white-space: nowrap;
+  clip-path: polygon(0 12%, 6% 0, 50% 8%, 94% 0, 100% 14%, 97% 52%, 100% 88%, 92% 100%, 50% 92%, 6% 100%, 0 86%, 3% 50%); }
+/* Тело в хуке: кусочки страницы, из которых оно собрано (строки, картинка, кнопка). */
+.kz-man-bits { position: absolute; inset: 16% 12% 14%; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto auto 1fr; column-gap: 10%; row-gap: 7%; }
+.kz-man-bits i { grid-column: 1; height: 7%; min-height: 3px; background: #FBF6EA; border-radius: 1px; opacity: .92; }
+.kz-man-bits i:nth-child(1) { width: 100%; height: 10%; min-height: 5px; } .kz-man-bits i:nth-child(2) { width: 84%; } .kz-man-bits i:nth-child(3) { width: 66%; }
+.kz-man-bits b { grid-column: 2; grid-row: 1 / 4; position: relative; background: #FBF6EA; border-radius: 2px; overflow: hidden; }
+.kz-man-bits b s { position: absolute; left: 12%; right: 12%; bottom: 14%; height: 45%; background: #1F2A44; clip-path: polygon(0 100%, 35% 20%, 55% 60%, 75% 35%, 100% 100%); }
+.kz-man-bits em { grid-column: 2; grid-row: 4; align-self: end; height: 32%; min-height: 8px; background: #E0643F; border-radius: 2px; }
+.kz-man.is-spot > .kz-cut.is-hl { z-index: 2; scale: 1.12; animation: kzSpotMan .5s steps(5, end) both;
+  filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 12px var(--hl, #E0643F)) drop-shadow(0 6px 8px rgba(74, 48, 18, .25)); }
+@keyframes kzSpotMan { 0% { scale: 1; } 60% { scale: 1.2; } 100% { scale: 1.12; } }
+@media (prefers-reduced-motion: reduce) {
+  .kz-br.is-spot-tab .kz-br-tab, .kz-br.is-spot-page .kz-br-body, .kz-man.is-spot > .kz-cut.is-hl { animation: none; }
+  .kz-ring path { animation: none; stroke-dashoffset: 0; }
+}
 .kz-br-fav { flex: none; width: 11px; height: 11px; border-radius: 3px; background: #E0643F; rotate: -6deg; }
 .kz-br-tab-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kz-br-tab-t.is-file { color: #7E7666; font-style: italic; font-weight: 600; }
@@ -175,6 +220,11 @@
 .kz-br.is-hl-page .kz-cut.kz-br-paper { filter: drop-shadow(0 0 4px #2A8C7E) drop-shadow(0 4px 6px rgba(74, 48, 18, .2)); }
 .kz-br.is-hl-page .kz-br-page { outline: 3px solid #2A8C7E; outline-offset: 4px; border-radius: 4px; }
 .kz-br-text { position: relative; overflow-wrap: anywhere; }
+/* Адрес страницы (урок 4: ссылка открывает другой файл) и нажимаемая стрелка «назад». */
+.kz-br-url-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kz-br-url.is-hl { background: #FFE9A8; box-shadow: 0 0 0 2px #F0B13F, 0 0 10px 2px rgba(240, 177, 63, .8); }
+.kz-ar-btn { position: relative; width: 10px; height: 10px; padding: 0; background: none; border: none; border-left: 2.6px solid #E0643F; border-bottom: 2.6px solid #E0643F; cursor: pointer; }
+.kz-ar-btn::before { content: ''; position: absolute; inset: -9px; }
 @media (max-width: 759px) {
   .kz-br-win { gap: 9px; }
   .kz-br-win i { width: 9px; height: 9px; }
@@ -222,7 +272,17 @@
 }
 .kz-frame-lbl-top { left: -2%; top: -4%; }
 .kz-frame-lbl-bot { right: -2%; bottom: -5%; }
-
+/* s3 «Что такое тег»: «прожектор» на бирке, о которой говорит Коди, — крупнее, вокруг круг
+   «от руки», браузер притухает; на «закрывающем» косая черта крупно (заказчик, 26.10.2026). */
+.kz-stagebox .kz-brbox { transition: opacity .3s steps(3, end); }
+.kz-stagebox.is-spot .kz-brbox { opacity: .35; }
+.kz-label.is-spot { z-index: 7; scale: 1.18; animation: kzSpotLbl .5s steps(5, end) both; }
+.kz-label.is-spot::after { content: ''; position: absolute; inset: -7px -11px; border: 3px solid #E0643F; border-radius: 50%; rotate: -4deg;
+  pointer-events: none; animation: kzRingIn .45s steps(5, end) .1s both; }
+.kz-label.is-slash .kz-tag .kz-tk-b:nth-child(2) { display: inline-block; padding: 0 2px; background: #1F2A44; color: #FFB199; border-radius: 3px; scale: 1.35; }
+@keyframes kzSpotLbl { 0% { scale: 1; } 60% { scale: 1.28; } 100% { scale: 1.18; } }
+@keyframes kzRingIn { 0% { opacity: 0; scale: .7; } 100% { opacity: 1; scale: 1; } }
+@media (prefers-reduced-motion: reduce) { .kz-label.is-spot, .kz-label.is-spot::after { animation: none; } }
 /* План — бумажные карточки */
 .kz-plan { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(10px, 2dvh, 18px); width: min(100%, 640px); align-self: center; margin: auto 0; }
 .kz-card { position: relative; min-height: clamp(84px, 15dvh, 140px); border: none; background: none; padding: 0; cursor: pointer; }
@@ -642,6 +702,8 @@
 .kz-line-row > .kz-line { flex: 1 1 auto; min-width: 0; padding-right: 74px; }
 .kz-move { position: absolute; right: 7px; top: 50%; translate: 0 -50%; z-index: 3; display: flex; gap: 4px; }
 .kz-move.is-hide { visibility: hidden; }
+.kz-move.is-hl .kz-move-b:not(:disabled) { animation: kzLed 1.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .kz-move.is-hl .kz-move-b:not(:disabled) { animation: none; outline: 2px solid #E0643F; } }
 .kz-move-b { width: 30px; height: 24px; border: none; padding: 0; display: grid; place-items: center; cursor: pointer;
   background: #FBF6EA; color: #1F2A44;
   clip-path: polygon(0 10%, 12% 0, 50% 6%, 88% 0, 100% 12%, 96% 52%, 100% 90%, 88% 100%, 50% 94%, 12% 100%, 0 88%, 4% 50%);
@@ -746,3 +808,24 @@
 
 /* Экран «Сверху вниз» (s12) после показа: части коллажа нажимаются. */
 .kz-s12.is-explore .kz-collage, .kz-s12.is-explore .kz-collage * { cursor: pointer; }
+
+/* RD «Как читают код?»: маркер бежит по строке слева направо; строки, до которых браузер ещё не
+   дошёл, бледные; бумажные стрелки → и ↓ у кода загораются, пока Коди о них говорит. */
+.kz-line.kz-rd-wait { opacity: .38; }
+.kz-line.kz-sweep::after { content: ''; position: absolute; left: 10px; bottom: 6px; height: 4px; width: 0; border-radius: 2px; background: #FFD166; box-shadow: 0 0 6px rgba(255, 209, 102, .9);
+  animation: kzSweep .55s steps(8, end) forwards; }
+.kz-line.kz-sweep.is-slow::after { animation-duration: 1.6s; animation-timing-function: steps(14, end); }
+@keyframes kzSweep { to { width: calc(100% - 20px); } }
+.kz-rd-code { position: relative; padding: 18px 0 0 22px; }
+.kz-rd-arr { position: absolute; display: block; opacity: 0; transition: opacity .3s steps(3, end), scale .3s steps(3, end); pointer-events: none; z-index: 2; }
+.kz-rd-arr.is-shown { opacity: .45; }
+.kz-rd-arr.is-on { opacity: 1; }
+.kz-rd-arr svg { width: 100%; height: 100%; overflow: visible; }
+.kz-rd-arr path { fill: none; stroke: #E0643F; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 1px 0 rgba(74, 48, 18, .3)); }
+.kz-rd-arr.is-right { left: 22px; right: 4px; top: 2px; height: 13px; }
+.kz-rd-arr.is-down { left: 2px; top: 18px; bottom: 4px; width: 13px; }
+.kz-rd-arr.is-on { animation: kzArrPulse .9s steps(3, end) infinite; }
+@keyframes kzArrPulse { 0%, 100% { scale: 1; } 50% { scale: 1.08; } }
+@media (prefers-reduced-motion: reduce) { .kz-line.kz-sweep::after { animation: none; width: calc(100% - 20px); } .kz-rd-arr.is-on { animation: none; } }
+@media (max-width: 759px) { .kz-rd-code { padding: 14px 0 0 17px; } .kz-rd-arr.is-right { left: 17px; height: 10px; } .kz-rd-arr.is-down { top: 14px; width: 10px; } }
