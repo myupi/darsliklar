@@ -1,0 +1,264 @@
+/* ── УРОК 4 «Ссылки и атрибуты» — свои части поверх бумажного набора урока 1 ──
+   Префикс l4-. Страница в бумажном браузере — как браузер по умолчанию: Times,
+   ссылка синяя и подчёркнутая, ссылки подряд — в одной строке. Атрибут в коде:
+   имя бирюзовое, знак равно коралловый, значение-адрес горчично-коричневое. */
+
+/* ══ СТРАНИЦА В ОКНЕ (без прокрутки: шрифт подгоняет useFitPage) ═══════════ */
+.l4-brwrap { display: contents; }
+.l4-br .kz-br-page { overflow: hidden; }
+.l4-pagein { min-height: 100%; }
+.l4-doc { display: flex; flex-direction: column; align-items: flex-start; gap: 0; overflow-wrap: anywhere; font-weight: 400; }
+.l4-blk { position: relative; max-width: 100%; border-radius: 3px; transition: background .2s; }
+.l4-h1 { font-size: 1.55em; font-weight: 700; line-height: 1.12; margin: 0 0 .25em; }
+.l4-p { line-height: 1.3; margin: .1em 0 .3em; }
+.l4-row { line-height: 1.4; margin: .1em 0 .3em; }
+.l4-a { display: inline; padding: 0; margin: 0; border: none; background: none; font: inherit; color: #1A0DAB; text-decoration: underline; text-underline-offset: 2px;
+  cursor: pointer; text-align: left; border-radius: 3px; }
+span.l4-a { cursor: default; }
+.l4-blk > .l4-a { display: inline; }
+.l4-a:focus-visible { outline: 2px solid #E0643F; outline-offset: 2px; }
+.l4-a.is-hl, .l4-t.is-hl, .l4-blk.is-hl { background: #FFE9A8; box-shadow: 0 0 0 3px #FFE9A8; }
+.l4-a.is-led { animation: kzLed 1.2s ease-in-out infinite; }
+.l4-t.l4-b { font-weight: 700; }
+.l4-t.l4-i { font-style: italic; }
+.l4-qmark { display: grid; place-items: center; height: 100%; min-height: 2em; font: 800 2em 'Manrope', sans-serif; color: #C9BFAA; }
+.l4-nf { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .15em; width: 100%; min-height: 100%; text-align: center; font-family: 'Manrope', sans-serif; }
+.l4-nf b { font-size: 1.1em; }
+.l4-nf span { font-size: .8em; color: #7E7666; font-family: 'JetBrains Mono', monospace; }
+.kz-a.l4-a-btn, .l4-a.l4-a-btn { color: inherit; }
+.kz-btn.is-ghost .l4-a-btn { color: #1A0DAB; }
+
+/* ══ БУМАЖНЫЕ КАРТИНКИ СТРАНИЦ ═════════════════════════════════════════════ */
+.l4-pic { position: relative; display: block; flex: none; width: 2.6em; height: 2.2em; margin: .1em 0 .25em; filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .3)); }
+.l4-pic i { position: absolute; display: block; }
+/* дом: крыша, стена, дверь */
+.l4-pic-home i:nth-child(1) { left: 4%; top: 0; width: 92%; height: 48%; background: #E0643F; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.l4-pic-home i:nth-child(2) { left: 16%; top: 46%; width: 68%; height: 54%; background: #F2D7BC; }
+.l4-pic-home i:nth-child(3) { left: 42%; top: 64%; width: 18%; height: 36%; background: #2A8C7E; }
+/* кот: голова, уши */
+.l4-pic-cat i:nth-child(1) { left: 14%; top: 22%; width: 72%; height: 78%; border-radius: 50%; background: #F0B13F;
+  background-image: radial-gradient(circle at 34% 45%, #1F2A44 0 7%, transparent 8%), radial-gradient(circle at 66% 45%, #1F2A44 0 7%, transparent 8%), radial-gradient(ellipse at 50% 66%, #E0643F 0 6%, transparent 7%); }
+.l4-pic-cat i:nth-child(2) { left: 14%; top: 0; width: 30%; height: 42%; background: #F0B13F; clip-path: polygon(0 100%, 30% 0, 100% 80%); }
+.l4-pic-cat i:nth-child(3) { right: 14%; top: 0; width: 30%; height: 42%; background: #F0B13F; clip-path: polygon(100% 100%, 70% 0, 0 80%); }
+/* собака: голова, висячие уши */
+.l4-pic-dog i:nth-child(1) { left: 20%; top: 8%; width: 60%; height: 86%; border-radius: 46% 46% 50% 50%; background: #E0643F;
+  background-image: radial-gradient(circle at 36% 42%, #1F2A44 0 7%, transparent 8%), radial-gradient(circle at 64% 42%, #1F2A44 0 7%, transparent 8%), radial-gradient(ellipse at 50% 68%, #1F2A44 0 10%, transparent 11%); }
+.l4-pic-dog i:nth-child(2) { left: 4%; top: 10%; width: 24%; height: 60%; border-radius: 50%; background: #1F2A44; rotate: 14deg; }
+.l4-pic-dog i:nth-child(3) { right: 4%; top: 10%; width: 24%; height: 60%; border-radius: 50%; background: #1F2A44; rotate: -14deg; }
+/* игры: джойстик, крестик, кнопки */
+.l4-pic-games i:nth-child(1) { left: 0; top: 22%; width: 100%; height: 62%; border-radius: 40% / 50%; background: #2A8C7E; }
+.l4-pic-games i:nth-child(2) { left: 16%; top: 40%; width: 22%; height: 26%; background: #FBF6EA; clip-path: polygon(35% 0, 65% 0, 65% 35%, 100% 35%, 100% 65%, 65% 65%, 65% 100%, 35% 100%, 35% 65%, 0 65%, 0 35%, 35% 35%); }
+.l4-pic-games i:nth-child(3) { right: 14%; top: 40%; width: 24%; height: 26%; background: radial-gradient(circle at 25% 50%, #F0B13F 0 22%, transparent 24%), radial-gradient(circle at 75% 50%, #E0643F 0 22%, transparent 24%); }
+/* телевизор: корпус, экран, антенна */
+.l4-pic-tv i:nth-child(1) { left: 4%; top: 26%; width: 92%; height: 74%; border-radius: 8px; background: #1F2A44; }
+.l4-pic-tv i:nth-child(2) { left: 14%; top: 36%; width: 72%; height: 54%; border-radius: 5px; background: #F0B13F; }
+.l4-pic-tv i:nth-child(3) { left: 30%; top: 0; width: 40%; height: 28%; border-left: 2px solid #1F2A44; border-right: 2px solid #1F2A44; clip-path: polygon(0 0, 18% 0, 50% 100%, 82% 0, 100% 0, 100% 100%, 0 100%); }
+/* кубок (кружки) */
+.l4-pic-cup i:nth-child(1) { left: 22%; top: 0; width: 56%; height: 60%; border-radius: 0 0 50% 50%; background: #F0B13F; }
+.l4-pic-cup i:nth-child(2) { left: 44%; top: 58%; width: 12%; height: 22%; background: #F0B13F; }
+.l4-pic-cup i:nth-child(3) { left: 28%; top: 80%; width: 44%; height: 18%; background: #1F2A44; }
+/* мяч */
+.l4-pic-ball i:nth-child(1) { left: 16%; top: 4%; width: 68%; height: 92%; border-radius: 50%; background: #FBF6EA; box-shadow: inset 0 0 0 2px #1F2A44; }
+.l4-pic-ball i:nth-child(2) { left: 38%; top: 34%; width: 24%; height: 30%; background: #1F2A44; clip-path: polygon(50% 0, 100% 38%, 82% 100%, 18% 100%, 0 38%); }
+.l4-pic-ball i:nth-child(3) { display: none; }
+/* шахматная пешка */
+.l4-pic-chess i:nth-child(1) { left: 36%; top: 0; width: 28%; height: 32%; border-radius: 50%; background: #1F2A44; }
+.l4-pic-chess i:nth-child(2) { left: 30%; top: 28%; width: 40%; height: 52%; background: #1F2A44; clip-path: polygon(30% 0, 70% 0, 100% 100%, 0 100%); }
+.l4-pic-chess i:nth-child(3) { left: 18%; top: 80%; width: 64%; height: 20%; border-radius: 3px; background: #1F2A44; }
+/* «нет такой страницы» */
+.l4-pic-none i:nth-child(1) { left: 20%; top: 0; width: 60%; height: 100%; border-radius: 50%; background: #C9BFAA;
+  background-image: radial-gradient(circle at 36% 40%, #1F2A44 0 7%, transparent 8%), radial-gradient(circle at 64% 40%, #1F2A44 0 7%, transparent 8%); }
+.l4-pic-none i:nth-child(2) { left: 36%; top: 64%; width: 28%; height: 14%; border-top: 2.5px solid #1F2A44; border-radius: 50% 50% 0 0; }
+.l4-pic-none i:nth-child(3) { display: none; }
+
+/* ══ КАРТОЧКИ СТРАНИЦ (карта сайта) ════════════════════════════════════════ */
+.l4-map { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(6px, 1.4vw, 14px); width: 100%; max-width: 760px; align-self: center; }
+.l4-card { position: relative; display: flex; min-width: 0; padding: 0; border: none; background: none; color: #1F2A44; text-align: center; }
+button.l4-card { cursor: pointer; }
+button.l4-card:disabled { cursor: default; }
+.kz-cut.l4-card-cut { inset: 0; }
+.l4-card-in { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; padding: 8px 4px 7px; }
+.l4-card-in .l4-pic { font-size: clamp(13px, 2.1dvh, 18px); margin: 0 0 2px; }
+.l4-card-in b { font: 800 clamp(11px, 1.7dvh, 14px)/1.15 'Manrope', sans-serif; overflow-wrap: anywhere; }
+.l4-card-in code { font: 700 clamp(10px, 1.5dvh, 12.5px)/1.2 'JetBrains Mono', ui-monospace, monospace; color: #8A5300; overflow-wrap: anywhere; }
+.l4-card.is-hl { filter: drop-shadow(0 0 5px #F0B13F); }
+.l4-card.is-hl code { background: #FFE9A8; border-radius: 3px; }
+.l4-card.is-ok { filter: drop-shadow(0 0 5px #2A8C7E); }
+.l4-card.is-ok .l4-card-in::after { content: ''; position: absolute; right: 6px; top: 6px; width: 14px; height: 8px; border-left: 3px solid #2A8C7E; border-bottom: 3px solid #2A8C7E; rotate: -45deg; }
+.l4-card.is-off { opacity: .4; }
+.l4-card .led { top: 2px; right: 2px; }
+.l4-map-sm .l4-card-in b { display: none; }
+
+/* ══ КОД: атрибут, наклейка, места для вставки ═════════════════════════════ */
+.l4-attr { display: inline; white-space: nowrap; border-radius: 3px; }
+.l4-an { color: #1C7A6C; }
+.l4-eq { color: #E0643F; }
+.l4-av { color: #8A5300; }
+.l4-attr.is-hl, .l4-attr.l4-later.is-hl { background: #FFE9A8; box-shadow: 0 0 0 2px #FFE9A8; }
+.l4-attr.l4-later { opacity: .5; }
+.l4-hl-attr .l4-attr.l4-later { opacity: 1; background: #FFE9A8; box-shadow: 0 0 0 2px #FFE9A8; }
+.l4-hl-a .l4-taga > .kz-tk-b, .l4-hl-a .l4-taga > .kz-tk-n, .l4-hl-a > .kz-tag:last-child { background: #FFE4D8; box-shadow: 0 0 0 2px #FFE4D8; border-radius: 3px; }
+.l4-hl-text .kz-txt { background: #FFE9A8; box-shadow: 0 0 0 3px #FFE9A8; border-radius: 3px; }
+.kz-line.is-read .l4-an, .kz-line.is-say .l4-an { color: #7FD6C8; }
+.kz-line.is-read .l4-av, .kz-line.is-say .l4-av { color: #FFD27A; }
+.kz-line.is-read .l4-eq, .kz-line.is-say .l4-eq { color: #FF8A65; }
+.kz-line.is-say .l4-attr.is-hl { background: rgba(255, 233, 168, .25); box-shadow: none; }
+.kz-line.l4-ctx { opacity: .6; }
+/* «атрибут» — жёлтая наклейка, вклеенная в открывающий тег (как в ролике) */
+.l4-note { display: inline-block; padding: 1px 8px 2px; margin: 0 2px; background: #F0B13F; color: #1F2A44; font: 800 .82em/1.2 'Manrope', sans-serif;
+  rotate: -3deg; clip-path: polygon(0 8%, 6% 0, 94% 6%, 100% 0, 98% 55%, 100% 100%, 50% 92%, 4% 100%, 0 50%); filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .3)); }
+.l4-attr-tpl .l4-an, .l4-attr-tpl .l4-av { font-family: 'Manrope', sans-serif; font-weight: 800; font-style: italic; }
+/* записка рядом с кодом: «атрибут — дополнительная информация о теге» */
+.l4-bench { gap: 12px; }
+.l4-memo { position: relative; align-self: center; display: flex; flex-direction: column; gap: 2px; max-width: 320px; padding: 8px 14px 10px; background: #F0B13F; color: #1F2A44;
+  rotate: -2deg; clip-path: polygon(0 6%, 4% 0, 96% 5%, 100% 0, 99% 50%, 100% 100%, 50% 95%, 0 100%, 1% 50%); filter: drop-shadow(0 2px 2px rgba(74, 48, 18, .3)); }
+.l4-memo b { font: 800 clamp(14px, 2.2dvh, 18px) 'JetBrains Mono', ui-monospace, monospace; }
+.l4-memo span { font: 700 clamp(12.5px, 1.9dvh, 15.5px)/1.25 'Manrope', sans-serif; }
+.l4-memo.is-hl { filter: drop-shadow(0 0 6px #1F2A44); }
+.kz-line.l4-line-big { font-size: 1.08em; justify-content: center; }
+/* место для вставки: пунктирная рамка, зовёт, когда взята деталь */
+.l4-spot { position: relative; display: inline-block; flex: none; width: 1.5em; height: 1.25em; margin: 0 3px; padding: 0; vertical-align: middle; cursor: pointer;
+  border: 2px dashed rgba(224, 100, 63, .7); border-radius: 4px; background: rgba(251, 246, 234, .7); }
+.l4-spot.l4-spot-wide { width: 3.6em; }
+.l4-spot:disabled { cursor: default; }
+.l4-spot.is-call { animation: kzSlotCall 1s steps(1, end) infinite; }
+.l4-spot.is-hover { border-style: solid; background: #FFE4D8; scale: 1.12; }
+.l4-spot.is-led { border-color: #E0643F; background: #FFE4D8; }
+.l4-spot .led { top: -6px; right: -6px; }
+.l4-peek, .l4-peek-tag { background: #FFE4D8; outline: 2px dashed #E0643F; outline-offset: 1px; border-radius: 3px; }
+.kz-scrap.l4-sticker { background: #F0B13F; font-size: clamp(13px, 2.2dvh, 18px); }
+.kz-scrap.l4-sticker.is-sel { background: #FFE4D8; }
+/* поле в строке кода */
+.l4-q { position: relative; }
+.l4-q::after { content: '?'; position: absolute; right: -10px; top: -12px; width: 18px; height: 18px; border-radius: 50%; background: #E0643F; color: #fff;
+  font: 800 12px/18px 'Manrope', sans-serif; text-align: center; box-shadow: 0 0 0 2px #FBF6EA; animation: l4Q 1.1s steps(1, end) infinite; pointer-events: none; }
+.kz-gap.l4-gap-v .tk-input { min-width: 5.5em; }
+.kz-gap.l4-gap-wide { flex: 1 1 100%; min-width: 0; }
+.kz-gap.l4-gap-wide .tk-input { width: 100% !important; max-width: 100%; }
+.kz-line.l4-sample { opacity: .85; }
+/* куда ведёт ссылка (q1): чип со страницей назначения */
+.l4-chip { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; padding: 1px 8px 1px 4px; background: #D2EDE7; border-radius: 999px;
+  font: 700 .78em/1.2 'Manrope', sans-serif; color: #1F2A44; white-space: nowrap; }
+.l4-chip .l4-pic { font-size: 8px; margin: 0; }
+.l4-chip::before { content: '→'; font-weight: 800; color: #2A8C7E; }
+.l4-chip.is-peek { background: #FFE4D8; }
+
+/* s12 — ссылка по частям: каждую часть можно нажать */
+.l4-sheetpage .kz-code.l4-walk { align-self: center; font-size: clamp(17px, 3dvh, 26px); }
+.kz-line.l4-walk-line { justify-content: center; padding-top: 8px; padding-bottom: 8px; }
+.l4-part { position: relative; display: inline; padding: 1px 1px; margin: 0; border: none; background: none; font: inherit; color: inherit; border-radius: 4px; transition: background .15s; }
+.l4-part:disabled { cursor: default; }
+.is-explore .l4-part:not(:disabled) { cursor: pointer; }
+.l4-part.is-ghost { visibility: hidden; }
+.l4-part.is-on { background: #FFE9A8; box-shadow: 0 0 0 2px #F0B13F; }
+.l4-part .led { top: -8px; right: -8px; }
+.l4-s12-row { display: flex; align-items: center; justify-content: center; gap: clamp(8px, 2vw, 20px); width: 100%; }
+.l4-s12-row > .kz-br { flex: 1 1 auto; min-width: 0; }
+.l4-dest { position: relative; display: flex; align-items: center; gap: 6px; flex: none; width: clamp(110px, 24%, 170px); transition: filter .2s; }
+.l4-dest .l4-card { flex: 1 1 auto; }
+.l4-dest-arrow { width: 18px; height: 3px; background: #B1A891; position: relative; flex: none; }
+.l4-dest-arrow::after { content: ''; position: absolute; right: -2px; top: -4px; border: 5px solid transparent; border-left: 7px solid #B1A891; border-right: none; }
+.l4-dest.is-on .l4-dest-arrow, .l4-dest.is-on .l4-dest-arrow::after { background: #E0643F; border-left-color: #E0643F; }
+.l4-dest.is-on .l4-dest-arrow::after { background: none; }
+
+/* s11 — карта сайта под окном */
+.l4-s11 { gap: 10px; }
+
+/* s15 — карта сайта: дорожки-ссылки от главной к страницам */
+.l4-site { position: relative; display: flex; flex-direction: column; gap: clamp(26px, 6dvh, 60px); width: 100%; max-width: 760px; align-self: center; padding: 4px 0 10px; }
+.l4-paths { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.l4-paths path { fill: none; stroke: #1F2A44; stroke-width: 2.2; stroke-dasharray: 5 5; vector-effect: non-scaling-stroke; opacity: .55;
+  animation: l4Path .8s steps(6, end) both; animation-delay: var(--dl, 0s); }
+.l4-site.is-hl .l4-paths path { stroke: #E0643F; opacity: 1; }
+.l4-site-top { display: flex; justify-content: center; }
+.l4-site-top .l4-card { width: clamp(96px, 24%, 170px); }
+.l4-site-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(6px, 1.4vw, 14px); }
+.l4-site-cell { display: flex; }
+.l4-site-cell .l4-card { width: 100%; }
+.l4-site-cell { position: relative; }
+.l4-mine-tag { position: absolute; right: 0; bottom: 100%; translate: 0 -5px; max-width: 190%; z-index: 2; padding: 1px 8px 2px; background: #1A0DAB; color: #FBF6EA; font: 700 clamp(10.5px, 1.6dvh, 13px)/1.2 'Manrope', sans-serif;
+  text-decoration: underline; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; rotate: -2deg; }
+.l4-k-a .l4-taga, .l4-k-a > .kz-tag:last-child { background: #FFE4D8; box-shadow: 0 0 0 2px #FFE4D8; border-radius: 3px; }
+
+/* ══ РАСКЛАДКА: код и браузер рядом (на телефоне — в колонку) ═════════════ */
+.l4-duo { align-items: stretch; }
+.l4-duo > .kz-col { justify-content: center; }
+.l4-s1 { flex-direction: column; justify-content: center; }
+@media (max-width: 759px) {
+  .l4-duo { flex-direction: column; gap: 10px; }
+  .l4-duo .kz-br.l4-br { --brh: 26dvh; }
+  .l4-s1 .kz-br.l4-br { --brh: 40dvh; }
+  .l4-map { gap: 5px; }
+  .l4-card-in { padding: 6px 2px 5px; }
+  .l4-s12-row { flex-direction: column; }
+  .l4-dest { width: auto; }
+  .l4-dest .l4-card { width: 120px; }
+  .l4-dest-arrow { rotate: 90deg; }
+}
+@media (min-width: 760px) {
+  .l4-br.kz-br { --brh: 46dvh; }
+  .l4-br.kz-br.is-short { --brh: 34dvh; }
+  .l4-s1 .l4-br.kz-br { --brh: 54dvh; }
+  .l4-duo .l4-br.kz-br, .l4-duo .l4-br.kz-br.is-short { --brh: 50dvh; aspect-ratio: 16 / 11; }
+  .l4-duo > .kz-col { max-width: none; }
+  .l4-br .kz-br-page { font-size: clamp(14px, 2.4dvh, 21px); }
+  .kz-scene-col .l4-br.kz-br.is-short { --brh: 25dvh; }
+  .l4-sheetpage .kz-scene-col { justify-content: center; }
+  .l4-sheetpage .kz-scene-col > .kz-col { width: min(100%, 760px); }
+  .l4-sheetpage .kz-scene-col > .kz-col:has(> .l4-brwrap + .kz-code), .l4-sheetpage .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) {
+    flex-direction: row; align-items: center; gap: clamp(14px, 2vw, 26px); width: 100%; max-width: 1000px; }
+  .l4-sheetpage .kz-scene-col > .kz-col:has(> .l4-brwrap + .kz-code) .kz-br,
+  .l4-sheetpage .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .kz-br { flex: 1 1 0; min-width: 0; --brh: 40dvh; aspect-ratio: 16 / 11; }
+  .l4-sheetpage .kz-scene-col > .kz-col:has(> .l4-brwrap + .kz-code) > .kz-code,
+  .l4-sheetpage .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .kz-code { flex: 1.15 1 0; min-width: 0; }
+  .l4-sheetpage .kz-code { font-size: clamp(15px, 2.3dvh, 20px); gap: 6px; }
+  .l4-sheetpage .kz-line { min-height: 34px; }
+  .l4-sheetpage .kz-code.kz-code-sm { font-size: clamp(14px, 2.05dvh, 18px); }
+  .l4-s12 .kz-br.l4-br.is-short { --brh: 36dvh; }
+  .l4-s11 .kz-br.l4-br.is-short { --brh: 26dvh; }
+  .l4-sheetpage .l4-s11 > .kz-col { flex-direction: column; }
+}
+
+/* ══ КЛАВИАТУРА ТЕЛЕФОНА ОТКРЫТА (видимая высота ~330 px) ═════════════════ */
+.is-kbd .kz-deco, .is-kbd .kz-line.l4-ctx { display: none; }
+.is-kbd .kz-sheet-body { padding: 6px 8px; gap: 6px; }
+.is-kbd .kz-ask { font-size: 13.5px; padding: 4px 10px 5px; }
+.is-kbd .l4-br.kz-br { aspect-ratio: auto; max-width: 100%; padding-bottom: 6px; }
+.is-kbd .l4-br .kz-br-bar { height: 22px; }
+.is-kbd .l4-br .kz-br-tool { display: none; }
+.is-kbd .l4-br .kz-br-body { flex: 0 0 auto; height: 40px; }
+.is-kbd .l4-br .kz-br-page { inset: 4px 8px; font-size: 13px; }
+.is-kbd .l4-br .l4-pic { display: none; }
+.is-kbd .kz-code { gap: 3px; }
+.is-kbd .kz-line { min-height: 26px; padding-top: 2px; padding-bottom: 2px; }
+.is-kbd .keys .key-b { min-height: 36px; }
+.is-kbd .l4-map { display: none; }
+.is-kbd .l4-sheetpage .kz-scene-col .kz-br.l4-br.is-short { aspect-ratio: auto; }
+
+/* ══ ПОЛОМКА ЗАМЕТНЕЕ: браузер вздрагивает ══════════════════════════════════ */
+.l4-broken.kz-br { animation: kzShake .5s steps(1, end) .3s 2; }
+@keyframes l4Q { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes l4Path { from { stroke-dashoffset: 60; opacity: 0; } to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .l4-broken.kz-br, .l4-q::after, .l4-a.is-led, .l4-spot.is-call, .l4-paths path { animation: none !important; }
+}
+/* Телефон: окно браузера крупнее, чтобы страница читалась. */
+@media (max-width: 759px) {
+  .l4-sheetpage .kz-scene-col .kz-br.l4-br.is-short { --brh: 28dvh; aspect-ratio: 16 / 10; }
+  .l4-sheetpage.kz-typed .kz-scene-col .kz-br.l4-br.is-short { --brh: 20dvh; aspect-ratio: 16 / 8; }
+  .l4-sheetpage .l4-s11 .kz-br.l4-br.is-short { --brh: 22dvh; aspect-ratio: 16 / 8.5; }
+  .l4-sheetpage .l4-s12 .kz-br.l4-br.is-short { --brh: 22dvh; aspect-ratio: 16 / 8.5; }
+  .l4-sheetpage .kz-s15 .l4-site { gap: 22px; }
+  .l4-sheetpage .kz-code.l4-walk { font-size: 15.5px; }
+  .kz-typed .kz-line, .l4-q1 .kz-line { min-height: 26px; padding-top: 2px; padding-bottom: 2px; }
+}
+/* Телефон: на крючке окно браузера выше — страница сайта крупно. */
+@media (max-width: 759px) { .l4-s1 .kz-br.l4-br { aspect-ratio: 1 / 1; } }
+/* Телефон: окно рядом с кодом (s3, s6, s9) выше, чтобы страница читалась; своё слово в поле не рвётся. */
+@media (max-width: 759px) { .l4-duo .kz-br.l4-br.is-short { aspect-ratio: 16 / 10.5; } }
+.kz-gap.l4-gap-wide .tk-input { overflow-wrap: break-word; word-break: normal; }
+/* Своя ссылка (s13) при открытой клавиатуре: окно — полоса, клавиши плотнее; строка-образец — только когда её зовёт подсказка. */
+.is-kbd .kz-typed .l4-br .kz-br-body { height: 30px; }
+.is-kbd .kz-typed .keys { gap: 4px; }
+.is-kbd .kz-typed .keys .key-b { min-height: 32px; padding-left: 9px; padding-right: 9px; }
+.is-kbd .kz-typed .kz-line.l4-sample:not(.is-say) { display: none; }

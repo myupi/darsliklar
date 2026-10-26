@@ -1,0 +1,242 @@
+/* ── УРОК 5 «Изображения» — свои части поверх бумажного набора урока 1 ──────
+   Префикс l5-. Страница в бумажном браузере — как браузер по умолчанию: Times,
+   картинки — строчные (подряд стоят в одной строке). Фото питомцев — рваные
+   бумажные вырезки (как в ролике: рыжий кот на горчичном фото). Атрибут в коде:
+   имя бирюзовое, знак равно коралловый, значение горчично-коричневое. */
+
+/* ══ СТРАНИЦА В ОКНЕ (без прокрутки: шрифт подгоняет useFitPage) ═══════════ */
+.l5-brwrap { display: contents; }
+.l5-br .kz-br-page { overflow: hidden; }
+.l5-doc { display: flex; flex-direction: column; align-items: flex-start; gap: 0; overflow-wrap: anywhere; font-weight: 400; }
+.l5-blk { position: relative; max-width: 100%; border-radius: 3px; transition: background .2s; }
+.l5-h1 { font-size: 1.5em; font-weight: 700; line-height: 1.12; margin: 0 0 .25em; }
+.l5-p, .l5-txt { line-height: 1.3; margin: .1em 0 .3em; }
+.l5-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .3em; margin: .15em 0 .3em; line-height: 1.3; }
+.l5-blk.is-hl { background: #FFE9A8; box-shadow: 0 0 0 3px #FFE9A8; }
+.l5-qmark { display: grid; place-items: center; height: 100%; min-height: 2em; font: 800 2em 'Manrope', sans-serif; color: #C9BFAA; }
+.l5-none { display: inline-block; width: 0; height: 1.2em; }
+.l5-alt { display: inline; border-radius: 3px; }
+.l5-alt.is-hl, .l5-broken.is-hl { background: #FFE9A8; box-shadow: 0 0 0 3px #FFE9A8; }
+/* Сломанная картинка: значок с порванным уголком и текст alt рядом. */
+.l5-broken { display: inline-flex; align-items: center; gap: .3em; border-radius: 3px; }
+.l5-broken-ic { position: relative; display: inline-block; flex: none; width: 1em; height: 1.15em; background: #F2EEE4; border: 1.5px solid #8C8476; border-radius: 2px;
+  clip-path: polygon(0 0, 100% 0, 100% 62%, 80% 52%, 62% 70%, 40% 55%, 18% 72%, 0 60%); }
+.l5-broken-ic::after { content: ''; position: absolute; left: 18%; top: 18%; width: 36%; height: 30%; border-radius: 50%; background: #9EC9E0; }
+.l5-broken-big { width: 2.2em; height: 2.5em; font-size: clamp(13px, 2.1dvh, 18px); }
+
+/* ══ БУМАЖНОЕ ФОТО ПИТОМЦА ═════════════════════════════════════════════════ */
+.l5-photo { position: relative; display: inline-block; flex: none; width: 6.8em; height: 5em; vertical-align: bottom; transition: filter .2s; }
+.kz-cut.l5-photo-cut { inset: 0; }
+.l5-photo.is-hl { filter: drop-shadow(0 0 5px #E0643F); }
+.l5-photo .l5-pic { position: absolute; left: 50%; top: 52%; translate: -50% -50%; font-size: 1.45em; margin: 0; }
+.l5-photo.l5-fall { animation: l5Fall .7s steps(6, end) both; }
+@keyframes l5Fall { 0% { transform: none; opacity: 1; clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+  30% { transform: rotate(-4deg); clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%); }
+  100% { transform: translate(10%, 60%) rotate(18deg); opacity: 0; clip-path: polygon(0 0, 60% 0, 45% 100%, 0 100%); } }
+.l5-pic { position: relative; display: block; flex: none; width: 2.6em; height: 2.2em; filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .3)); }
+.l5-pic i { position: absolute; display: block; }
+/* кот: голова, уши (спит — глаза-чёрточки) */
+.l5-pic-cat i:nth-child(1) { left: 14%; top: 22%; width: 72%; height: 78%; border-radius: 50%; background: #E0643F;
+  background-image: linear-gradient(#1F2A44, #1F2A44), linear-gradient(#1F2A44, #1F2A44), radial-gradient(ellipse at 50% 70%, #F2D7BC 0 9%, transparent 10%);
+  background-size: 22% 6%, 22% 6%, 100% 100%; background-position: 24% 46%, 76% 46%, 0 0; background-repeat: no-repeat; }
+.l5-pic-cat i:nth-child(2) { left: 14%; top: 0; width: 30%; height: 42%; background: #E0643F; clip-path: polygon(0 100%, 30% 0, 100% 80%); }
+.l5-pic-cat i:nth-child(3) { right: 14%; top: 0; width: 30%; height: 42%; background: #E0643F; clip-path: polygon(100% 100%, 70% 0, 0 80%); }
+/* собака: голова, висячие уши */
+.l5-pic-dog i:nth-child(1) { left: 20%; top: 8%; width: 60%; height: 86%; border-radius: 46% 46% 50% 50%; background: #F2D7BC;
+  background-image: radial-gradient(circle at 36% 42%, #1F2A44 0 7%, transparent 8%), radial-gradient(circle at 64% 42%, #1F2A44 0 7%, transparent 8%), radial-gradient(ellipse at 50% 68%, #1F2A44 0 10%, transparent 11%); }
+.l5-pic-dog i:nth-child(2) { left: 4%; top: 10%; width: 24%; height: 60%; border-radius: 50%; background: #7A4A2A; rotate: 14deg; }
+.l5-pic-dog i:nth-child(3) { right: 4%; top: 10%; width: 24%; height: 60%; border-radius: 50%; background: #7A4A2A; rotate: -14deg; }
+/* попугай: тело, клюв, крыло */
+.l5-pic-parrot i:nth-child(1) { left: 30%; top: 4%; width: 42%; height: 90%; border-radius: 50% 50% 42% 42%; background: #E0643F;
+  background-image: radial-gradient(circle at 42% 20%, #FBF6EA 0 9%, transparent 10%), radial-gradient(circle at 42% 20%, #1F2A44 0 14%, transparent 15%); }
+.l5-pic-parrot i:nth-child(2) { left: 12%; top: 12%; width: 22%; height: 20%; background: #F0B13F; clip-path: polygon(100% 0, 100% 100%, 0 60%); }
+.l5-pic-parrot i:nth-child(3) { left: 46%; top: 40%; width: 34%; height: 46%; border-radius: 10% 80% 60% 40%; background: #2A8C7E; }
+/* рыбка: тело, хвост, пузырьки */
+.l5-pic-fish i:nth-child(1) { left: 10%; top: 24%; width: 62%; height: 56%; border-radius: 50%; background: #F0B13F;
+  background-image: radial-gradient(circle at 26% 42%, #1F2A44 0 8%, transparent 9%); }
+.l5-pic-fish i:nth-child(2) { left: 66%; top: 26%; width: 30%; height: 52%; background: #E0643F; clip-path: polygon(0 50%, 100% 0, 85% 50%, 100% 100%); }
+.l5-pic-fish i:nth-child(3) { left: 4%; top: 0; width: 30%; height: 26%; background: radial-gradient(circle at 30% 70%, #FBF6EA 0 18%, transparent 20%), radial-gradient(circle at 75% 25%, #FBF6EA 0 14%, transparent 16%); }
+
+/* ══ КАРТОЧКИ ФАЙЛОВ ═══════════════════════════════════════════════════════ */
+.l5-files { display: grid; grid-template-columns: repeat(2, minmax(0, 150px)); gap: clamp(6px, 1.4vw, 14px); justify-content: center; width: 100%; }
+.l5-files.l5-files-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); max-width: 760px; align-self: center; }
+.l5-card { position: relative; display: flex; min-width: 0; padding: 0; border: none; background: none; color: #1F2A44; text-align: center; }
+button.l5-card { cursor: pointer; }
+button.l5-card:disabled { cursor: default; }
+.kz-cut.l5-card-cut { inset: 0; }
+.l5-card-in { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; width: 100%; padding: 7px 4px 6px; }
+.l5-card-in .l5-photo { font-size: clamp(8px, 1.25dvh, 11px); }
+.l5-card-in code { font: 700 clamp(10px, 1.5dvh, 12.5px)/1.2 'JetBrains Mono', ui-monospace, monospace; color: #8A5300; overflow-wrap: anywhere; }
+.l5-card.is-hl { filter: drop-shadow(0 0 5px #F0B13F); }
+.l5-card.is-hl code { background: #FFE9A8; border-radius: 3px; }
+.l5-card.is-ok { filter: drop-shadow(0 0 5px #2A8C7E); }
+.l5-card.is-ok .l5-card-in::after { content: ''; position: absolute; right: 6px; top: 6px; width: 14px; height: 8px; border-left: 3px solid #2A8C7E; border-bottom: 3px solid #2A8C7E; rotate: -45deg; }
+.l5-card.is-off { opacity: .4; }
+.l5-card .led { top: 2px; right: 2px; }
+.l5-s1-card { align-self: center; width: clamp(110px, 30%, 170px); display: flex; }
+.l5-s1-card .l5-card { width: 100%; }
+.l5-s1-card .l5-card-in .l5-photo { font-size: clamp(10px, 1.7dvh, 14px); }
+.l5-filebox { align-self: center; width: clamp(100px, 28%, 150px); display: flex; }
+.l5-filebox .l5-card { width: 100%; }
+
+/* ══ ПРОГРАММА ЧТЕНИЯ ЭКРАНА ═══════════════════════════════════════════════ */
+.l5-reader { display: flex; align-items: center; gap: 10px; align-self: center; max-width: 100%; padding: 6px 14px 7px 10px; background: #1F2A44; color: #FBF6EA;
+  font: 700 clamp(12.5px, 1.9dvh, 15.5px)/1.25 'Manrope', sans-serif; border-radius: 999px; transition: box-shadow .2s; }
+.l5-reader.is-on { box-shadow: 0 0 0 3px #F0B13F; }
+.l5-reader-t { min-width: 0; overflow-wrap: anywhere; }
+.l5-spk { position: relative; flex: none; width: 12px; height: 12px; background: #F0B13F; clip-path: polygon(0 30%, 35% 30%, 80% 0, 80% 100%, 35% 70%, 0 70%); }
+.l5-reader.is-on .l5-spk { animation: l5Spk .9s steps(2, end) infinite; }
+@keyframes l5Spk { 50% { scale: 1.25; } }
+.l5-reader-wrap { display: flex; justify-content: center; min-height: 34px; }
+
+/* ══ КОД: атрибут, наклейка, места ═════════════════════════════════════════ */
+.l5-attr { display: inline; white-space: nowrap; border-radius: 3px; }
+.l5-an { color: #1C7A6C; }
+.l5-eq { color: #E0643F; }
+.l5-av { color: #8A5300; }
+.l5-attr.is-hl { background: #FFE9A8; box-shadow: 0 0 0 2px #FFE9A8; }
+.l5-attr.l5-later { opacity: .5; }
+.l5-attr.l5-later.is-hl { opacity: 1; }
+.l5-attr.is-off .l5-av { text-decoration: line-through; text-decoration-color: #E0643F; }
+.l5-hl-img .l5-tagimg > .kz-tk-b, .l5-hl-img .l5-tagimg > .kz-tk-n { background: #FFE4D8; box-shadow: 0 0 0 2px #FFE4D8; border-radius: 3px; }
+.kz-line.is-read .l5-an, .kz-line.is-say .l5-an { color: #7FD6C8; }
+.kz-line.is-read .l5-av, .kz-line.is-say .l5-av { color: #FFD27A; }
+.kz-line.is-read .l5-eq, .kz-line.is-say .l5-eq { color: #FF8A65; }
+.kz-line.l5-ctx { opacity: .6; }
+.kz-line.l5-line-big { font-size: 1.08em; justify-content: center; }
+.l5-bench { gap: 12px; }
+/* </img> сам появляется, зачёркивается и падает (s3) */
+.l5-ghostclose { position: relative; display: inline-flex; margin-left: 4px; }
+.l5-ghostclose::after { content: ''; position: absolute; left: -2px; right: -2px; top: 50%; height: 3px; background: #E0643F; rotate: -8deg; scale: 0 1; transform-origin: left; }
+.l5-ghostclose.is-fall::after { scale: 1 1; transition: scale .2s steps(3, end); }
+.l5-ghostclose.is-fall { animation: l5Drop .65s steps(6, end) .2s both; }
+@keyframes l5Drop { to { transform: translateY(36px) rotate(24deg); opacity: 0; } }
+/* «src» — жёлтая наклейка в теге (как «атрибут» в уроке 4) */
+.l5-note { display: inline-block; padding: 1px 8px 2px; margin: 0 2px; background: #FBF6EA; color: #1C7A6C; font: 800 .9em/1.2 'JetBrains Mono', monospace;
+  rotate: -3deg; outline: 2px dashed #E0643F; outline-offset: 1px; }
+/* место для наклейки */
+.l5-spot { position: relative; display: inline-block; flex: none; width: 3.6em; height: 1.25em; margin: 0 3px; padding: 0; vertical-align: middle; cursor: pointer;
+  border: 2px dashed rgba(224, 100, 63, .7); border-radius: 4px; background: rgba(251, 246, 234, .7); }
+.l5-spot:disabled { cursor: default; }
+.l5-spot.is-call { animation: kzSlotCall 1s steps(1, end) infinite; }
+.l5-spot.is-hover { border-style: solid; background: #FFE4D8; scale: 1.12; }
+.l5-spot .led { top: -6px; right: -6px; }
+.l5-peek { background: #FFE4D8; outline: 2px dashed #E0643F; outline-offset: 1px; }
+.kz-scrap.l5-sticker { background: #F0B13F; font-size: clamp(13px, 2.2dvh, 18px); }
+.kz-scrap.l5-sticker.is-sel { background: #FFE4D8; }
+.l5-q { position: relative; }
+.l5-q::after { content: '?'; position: absolute; right: -10px; top: -12px; width: 18px; height: 18px; border-radius: 50%; background: #E0643F; color: #fff;
+  font: 800 12px/18px 'Manrope', sans-serif; text-align: center; box-shadow: 0 0 0 2px #FBF6EA; animation: l5Q 1.1s steps(1, end) infinite; pointer-events: none; }
+.kz-gap.l5-gap-wide { flex: 1 1 100%; min-width: 0; }
+.kz-gap.l5-gap-wide .tk-input { width: 100% !important; max-width: 100%; overflow-wrap: break-word; word-break: normal; }
+.kz-line.l5-sample { opacity: .85; }
+/* s5 — три места на странице */
+.l5-slots { width: 100%; }
+.l5-slot { position: relative; display: block; width: 4.6em; height: 1.5em; margin: .15em 0; padding: 0; border: 2px dashed rgba(224, 100, 63, .75); border-radius: 4px;
+  background: rgba(251, 246, 234, .8); cursor: pointer; }
+.l5-slot:disabled { cursor: default; }
+.l5-slot.is-call { animation: kzSlotCall 1.4s steps(1, end) infinite; }
+.l5-slot .led { top: -6px; right: -6px; }
+.l5-oops { position: absolute; right: 6%; top: -6px; z-index: 4; padding: 2px 10px; background: #E0643F; color: #fff; font: 800 clamp(20px, 3.4dvh, 30px) 'Manrope', sans-serif;
+  rotate: -8deg; clip-path: polygon(0 10%, 8% 0, 92% 8%, 100% 0, 96% 55%, 100% 100%, 50% 92%, 4% 100%, 0 50%); }
+.l5-duo > .kz-col { position: relative; }
+/* s12, s14 — тег по частям */
+.l5-sheetpage .kz-code.l5-walk { align-self: center; font-size: clamp(16px, 2.8dvh, 24px); }
+.l5-walk .kz-line { justify-content: center; padding-top: 8px; padding-bottom: 8px; }
+.l5-part { position: relative; display: inline; padding: 1px 1px; margin: 0; border: none; background: none; font: inherit; color: inherit; border-radius: 4px; transition: background .15s; }
+.l5-part:disabled { cursor: default; }
+.is-explore .l5-part:not(:disabled), .l5-bugline .l5-part:not(:disabled) { cursor: pointer; }
+.l5-bugline .l5-part:not(:disabled) { outline: 1.5px dashed rgba(31, 42, 68, .25); outline-offset: 1px; margin: 0 1px; }
+.l5-part.is-ghost { visibility: hidden; }
+.l5-part.is-on, .l5-part.is-fixed { background: #FFE9A8; box-shadow: 0 0 0 2px #F0B13F; }
+.l5-part .led { top: -8px; right: -8px; }
+.l5-bugline .kz-line .led { top: 4px; right: 4px; }
+.l5-s12-row { display: flex; align-items: center; justify-content: center; gap: clamp(8px, 2vw, 20px); width: 100%; }
+.l5-s12-row > .kz-br { flex: 1 1 auto; min-width: 0; }
+.l5-s12-side { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: none; width: clamp(130px, 30%, 220px); }
+.l5-s12-side .l5-card { width: clamp(100px, 70%, 150px); }
+.l5-s11-top { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
+.l5-quiz { margin-top: 6px; }
+
+/* ══ РАСКЛАДКА: код и браузер рядом (на телефоне — в колонку) ═════════════ */
+.l5-duo { align-items: stretch; }
+.l5-duo > .kz-col { justify-content: center; }
+.l5-s1 { flex-direction: column; justify-content: center; gap: 12px; }
+@media (max-width: 759px) {
+  .l5-duo { flex-direction: column; gap: 10px; }
+  .l5-duo .kz-br.l5-br.is-short { --brh: 30dvh; aspect-ratio: 16 / 10.5; }
+  .l5-s1 .kz-br.l5-br { aspect-ratio: 16 / 12; }
+  .l5-s12-row { flex-direction: column; }
+  .l5-s12-side { flex-direction: row; width: auto; }
+  .l5-s12-side .l5-card { width: 96px; }
+  .l5-files.l5-files-5 { gap: 4px; }
+  .l5-card-in { padding: 5px 2px 4px; }
+}
+@media (min-width: 760px) {
+  .l5-br.kz-br { --brh: 46dvh; }
+  .l5-br.kz-br.is-short { --brh: 34dvh; }
+  .l5-s1 .l5-br.kz-br { --brh: 46dvh; }
+  .l5-duo .l5-br.kz-br, .l5-duo .l5-br.kz-br.is-short { --brh: 50dvh; aspect-ratio: 16 / 11; }
+  .l5-duo > .kz-col { max-width: none; }
+  .l5-br .kz-br-page { font-size: clamp(14px, 2.4dvh, 21px); }
+  .kz-scene-col .l5-br.kz-br.is-short { --brh: 25dvh; }
+  .l5-sheetpage .kz-scene-col { justify-content: center; }
+  .l5-sheetpage .kz-scene-col > .kz-col { width: min(100%, 760px); }
+  .l5-sheetpage .kz-scene-col > .kz-col:has(> .l5-brwrap + .kz-code) {
+    flex-direction: row; align-items: center; gap: clamp(14px, 2vw, 26px); width: 100%; max-width: 1000px; }
+  .l5-sheetpage .kz-scene-col > .kz-col:has(> .l5-brwrap + .kz-code) .kz-br { flex: 1 1 0; min-width: 0; --brh: 40dvh; aspect-ratio: 16 / 11; }
+  .l5-sheetpage .kz-scene-col > .kz-col:has(> .l5-brwrap + .kz-code) > .kz-code { flex: 1.15 1 0; min-width: 0; }
+  .l5-sheetpage .kz-code { font-size: clamp(15px, 2.3dvh, 20px); gap: 6px; }
+  .l5-sheetpage .kz-line { min-height: 34px; }
+  .l5-sheetpage .kz-code.kz-code-sm { font-size: clamp(14px, 2.05dvh, 18px); }
+  .l5-s12 .kz-br.l5-br.is-short, .l5-s14 .kz-br.l5-br.is-short { --brh: 34dvh; }
+  .l5-s8 .kz-br.l5-br.is-short { --brh: 26dvh; }
+}
+
+/* ══ КЛАВИАТУРА ТЕЛЕФОНА ОТКРЫТА (видимая высота ~330 px) ═════════════════ */
+.is-kbd .kz-deco, .is-kbd .kz-line.l5-ctx { display: none; }
+.is-kbd .kz-sheet-body { padding: 6px 8px; gap: 6px; }
+.is-kbd .kz-ask { font-size: 13.5px; padding: 4px 10px 5px; }
+.is-kbd .l5-br.kz-br { aspect-ratio: auto; max-width: 100%; padding-bottom: 6px; }
+.is-kbd .l5-br .kz-br-bar { height: 22px; }
+.is-kbd .l5-br .kz-br-tool { display: none; }
+.is-kbd .l5-br .kz-br-body { flex: 0 0 auto; height: 52px; }
+.is-kbd .l5-br .kz-br-page { inset: 4px 8px; font-size: 11px; }
+.is-kbd .kz-code { gap: 3px; }
+.is-kbd .kz-line { min-height: 26px; padding-top: 2px; padding-bottom: 2px; }
+.is-kbd .keys { gap: 4px; }
+.is-kbd .keys .key-b { min-height: 32px; padding-left: 9px; padding-right: 9px; }
+.is-kbd .l5-files, .is-kbd .l5-reader { display: none; }
+.is-kbd .kz-line.l5-sample:not(.is-say) { display: none; }
+.is-kbd .l5-sheetpage .kz-scene-col .kz-br.l5-br.is-short { aspect-ratio: auto; }
+
+/* ══ ПОЛОМКА ЗАМЕТНЕЕ: браузер вздрагивает ══════════════════════════════════ */
+.l5-broken-br.kz-br { animation: kzShake .5s steps(1, end) .3s 2; }
+@keyframes l5Q { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) {
+  .l5-broken-br.kz-br, .l5-q::after, .l5-spot.is-call, .l5-slot.is-call, .l5-photo.l5-fall, .l5-ghostclose.is-fall, .l5-reader.is-on .l5-spk { animation: none !important; }
+}
+/* Телефон: окно браузера крупнее, чтобы страница читалась. */
+@media (max-width: 759px) {
+  .l5-sheetpage .kz-scene-col .kz-br.l5-br.is-short { --brh: 28dvh; aspect-ratio: 16 / 10; }
+  .l5-sheetpage.kz-typed .kz-scene-col .kz-br.l5-br.is-short { --brh: 22dvh; aspect-ratio: 16 / 8.5; }
+  .l5-sheetpage .l5-s8 .kz-br.l5-br.is-short, .l5-sheetpage .l5-s11 .kz-br.l5-br.is-short { --brh: 20dvh; aspect-ratio: 16 / 8; }
+  .l5-sheetpage .l5-s12 .kz-br.l5-br.is-short { --brh: 22dvh; aspect-ratio: 16 / 8.5; }
+  .l5-sheetpage .kz-code.l5-walk { font-size: 15px; }
+  .kz-typed .kz-line, .l5-q1 .kz-line { min-height: 26px; padding-top: 2px; padding-bottom: 2px; }
+}
+/* Длинный тег картинки переносится между атрибутами (на телефоне строка не уходит за край). */
+.kz-tag.l5-tagimg, .l5-walk .kz-tag { white-space: normal; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.l5-tagimg .l5-attr, .l5-walk .l5-attr { white-space: normal; }
+/* Ноутбук 1280×720: крючок и «Хороший alt» влезают целиком. */
+@media (min-width: 760px) {
+  .l5-s1 .l5-br.kz-br { --brh: 38dvh; }
+  .l5-s11 .kz-br.l5-br.is-short { --brh: 20dvh; }
+  .l5-s11 .kz-quiz .kz-btn { min-height: 42px; padding-top: 6px; padding-bottom: 6px; }
+  .l5-s11 .kz-quiz { gap: 7px; }
+}
+/* Своё описание и свой тег при открытой клавиатуре: окно — узкая полоса. */
+.is-kbd .kz-typed .l5-br .kz-br-body { height: 30px; }
+.is-kbd .kz-typed .l5-br .l5-photo { font-size: 6px; }
+.is-kbd .l5-sheetpage.kz-typed .kz-scene-col .kz-br.l5-br.is-short { aspect-ratio: auto; }
+@media (max-width: 759px) { .l5-s1 .kz-br.l5-br { --brh: 44dvh; } }
