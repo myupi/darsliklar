@@ -121,7 +121,7 @@ const UI = {
   bpTitle: L3('uy nomi', 'название дома', 'house name'),
   bpBody: L3('oynadagi matn', 'текст в окне', 'text in the window'),
   nextLesson: L3('Keyingi dars', 'Следующий урок', 'Next lesson'),
-  next: L3('Katta sarlavha va xatboshilar', 'Большой заголовок и абзацы', 'A big heading and paragraphs'),
+  next: L3('Sarlavhalar va matn', 'Заголовки и текст', 'Headings and text'),
   part: {
     open: L3('ochuvchi teg', 'открывающий тег', 'opening tag'),
     name: L3('nom', 'название', 'name'),
@@ -218,11 +218,11 @@ const C = {
       'Ой! Ветер унёс у домов названия, тексты и куски кода.',
       'Oh no! The wind blew away the houses’ names, texts and pieces of code.'),
     plan: L3('To‘rtta uyni kod bilan tuzatamiz, beshinchisini esa o‘zingiz qurasiz. Har bir topshiriq oldingisidan biroz qiyinroq.',
-      'Починим четыре дома кодом, а пятый ты построишь сам. Каждое задание чуть сложнее прошлого.',
+      'Починим четыре дома кодом, а пятый построишь своими руками. Каждое задание чуть сложнее прошлого.',
       'We’ll fix four houses with code, and you’ll build the fifth yourself. Each task is a bit harder than the last.'),
     ask: L3('«Shamol!» tugmasini bosing', 'Нажми «Ветер!»', 'Tap “Wind!”'),
     order: L3('To‘rtta uyni tuzating, beshinchisini o‘zingiz quring. Kodni siz yozasiz.',
-      'Почини четыре дома, а пятый построй сам. Код пишешь ты.',
+      'Почини четыре дома, а пятый построй своими руками. Код пишешь ты.',
       'Fix four houses and build the fifth yourself. You write the code.'),
     note: L3('Sahifasi tayyor bo‘lgan uy yonadi. Jarima yo‘q: xohlagancha tekshiring.',
       'Дом загорается, когда его страница готова. Штрафов нет — проверяй сколько хочешь.',
@@ -242,9 +242,9 @@ const C = {
         'Название страницы видно на вкладке браузера. Какой тег за него отвечает?',
         'The page name shows on the browser tab. Which tag is in charge of it?'),
       L3('head ichiga qarang: u yerda title qatori bor.', 'Посмотри внутрь head: там есть строка title.', 'Look inside head: there is a title line.'),
-      L3('title teglari orasidagi bo‘sh joyni bosing va nom yozing. Masalan: Issiq non.',
-        'Нажми на пустое место между тегами title и напиши название. Например: Тёплый хлеб.',
-        'Tap the empty space between the title tags and type a name. For example: Warm Bread.')
+      L3('title teglari orasidagi bo‘sh joyni bosing va nom yozing. Gul do‘koni «Guldasta» deb atalishi mumkin, nonvoyxonaga esa o‘zingiz nom o‘ylang.',
+        'Нажми на пустое место между тегами title и напиши название. У цветочного магазина могло быть «Букет», а пекарне придумай своё.',
+        'Tap the empty space between the title tags and type a name. A flower shop might be called “Bouquet”; make up one for the bakery.')
     ],
     praise: L3('To‘g‘ri! Nom yorliqda chiqdi. Novvoyxona ochildi.', 'Есть! Название на вкладке — пекарня открылась.', 'Yes! The name is on the tab, and the bakery is open.'),
     done: L3('Novvoyxonaning nomi bor.', 'У пекарни уже есть название.', 'The bakery already has a name.'),
@@ -358,7 +358,7 @@ const C = {
   fin: {
     eyebrow: L3('Ko‘cha yana tirik', 'Улица снова живая', 'The street is alive again'),
     say: L3('Tabriklayman! Ko‘cha yana tirik. Oxirgi uy esa sizniki: uning sahifasini o‘zingiz yozdingiz.',
-      'Ура! Улица снова живая. А последний дом — твой: его страница целиком твоя.',
+      'Ура! Улица снова живая. А последний дом — твой: в нём твоё название и твой текст.',
       'Hooray! The street is alive again. And the last house is yours: you wrote its page yourself.'),
     skills: [
       L3('title ichiga sahifa nomini yozaman', 'Пишу название страницы в title', 'I write the page name in title'),

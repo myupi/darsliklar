@@ -71,6 +71,7 @@ const UI = {
   nextLesson: L3('Keyingi dars', 'Следующий урок', 'Next lesson'),
   next: L3('Ro‘yxatlar', 'Списки', 'Lists'),
   turn: L3('Aylantirish', 'Превратить', 'Transform'),
+  ready: L3('Tayyor', 'Готово', 'Done'),
   tab: L3('Yorliq', 'Вкладка', 'Tab'),
   win: L3('Oyna', 'Окно', 'Window'),
   mySite: L3('Mening saytim', 'Мой сайт', 'My site'),
@@ -288,22 +289,34 @@ const C = {
     ask: L3('Brauzer qanday o‘qishini kuzating', 'Смотри, как читает браузер', 'Watch how the browser reads'),
     askDone: L3('Brauzer yuqoridan pastga o‘qiydi', 'Браузер читает сверху вниз', 'The browser reads top to bottom')
   },
+  // Своя страница — два экрана (одно действие на экран): заголовок, потом абзац; засчёт по «Готово».
   s13: {
-    eyebrow: L3('O‘z sahifangiz', 'Своя страница', 'Your page'),
-    say: L3('Endi o‘z sahifangizni yasang. Avval h1 ichiga sarlavha yozing: o‘zingizga yoqqan narsa haqida.',
-      'Теперь твоя страница. Сначала напиши в h1 заголовок — о том, что тебе нравится.',
-      'Now your own page. First, type a heading in h1, about something you like.'),
-    sayP: L3('Endi p ichiga bu haqda bitta gap yozing.', 'Теперь напиши в p одно предложение об этом.', 'Now type one sentence about it in p.'),
-    ok: L3('Sahifangiz tayyor: sarlavha va xatboshi bor.', 'Твоя страница готова: есть заголовок и абзац.', 'Your page is ready: it has a heading and a paragraph.'),
+    eyebrow: L3('Sarlavhangiz', 'Свой заголовок', 'Your heading'),
+    say: L3('Endi o‘z sahifangizni yasang. h1 ichiga o‘zingizga yoqqan narsa haqida sarlavha yozing va «Tayyor»ni bosing.',
+      'Теперь твоя страница. Напиши в h1 заголовок о том, что тебе нравится, и нажми «Готово».',
+      'Now your own page. Type a heading in h1 about something you like, then tap “Done”.'),
+    ok: L3('Zo‘r sarlavha! U sahifadagi eng katta va asosiy sarlavha.', 'Отличный заголовок! Он самый крупный и главный на странице.', 'Great heading! It’s the biggest and the main one on the page.'),
     hints: [
       L3('Sarlavha o‘ylab toping: masalan, sevimli o‘yiningiz yoki hayvoningiz.', 'Придумай заголовок: например, любимая игра или животное.', 'Make up a heading: your favorite game or animal, for example.'),
       L3('Faqat so‘z yozing, teglar allaqachon joyida.', 'Пиши только слова — теги уже на месте.', 'Type only words: the tags are already in place.'),
-      L3('Masalan: Futbol. Keyin: Men do‘stlarim bilan futbol o‘ynayman.', 'Например: Футбол. А потом: Я играю в футбол с друзьями.', 'For example: Football. Then: I play football with my friends.')
+      L3('Masalan: Futbol. Yozib bo‘lgach, «Tayyor»ni bosing.', 'Например: Футбол. Потом нажми «Готово».', 'For example: Football. Then tap “Done”.')
     ],
-    askTitle: L3('h1 ichiga sarlavha yozing', 'Напиши заголовок в h1', 'Type a heading in h1'),
-    askP: L3('p ichiga bitta gap yozing', 'Напиши в p одно предложение', 'Type one sentence in p'),
-    phTitle: L3('Masalan: Futbol', 'Например: Футбол', 'For example: Football'),
-    phP: L3('Masalan: Men futbol o‘ynayman.', 'Например: Я играю в футбол.', 'For example: I play football.')
+    ask: L3('h1 ichiga sarlavha yozing va «Tayyor»ni bosing', 'Напиши заголовок в h1 и нажми «Готово»', 'Type a heading in h1 and tap “Done”'),
+    ph: L3('Masalan: Futbol', 'Например: Футбол', 'For example: Football')
+  },
+  s13b: {
+    eyebrow: L3('Xatboshingiz', 'Свой абзац', 'Your paragraph'),
+    say: L3('Endi p ichiga sarlavhangiz haqida bitta gap yozing va «Tayyor»ni bosing.',
+      'Теперь напиши в p одно предложение о своём заголовке и нажми «Готово».',
+      'Now type one sentence about your heading in p, then tap “Done”.'),
+    ok: L3('Sahifangiz tayyor: sarlavha va xatboshi bor.', 'Твоя страница готова: есть заголовок и абзац.', 'Your page is ready: it has a heading and a paragraph.'),
+    hints: [
+      L3('Sarlavhangiz haqida nima deya olasiz?', 'Что можно сказать о твоём заголовке?', 'What can you say about your heading?'),
+      L3('Faqat so‘z yozing, teglar allaqachon joyida.', 'Пиши только слова — теги уже на месте.', 'Type only words: the tags are already in place.'),
+      L3('Masalan: Men do‘stlarim bilan futbol o‘ynayman. Keyin «Tayyor»ni bosing.', 'Например: Я играю в футбол с друзьями. Потом нажми «Готово».', 'For example: I play football with my friends. Then tap “Done”.')
+    ],
+    ask: L3('p ichiga bitta gap yozing va «Tayyor»ni bosing', 'Напиши в p одно предложение и нажми «Готово»', 'Type one sentence in p and tap “Done”'),
+    ph: L3('Masalan: Men futbol o‘ynayman.', 'Например: Я играю в футбол.', 'For example: I play football.')
   },
   s14: {
     eyebrow: L3('Hammasi qalin bo‘ldi', 'Всё стало жирным', 'Everything turned bold'),
@@ -319,6 +332,54 @@ const C = {
     opts: ['</i>', '</b>', '<b>'],
     bword: L3('Diqqat!', 'Внимание!', 'Note!'),
     tail: L3('Sahifam tayyor.', 'Моя страница готова.', 'My page is ready.')
+  },
+  // ИТОГОВАЯ ПРОВЕРКА (q1, q2): новый пример без образца; до первой попытки ответ не подсвечен.
+  q1: {
+    eyebrow: L3('O‘zingizni tekshiring', 'Проверь себя', 'Check yourself'),
+    say: L3('Yangi sahifa: it haqida. Teglarni o‘zingiz qo‘ying: sarlavha, gap va muhim so‘z. Bitta teg ortiqcha.',
+      'Новая страница — про собаку. Расставь теги сам: заголовок, предложение и важное слово. Один тег лишний.',
+      'A new page, about a dog. Place the tags yourself: the heading, the sentence and the key word. One tag is extra.'),
+    head: L3('Mening itim', 'Мой пёс', 'My dog'),
+    line: L3('Uning ismi Reks.', 'Его зовут Рекс.', 'His name is Rex.'),
+    pre: L3('U ', 'Он ', 'He is '),
+    word: L3('juda', 'очень', 'very'),
+    post: L3(' aqlli.', ' умный.', ' smart.'),
+    why: {
+      headH6: L3('Qarang: h6 eng kichik sarlavha. Sahifaning asosiy sarlavhasiga h1 kerak.', 'Смотри: h6 — самый мелкий заголовок. Главному заголовку страницы нужен h1.', 'Look: h6 is the smallest heading. The main heading of the page needs h1.'),
+      headP: L3('Qarang: bu oddiy xatboshi bo‘lib qoldi. Asosiy sarlavha uchun h1 kerak.', 'Смотри: получился обычный абзац. Для главного заголовка нужен h1.', 'Look: it became a plain paragraph. The main heading needs h1.'),
+      lineH1: L3('Qarang: gap ulkan sarlavhaga aylandi. Oddiy gap uchun p kerak.', 'Смотри: предложение стало огромным заголовком. Для обычного предложения нужен p.', 'Look: the sentence became a huge heading. A plain sentence needs p.'),
+      lineH6: L3('Qarang: gap sarlavhaga aylandi. Oddiy gap uchun p kerak.', 'Смотри: предложение стало заголовком. Для обычного предложения нужен p.', 'Look: the sentence became a heading. A plain sentence needs p.'),
+      allB: L3('Qarang: hammasi qalin bo‘lib qoldi. b faqat muhim so‘zga kerak.', 'Смотри: жирным стало всё. b нужен только для важного слова.', 'Look: everything turned bold. b is only for the key word.'),
+      wordBlock: L3('Qarang: bu teg so‘zni alohida qatorga chiqarib yubordi. Muhim so‘zni qalin qilish uchun b kerak.', 'Смотри: этот тег вынес слово на отдельную строку. Чтобы выделить важное слово жирным, нужен b.', 'Look: this tag moved the word onto its own line. To make the key word bold, you need b.')
+    },
+    hints: [
+      L3('Har bir qatorga qarang: u sarlavhami, oddiy gapmi yoki muhim so‘zmi?', 'Посмотри на каждую строку: это заголовок, обычное предложение или важное слово?', 'Look at each line: is it a heading, a plain sentence or a key word?'),
+      L3('Asosiy sarlavha — h1, gap — p, muhim so‘z — b. h6 ortiqcha.', 'Главный заголовок — h1, предложение — p, важное слово — b. h6 лишний.', 'Main heading: h1. Sentence: p. Key word: b. h6 is extra.'),
+      L3('Yonib turgan tegni yonib turgan joyga torting.', 'Перетащи светящийся тег на светящееся место.', 'Drag the glowing tag to the glowing place.')
+    ],
+    ok: L3('Ajoyib! Sarlavha h1 da, gap p da, muhim so‘z esa b da.', 'Отлично! Заголовок в h1, предложение в p, а важное слово — в b.', 'Great! The heading is in h1, the sentence in p, and the key word in b.'),
+    pickFirst: L3('Avval tegni tanlang.', 'Сначала выбери тег.', 'Pick a tag first.'),
+    ask: L3('Tegni joyiga torting', 'Перетащи тег на место', 'Drag a tag into place'),
+    askPlace: L3('Endi joyni bosing', 'Теперь нажми место', 'Now tap the place')
+  },
+  q2: {
+    eyebrow: L3('Nechta h1?', 'Сколько h1?', 'How many h1?'),
+    say: L3('Oxirgi savol. Odatda sahifada nechta h1 bo‘ladi?', 'Последний вопрос. Сколько h1 обычно бывает на странице?', 'Last question. How many h1 headings does a page usually have?'),
+    // Верный ответ не первый; неверные гаснут после попытки, с объяснением.
+    opts: [
+      { id: 'many', t: L3('Qancha ko‘p bo‘lsa, shuncha yaxshi', 'Чем больше, тем лучше', 'The more, the better'),
+        why: L3('Yo‘q: h1 — asosiy sarlavha. Odatda u bitta, bo‘limlar uchun esa h2 bor.', 'Нет: h1 — главный заголовок. Обычно он один, а для разделов есть h2.', 'No: h1 is the main heading. Usually there’s one, and sections use h2.') },
+      { id: 'one', right: true, t: L3('Bitta — bu asosiy sarlavha', 'Один — это главный заголовок', 'One: it’s the main heading') },
+      { id: 'none', t: L3('Hech qancha — sarlavha kerak emas', 'Ни одного — заголовки не нужны', 'None: headings aren’t needed'),
+        why: L3('Yo‘q: sarlavhasiz sahifani o‘qish qiyin. Asosiy sarlavha — h1.', 'Нет: без заголовков страницу трудно читать. Главный заголовок — h1.', 'No: a page without headings is hard to read. The main heading is h1.') }
+    ],
+    hints: [
+      L3('h1 qanday sarlavha ekanini eslang.', 'Вспомни, какой заголовок — h1.', 'Remember what kind of heading h1 is.'),
+      L3('h1 — eng katta va asosiy sarlavha. Asosiy narsa nechta bo‘ladi?', 'h1 — самый крупный и главный заголовок. Сколько бывает главного?', 'h1 is the biggest, main heading. How many main things can there be?'),
+      L3('Odatda sahifada bitta h1 bo‘ladi.', 'Обычно на странице один h1.', 'A page usually has one h1.')
+    ],
+    ok: L3('To‘g‘ri! h1 bitta — bu asosiy sarlavha. Bo‘limlar uchun h2 dan h6 gacha teglar bor.', 'Верно! h1 один — это главный заголовок. Для разделов есть теги от h2 до h6.', 'Right! There’s one h1, the main heading. Sections use h2 to h6.'),
+    ask: L3('Javobni tanlang', 'Выбери ответ', 'Pick an answer')
   },
   s15: {
     eyebrow: L3('Xulosa', 'Вывод', 'Summary'),
@@ -341,9 +402,9 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { magic: 1, magicP: 1, magicB: 1, big: 1, small: 1, msgs: 1, sayP: 1, askQ: 1, miss: 1,
+Object.assign(SPOKEN, { opts: 1, why: 1, magic: 1, magicP: 1, magicB: 1, big: 1, small: 1, msgs: 1, sayP: 1, askQ: 1, miss: 1,
   b: 1, i: 1, order1: 1, order2: 1, order3: 1, cards: 1 });
-Object.assign(NOT_SPOKEN_IN, { cards: { title: 1 } });
+Object.assign(NOT_SPOKEN_IN, { cards: { title: 1 }, opts: { t: 1, id: 1, right: 1 } });
 
 /*@FILE:../kollazh/kollazh-paper-data.jsx@*/
 

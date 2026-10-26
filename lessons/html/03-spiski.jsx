@@ -1977,10 +1977,10 @@ function PersonaBubble({ who = 'bot', pose, text, onSpoken, nonce, quiet }) {
       {/* Робот рисуется кодом — внешних картинок в уроке нет. По нажатию
           повторяет реплику: ребёнку естественнее ткнуть в героя, чем искать
           кнопку, поэтому персонаж и кнопка делают одно и то же. */}
-      <span className="speaker-av" onClick={silent && !quiet ? replay : undefined}>
+      <span className="speaker-av" onClick={!quiet ? replay : undefined}>
         <RobotSVG pose={pose} talking={speaking} />
       </span>
-      {quiet ? null : silent ? (
+      {quiet ? null : (
         <>
           {/* КУРС HTML: речь показывают волны вокруг кружка с головой Коди —
               отдельного кружка с полосками больше нет. */}
@@ -1988,8 +1988,6 @@ function PersonaBubble({ who = 'bot', pose, text, onSpoken, nonce, quiet }) {
               Отдельным узлом, а не внутри кнопки: aria-label кнопки перебил бы её. */}
           <span className="sv-sr">{line}</span>
         </>
-      ) : (
-        <div className="speaker-bubble">{line}</div>
       )}
     </div>
   );
@@ -6725,6 +6723,7 @@ const UI = {
   sort: L3('Saralash', 'Разложить', 'Sort'),
   things: L3('Narsalar', 'Вещи', 'Things'),
   cocoa: L3('Kakao', 'Какао', 'Cocoa'),
+  ready: L3('Tayyor', 'Готово', 'Done'),
   mySite: L3('Mening ro‘yxatim', 'Мой список', 'My list'),
   hello: L3('Salom, dunyo!', 'Привет, мир!', 'Hello, world!'),
   play: L3('O‘ynash', 'Играть', 'Play'),
@@ -6941,20 +6940,32 @@ const C = {
     ask: L3('Brauzer qanday o‘qishini kuzating', 'Смотри, как читает браузер', 'Watch how the browser reads'),
     askDone: L3('Brauzer yuqoridan pastga o‘qiydi', 'Браузер читает сверху вниз', 'The browser reads top to bottom')
   },
+  // Свой список — два экрана (одно действие на экран): название, потом три пункта; засчёт по «Готово».
   s13: {
-    eyebrow: L3('O‘z ro‘yxatingiz', 'Свой список', 'Your list'),
-    say: L3('Endi o‘z ro‘yxatingizni tuzing. Avval h1 ichiga uning nomini yozing: masalan, sevimli o‘yinlaringiz.', 'Теперь твой список. Сначала напиши в h1 его название — например, любимые игры.', 'Now your own list. First type its name in h1: your favorite games, for example.'),
-    sayItems: L3('Endi uchta li ichiga uchta band yozing.', 'Теперь напиши три пункта — по одному в каждый li.', 'Now type three items, one in each li.'),
-    ok: L3('Ro‘yxatingiz tayyor: nom va uchta band bor.', 'Твой список готов: есть название и три пункта.', 'Your list is ready: a name and three items.'),
+    eyebrow: L3('Ro‘yxat nomi', 'Название списка', 'List name'),
+    say: L3('Endi o‘z ro‘yxatingizni tuzing. h1 ichiga uning nomini yozing, masalan, sevimli o‘yinlaringiz, va «Tayyor»ni bosing.',
+      'Теперь твой список. Напиши в h1 его название, например, любимые игры, и нажми «Готово».',
+      'Now your own list. Type its name in h1, for example, your favorite games, then tap “Done”.'),
+    ok: L3('Zo‘r nom! Bu ro‘yxatingizning asosiy sarlavhasi.', 'Отличное название! Это главный заголовок твоего списка.', 'Great name! It’s the main heading of your list.'),
     hints: [
       L3('Ro‘yxat nomini o‘ylab toping: sevimli o‘yinlar, taomlar yoki filmlar.', 'Придумай название: любимые игры, еда или фильмы.', 'Make up a name: favorite games, food or films.'),
       L3('Faqat so‘z yozing, teglar allaqachon joyida.', 'Пиши только слова — теги уже на месте.', 'Type only words: the tags are already in place.'),
-      L3('Masalan: Sevimli o‘yinlarim. Bandlar: futbol, shaxmat, Minecraft.', 'Например: Мои любимые игры. Пункты: футбол, шахматы, Minecraft.', 'For example: My favorite games. Items: football, chess, Minecraft.')
+      L3('Masalan: Sevimli o‘yinlarim. Keyin «Tayyor»ni bosing.', 'Например: Мои любимые игры. Потом нажми «Готово».', 'For example: My favorite games. Then tap “Done”.')
     ],
-    askTitle: L3('h1 ichiga ro‘yxat nomini yozing', 'Напиши название в h1', 'Type the list name in h1'),
-    askItems: L3('Har bir li ichiga bitta band yozing', 'Напиши по пункту в каждый li', 'Type one item in each li'),
-    phTitle: L3('Masalan: Sevimli o‘yinlarim', 'Например: Мои любимые игры', 'For example: My favorite games'),
-    phItem: L3('band', 'пункт', 'item')
+    ask: L3('h1 ichiga ro‘yxat nomini yozing va «Tayyor»ni bosing', 'Напиши название в h1 и нажми «Готово»', 'Type the list name in h1 and tap “Done”'),
+    ph: L3('Masalan: Sevimli o‘yinlarim', 'Например: Мои любимые игры', 'For example: My favorite games')
+  },
+  s13b: {
+    eyebrow: L3('Ro‘yxat bandlari', 'Пункты списка', 'List items'),
+    say: L3('Endi uchta band yozing, har bir li ichiga bittadan, va «Tayyor»ni bosing.', 'Теперь напиши три пункта, по одному в каждый li, и нажми «Готово».', 'Now type three items, one in each li, then tap “Done”.'),
+    ok: L3('Ro‘yxatingiz tayyor: nom va uchta band bor.', 'Твой список готов: есть название и три пункта.', 'Your list is ready: a name and three items.'),
+    hints: [
+      L3('Ro‘yxatingizga nima kiradi? Uchta narsa o‘ylab toping.', 'Что входит в твой список? Придумай три вещи.', 'What goes in your list? Think of three things.'),
+      L3('Faqat so‘z yozing, teglar allaqachon joyida.', 'Пиши только слова — теги уже на месте.', 'Type only words: the tags are already in place.'),
+      L3('Masalan: futbol, shaxmat, Minecraft. Keyin «Tayyor»ni bosing.', 'Например: футбол, шахматы, Minecraft. Потом нажми «Готово».', 'For example: football, chess, Minecraft. Then tap “Done”.')
+    ],
+    ask: L3('Har bir li ichiga bitta band yozing va «Tayyor»ni bosing', 'Напиши по пункту в каждый li и нажми «Готово»', 'Type one item in each li and tap “Done”'),
+    ph: L3('band', 'пункт', 'item')
   },
   s14: {
     eyebrow: L3('Bu sizning topingiz', 'Это твой топ', 'Your top list'),
@@ -6968,6 +6979,50 @@ const C = {
     ok: L3('To‘g‘ri! Yopuvchi teg ham ol bo‘ldi: juft doim bir xil. Endi bandlar raqamlangan.', 'Верно! Закрывающий тоже стал ol — пара всегда одинаковая. Теперь у пунктов номера.', 'Right! The closing tag became ol too: a pair always matches. Now the items have numbers.'),
     ask: L3('Kerakli tegni ul o‘rniga torting', 'Перетащи нужный тег на место ul', 'Drag the right tag onto ul'),
     opts: ['<li>', '<ol>', '<p>']
+  },
+  // ИТОГОВАЯ ПРОВЕРКА (q1, q2): новый пример без образца; до первой попытки ответ не подсвечен.
+  q1: {
+    eyebrow: L3('O‘zingizni tekshiring', 'Проверь себя', 'Check yourself'),
+    say: L3('Yangi sahifa: xaridlar va buterbrod. Har bir ro‘yxatga o‘z tegini qo‘ying. Bitta teg ortiqcha.',
+      'Новая страница: покупки и бутерброд. Поставь каждому списку свой тег. Один тег лишний.',
+      'A new page: shopping and a sandwich. Give each list its own tag. One tag is extra.'),
+    capA: L3('Do‘kondan olish kerak:', 'Купить в магазине:', 'To buy at the shop:'),
+    itemsA: [L3('non', 'хлеб', 'bread'), L3('olma', 'яблоки', 'apples')],
+    capB: L3('Buterbrod tayyorlash:', 'Как сделать бутерброд:', 'How to make a sandwich:'),
+    itemsB: [L3('Nonga pishloq qo‘ying', 'Положи сыр на хлеб', 'Put cheese on the bread'), L3('Ikkinchi bo‘lak bilan yoping', 'Накрой вторым ломтиком', 'Cover it with the second slice')],
+    why: {
+      aOl: L3('Qarang: xaridlarda raqamlar paydo bo‘ldi. Lekin bu yerda tartib muhim emas, ul kerak.', 'Смотри: у покупок появились номера. Но порядок тут не важен, нужен ul.', 'Look: the shopping list got numbers. But order doesn’t matter here, so you need ul.'),
+      bUl: L3('Qarang: qadamlarda faqat nuqtalar. Qadamlar tartib bilan bajariladi, ol kerak.', 'Смотри: у шагов только точки. Шаги делают по порядку, нужен ol.', 'Look: the steps only have dots. Steps go in order, so you need ol.'),
+      h1: L3('Qarang: bandlar ulkan bo‘lib qoldi. h1 sarlavha uchun, ro‘yxatga esa ul yoki ol kerak.', 'Смотри: пункты стали огромными. h1 — для заголовка, а списку нужен ul или ol.', 'Look: the items became huge. h1 is for a heading; a list needs ul or ol.')
+    },
+    hints: [
+      L3('Qayerda tartib muhim, qayerda esa yo‘q?', 'Где порядок важен, а где нет?', 'Where does order matter, and where doesn’t it?'),
+      L3('Tartib muhim emas — ul, muhim — ol. h1 ortiqcha.', 'Порядок не важен — ul, важен — ol. h1 лишний.', 'Order doesn’t matter: ul. Order matters: ol. h1 is extra.'),
+      L3('Yonib turgan tegni yonib turgan joyga torting.', 'Перетащи светящийся тег на светящееся место.', 'Drag the glowing tag to the glowing place.')
+    ],
+    ok: L3('Ajoyib! Xaridlar ul da, tartib muhim emas. Qadamlar ol da, tartib bilan.', 'Отлично! Покупки в ul, порядок не важен. Шаги в ol, по порядку.', 'Great! Shopping is in ul, order doesn’t matter. The steps are in ol, in order.'),
+    pickFirst: L3('Avval tegni tanlang.', 'Сначала выбери тег.', 'Pick a tag first.'),
+    ask: L3('Tegni ro‘yxat boshiga torting', 'Перетащи тег в начало списка', 'Drag a tag to the start of a list'),
+    askPlace: L3('Endi joyni bosing', 'Теперь нажми место', 'Now tap the place')
+  },
+  q2: {
+    eyebrow: L3('li qayerda?', 'Где стоит li?', 'Where does li go?'),
+    say: L3('Oxirgi savol. li tegi qayerda turishi mumkin?', 'Последний вопрос. Где может стоять тег li?', 'Last question. Where can the li tag go?'),
+    // Верный ответ не первый; неверные гаснут после попытки, с объяснением.
+    opts: [
+      { id: 'any', t: L3('Sahifaning istalgan joyida', 'Где угодно на странице', 'Anywhere on the page'),
+        why: L3('Yo‘q: li ro‘yxat bandi, u ul yoki ol ichida turadi. Ro‘yxatdan tashqarida u qatordan chiqib qoladi.', 'Нет: li — пункт списка, он стоит внутри ul или ol. Вне списка он выпадает из ряда.', 'No: li is a list item; it goes inside ul or ol. Outside a list it falls out of line.') },
+      { id: 'list', right: true, t: L3('Faqat ul yoki ol ichida', 'Только внутри ul или ol', 'Only inside ul or ol') },
+      { id: 'h1', t: L3('h1 ichida', 'Внутри h1', 'Inside h1'),
+        why: L3('Yo‘q: h1 sarlavha. li bandlari ul yoki ol ichida turadi.', 'Нет: h1 — заголовок. Пункты li стоят внутри ul или ol.', 'No: h1 is a heading. li items go inside ul or ol.') }
+    ],
+    hints: [
+      L3('Bandlar qanday ro‘yxatlarda turganini eslang.', 'Вспомни, в каких списках стояли пункты.', 'Remember which lists the items were in.'),
+      L3('li bitta band. Bandlar nima ichida bo‘ladi?', 'li — один пункт. Внутри чего бывают пункты?', 'li is one item. What are items inside of?'),
+      L3('li faqat ul yoki ol ichida turadi.', 'li стоит только внутри ul или ol.', 'li only goes inside ul or ol.')
+    ],
+    ok: L3('To‘g‘ri! li — ro‘yxat bandi, u faqat ul yoki ol ichida turadi.', 'Верно! li — пункт списка, и стоит он только внутри ul или ol.', 'Right! li is a list item, and it only goes inside ul or ol.'),
+    ask: L3('Javobni tanlang', 'Выбери ответ', 'Pick an answer')
   },
   s15: {
     eyebrow: L3('Xulosa', 'Вывод', 'Summary'),
@@ -7693,9 +7748,9 @@ function GoalCard({ goal, n, total, done, doneText }) {
 }
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { magicUl: 1, magicOl: 1, sayLi: 1, doneUl: 1, doneLi: 1, msgs: 1, askQ: 1, miss: 1, sayN: 1, mixed: 1,
+Object.assign(SPOKEN, { opts: 1, why: 1, magicUl: 1, magicOl: 1, sayLi: 1, doneUl: 1, doneLi: 1, msgs: 1, askQ: 1, miss: 1, sayN: 1, mixed: 1,
   sayDo: 1, fine: 1, order1: 1, order2: 1, order3: 1, sayItems: 1, cards: 1, pickFirst: 1 });
-Object.assign(NOT_SPOKEN_IN, { cards: { title: 1, items: 1, id: 1, want: 1 } });
+Object.assign(NOT_SPOKEN_IN, { opts: { t: 1, id: 1, right: 1 }, cards: { title: 1, items: 1, id: 1, want: 1 } });
 // Теги урока вслух — по-английски во всех языках (заказчик, 17.10.2026).
 Object.assign(TAG_SAY.ru, { ul: 'U L', ol: 'O L', li: 'L I' });
 Object.assign(TAG_SAY.uz, { ul: 'U L', ol: 'O L', li: 'L I' });
@@ -8383,6 +8438,53 @@ const useMine = () => {
   const pick = usePick();
   return { title: store.get('myTitle') || pick(UI.mySite), text: store.get('myText') || pick(UI.hello) };
 };
+// =============================================================================
+// СВОЙ ТЕКСТ УЧЕНИКА (урок 1: s7 — название, s10 — приветствие; урок 2: свой заголовок
+// и свой абзац). Общий для бумажных уроков. Предпросмотр — сразу
+// при наборе; засчитывается только по кнопке «Готово» (заказчик, 23.10.2026:
+// пауза в наборе не завершает задание — ребёнок мог остановиться после первой
+// буквы). Пустое поле, одни пробелы и теги не принимаются. Похвала и событие в
+// журнале — один раз. После засчёта правка сохраняется сама (страница и
+// итоговый артефакт берут новый текст), «Готово» её отмечает, без новой похвалы.
+// =============================================================================
+function useTypedDone({ storeKey, screenId, type, lad }) {
+  const log = useLog();
+  const store = useStore();
+  const [rec, put] = useRec(screenId);
+  const solved = !!(rec && rec.done);
+  const [val, setVal] = useState(store.get(storeKey) || '');
+  const [saved, setSaved] = useState(store.get(storeKey) || '');
+  const [stamp, setStamp] = useState(0);
+  const doneRef = useRef(solved);
+  useEffect(() => {
+    if (!doneRef.current || !okText(val) || val.trim() === saved) return;
+    store.set(storeKey, val.trim()); setSaved(val.trim());
+  }, [val]); // eslint-disable-line react-hooks/exhaustive-deps
+  const ready = okText(val);   // повторное «Готово» после засчёта только отмечает текст: похвала и журнал — один раз
+  const commit = (first) => {
+    if (!okText(val)) return false;
+    const v = val.trim();
+    store.set(storeKey, v); setSaved(v); setStamp((x) => x + 1); sfx('ok', true);
+    if (!doneRef.current) {
+      doneRef.current = true;
+      put({ done: true });
+      log({ screenId, type, correct: true, hints: lad.asked.current, depth: lad.lv });
+      if (first) first();
+    }
+    return true;
+  };
+  return { solved, val, setVal, saved, stamp, ready, commit, shown: okText(val) ? val : saved };
+}
+// Кнопка «Готово» под кодом: горит, когда текст можно засчитать.
+function ReadyBtn({ on, glow, onClick }) {
+  const pick = usePick();
+  return (
+    <div className="kz-row">
+      <button type="button" className="kz-btn is-coral kz-ready" disabled={!on} onClick={onClick}>{pick(UI.ready)}<Led on={glow} /></button>
+    </div>
+  );
+}
+
 function makeArtifact(store) {
   const t = store.get('myTitle'), x = store.get('myText');
   if (!t && !x) return null;
@@ -8536,7 +8638,6 @@ function useKzTransition(screenKey) {
 // =============================================================================
 // ЧАСТИ УРОКА 3 — честная страница со списками, бумажные листы списков, код
 // =============================================================================
-const WAIT_MS = 1100;   // пауза в наборе, после которой свой текст засчитывается (s13)
 const normT = (s) => String(s || '').replace(/\s+/g, '').toLowerCase();
 
 // Теги урока вслух: голые ul, ol, li в репликах — словами (как теги в уроке 2).
@@ -9544,8 +9645,10 @@ function S12({ p }) {
 }
 
 // =============================================================================
-// S13. СВОЙ СПИСОК — шаг 1: название в h1; шаг 2: три пункта, по одному в
-// каждый li. Свой текст засчитывается после паузы в наборе, окно меняется сразу.
+// S13. НАЗВАНИЕ СПИСКА и S13b. ПУНКТЫ СПИСКА — свой список двумя экранами (одно
+// действие на экран): название в h1, потом три пункта, по одному в каждый li.
+// Окно меняется сразу при наборе; засчитывается только по «Готово» (useTypedDone
+// из набора, как в уроках 1 и 2; заказчик: пауза в наборе не завершает задание).
 // =============================================================================
 const useMine3 = () => {
   const store = useStore();
@@ -9560,69 +9663,93 @@ const useMine3 = () => {
 };
 function S13({ p }) {
   const pick = usePick();
-  const log = useLog();
-  const store = useStore();
   const c = C.s13;
-  const [rec, put] = useRec('s13');
-  const solved = !!(rec && rec.done);
-  const [title, setTitle] = useState(store.get('myTitle') || '');
-  const [items, setItems] = useState(() => { const s = store.get('myItems') || []; return [s[0] || '', s[1] || '', s[2] || '']; });
-  const [step, setStep] = useState(solved ? 2 : store.get('myTitle') ? 1 : 0);
-  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : step === 1 ? c.sayItems : c.say, pose: solved ? 'smile' : 'point' }]);
+  const [rec] = useRec('s13');
+  const lad = useKzLadder(!(rec && rec.done));
+  const ty = useTypedDone({ storeKey: 'myTitle', screenId: 's13', type: 'own-list-name', lad });
+  const [speaker, , spoken, sayNow] = useVoice([{ text: ty.solved ? c.ok : c.say, pose: ty.solved ? 'smile' : 'point' }]);
   const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved || step === 2, spoken);
-  const lad = useKzLadder(step < 2);
-  const allItems = items.every((x) => okText(x));
-  const led = useIdleLed(canTap && step < 2 && !(step === 0 ? title.trim() : allItems), step);
-  const firstRef = useRef(null);
-  useEffect(() => {
-    if (step !== 0 || !okText(title)) return undefined;
-    const t = setTimeout(() => {
-      store.set('myTitle', title.trim()); sfx('ok', true); setStep(1); sayNow(c.sayItems, 'point');
-      setTimeout(() => { if (firstRef.current) firstRef.current.focus(); }, 80);
-    }, WAIT_MS);
-    return () => clearTimeout(t);
-  }, [title, step]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (step === 2 && okText(title)) store.set('myTitle', title.trim()); }, [title]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (step < 1 || !allItems) return undefined;
-    const t = setTimeout(() => {
-      store.set('myItems', items.map((x) => x.trim()));
-      if (step === 1) {
-        sfx('ok', true); setStep(2); put({ done: true });
-        log({ screenId: 's13', type: 'own-list', correct: true, hints: lad.asked.current, depth: lad.lv });
-        sayNow(c.ok, 'smile');
-      }
-    }, WAIT_MS);
-    return () => clearTimeout(t);
-  }, [items, step]); // eslint-disable-line react-hooks/exhaustive-deps
-  const setItem = (i, v) => { const n = items.slice(); n[i] = v; setItems(n); };
-  const tShow = okText(title) ? title : '';
-  const bad = (step === 0 ? hasTags(title) : items.some((x) => hasTags(x))) ? UI.noTags : null;
-  const askText = step === 2 ? c.ok : step === 0 ? c.askTitle : c.askItems;
-  const shown = items.map((x) => (okText(x) ? x : null));
-  const blocks = [tShow ? { t: 'h1', s: tShow, k: 'h' } : null,
-    shown.some(Boolean) ? { t: 'ul', k: 'ul', kids: shown.map((x, i) => (x ? { li: true, s: x, k: 'i' + i } : null)).filter(Boolean) } : null].filter(Boolean);
+  const canGo = useAdvanceGate(ty.solved, spoken);
+  const led = useIdleLed(canTap && !ty.solved && !ty.val.trim(), 0);
+  const confirm = () => { if (canTap && ty.ready) ty.commit(() => sayNow(c.ok, 'smile')); };
+  const hint = hasTags(ty.val) ? UI.noTags : hintAt(lad.lv, c.hints);
+  const blocks = ty.shown ? [{ t: 'h1', s: ty.shown, k: 'h' }] : [];
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || askText} nav={navOf(p, canGo)}>
-      <Sheet cls="l3-sheetpage">
-        <KzAsk text={askText} hint={step === 2 ? null : (bad || hintAt(lad.lv, c.hints))} n={step === 2 ? null : (step + 1) + '/2'} />
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="l3-sheetpage kz-typed">
+        <KzAsk text={ty.solved ? c.ok : c.ask} hint={ty.solved && !hasTags(ty.val) ? null : hint} />
         <div className="kz-scene kz-scene-col">
           <div className="kz-col">
-            <PaperBrowser title={pick(UI.mySite)} short cls="l3-br" pageHl={step < 2}>{blocks.length ? <ListPage blocks={blocks} /> : null}</PaperBrowser>
+            <PaperBrowser title={pick(UI.mySite)} short cls="l3-br" pageHl={!ty.solved}>{blocks.length ? <ListPage blocks={blocks} /> : null}</PaperBrowser>
             <KzCode cls="kz-code-sm" lines={[
-              { k: 'h', d: 0, cls: step === 0 ? 'is-hl' : step === 1 ? 'l3-edge' : '', parts: [T_('h1'),
-                <span key="g" className={'kz-gap' + (led && step === 0 ? ' kz-gap-led' : '')}><InlineInput value={title} onChange={setTitle} placeholder={c.phTitle} label={c.askTitle} max={30} /></span>,
+              { k: 'h', d: 0, cls: 'is-hl', parts: [T_('h1'),
+                <span key="g" className={'kz-gap' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={ty.setVal} onEnter={confirm} placeholder={c.ph} label={c.ask} max={30} /></span>,
                 T_('h1', true)] },
-              { k: 'uo', d: 0, cls: step === 0 ? 'l3-later' : 'l3-edge', parts: [T_('ul')] },
-              ...[0, 1, 2].map((i) => ({ k: 'i' + i, d: 1, cls: step === 1 ? 'is-hl' : step === 0 ? 'l3-later' : '', parts: [T_('li'),
-                <span key="g" className={'kz-gap' + (led && step === 1 && !okText(items[i]) ? ' kz-gap-led' : '')}>
-                  <InlineInput value={items[i]} onChange={(v) => setItem(i, v)} inputRef={i === 0 ? firstRef : undefined} placeholder={c.phItem} label={c.askItems} max={30} />
-                </span>, T_('li', true)] })),
-              { k: 'uc', d: 0, cls: step === 0 ? 'l3-later' : 'l3-edge', parts: [T_('ul', true)] }
+              { k: 'uo', d: 0, cls: 'l3-later', parts: [T_('ul')] },
+              { k: 'i', d: 1, cls: 'l3-later', parts: [T_('li'), <span key="d" className="kz-dim">…</span>, T_('li', true)] },
+              { k: 'uc', d: 0, cls: 'l3-later', parts: [T_('ul', true)] }
             ]} />
           </div>
         </div>
+        <ReadyBtn on={canTap && ty.ready} glow={canTap && ty.ready && !ty.solved} onClick={confirm} />
+      </Sheet>
+    </Stage>
+  );
+}
+
+// Три пункта: «Готово» горит, когда во всех трёх есть слова и нет тегов; похвала и
+// событие — один раз; правка после засчёта сохраняется сама.
+function S13B({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const store = useStore();
+  const c = C.s13b;
+  const mine = useMine3();
+  const [rec, put] = useRec('s13b');
+  const solved = !!(rec && rec.done);
+  const [items, setItems] = useState(() => { const v = store.get('myItems') || []; return [v[0] || '', v[1] || '', v[2] || '']; });
+  const [stamp, setStamp] = useState(0);
+  const doneRef = useRef(solved);
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'point' }]);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(solved, spoken);
+  const lad = useKzLadder(!solved);
+  const ready = items.every((x) => okText(x));
+  const led = useIdleLed(canTap && !solved && !ready, items.filter((x) => okText(x)).length);
+  useEffect(() => { if (doneRef.current && ready) store.set('myItems', items.map((x) => x.trim())); }, [items]); // eslint-disable-line react-hooks/exhaustive-deps
+  const confirm = () => {
+    if (!canTap || !ready) return;
+    store.set('myItems', items.map((x) => x.trim())); setStamp((v) => v + 1); sfx('ok', true);
+    if (!doneRef.current) {
+      doneRef.current = true; put({ done: true });
+      log({ screenId: 's13b', type: 'own-list-items', correct: true, hints: lad.asked.current, depth: lad.lv });
+      sayNow(c.ok, 'smile');
+    }
+  };
+  const setItem = (i, v) => { const n = items.slice(); n[i] = v; setItems(n); };
+  const bad = items.some((x) => hasTags(x)) ? UI.noTags : null;
+  const shown = items.map((x) => (okText(x) ? x : null));
+  const blocks = [{ t: 'h1', s: mine.title, k: 'h' }].concat(shown.some(Boolean)
+    ? [{ t: 'ul', k: 'ul' + stamp, kids: shown.map((x, i) => (x ? { li: true, s: x, k: 'i' + i } : null)).filter(Boolean) }] : []);
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="l3-sheetpage kz-typed">
+        <KzAsk text={solved ? c.ok : c.ask} hint={solved && !bad ? null : (bad || hintAt(lad.lv, c.hints))} />
+        <div className="kz-scene kz-scene-col">
+          <div className="kz-col">
+            <PaperBrowser title={pick(UI.mySite)} short cls="l3-br" pageHl={!solved}><ListPage blocks={blocks} /></PaperBrowser>
+            <KzCode cls="kz-code-sm" lines={[
+              { k: 'h', d: 0, cls: 'l3-edge', parts: [T_('h1'), W_(mine.title), T_('h1', true)] },
+              { k: 'uo', d: 0, cls: 'l3-edge', parts: [T_('ul')] },
+              ...[0, 1, 2].map((i) => ({ k: 'i' + i, d: 1, cls: 'is-hl', parts: [T_('li'),
+                <span key="g" className={'kz-gap' + (led && !okText(items[i]) ? ' kz-gap-led' : '')}>
+                  <InlineInput value={items[i]} onChange={(v) => setItem(i, v)} onEnter={confirm} placeholder={c.ph} label={c.ask} max={30} />
+                </span>, T_('li', true)] })),
+              { k: 'uc', d: 0, cls: 'l3-edge', parts: [T_('ul', true)] }
+            ]} />
+          </div>
+        </div>
+        <ReadyBtn on={canTap && ready} glow={canTap && ready && !solved} onClick={confirm} />
       </Sheet>
     </Stage>
   );
@@ -9699,6 +9826,167 @@ function S14({ p }) {
 }
 
 // =============================================================================
+// Q1. ПРОВЕРЬ СЕБЯ — новая страница без образца: два списка без тега списка —
+// покупки (порядок не важен) и шаги бутерброда (порядок важен); бирки ul, ol и
+// лишняя h1. Ученик сам решает, какой тег какому списку (перетащить или нажать
+// тег, потом место). До первой попытки ответ не подсвечен. Не туда — браузер
+// честно на миг показывает, что вышло, Коди называет причину, бирка возвращается.
+// =============================================================================
+const Q1_TAGS = ['ol', 'h1', 'ul'];
+const Q1_WANT = { a: 'ul', b: 'ol' };
+function Q1({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.q1;
+  const [rec, put] = useRec('q1');
+  const solved = !!(rec && rec.done);
+  const [slots, setSlots] = useState(solved ? Object.assign({}, Q1_WANT) : { a: null, b: null });
+  const [sel, setSel] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [shake, setShake] = useState(null);
+  const [peek, setPeek] = useState(null);
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'curious' }]);
+  const canTap = useCanAnswer(spoken);
+  const done = !!(slots.a && slots.b);
+  const canGo = useAdvanceGate(solved || done, spoken);
+  const lad = useKzLadder(!done);
+  const st = useRef({ tries: 0, misses: 0 });
+  const peekT = useRef(0);
+  useEffect(() => () => clearTimeout(peekT.current), []);
+  const nFull = (slots.a ? 1 : 0) + (slots.b ? 1 : 0);
+  const led = useIdleLed(canTap && !done, nFull + (sel ? 10 : 0));
+  const place = (tag, where) => {
+    if (!canTap || done || !tag || !where || slots[where]) return false;
+    st.current.tries += 1;
+    if (Q1_WANT[where] !== tag) {
+      st.current.misses += 1;
+      sfx('soft', true); setShake(tag); setTimeout(() => setShake(null), 520);
+      clearTimeout(peekT.current); setPeek({ where, tag }); peekT.current = setTimeout(() => setPeek(null), 1800);
+      const m = tag === 'h1' ? c.why.h1 : where === 'a' ? c.why.aOl : c.why.bUl;
+      setMsg(m); setSel(null); sayNow(m, 'think');
+      if (st.current.misses >= 2) lad.bump();
+      return false;
+    }
+    sfx('pop', true);
+    const ns = Object.assign({}, slots, { [where]: tag });
+    setSlots(ns); setSel(null); setMsg(null); setPeek(null);
+    if (ns.a && ns.b) {
+      put({ done: true });
+      log({ screenId: 'q1', type: 'ul-or-ol', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
+      sayNow(c.ok, 'smile');
+    }
+    return true;
+  };
+  const dnd = useKzDrag((tag, where) => place(tag, where));
+  const pickSlot = (where) => { if (!sel) { setMsg(c.pickFirst); return; } place(sel, where); };
+  const lit = lad.lv >= 3;
+  const nextWhere = !slots.a ? 'a' : 'b';
+  const A = c.itemsA.map(pick), B = c.itemsB.map(pick);
+  // Честная страница: без тега списка пункты li выпадают из ряда; h1 — огромные пункты.
+  const tagOf = (where) => slots[where] || (peek && peek.where === where ? peek.tag : null);
+  const listBlocks = (where, items) => {
+    const t = tagOf(where);
+    if (t === 'ul' || t === 'ol') return [{ t, k: where + t, kids: items.map((x, i) => ({ li: true, s: x, k: where + i })) }];
+    return items.map((x, i) => ({ t: 'stray', s: x, k: where + 's' + i, cls: t === 'h1' ? 'l3-big' : '' }));
+  };
+  const blocks = [{ t: 'p', s: pick(c.capA), k: 'ca' }].concat(listBlocks('a', A), [{ t: 'p', s: pick(c.capB), k: 'cb' }], listBlocks('b', B));
+  const slot = (where) => (
+    <button key={'s' + where} type="button" data-place={where} disabled={!canTap || done || !!slots[where]} onClick={() => pickSlot(where)}
+      className={'kz-dash kz-drop kz-q1-slot' + (dnd.hover === where ? ' is-hover' : '') + (dnd.active || sel ? ' is-call' : '')}>
+      <Led on={(led && !!sel) || (lit && where === nextWhere)} />
+    </button>
+  );
+  const listLines = (where, items) => [
+    { k: where + 'o', d: 0, cls: slots[where] ? 'is-new' : '', parts: slots[where] ? [T_(slots[where])] : [slot(where)] },
+    ...items.map((x, i) => ({ k: where + i, d: 1, parts: liParts(x) })),
+  ].concat(slots[where] ? [{ k: where + 'c', d: 0, cls: 'is-new', parts: [T_(slots[where], true)] }] : []);
+  const hint = hintAt(lad.lv, c.hints);
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="l3-sheetpage">
+        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} n={done ? null : nFull + '/2'} />
+        <div className={'kz-scene l3-duo l3-q1' + (dnd.active || sel ? ' is-dragging' : '')}>
+          <div className="kz-col">
+            <PaperBrowser title={pick(UI.mySite)} short cls="l3-br" pageHl={!!peek}><ListPage blocks={blocks} /></PaperBrowser>
+          </div>
+          <div className="kz-col">
+            <KzCode cls="kz-code-sm l3-code-xs" lines={[{ k: 'pa', d: 0, parts: [T_('p'), W_(pick(c.capA)), T_('p', true)] }].concat(listLines('a', A),
+              [{ k: 'pb', d: 0, parts: [T_('p'), W_(pick(c.capB)), T_('p', true)] }], listLines('b', B))} />
+          </div>
+        </div>
+        {!done ? (
+          <div className="kz-tray">
+            {Q1_TAGS.map((tg, i) => ((slots.a === tg || slots.b === tg) ? null : (
+              <button key={tg} type="button" disabled={!canTap} data-id={tg}
+                className={'kz-scrap kz-scrap-tag' + (sel === tg ? ' is-sel' : '') + (shake === tg ? ' kz-a-shake' : '') + (lit && tg === Q1_WANT[nextWhere] ? ' is-led' : '')}
+                style={{ '--r': ((i % 2 ? 1 : -1) * 2) + 'deg' }}
+                onPointerDown={(e) => { if (canTap && !done) dnd.start(e, tg, '<' + tg + '>'); }}
+                onClick={() => { setSel(sel === tg ? null : tg); setMsg(null); sfx('tap', true); }}>
+                <span translate="no">{'<' + tg + '>'}</span><Led on={led && !sel} />
+              </button>
+            )))}
+          </div>
+        ) : null}
+      </Sheet>
+      <KzGhost ghost={dnd.ghost} />
+    </Stage>
+  );
+}
+
+// =============================================================================
+// Q2. ГДЕ СТОИТ li? — три варианта, верный не первый. До первой попытки ничего
+// не подсвечено; неверный вариант гаснет, Коди называет причину, можно снова.
+// =============================================================================
+function Q2({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.q2;
+  const mine = useMine3();
+  const [rec, put] = useRec('q2');
+  const solved = !!(rec && rec.done);
+  const [off, setOff] = useState([]);
+  const [okNow, setOkNow] = useState(solved);
+  const [msg, setMsg] = useState(null);
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'curious' }]);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(solved || okNow, spoken);
+  const lad = useKzLadder(!okNow);
+  const led = useIdleLed(canTap && !okNow, off.length);
+  const choose = (o) => {
+    if (!canTap || okNow || off.indexOf(o.id) >= 0) return;
+    if (o.right) {
+      sfx('win', true); setOkNow(true); setMsg(null); put({ done: true });
+      log({ screenId: 'q2', type: 'where-li', correct: true, firstTry: off.length === 0 && lad.asked.current === 0, attempts: off.length + 1, hints: lad.asked.current, depth: lad.lv });
+      sayNow(c.ok, 'smile');
+      return;
+    }
+    sfx('soft', true); setOff(off.concat(o.id)); setMsg(o.why); sayNow(o.why, 'think');
+    if (off.length + 1 >= 2) lad.bump();
+  };
+  const lit = lad.lv >= 3;
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="l3-sheetpage">
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hintAt(lad.lv, c.hints))} />
+        <div className="kz-scene kz-scene-col kz-q2">
+          <div className="kz-col">
+            <KzCode lines={[{ k: 'l', d: 0, parts: [<span key="o" className="kz-q2-close">{T_('li')}</span>, W_(mine.items[0]), <span key="c" className="kz-q2-close">{T_('li', true)}</span>] }]} />
+            <div className="kz-quiz">
+              {c.opts.map((o) => (
+                <button key={o.id} type="button" disabled={!canTap || okNow || off.indexOf(o.id) >= 0} onClick={() => choose(o)}
+                  className={'kz-btn ' + (okNow && o.right ? 'is-ok' : off.indexOf(o.id) >= 0 ? 'is-off' : 'is-ghost') + (lit && o.right && !okNow ? ' is-led' : '')}>
+                  {pick(o.t)}<Led on={led && !okNow && off.indexOf(o.id) < 0} />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Sheet>
+    </Stage>
+  );
+}
+
+// =============================================================================
 // S15. ВЫВОД — свой список ученика в бумажном браузере; роли ul, ol, li
 // загораются, пока Коди их называет. Единственный праздник урока.
 // =============================================================================
@@ -9752,12 +10040,14 @@ const SCREENS = [
   { id: 's3', code: 'SHOW', Comp: S3 }, { id: 's4', code: 'LEVEL-1', Comp: S4 }, { id: 's5', code: 'PREDICT', Comp: S5 },
   { id: 's6', code: 'SHOW', Comp: S6 }, { id: 's7', code: 'LEVEL-2', Comp: S7 }, { id: 's8', code: 'CHECK-1', Comp: S8 },
   { id: 's9', code: 'SHOW', Comp: S9 }, { id: 's10', code: 'LEVEL-3', Comp: S10 }, { id: 's11', code: 'CHECK-2', Comp: S11 },
-  { id: 's12', code: 'SHOW', Comp: S12 }, { id: 's13', code: 'LEVEL-4', Comp: S13 }, { id: 's14', code: 'CHECK-3', Comp: S14 },
+  { id: 's12', code: 'SHOW', Comp: S12 }, { id: 's13', code: 'LEVEL-4', Comp: S13 }, { id: 's13b', code: 'LEVEL-4B', Comp: S13B },
+  { id: 's14', code: 'CHECK-3', Comp: S14 },
+  { id: 'q1', code: 'CHECK-4', Comp: Q1 }, { id: 'q2', code: 'QUIZ', Comp: Q2 },
   { id: 's15', code: 'ACHIEVEMENT', Comp: S15 }
 ];
 // «Повторить» стирает только экран; название и пункты ученика (myTitle, myItems) остаются.
 const SCREEN_RESET = { s1: ['s1'], s2: ['s2'], s3: ['s3'], s4: ['s4'], s5: ['s5'], s6: ['s6'], s7: ['s7'], s8: ['s8'], s9: ['s9'],
-  s10: ['s10'], s11: ['s11'], s12: ['s12'], s13: ['s13'], s14: ['s14'] };
+  s10: ['s10'], s11: ['s11'], s12: ['s12'], s13: ['s13'], s13b: ['s13b'], s14: ['s14'], q1: ['q1'], q2: ['q2'] };
 
 // Артефакт урока — страница ученика: название на вкладке и в h1, свой список.
 function lesson3Artifact(store) {
@@ -11792,4 +12082,16 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
   .l3-s1 .l3-strip { font-size: 12.5px; padding: 3px 7px 4px; overflow-wrap: break-word; }
 }
 .is-kbd .l3-sheetpage .kz-scene-col .kz-br.l3-br.is-short { aspect-ratio: auto; }
+
+/* Итоговая проверка (q1): h1 вокруг списка — честно огромные пункты. */
+.l3-stray.l3-big { font-size: 1.7em; font-weight: 800; line-height: 1.15; }
+/* Экраны своего списка и итоговой проверки на телефоне: браузер ниже, чтобы влезли код и «Готово». */
+@media (max-width: 759px) {
+  .l3-sheetpage.kz-typed .kz-scene-col .kz-br.l3-br.is-short { --brh: 17dvh; aspect-ratio: 16 / 7; }
+  .l3-sheetpage .l3-q1 .kz-br.l3-br.is-short { --brh: 24dvh; aspect-ratio: 16 / 9.5; }
+  .kz-typed .kz-line { min-height: 26px; padding-top: 2px; padding-bottom: 2px; }
+  .l3-q1 .kz-line { min-height: 22px; padding-top: 1px; padding-bottom: 1px; }
+}
+/* Открытая клавиатура: браузер своего списка сжимается до полосы с вкладкой и строки окна. */
+.is-kbd .l3-sheetpage.kz-typed .kz-scene-col .kz-br.l3-br.is-short { aspect-ratio: auto; }
 `;

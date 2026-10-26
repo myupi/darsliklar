@@ -67,6 +67,7 @@ const UI = {
   sort: L3('Saralash', 'Разложить', 'Sort'),
   things: L3('Narsalar', 'Вещи', 'Things'),
   cocoa: L3('Kakao', 'Какао', 'Cocoa'),
+  ready: L3('Tayyor', 'Готово', 'Done'),
   mySite: L3('Mening ro‘yxatim', 'Мой список', 'My list'),
   hello: L3('Salom, dunyo!', 'Привет, мир!', 'Hello, world!'),
   play: L3('O‘ynash', 'Играть', 'Play'),
@@ -283,20 +284,32 @@ const C = {
     ask: L3('Brauzer qanday o‘qishini kuzating', 'Смотри, как читает браузер', 'Watch how the browser reads'),
     askDone: L3('Brauzer yuqoridan pastga o‘qiydi', 'Браузер читает сверху вниз', 'The browser reads top to bottom')
   },
+  // Свой список — два экрана (одно действие на экран): название, потом три пункта; засчёт по «Готово».
   s13: {
-    eyebrow: L3('O‘z ro‘yxatingiz', 'Свой список', 'Your list'),
-    say: L3('Endi o‘z ro‘yxatingizni tuzing. Avval h1 ichiga uning nomini yozing: masalan, sevimli o‘yinlaringiz.', 'Теперь твой список. Сначала напиши в h1 его название — например, любимые игры.', 'Now your own list. First type its name in h1: your favorite games, for example.'),
-    sayItems: L3('Endi uchta li ichiga uchta band yozing.', 'Теперь напиши три пункта — по одному в каждый li.', 'Now type three items, one in each li.'),
-    ok: L3('Ro‘yxatingiz tayyor: nom va uchta band bor.', 'Твой список готов: есть название и три пункта.', 'Your list is ready: a name and three items.'),
+    eyebrow: L3('Ro‘yxat nomi', 'Название списка', 'List name'),
+    say: L3('Endi o‘z ro‘yxatingizni tuzing. h1 ichiga uning nomini yozing, masalan, sevimli o‘yinlaringiz, va «Tayyor»ni bosing.',
+      'Теперь твой список. Напиши в h1 его название, например, любимые игры, и нажми «Готово».',
+      'Now your own list. Type its name in h1, for example, your favorite games, then tap “Done”.'),
+    ok: L3('Zo‘r nom! Bu ro‘yxatingizning asosiy sarlavhasi.', 'Отличное название! Это главный заголовок твоего списка.', 'Great name! It’s the main heading of your list.'),
     hints: [
       L3('Ro‘yxat nomini o‘ylab toping: sevimli o‘yinlar, taomlar yoki filmlar.', 'Придумай название: любимые игры, еда или фильмы.', 'Make up a name: favorite games, food or films.'),
       L3('Faqat so‘z yozing, teglar allaqachon joyida.', 'Пиши только слова — теги уже на месте.', 'Type only words: the tags are already in place.'),
-      L3('Masalan: Sevimli o‘yinlarim. Bandlar: futbol, shaxmat, Minecraft.', 'Например: Мои любимые игры. Пункты: футбол, шахматы, Minecraft.', 'For example: My favorite games. Items: football, chess, Minecraft.')
+      L3('Masalan: Sevimli o‘yinlarim. Keyin «Tayyor»ni bosing.', 'Например: Мои любимые игры. Потом нажми «Готово».', 'For example: My favorite games. Then tap “Done”.')
     ],
-    askTitle: L3('h1 ichiga ro‘yxat nomini yozing', 'Напиши название в h1', 'Type the list name in h1'),
-    askItems: L3('Har bir li ichiga bitta band yozing', 'Напиши по пункту в каждый li', 'Type one item in each li'),
-    phTitle: L3('Masalan: Sevimli o‘yinlarim', 'Например: Мои любимые игры', 'For example: My favorite games'),
-    phItem: L3('band', 'пункт', 'item')
+    ask: L3('h1 ichiga ro‘yxat nomini yozing va «Tayyor»ni bosing', 'Напиши название в h1 и нажми «Готово»', 'Type the list name in h1 and tap “Done”'),
+    ph: L3('Masalan: Sevimli o‘yinlarim', 'Например: Мои любимые игры', 'For example: My favorite games')
+  },
+  s13b: {
+    eyebrow: L3('Ro‘yxat bandlari', 'Пункты списка', 'List items'),
+    say: L3('Endi uchta band yozing, har bir li ichiga bittadan, va «Tayyor»ni bosing.', 'Теперь напиши три пункта, по одному в каждый li, и нажми «Готово».', 'Now type three items, one in each li, then tap “Done”.'),
+    ok: L3('Ro‘yxatingiz tayyor: nom va uchta band bor.', 'Твой список готов: есть название и три пункта.', 'Your list is ready: a name and three items.'),
+    hints: [
+      L3('Ro‘yxatingizga nima kiradi? Uchta narsa o‘ylab toping.', 'Что входит в твой список? Придумай три вещи.', 'What goes in your list? Think of three things.'),
+      L3('Faqat so‘z yozing, teglar allaqachon joyida.', 'Пиши только слова — теги уже на месте.', 'Type only words: the tags are already in place.'),
+      L3('Masalan: futbol, shaxmat, Minecraft. Keyin «Tayyor»ni bosing.', 'Например: футбол, шахматы, Minecraft. Потом нажми «Готово».', 'For example: football, chess, Minecraft. Then tap “Done”.')
+    ],
+    ask: L3('Har bir li ichiga bitta band yozing va «Tayyor»ni bosing', 'Напиши по пункту в каждый li и нажми «Готово»', 'Type one item in each li and tap “Done”'),
+    ph: L3('band', 'пункт', 'item')
   },
   s14: {
     eyebrow: L3('Bu sizning topingiz', 'Это твой топ', 'Your top list'),
@@ -310,6 +323,50 @@ const C = {
     ok: L3('To‘g‘ri! Yopuvchi teg ham ol bo‘ldi: juft doim bir xil. Endi bandlar raqamlangan.', 'Верно! Закрывающий тоже стал ol — пара всегда одинаковая. Теперь у пунктов номера.', 'Right! The closing tag became ol too: a pair always matches. Now the items have numbers.'),
     ask: L3('Kerakli tegni ul o‘rniga torting', 'Перетащи нужный тег на место ul', 'Drag the right tag onto ul'),
     opts: ['<li>', '<ol>', '<p>']
+  },
+  // ИТОГОВАЯ ПРОВЕРКА (q1, q2): новый пример без образца; до первой попытки ответ не подсвечен.
+  q1: {
+    eyebrow: L3('O‘zingizni tekshiring', 'Проверь себя', 'Check yourself'),
+    say: L3('Yangi sahifa: xaridlar va buterbrod. Har bir ro‘yxatga o‘z tegini qo‘ying. Bitta teg ortiqcha.',
+      'Новая страница: покупки и бутерброд. Поставь каждому списку свой тег. Один тег лишний.',
+      'A new page: shopping and a sandwich. Give each list its own tag. One tag is extra.'),
+    capA: L3('Do‘kondan olish kerak:', 'Купить в магазине:', 'To buy at the shop:'),
+    itemsA: [L3('non', 'хлеб', 'bread'), L3('olma', 'яблоки', 'apples')],
+    capB: L3('Buterbrod tayyorlash:', 'Как сделать бутерброд:', 'How to make a sandwich:'),
+    itemsB: [L3('Nonga pishloq qo‘ying', 'Положи сыр на хлеб', 'Put cheese on the bread'), L3('Ikkinchi bo‘lak bilan yoping', 'Накрой вторым ломтиком', 'Cover it with the second slice')],
+    why: {
+      aOl: L3('Qarang: xaridlarda raqamlar paydo bo‘ldi. Lekin bu yerda tartib muhim emas, ul kerak.', 'Смотри: у покупок появились номера. Но порядок тут не важен, нужен ul.', 'Look: the shopping list got numbers. But order doesn’t matter here, so you need ul.'),
+      bUl: L3('Qarang: qadamlarda faqat nuqtalar. Qadamlar tartib bilan bajariladi, ol kerak.', 'Смотри: у шагов только точки. Шаги делают по порядку, нужен ol.', 'Look: the steps only have dots. Steps go in order, so you need ol.'),
+      h1: L3('Qarang: bandlar ulkan bo‘lib qoldi. h1 sarlavha uchun, ro‘yxatga esa ul yoki ol kerak.', 'Смотри: пункты стали огромными. h1 — для заголовка, а списку нужен ul или ol.', 'Look: the items became huge. h1 is for a heading; a list needs ul or ol.')
+    },
+    hints: [
+      L3('Qayerda tartib muhim, qayerda esa yo‘q?', 'Где порядок важен, а где нет?', 'Where does order matter, and where doesn’t it?'),
+      L3('Tartib muhim emas — ul, muhim — ol. h1 ortiqcha.', 'Порядок не важен — ul, важен — ol. h1 лишний.', 'Order doesn’t matter: ul. Order matters: ol. h1 is extra.'),
+      L3('Yonib turgan tegni yonib turgan joyga torting.', 'Перетащи светящийся тег на светящееся место.', 'Drag the glowing tag to the glowing place.')
+    ],
+    ok: L3('Ajoyib! Xaridlar ul da, tartib muhim emas. Qadamlar ol da, tartib bilan.', 'Отлично! Покупки в ul, порядок не важен. Шаги в ol, по порядку.', 'Great! Shopping is in ul, order doesn’t matter. The steps are in ol, in order.'),
+    pickFirst: L3('Avval tegni tanlang.', 'Сначала выбери тег.', 'Pick a tag first.'),
+    ask: L3('Tegni ro‘yxat boshiga torting', 'Перетащи тег в начало списка', 'Drag a tag to the start of a list'),
+    askPlace: L3('Endi joyni bosing', 'Теперь нажми место', 'Now tap the place')
+  },
+  q2: {
+    eyebrow: L3('li qayerda?', 'Где стоит li?', 'Where does li go?'),
+    say: L3('Oxirgi savol. li tegi qayerda turishi mumkin?', 'Последний вопрос. Где может стоять тег li?', 'Last question. Where can the li tag go?'),
+    // Верный ответ не первый; неверные гаснут после попытки, с объяснением.
+    opts: [
+      { id: 'any', t: L3('Sahifaning istalgan joyida', 'Где угодно на странице', 'Anywhere on the page'),
+        why: L3('Yo‘q: li ro‘yxat bandi, u ul yoki ol ichida turadi. Ro‘yxatdan tashqarida u qatordan chiqib qoladi.', 'Нет: li — пункт списка, он стоит внутри ul или ol. Вне списка он выпадает из ряда.', 'No: li is a list item; it goes inside ul or ol. Outside a list it falls out of line.') },
+      { id: 'list', right: true, t: L3('Faqat ul yoki ol ichida', 'Только внутри ul или ol', 'Only inside ul or ol') },
+      { id: 'h1', t: L3('h1 ichida', 'Внутри h1', 'Inside h1'),
+        why: L3('Yo‘q: h1 sarlavha. li bandlari ul yoki ol ichida turadi.', 'Нет: h1 — заголовок. Пункты li стоят внутри ul или ol.', 'No: h1 is a heading. li items go inside ul or ol.') }
+    ],
+    hints: [
+      L3('Bandlar qanday ro‘yxatlarda turganini eslang.', 'Вспомни, в каких списках стояли пункты.', 'Remember which lists the items were in.'),
+      L3('li bitta band. Bandlar nima ichida bo‘ladi?', 'li — один пункт. Внутри чего бывают пункты?', 'li is one item. What are items inside of?'),
+      L3('li faqat ul yoki ol ichida turadi.', 'li стоит только внутри ul или ol.', 'li only goes inside ul or ol.')
+    ],
+    ok: L3('To‘g‘ri! li — ro‘yxat bandi, u faqat ul yoki ol ichida turadi.', 'Верно! li — пункт списка, и стоит он только внутри ul или ol.', 'Right! li is a list item, and it only goes inside ul or ol.'),
+    ask: L3('Javobni tanlang', 'Выбери ответ', 'Pick an answer')
   },
   s15: {
     eyebrow: L3('Xulosa', 'Вывод', 'Summary'),
@@ -332,9 +389,9 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { magicUl: 1, magicOl: 1, sayLi: 1, doneUl: 1, doneLi: 1, msgs: 1, askQ: 1, miss: 1, sayN: 1, mixed: 1,
+Object.assign(SPOKEN, { opts: 1, why: 1, magicUl: 1, magicOl: 1, sayLi: 1, doneUl: 1, doneLi: 1, msgs: 1, askQ: 1, miss: 1, sayN: 1, mixed: 1,
   sayDo: 1, fine: 1, order1: 1, order2: 1, order3: 1, sayItems: 1, cards: 1, pickFirst: 1 });
-Object.assign(NOT_SPOKEN_IN, { cards: { title: 1, items: 1, id: 1, want: 1 } });
+Object.assign(NOT_SPOKEN_IN, { opts: { t: 1, id: 1, right: 1 }, cards: { title: 1, items: 1, id: 1, want: 1 } });
 // Теги урока вслух — по-английски во всех языках (заказчик, 17.10.2026).
 Object.assign(TAG_SAY.ru, { ul: 'U L', ol: 'O L', li: 'L I' });
 Object.assign(TAG_SAY.uz, { ul: 'U L', ol: 'O L', li: 'L I' });

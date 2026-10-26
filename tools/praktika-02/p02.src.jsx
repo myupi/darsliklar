@@ -58,7 +58,7 @@ const fillL = (node, vars) => {
 // СТЕНГАЗЕТА — пять вырезок. Задание n чинит вырезку n; последняя — статья ученика.
 // ─────────────────────────────────────────────────────────────────────────────
 const STREET = [
-  { id: 'mast',    c: '#E0643F', name: L3('Gazeta nomi', 'Название', 'The masthead') },
+  { id: 'mast',    c: '#E0643F', name: L3('Gazeta nomi', 'Название газеты', 'The masthead') },
   { id: 'news',    c: '#2A8C7E', name: L3('Yangiliklar', 'Новости', 'News') },
   { id: 'sport',   c: '#F0B13F', name: L3('Sport', 'Спорт', 'Sports') },
   { id: 'weather', c: '#5E8FB8', name: L3('Ob-havo', 'Погода', 'Weather') },
@@ -73,6 +73,7 @@ const TXT = {
   mastText: L3('Har hafta yangi son.', 'Каждую неделю новый выпуск.', 'A new issue every week.'),
   sport: L3('Sport', 'Спорт', 'Sports'),
   news: L3('Yangiliklar', 'Новости', 'News'),
+  otherPaper: L3('Maktab xabarlari', 'Школьный вестник', 'School Herald'),   // образец 3-й ступени задания 1 — название другой газеты
   news1: L3('Ertaga ekskursiya bo‘ladi.', 'Завтра у нас экскурсия.', 'Tomorrow we have a trip.'),
   news2: L3('Avtobus ertalab jo‘naydi.', 'Автобус уходит утром.', 'The bus leaves in the morning.'),
   rain1: L3('Bugun yomg‘ir yog‘adi.', 'Сегодня будет дождь.', 'It will rain today.'),
@@ -292,7 +293,7 @@ const C = {
   t5: {
     order: L3('O‘z maqolangizni yozing: h2 sarlavha, xatboshi va bitta ajratilgan so‘z', 'Напиши свою статью: заголовок h2, абзац и одно выделенное слово', 'Write your article: an h2 heading, a paragraph and one highlighted word'),
     say: L3('Gazeta tuzaldi! Endi sizning maqolangiz. Mavzuni o‘zingiz tanlang: h2 sarlavha yozing, uning ostiga xatboshi, xatboshida esa bitta so‘zni qalin yoki qiya qiling.',
-      'Газета починена! Теперь твоя статья. Тему выбери сам: напиши заголовок h2, под ним абзац, а в абзаце выдели одно слово жирным или наклонным.',
+      'Газета починена! Теперь твоя статья. Тему выбери любую: напиши заголовок h2, под ним абзац, а в абзаце выдели одно слово жирным или наклонным.',
       'The newspaper is fixed! Now your article. Pick any topic: write an h2 heading, a paragraph under it, and make one word in the paragraph bold or italic.'),
     empty: L3('Maqolangiz shu yerda chiqadi', 'Здесь появится твоя статья', 'Your article will appear here'),
     hints: [

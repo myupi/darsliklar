@@ -27,6 +27,7 @@ const STEPS = [
     qa.expect(!qa.q('button.z2-hstrip'), 'показ: полоски не нажимаются');
     await qa.waitFor(() => qa.q('.z2-star'), 40000, 'рука нажала h1');
     await qa.waitFor(() => qa.platform.nextEnabled(), 60000, 'показ закончен');
+    qa.expect(qa.events('tts').some((e) => new RegExp(qa.data.endS3).test((e.data && e.data.text) || '')), 'последняя реплика показа прозвучала');
     qa.expect(!!qa.q('.z2-loupe'), 'у h6 лупа');
     qa.expect(qa.qa('.kz-br-page').every((pg) => pg.scrollHeight <= pg.clientHeight + 1), 'страница в окне целиком, без прокрутки');
   } },
@@ -55,6 +56,7 @@ const STEPS = [
     qa.expect(!!qa.q('.z2-raw'), 'три строки склеены в одну');
     qa.expect(!qa.q('.kz-line.kz-tap'), 'показ: строки не нажимаются');
     await qa.waitFor(() => qa.platform.nextEnabled(), 60000, 'показ закончен');
+    qa.expect(qa.events('tts').some((e) => new RegExp(qa.data.endS6).test((e.data && e.data.text) || '')), 'последняя реплика показа прозвучала');
     qa.expect(qa.qa('.z2-p').length === 3, 'три абзаца в окне');
     qa.expect(qa.qa('.kz-br-page').every((pg) => pg.scrollHeight <= pg.clientHeight + 1), 'страница в окне целиком, без прокрутки');
   } },
@@ -91,6 +93,7 @@ const STEPS = [
     await qa.platform.ready(30000);
     await qa.waitFor(() => qa.q('.z2-w.is-b.is-on'), 40000, 'рука нажала бирку b');
     await qa.waitFor(() => qa.platform.nextEnabled(), 60000, 'показ закончен');
+    qa.expect(qa.events('tts').some((e) => new RegExp(qa.data.endS9).test((e.data && e.data.text) || '')), 'последняя реплика показа прозвучала');
     qa.expect(!!qa.q('.z2-w.is-b.is-on') && !!qa.q('.z2-w.is-i.is-on'), 'слово жирное с полоской и слово курсивом');
     qa.expect(qa.qa('.kz-br-page').every((pg) => pg.scrollHeight <= pg.clientHeight + 1), 'страница в окне целиком, без прокрутки');
   } },
@@ -124,16 +127,27 @@ const STEPS = [
     qa.expect(!qa.q('.kz-sheet .kz-btn') && !qa.q('.kz-hand'), 'показ: ни кнопок, ни руки');
     await qa.waitFor(() => qa.qa('.kz-br-page .z2-blk').length === 4, 40000, 'страница собрана');
     await qa.waitFor(() => qa.platform.nextEnabled(), 60000, 'показ закончен');
+    qa.expect(qa.events('tts').some((e) => new RegExp(qa.data.endS12).test((e.data && e.data.text) || '')), 'последняя реплика показа прозвучала');
     qa.expect(qa.qa('.kz-br-page').every((pg) => pg.scrollHeight <= pg.clientHeight + 1), 'страница в окне целиком, без прокрутки');
   } },
-  { name: 's13: своя страница', shot: 's13-done', run: async (qa) => {
+  { name: 's13: свой заголовок по «Готово»', shot: 's13-done', run: async (qa) => {
     await qa.platform.next();
     await qa.platform.ready();
-    qa.type(qa.qa('.kz-line textarea')[0], qa.data.myTitle, 'название');
-    await qa.waitFor(() => qa.text('.kz-ask-n') === '2/2', 6000, 'шаг 2');
-    qa.type(qa.qa('.kz-line textarea')[1], qa.data.myText, 'предложение');
-    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано');
-    qa.expect(qa.text('.kz-br-page .z2-h1') === qa.data.myTitle, 'h1 = своё название');
+    qa.type('.kz-line textarea', qa.data.myTitle, 'заголовок');
+    await qa.sleep(1600);
+    qa.expect(qa.text('.kz-br-page .z2-h1') === qa.data.myTitle && !qa.platform.nextEnabled(), 'окно показывает заголовок сразу, пауза не засчитывает');
+    await qa.click('.kz-ready', 'Готово');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано по «Готово»');
+  } },
+  { name: 's13b: свой абзац по «Готово»', shot: 's13b-done', run: async (qa) => {
+    await qa.platform.next();
+    await qa.platform.ready();
+    qa.expect(qa.text('.kz-br-page .z2-h1') === qa.data.myTitle, 'h1 = свой заголовок с прошлого экрана');
+    qa.type('.kz-line textarea', qa.data.myText, 'предложение');
+    await qa.sleep(1600);
+    qa.expect(!qa.platform.nextEnabled(), 'пауза не засчитывает');
+    await qa.click('.kz-ready', 'Готово');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано по «Готово»');
     qa.expect(qa.qa('.kz-br-page').every((pg) => pg.scrollHeight <= pg.clientHeight + 1), 'страница в окне целиком, без прокрутки');
   } },
   { name: 's14: вставить </b>', shot: 's14-done', run: async (qa) => {
@@ -144,6 +158,22 @@ const STEPS = [
     await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано');
     qa.expect(qa.qa('.kz-br-page .z2-b').length === 1, 'жирное одно слово');
     qa.expect(qa.qa('.kz-br-page').every((pg) => pg.scrollHeight <= pg.clientHeight + 1), 'страница в окне целиком, без прокрутки');
+  } },
+  { name: 'q1: страница про собаку — h1, p, b', shot: 'q1-done', run: async (qa) => {
+    await qa.platform.next();
+    await qa.platform.ready();
+    qa.expect(!qa.q('.kz-q1-slot .led, .kz-scrap.is-led'), 'до первой попытки ответ не подсвечен');
+    const put = async (t, where) => { await qa.clickText('.kz-scrap', t); await qa.click('.kz-q1-slot[data-place="' + where + '"]', where); await qa.sleep(300); };
+    await put('<h1>', 'head'); await put('<p>', 'line'); await put('<b>', 'word');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано');
+    qa.expect(!!qa.q('.kz-br-page .z2-h1') && !!qa.q('.kz-br-page .z2-p b, .kz-br-page .z2-p strong, .kz-br-page .z2-p .z2-b'), 'честно: заголовок h1 и жирное слово');
+  } },
+  { name: 'q2: сколько h1', shot: 'q2-done', run: async (qa) => {
+    await qa.platform.next();
+    await qa.platform.ready();
+    qa.expect(qa.qa('.kz-quiz .kz-btn').length === 3 && !qa.q('.kz-quiz .kz-btn.is-ok, .kz-quiz .kz-btn.is-led'), 'три варианта, ничего не подсвечено');
+    await qa.clickNth('.kz-quiz .kz-btn', 1, 'верный ответ');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано');
   } },
   { name: 's15: вывод', shot: 's15-done', run: async (qa) => {
     await qa.platform.next();
@@ -168,13 +198,13 @@ export default {
   langs: ['ru'],
   size: process.env.QA_SIZE || '1280x720',   // QA_SIZE=360x640 — прогон сценария на телефоне
   voice: 'fast',
-  screens: 15,
-  inputScreens: [4, 7, 10, 13],
+  screens: 18,
+  inputScreens: [4, 7, 10, 13, 14],
   expectFinish: true,
   data: {
-    ru: { myTitle: 'Шахматы', myText: 'Я играю в шахматы с папой.' },
-    uz: { myTitle: 'Shaxmat', myText: 'Men dadam bilan shaxmat o‘ynayman.' },
-    en: { myTitle: 'Chess', myText: 'I play chess with my dad.' }
+    ru: { myTitle: 'Шахматы', myText: 'Я играю в шахматы с папой.', endS3: 'Бумажные полоски мы сделали', endS6: 'Между абзацами браузер сам делает отступ', endS9: 'закрывающий после', endS12: 'заголовок раздела, и снова абзац' },
+    uz: { myTitle: 'Shaxmat', myText: 'Men dadam bilan shaxmat o‘ynayman.', endS3: 'tasmalarni esa yaqqol', endS6: 'orasida brauzer', endS9: 'atrofiga', endS12: 'sarlavhasi, va yana xatboshi' },
+    en: { myTitle: 'Chess', myText: 'I play chess with my dad.', endS3: 'We made the paper strips', endS6: 'adds space between paragraphs', endS9: 'the closing tag after', endS12: 'and another paragraph' }
   },
   steps: STEPS,
   flows: [
@@ -201,6 +231,18 @@ export default {
       await qa.platform.ready();
       await qa.clickNth('.z2-tagbtn', 1, 'i вместо b');
       await qa.waitFor(() => /\/4/.test(qa.text('.kz-ask-n')), 30000, 'раундов стало четыре');
+    } }] }
+    ,{ name: 'q1: заголовок в h6 → причина', start: 15, langs: ['ru'], steps: [{ name: 'h6 на заголовок', run: async (qa) => {
+      await qa.platform.ready();
+      await qa.clickText('.kz-scrap', '<h6>'); await qa.click('.kz-q1-slot[data-place="head"]', 'заголовок');
+      await qa.waitFor(() => qa.q('.kz-ask.is-hint'), 3000, 'причина на месте задания');
+      qa.expect(/h1/.test(qa.text('.kz-ask')) && qa.qa('.kz-tray .kz-scrap').length === 4 && !qa.platform.nextEnabled(), 'бирка вернулась, «Дальше» закрыта', { ask: qa.text('.kz-ask') });
+    } }] },
+    { name: 'q2: неверный ответ → причина, снова', start: 16, langs: ['ru'], steps: [{ name: 'первый вариант', run: async (qa) => {
+      await qa.platform.ready();
+      await qa.clickNth('.kz-quiz .kz-btn', 0, 'неверный ответ');
+      await qa.waitFor(() => qa.q('.kz-ask.is-hint'), 3000, 'причина на месте задания');
+      qa.expect(qa.qa('.kz-quiz .kz-btn.is-off').length === 1 && !qa.platform.nextEnabled(), 'вариант погас, можно выбрать снова');
     } }] }
   ]
 };

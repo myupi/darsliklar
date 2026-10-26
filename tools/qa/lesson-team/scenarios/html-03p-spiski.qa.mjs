@@ -142,6 +142,8 @@ export default {
       qa.type('.ed-ta', '<h1>Мои игры</h1>\n<ul>\n<li>футбол</li>\n<li>шахматы</li>\n<li>прятки</li>\n</ul>', 'свой список');
       await qa.click('.pp-go', 'Проверить'); await qa.sleep(350);
       await qa.waitFor(() => qa.q('.pp-drill-tag'), 4000, 'дополнительная задача');
+      qa.platform.hint(); await qa.sleep(500);
+      qa.expect(!!qa.q('.pp-note.is-hint'), 'в дополнительной задаче лампочка даёт правило (2-я ступень)', { note: qa.text('.pp-note') });
       qa.expect(!qa.platform.nextEnabled(), '«Дальше» ждёт дополнительную задачу');
       qa.type('.ed-ta', '<ol>\n<li>Вскипяти воду</li>\n<li>Положи чай</li>\n<li>Залей водой</li>\n</ol>', 'шаги чая');
       await qa.click('.pp-go', 'Проверить'); await qa.sleep(350);

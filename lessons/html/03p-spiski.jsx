@@ -1976,10 +1976,10 @@ function PersonaBubble({ who = 'bot', pose, text, onSpoken, nonce, quiet }) {
       {/* Робот рисуется кодом — внешних картинок в уроке нет. По нажатию
           повторяет реплику: ребёнку естественнее ткнуть в героя, чем искать
           кнопку, поэтому персонаж и кнопка делают одно и то же. */}
-      <span className="speaker-av" onClick={silent && !quiet ? replay : undefined}>
+      <span className="speaker-av" onClick={!quiet ? replay : undefined}>
         <RobotSVG pose={pose} talking={speaking} />
       </span>
-      {quiet ? null : silent ? (
+      {quiet ? null : (
         <>
           {/* КУРС HTML: речь показывают волны вокруг кружка с головой Коди —
               отдельного кружка с полосками больше нет. */}
@@ -1987,8 +1987,6 @@ function PersonaBubble({ who = 'bot', pose, text, onSpoken, nonce, quiet }) {
               Отдельным узлом, а не внутри кнопки: aria-label кнопки перебил бы её. */}
           <span className="sv-sr">{line}</span>
         </>
-      ) : (
-        <div className="speaker-bubble">{line}</div>
       )}
     </div>
   );
@@ -6779,12 +6777,12 @@ const UI = {
   target: L3('Brauzerda shunday bo‘ladi', 'Как должно быть', 'How it should look'),
   left: L3('Tuzatish kerak: {n}', 'Осталось исправить: {n}', 'Left to fix: {n}'),
   allFixed: L3('Hammasi tuzatildi', 'Всё исправлено', 'All fixed'),
-  needH1: L3('h1 — ro‘yxat nomi', 'h1 — название', 'h1 — the list name'),
+  needH1: L3('h1 — ro‘yxat nomi', 'h1 — название списка', 'h1 — the list name'),
   needList: L3('ul yoki ol — ro‘yxat', 'ul или ol — список', 'ul or ol — the list'),
   need3: L3('kamida 3 ta li band', 'хотя бы 3 пункта li', 'at least 3 li items'),
   needClosed: L3('hamma teglar yopilgan', 'все теги закрыты', 'all tags are closed'),
   nextLesson: L3('Keyingi dars', 'Следующий урок', 'Next lesson'),
-  next: L3('Havolalar', 'Ссылки', 'Links'),
+  next: L3('Havolalar va atributlar', 'Ссылки и атрибуты', 'Links and attributes'),
   up: L3('Yuqoriga', 'Вверх', 'Up'),
   down: L3('Pastga', 'Вниз', 'Down'),
   mySite: L3('Mening ro‘yxatim', 'Мой список', 'My list'),
@@ -6802,7 +6800,7 @@ const FB = {
   unclosedIn: L3('{tag} hali yopilmagan, {next} esa allaqachon tugayapti.', '{tag} ещё не закрыт, а {next} уже заканчивается.', '{tag} isn’t closed yet, but {next} is already ending.'),
   blockInBlock: L3('{tag} hali tugamadi, {next} esa boshlanyapti. Avval {tag} ni yoping.', '{tag} ещё не закончился, а {next} уже начинается. Сначала закрой {tag}.', '{tag} hasn’t ended, but {next} is already starting. Close {tag} first.'),
   inlineOutside: L3('{tag} so‘z atrofiga qo‘yiladi: xatboshi yoki sarlavha ichida.', '{tag} ставят вокруг слова — внутри абзаца или заголовка.', '{tag} goes around a word, inside a paragraph or a heading.'),
-  textOutside: L3('Matn teglardan tashqarida turibdi. Uni o‘z tegiga qo‘ying: nom h1 ga, band li ga.', 'Текст стоит снаружи тегов. Поставь его в свой тег: название — в h1, пункт — в li.', 'The text is outside the tags. Put it in its tag: the list name in h1, an item in li.'),
+  textOutside: L3('Matn teglardan tashqarida turibdi. Ro‘yxat bandini li ichiga qo‘ying.', 'Текст стоит снаружи тегов. Пункт списка поставь внутрь li.', 'The text is outside the tags. Put the list item inside li.'),
   noGt: L3('{tag} tegi oxirida o‘ng «>» qavs yetishmayapti.', 'У тега {tag} в конце не хватает уголка «>».', 'The {tag} tag is missing the bracket “>” at the end.'),
   noLt: L3('{tag} oldida chap «<» qavs yetishmayapti.', 'Перед {tag} не хватает уголка «<».', 'The bracket “<” is missing before {tag}.'),
   unknown: L3('«{raw}» tegida harflar adashgan: {tag} kerak.', 'В теге «{raw}» перепутаны буквы: нужно {tag}.', 'The letters in “{raw}” are mixed up: it should be {tag}.'),
@@ -6815,7 +6813,7 @@ const FB = {
   unclosedEnd: L3('{tag} nima bilan tugashini tekshiring: yopuvchi teg yo‘q.', 'Проверь, чем заканчивается {tag}: закрывающего тега нет.', 'Check how {tag} ends: there is no closing tag.'),
   closeWithoutOpen: L3('Bu yerda yopuvchi {tag} bor, ochuvchisi esa yo‘q.', 'Здесь закрывающий {tag}, а открывающего нет.', 'There is a closing {tag} here, but no opening one.'),
   textSame: L3('Teglar joyida! Faqat so‘zlar o‘zgarib qoldi: teglarni tuzatamiz, matnni esa avvalgidek qoldiramiz.', 'Теги в порядке! Только слова изменились: чиним теги, а текст оставляем как был.', 'The tags are fine! Only the words changed: we fix the tags and leave the text as it was.'),
-  headEmpty: L3('Sarlavha teglari joyida, ichi esa bo‘sh. Maqola nomini yozing.', 'Теги заголовка на месте, а внутри пусто. Напиши название статьи.', 'The heading tags are in place, but empty. Write the article name.'),
+  headEmpty: L3('Sarlavha teglari joyida, ichi esa bo‘sh. Ro‘yxat nomini yozing.', 'Теги заголовка на месте, а внутри пусто. Напиши название списка.', 'The heading tags are in place, but empty. Write the list name.'),
   // Списки (урок 3)
   listText: L3('Ro‘yxatda matn li siz turibdi: unda nuqta ham, raqam ham yo‘q. Uni li ga o‘rang.', 'В списке текст стоит без li — у него нет ни точки, ни номера. Оберни его в li.', 'There’s text in the list without li: it gets no dot or number. Wrap it in li.'),
   liOutside: L3('li faqat ul yoki ol ichida yoziladi, bu esa ro‘yxatdan tashqarida turibdi.', 'li пишут только внутри ul или ol, а этот стоит снаружи списка.', 'li goes only inside ul or ol, but this one is outside the list.'),
@@ -6858,10 +6856,10 @@ const C = {
       'This is my trip notebook: five stops on the trail, each with its own list.'),
     blown: L3('Voy! Yomg‘ir yog‘di va ro‘yxatlarning teglarini yuvib ketdi.', 'Ой! Пошёл дождь и размыл теги у списков.', 'Oh no! Rain came and washed the tags off the lists.'),
     plan: L3('To‘rtta ro‘yxatni kod bilan tiklaymiz, beshinchisini esa o‘zingiz yozasiz. Har bir topshiriq oldingisidan biroz qiyinroq.',
-      'Восстановим четыре списка кодом, а пятый ты напишешь сам. Каждое задание чуть сложнее прошлого.',
+      'Восстановим четыре списка кодом, а пятый напишешь своими руками. Каждое задание чуть сложнее прошлого.',
       'We’ll restore four lists with code, and you’ll write the fifth yourself. Each task is a bit harder than the last.'),
     ask: L3('«Yomg‘ir!» tugmasini bosing', 'Нажми «Дождь!»', 'Tap “Rain!”'),
-    order: L3('To‘rtta ro‘yxatni tiklang, beshinchisini o‘zingiz yozing. Kodni siz yozasiz.', 'Восстанови четыре списка, а пятый напиши сам. Код пишешь ты.', 'Restore four lists and write the fifth yourself. You write the code.'),
+    order: L3('To‘rtta ro‘yxatni tiklang, beshinchisini o‘zingiz yozing. Kodni siz yozasiz.', 'Восстанови четыре списка, а пятый напиши своими руками. Код пишешь ты.', 'Restore four lists and write the fifth yourself. You write the code.'),
     note: L3('Ro‘yxati tayyor bo‘lgan to‘xtash joyi yonadi. Jarima yo‘q: xohlagancha tekshiring.', 'Привал загорается, когда его список готов. Штрафов нет — проверяй сколько хочешь.', 'A stop lights up when its list is ready. No penalties: check as often as you like.')
   },
 
@@ -6934,7 +6932,7 @@ const C = {
   t5: {
     order: L3('O‘z ro‘yxatingizni yozing: h1 nom, ro‘yxat va kamida uchta band', 'Напиши свой список: название h1, список и хотя бы три пункта', 'Write your list: an h1 name, a list and at least three items'),
     say: L3('So‘qmoq tiklandi! Endi sizning ro‘yxatingiz. Mavzuni o‘zingiz tanlang: h1 nom yozing, ostiga ul yoki ol ro‘yxat, unda kamida uchta li band.',
-      'Тропа восстановлена! Теперь твой список. Тему выбери сам: напиши название h1, под ним список ul или ol, а в нём хотя бы три пункта li.',
+      'Тропа восстановлена! Теперь твой список. Тему выбери любую: напиши название h1, под ним список ul или ol, а в нём хотя бы три пункта li.',
       'The trail is restored! Now your list. Pick any topic: type a name in h1, then a ul or ol list under it, with at least three li items.'),
     empty: L3('Ro‘yxatingiz shu yerda chiqadi', 'Здесь появится твой список', 'Your list will appear here'),
     hints: [
@@ -6966,7 +6964,7 @@ const C = {
       L3('ul ni ol ga almashtiraman', 'Меняю ul на ol', 'I change ul to ol'),
       L3('Satrdan ro‘yxat yasayman', 'Делаю список из строки', 'I turn a line into a list'),
       L3('Buzilgan bandlarni tuzataman', 'Чиню сломанные пункты', 'I fix broken items'),
-      L3('Ro‘yxatli sahifani noldan yozaman', 'Пишу страницу со списком с нуля', 'I write a page with a list from scratch')
+      L3('Sarlavhali o‘z ro‘yxatimni yozaman', 'Пишу свой список с заголовком', 'I write my own list with a heading')
     ]
   }
 };
@@ -7653,6 +7651,53 @@ const useMine = () => {
   const pick = usePick();
   return { title: store.get('myTitle') || pick(UI.mySite), text: store.get('myText') || pick(UI.hello) };
 };
+// =============================================================================
+// СВОЙ ТЕКСТ УЧЕНИКА (урок 1: s7 — название, s10 — приветствие; урок 2: свой заголовок
+// и свой абзац). Общий для бумажных уроков. Предпросмотр — сразу
+// при наборе; засчитывается только по кнопке «Готово» (заказчик, 23.10.2026:
+// пауза в наборе не завершает задание — ребёнок мог остановиться после первой
+// буквы). Пустое поле, одни пробелы и теги не принимаются. Похвала и событие в
+// журнале — один раз. После засчёта правка сохраняется сама (страница и
+// итоговый артефакт берут новый текст), «Готово» её отмечает, без новой похвалы.
+// =============================================================================
+function useTypedDone({ storeKey, screenId, type, lad }) {
+  const log = useLog();
+  const store = useStore();
+  const [rec, put] = useRec(screenId);
+  const solved = !!(rec && rec.done);
+  const [val, setVal] = useState(store.get(storeKey) || '');
+  const [saved, setSaved] = useState(store.get(storeKey) || '');
+  const [stamp, setStamp] = useState(0);
+  const doneRef = useRef(solved);
+  useEffect(() => {
+    if (!doneRef.current || !okText(val) || val.trim() === saved) return;
+    store.set(storeKey, val.trim()); setSaved(val.trim());
+  }, [val]); // eslint-disable-line react-hooks/exhaustive-deps
+  const ready = okText(val);   // повторное «Готово» после засчёта только отмечает текст: похвала и журнал — один раз
+  const commit = (first) => {
+    if (!okText(val)) return false;
+    const v = val.trim();
+    store.set(storeKey, v); setSaved(v); setStamp((x) => x + 1); sfx('ok', true);
+    if (!doneRef.current) {
+      doneRef.current = true;
+      put({ done: true });
+      log({ screenId, type, correct: true, hints: lad.asked.current, depth: lad.lv });
+      if (first) first();
+    }
+    return true;
+  };
+  return { solved, val, setVal, saved, stamp, ready, commit, shown: okText(val) ? val : saved };
+}
+// Кнопка «Готово» под кодом: горит, когда текст можно засчитать.
+function ReadyBtn({ on, glow, onClick }) {
+  const pick = usePick();
+  return (
+    <div className="kz-row">
+      <button type="button" className="kz-btn is-coral kz-ready" disabled={!on} onClick={onClick}>{pick(UI.ready)}<Led on={glow} /></button>
+    </div>
+  );
+}
+
 function makeArtifact(store) {
   const t = store.get('myTitle'), x = store.get('myText');
   if (!t && !x) return null;
@@ -8804,7 +8849,14 @@ function useTask(cfg) {
   // сам — здесь только ступень в заметке).
   const openHint = () => {
     const cur = ref.current;
-    if (cur.solved) return;
+    if (cur.solved) {
+      // Дополнительная задача: лампочка даёт правило задания (вторая ступень), без готового ответа.
+      if (cur.drill && !cur.drill.done) {
+        const n = cur.n + 1;
+        put({ n, drill: Object.assign({}, cur.drill, { note: { kind: 'hint', level: 2, text: cfg.hint(2, cur.st).text, n } }) });
+      }
+      return;
+    }
     const { lv, h, patch } = nextHint(cur);
     const n = cur.n + 1;
     const v = put(Object.assign({ n, note: { kind: 'hint', level: lv, text: h.text, n } }, patch));
@@ -8975,7 +9027,7 @@ function TaskScreen({ p, make }) {
   const st = drilling ? rec.drill.st : rec.st;
   const spec = cur.spec;
   const typing = spec.kind !== 'fields' && !(spec.kind === 'gap' && st.at == null);
-  const stageHint = drilling ? dcfg.order : rec.solved ? cfg.C.done : cfg.hint(Math.min(3, rec.hint + 1), rec.st).text;
+  const stageHint = drilling ? cfg.hint(2, rec.st).text : rec.solved ? cfg.C.done : cfg.hint(Math.min(3, rec.hint + 1), rec.st).text;
   const keep = (e) => e.preventDefault();
   // Нажатое место в задании с выбором места (t6): верное раскрывается в строку
   // ввода, неверное трясётся и называет причину.

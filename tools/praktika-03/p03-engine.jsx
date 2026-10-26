@@ -999,7 +999,14 @@ function useTask(cfg) {
   // сам — здесь только ступень в заметке).
   const openHint = () => {
     const cur = ref.current;
-    if (cur.solved) return;
+    if (cur.solved) {
+      // Дополнительная задача: лампочка даёт правило задания (вторая ступень), без готового ответа.
+      if (cur.drill && !cur.drill.done) {
+        const n = cur.n + 1;
+        put({ n, drill: Object.assign({}, cur.drill, { note: { kind: 'hint', level: 2, text: cfg.hint(2, cur.st).text, n } }) });
+      }
+      return;
+    }
     const { lv, h, patch } = nextHint(cur);
     const n = cur.n + 1;
     const v = put(Object.assign({ n, note: { kind: 'hint', level: lv, text: h.text, n } }, patch));
@@ -1170,7 +1177,7 @@ function TaskScreen({ p, make }) {
   const st = drilling ? rec.drill.st : rec.st;
   const spec = cur.spec;
   const typing = spec.kind !== 'fields' && !(spec.kind === 'gap' && st.at == null);
-  const stageHint = drilling ? dcfg.order : rec.solved ? cfg.C.done : cfg.hint(Math.min(3, rec.hint + 1), rec.st).text;
+  const stageHint = drilling ? cfg.hint(2, rec.st).text : rec.solved ? cfg.C.done : cfg.hint(Math.min(3, rec.hint + 1), rec.st).text;
   const keep = (e) => e.preventDefault();
   // Нажатое место в задании с выбором места (t6): верное раскрывается в строку
   // ввода, неверное трясётся и называет причину.

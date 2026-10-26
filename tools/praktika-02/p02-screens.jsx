@@ -118,7 +118,7 @@ function cfgT1(pick) {
     check: (st) => checkLevel(st.code, mast, 1),
     hint: (lv) => ({ text: C.t1.hints[lv - 1] }),
     fx: (rec) => (rec.solved ? null : { led: rec.hint >= 3 }),
-    h3: () => <CodeSample code={'<h1>' + pick(TXT.news) + '</h1>'} />,
+    h3: () => <CodeSample code={'<h1>' + pick(TXT.otherPaper) + '</h1>'} />,
     drill: { make: () => ({
       order: C.t1.drill,
       spec: { kind: 'line', before: frame(top, ['    <h1>' + mast + '</h1>']), after: ['    <p>' + partsHtml(pick(TXT.footText)) + '</p>'].concat(END), ind: 4 },

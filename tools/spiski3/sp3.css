@@ -191,3 +191,15 @@
   .l3-s1 .l3-strip { font-size: 12.5px; padding: 3px 7px 4px; overflow-wrap: break-word; }
 }
 .is-kbd .l3-sheetpage .kz-scene-col .kz-br.l3-br.is-short { aspect-ratio: auto; }
+
+/* Итоговая проверка (q1): h1 вокруг списка — честно огромные пункты. */
+.l3-stray.l3-big { font-size: 1.7em; font-weight: 800; line-height: 1.15; }
+/* Экраны своего списка и итоговой проверки на телефоне: браузер ниже, чтобы влезли код и «Готово». */
+@media (max-width: 759px) {
+  .l3-sheetpage.kz-typed .kz-scene-col .kz-br.l3-br.is-short { --brh: 17dvh; aspect-ratio: 16 / 7; }
+  .l3-sheetpage .l3-q1 .kz-br.l3-br.is-short { --brh: 24dvh; aspect-ratio: 16 / 9.5; }
+  .kz-typed .kz-line { min-height: 26px; padding-top: 2px; padding-bottom: 2px; }
+  .l3-q1 .kz-line { min-height: 22px; padding-top: 1px; padding-bottom: 1px; }
+}
+/* Открытая клавиатура: браузер своего списка сжимается до полосы с вкладкой и строки окна. */
+.is-kbd .l3-sheetpage.kz-typed .kz-scene-col .kz-br.l3-br.is-short { aspect-ratio: auto; }

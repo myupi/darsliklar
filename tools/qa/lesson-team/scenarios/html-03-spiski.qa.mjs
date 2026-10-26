@@ -24,6 +24,7 @@ const STEPS = [
     qa.expect(!!qa.q('.kz-br-page .l3-txt') && !qa.q('.kz-br-page .l3-li'), 'вещи склеены в строку, точек нет');
     qa.expect(!qa.q('.kz-line.kz-tap'), 'показ: строки не нажимаются');
     await qa.waitFor(() => qa.platform.nextEnabled(), 60000, 'показ закончен');
+    qa.expect(qa.events('tts').some((e) => new RegExp(qa.data.endS3).test((e.data && e.data.text) || '')), 'последняя реплика показа прозвучала');
     qa.expect(qa.qa('.kz-br-page .l3-li').length === 3, 'три пункта с точками');
     qa.expect(qa.qa('.kz-br-page').every((pg) => pg.scrollHeight <= pg.clientHeight + 1), 'страница в окне целиком, без прокрутки');
   } },
@@ -58,6 +59,7 @@ const STEPS = [
     qa.expect(!qa.q('.kz-sheet .kz-btn') && !qa.q('.kz-hand'), 'показ: ни кнопок, ни руки');
     await qa.waitFor(() => qa.q('.l3-oops'), 40000, 'рука перемешала — «?!»');
     await qa.waitFor(() => qa.platform.nextEnabled(), 60000, 'показ закончен');
+    qa.expect(qa.events('tts').some((e) => new RegExp(qa.data.endS6).test((e.data && e.data.text) || '')), 'последняя реплика показа прозвучала');
     qa.expect(!qa.q('.l3-oops'), 'шаги вернулись по местам');
   } },
   { name: 's7: <ol> сверху и </ol> снизу', shot: 's7-done', run: async (qa) => {
@@ -87,6 +89,7 @@ const STEPS = [
     qa.expect(!!qa.q('.kz-br-page .l3-stray'), 'пункт выпал из списка');
     qa.expect(!qa.q('.kz-line.kz-tap'), 'показ: строки не нажимаются');
     await qa.waitFor(() => qa.platform.nextEnabled(), 60000, 'показ закончен');
+    qa.expect(qa.events('tts').some((e) => new RegExp(qa.data.endS9).test((e.data && e.data.text) || '')), 'последняя реплика показа прозвучала');
     qa.expect(!qa.q('.kz-br-page .l3-stray') && qa.qa('.kz-br-page .l3-li').length === 3, 'все пункты внутри списка');
     qa.expect(qa.qa('.kz-br-page').every((pg) => pg.scrollHeight <= pg.clientHeight + 1), 'страница в окне целиком, без прокрутки');
   } },
@@ -121,18 +124,31 @@ const STEPS = [
     qa.expect(!qa.q('.kz-sheet .kz-btn') && !qa.q('.kz-hand'), 'показ: ни кнопок, ни руки');
     await qa.waitFor(() => qa.qa('.kz-br-page .l3-list').length === 2, 40000, 'страница собрана');
     await qa.waitFor(() => qa.platform.nextEnabled(), 60000, 'показ закончен');
+    qa.expect(qa.events('tts').some((e) => new RegExp(qa.data.endS12).test((e.data && e.data.text) || '')), 'последняя реплика показа прозвучала');
     qa.expect(qa.qa('.kz-br-page').every((pg) => pg.scrollHeight <= pg.clientHeight + 1), 'страница в окне целиком, без прокрутки');
   } },
-  { name: 's13: свой список', shot: 's13-done', run: async (qa) => {
+  { name: 's13: название списка по «Готово»', shot: 's13-done', run: async (qa) => {
     await qa.platform.next();
     await qa.platform.ready();
-    qa.type(qa.qa('.kz-line textarea')[0], qa.data.myTitle, 'название');
-    await qa.waitFor(() => qa.text('.kz-ask-n') === '2/2', 6000, 'шаг 2');
+    qa.type('.kz-line textarea', qa.data.myTitle, 'название');
+    await qa.sleep(1600);
+    qa.expect(qa.text('.kz-br-page .l3-h1') === qa.data.myTitle && !qa.platform.nextEnabled(), 'окно показывает название сразу, пауза не засчитывает');
+    await qa.click('.kz-ready', 'Готово');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано по «Готово»');
+  } },
+  { name: 's13b: три пункта по «Готово»', shot: 's13b-done', run: async (qa) => {
+    await qa.platform.next();
+    await qa.platform.ready();
     const f = qa.qa('.kz-line textarea');
-    qa.data.items.forEach((x, i) => qa.type(f[i + 1], x, 'пункт ' + (i + 1)));
-    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано');
-    qa.expect(qa.text('.kz-br-page .l3-h1') === qa.data.myTitle, 'h1 = своё название');
-    qa.expect(qa.qa('.kz-br-page .l3-li').length === 3, 'три своих пункта');
+    qa.type(f[0], qa.data.items[0], 'пункт 1'); qa.type(f[1], qa.data.items[1], 'пункт 2');
+    await qa.sleep(300);
+    qa.expect(qa.q('.kz-ready').disabled, 'два пункта из трёх — «Готово» выключена');
+    qa.type(f[2], qa.data.items[2], 'пункт 3');
+    await qa.sleep(1600);
+    qa.expect(!qa.platform.nextEnabled(), 'пауза не засчитывает');
+    await qa.click('.kz-ready', 'Готово');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано по «Готово»');
+    qa.expect(qa.text('.kz-br-page .l3-h1') === qa.data.myTitle && qa.qa('.kz-br-page .l3-li').length === 3, 'своё название и три своих пункта');
     qa.expect(qa.qa('.kz-br-page').every((pg) => pg.scrollHeight <= pg.clientHeight + 1), 'страница в окне целиком, без прокрутки');
   } },
   { name: 's14: ul → ol', shot: 's14-done', run: async (qa) => {
@@ -143,6 +159,22 @@ const STEPS = [
     await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано');
     qa.expect(!!qa.q('.kz-br-page .l3-ol'), 'теперь с номерами');
     qa.expect(qa.qa('.kz-br-page').every((pg) => pg.scrollHeight <= pg.clientHeight + 1), 'страница в окне целиком, без прокрутки');
+  } },
+  { name: 'q1: покупки — ul, шаги — ol', shot: 'q1-done', run: async (qa) => {
+    await qa.platform.next();
+    await qa.platform.ready();
+    qa.expect(!qa.q('.kz-q1-slot .led, .kz-scrap.is-led'), 'до первой попытки ответ не подсвечен');
+    const put = async (t, where) => { await qa.clickText('.kz-scrap', t); await qa.click('.kz-q1-slot[data-place="' + where + '"]', where); await qa.sleep(300); };
+    await put('<ul>', 'a'); await put('<ol>', 'b');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано');
+    qa.expect(!!qa.q('.kz-br-page .l3-ul') && !!qa.q('.kz-br-page .l3-ol'), 'честно: список с точками и список с номерами');
+  } },
+  { name: 'q2: где стоит li', shot: 'q2-done', run: async (qa) => {
+    await qa.platform.next();
+    await qa.platform.ready();
+    qa.expect(qa.qa('.kz-quiz .kz-btn').length === 3 && !qa.q('.kz-quiz .kz-btn.is-ok, .kz-quiz .kz-btn.is-led'), 'три варианта, ничего не подсвечено');
+    await qa.clickNth('.kz-quiz .kz-btn', 1, 'верный ответ');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано');
   } },
   { name: 's15: вывод', shot: 's15-done', run: async (qa) => {
     await qa.platform.next();
@@ -167,13 +199,13 @@ export default {
   langs: ['ru'],
   size: process.env.QA_SIZE || '1280x720',   // QA_SIZE=360x640 — прогон сценария на телефоне
   voice: 'fast',
-  screens: 15,
-  inputScreens: [4, 7, 10, 13],
+  screens: 18,
+  inputScreens: [4, 7, 10, 13, 14],
   expectFinish: true,
   data: {
-    ru: { myTitle: 'Мои любимые игры', items: ['Футбол', 'Шахматы', 'Прятки'] },
-    uz: { myTitle: 'Sevimli o‘yinlarim', items: ['Futbol', 'Shaxmat', 'Bekinmachoq'] },
-    en: { myTitle: 'My favorite games', items: ['Football', 'Chess', 'Hide and seek'] }
+    ru: { myTitle: 'Мои любимые игры', items: ['Футбол', 'Шахматы', 'Прятки'], endS3: 'столько пунктов', endS6: 'порядок не важен', endS9: 'стоят ровно', endS12: 'браузер даёт номер' },
+    uz: { myTitle: 'Sevimli o‘yinlarim', items: ['Futbol', 'Shaxmat', 'Bekinmachoq'], endS3: 'shuncha band', endS6: 'tartib muhim emas', endS9: 'bir tekis turibdi', endS12: 'brauzer raqam beradi' },
+    en: { myTitle: 'My favorite games', items: ['Football', 'Chess', 'Hide and seek'], endS3: 'one item', endS6: 'the order of lines matters', endS9: 'lines up', endS12: 'the browser gives each' }
   },
   steps: STEPS,
   flows: [
@@ -213,6 +245,18 @@ export default {
       await qa.waitFor(() => qa.qa('.kz-line.kz-tap').some((b) => !b.disabled), 30000, 'подсказка рассказана');
       await qa.clickNth('.kz-code .kz-line', 2, 'сломанная строка');
       await qa.waitFor(() => /\/4/.test(qa.text('.kz-ask-n')), 30000, 'раундов стало четыре');
+    } }] }
+    ,{ name: 'q1: шаги в ul → причина', start: 15, langs: ['ru'], steps: [{ name: 'ul на шаги', run: async (qa) => {
+      await qa.platform.ready();
+      await qa.clickText('.kz-scrap', '<ul>'); await qa.click('.kz-q1-slot[data-place="b"]', 'шаги');
+      await qa.waitFor(() => qa.q('.kz-ask.is-hint'), 3000, 'причина на месте задания');
+      qa.expect(/ol/.test(qa.text('.kz-ask')) && qa.qa('.kz-tray .kz-scrap').length === 3 && !qa.platform.nextEnabled(), 'бирка вернулась, «Дальше» закрыта', { ask: qa.text('.kz-ask') });
+    } }] },
+    { name: 'q2: неверный ответ → причина, снова', start: 16, langs: ['ru'], steps: [{ name: 'первый вариант', run: async (qa) => {
+      await qa.platform.ready();
+      await qa.clickNth('.kz-quiz .kz-btn', 0, 'неверный ответ');
+      await qa.waitFor(() => qa.q('.kz-ask.is-hint'), 3000, 'причина на месте задания');
+      qa.expect(qa.qa('.kz-quiz .kz-btn.is-off').length === 1 && !qa.platform.nextEnabled(), 'вариант погас, можно выбрать снова');
     } }] }
   ]
 };

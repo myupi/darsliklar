@@ -1976,10 +1976,10 @@ function PersonaBubble({ who = 'bot', pose, text, onSpoken, nonce, quiet }) {
       {/* Робот рисуется кодом — внешних картинок в уроке нет. По нажатию
           повторяет реплику: ребёнку естественнее ткнуть в героя, чем искать
           кнопку, поэтому персонаж и кнопка делают одно и то же. */}
-      <span className="speaker-av" onClick={silent && !quiet ? replay : undefined}>
+      <span className="speaker-av" onClick={!quiet ? replay : undefined}>
         <RobotSVG pose={pose} talking={speaking} />
       </span>
-      {quiet ? null : silent ? (
+      {quiet ? null : (
         <>
           {/* КУРС HTML: речь показывают волны вокруг кружка с головой Коди —
               отдельного кружка с полосками больше нет. */}
@@ -1987,8 +1987,6 @@ function PersonaBubble({ who = 'bot', pose, text, onSpoken, nonce, quiet }) {
               Отдельным узлом, а не внутри кнопки: aria-label кнопки перебил бы её. */}
           <span className="sv-sr">{line}</span>
         </>
-      ) : (
-        <div className="speaker-bubble">{line}</div>
       )}
     </div>
   );
@@ -6779,7 +6777,7 @@ const UI = {
   bpTitle: L3('uy nomi', 'название дома', 'house name'),
   bpBody: L3('oynadagi matn', 'текст в окне', 'text in the window'),
   nextLesson: L3('Keyingi dars', 'Следующий урок', 'Next lesson'),
-  next: L3('Katta sarlavha va xatboshilar', 'Большой заголовок и абзацы', 'A big heading and paragraphs'),
+  next: L3('Sarlavhalar va matn', 'Заголовки и текст', 'Headings and text'),
   part: {
     open: L3('ochuvchi teg', 'открывающий тег', 'opening tag'),
     name: L3('nom', 'название', 'name'),
@@ -6876,11 +6874,11 @@ const C = {
       'Ой! Ветер унёс у домов названия, тексты и куски кода.',
       'Oh no! The wind blew away the houses’ names, texts and pieces of code.'),
     plan: L3('To‘rtta uyni kod bilan tuzatamiz, beshinchisini esa o‘zingiz qurasiz. Har bir topshiriq oldingisidan biroz qiyinroq.',
-      'Починим четыре дома кодом, а пятый ты построишь сам. Каждое задание чуть сложнее прошлого.',
+      'Починим четыре дома кодом, а пятый построишь своими руками. Каждое задание чуть сложнее прошлого.',
       'We’ll fix four houses with code, and you’ll build the fifth yourself. Each task is a bit harder than the last.'),
     ask: L3('«Shamol!» tugmasini bosing', 'Нажми «Ветер!»', 'Tap “Wind!”'),
     order: L3('To‘rtta uyni tuzating, beshinchisini o‘zingiz quring. Kodni siz yozasiz.',
-      'Почини четыре дома, а пятый построй сам. Код пишешь ты.',
+      'Почини четыре дома, а пятый построй своими руками. Код пишешь ты.',
       'Fix four houses and build the fifth yourself. You write the code.'),
     note: L3('Sahifasi tayyor bo‘lgan uy yonadi. Jarima yo‘q: xohlagancha tekshiring.',
       'Дом загорается, когда его страница готова. Штрафов нет — проверяй сколько хочешь.',
@@ -6900,9 +6898,9 @@ const C = {
         'Название страницы видно на вкладке браузера. Какой тег за него отвечает?',
         'The page name shows on the browser tab. Which tag is in charge of it?'),
       L3('head ichiga qarang: u yerda title qatori bor.', 'Посмотри внутрь head: там есть строка title.', 'Look inside head: there is a title line.'),
-      L3('title teglari orasidagi bo‘sh joyni bosing va nom yozing. Masalan: Issiq non.',
-        'Нажми на пустое место между тегами title и напиши название. Например: Тёплый хлеб.',
-        'Tap the empty space between the title tags and type a name. For example: Warm Bread.')
+      L3('title teglari orasidagi bo‘sh joyni bosing va nom yozing. Gul do‘koni «Guldasta» deb atalishi mumkin, nonvoyxonaga esa o‘zingiz nom o‘ylang.',
+        'Нажми на пустое место между тегами title и напиши название. У цветочного магазина могло быть «Букет», а пекарне придумай своё.',
+        'Tap the empty space between the title tags and type a name. A flower shop might be called “Bouquet”; make up one for the bakery.')
     ],
     praise: L3('To‘g‘ri! Nom yorliqda chiqdi. Novvoyxona ochildi.', 'Есть! Название на вкладке — пекарня открылась.', 'Yes! The name is on the tab, and the bakery is open.'),
     done: L3('Novvoyxonaning nomi bor.', 'У пекарни уже есть название.', 'The bakery already has a name.'),
@@ -7016,7 +7014,7 @@ const C = {
   fin: {
     eyebrow: L3('Ko‘cha yana tirik', 'Улица снова живая', 'The street is alive again'),
     say: L3('Tabriklayman! Ko‘cha yana tirik. Oxirgi uy esa sizniki: uning sahifasini o‘zingiz yozdingiz.',
-      'Ура! Улица снова живая. А последний дом — твой: его страница целиком твоя.',
+      'Ура! Улица снова живая. А последний дом — твой: в нём твоё название и твой текст.',
       'Hooray! The street is alive again. And the last house is yours: you wrote its page yourself.'),
     skills: [
       L3('title ichiga sahifa nomini yozaman', 'Пишу название страницы в title', 'I write the page name in title'),
@@ -7710,6 +7708,53 @@ const useMine = () => {
   const pick = usePick();
   return { title: store.get('myTitle') || pick(UI.mySite), text: store.get('myText') || pick(UI.hello) };
 };
+// =============================================================================
+// СВОЙ ТЕКСТ УЧЕНИКА (урок 1: s7 — название, s10 — приветствие; урок 2: свой заголовок
+// и свой абзац). Общий для бумажных уроков. Предпросмотр — сразу
+// при наборе; засчитывается только по кнопке «Готово» (заказчик, 23.10.2026:
+// пауза в наборе не завершает задание — ребёнок мог остановиться после первой
+// буквы). Пустое поле, одни пробелы и теги не принимаются. Похвала и событие в
+// журнале — один раз. После засчёта правка сохраняется сама (страница и
+// итоговый артефакт берут новый текст), «Готово» её отмечает, без новой похвалы.
+// =============================================================================
+function useTypedDone({ storeKey, screenId, type, lad }) {
+  const log = useLog();
+  const store = useStore();
+  const [rec, put] = useRec(screenId);
+  const solved = !!(rec && rec.done);
+  const [val, setVal] = useState(store.get(storeKey) || '');
+  const [saved, setSaved] = useState(store.get(storeKey) || '');
+  const [stamp, setStamp] = useState(0);
+  const doneRef = useRef(solved);
+  useEffect(() => {
+    if (!doneRef.current || !okText(val) || val.trim() === saved) return;
+    store.set(storeKey, val.trim()); setSaved(val.trim());
+  }, [val]); // eslint-disable-line react-hooks/exhaustive-deps
+  const ready = okText(val);   // повторное «Готово» после засчёта только отмечает текст: похвала и журнал — один раз
+  const commit = (first) => {
+    if (!okText(val)) return false;
+    const v = val.trim();
+    store.set(storeKey, v); setSaved(v); setStamp((x) => x + 1); sfx('ok', true);
+    if (!doneRef.current) {
+      doneRef.current = true;
+      put({ done: true });
+      log({ screenId, type, correct: true, hints: lad.asked.current, depth: lad.lv });
+      if (first) first();
+    }
+    return true;
+  };
+  return { solved, val, setVal, saved, stamp, ready, commit, shown: okText(val) ? val : saved };
+}
+// Кнопка «Готово» под кодом: горит, когда текст можно засчитать.
+function ReadyBtn({ on, glow, onClick }) {
+  const pick = usePick();
+  return (
+    <div className="kz-row">
+      <button type="button" className="kz-btn is-coral kz-ready" disabled={!on} onClick={onClick}>{pick(UI.ready)}<Led on={glow} /></button>
+    </div>
+  );
+}
+
 function makeArtifact(store) {
   const t = store.get('myTitle'), x = store.get('myText');
   if (!t && !x) return null;
@@ -8811,7 +8856,14 @@ function useTask(cfg) {
   // сам — здесь только ступень в заметке).
   const openHint = () => {
     const cur = ref.current;
-    if (cur.solved) return;
+    if (cur.solved) {
+      // Дополнительная задача: лампочка даёт правило задания (вторая ступень), без готового ответа.
+      if (cur.drill && !cur.drill.done) {
+        const n = cur.n + 1;
+        put({ n, drill: Object.assign({}, cur.drill, { note: { kind: 'hint', level: 2, text: cfg.hint(2, cur.st).text, n } }) });
+      }
+      return;
+    }
     const { lv, h, patch } = nextHint(cur);
     const n = cur.n + 1;
     const v = put(Object.assign({ n, note: { kind: 'hint', level: lv, text: h.text, n } }, patch));
@@ -8982,7 +9034,7 @@ function TaskScreen({ p, make }) {
   const st = drilling ? rec.drill.st : rec.st;
   const spec = cur.spec;
   const typing = spec.kind !== 'fields' && !(spec.kind === 'gap' && st.at == null);
-  const stageHint = drilling ? dcfg.order : rec.solved ? cfg.C.done : cfg.hint(Math.min(3, rec.hint + 1), rec.st).text;
+  const stageHint = drilling ? cfg.hint(2, rec.st).text : rec.solved ? cfg.C.done : cfg.hint(Math.min(3, rec.hint + 1), rec.st).text;
   const keep = (e) => e.preventDefault();
   // Нажатое место в задании с выбором места (t6): верное раскрывается в строку
   // ввода, неверное трясётся и называет причину.

@@ -1976,10 +1976,10 @@ function PersonaBubble({ who = 'bot', pose, text, onSpoken, nonce, quiet }) {
       {/* Робот рисуется кодом — внешних картинок в уроке нет. По нажатию
           повторяет реплику: ребёнку естественнее ткнуть в героя, чем искать
           кнопку, поэтому персонаж и кнопка делают одно и то же. */}
-      <span className="speaker-av" onClick={silent && !quiet ? replay : undefined}>
+      <span className="speaker-av" onClick={!quiet ? replay : undefined}>
         <RobotSVG pose={pose} talking={speaking} />
       </span>
-      {quiet ? null : silent ? (
+      {quiet ? null : (
         <>
           {/* КУРС HTML: речь показывают волны вокруг кружка с головой Коди —
               отдельного кружка с полосками больше нет. */}
@@ -1987,8 +1987,6 @@ function PersonaBubble({ who = 'bot', pose, text, onSpoken, nonce, quiet }) {
               Отдельным узлом, а не внутри кнопки: aria-label кнопки перебил бы её. */}
           <span className="sv-sr">{line}</span>
         </>
-      ) : (
-        <div className="speaker-bubble">{line}</div>
       )}
     </div>
   );
@@ -6716,7 +6714,7 @@ const fillL = (node, vars) => {
 // СТЕНГАЗЕТА — пять вырезок. Задание n чинит вырезку n; последняя — статья ученика.
 // ─────────────────────────────────────────────────────────────────────────────
 const STREET = [
-  { id: 'mast',    c: '#E0643F', name: L3('Gazeta nomi', 'Название', 'The masthead') },
+  { id: 'mast',    c: '#E0643F', name: L3('Gazeta nomi', 'Название газеты', 'The masthead') },
   { id: 'news',    c: '#2A8C7E', name: L3('Yangiliklar', 'Новости', 'News') },
   { id: 'sport',   c: '#F0B13F', name: L3('Sport', 'Спорт', 'Sports') },
   { id: 'weather', c: '#5E8FB8', name: L3('Ob-havo', 'Погода', 'Weather') },
@@ -6731,6 +6729,7 @@ const TXT = {
   mastText: L3('Har hafta yangi son.', 'Каждую неделю новый выпуск.', 'A new issue every week.'),
   sport: L3('Sport', 'Спорт', 'Sports'),
   news: L3('Yangiliklar', 'Новости', 'News'),
+  otherPaper: L3('Maktab xabarlari', 'Школьный вестник', 'School Herald'),   // образец 3-й ступени задания 1 — название другой газеты
   news1: L3('Ertaga ekskursiya bo‘ladi.', 'Завтра у нас экскурсия.', 'Tomorrow we have a trip.'),
   news2: L3('Avtobus ertalab jo‘naydi.', 'Автобус уходит утром.', 'The bus leaves in the morning.'),
   rain1: L3('Bugun yomg‘ir yog‘adi.', 'Сегодня будет дождь.', 'It will rain today.'),
@@ -6950,7 +6949,7 @@ const C = {
   t5: {
     order: L3('O‘z maqolangizni yozing: h2 sarlavha, xatboshi va bitta ajratilgan so‘z', 'Напиши свою статью: заголовок h2, абзац и одно выделенное слово', 'Write your article: an h2 heading, a paragraph and one highlighted word'),
     say: L3('Gazeta tuzaldi! Endi sizning maqolangiz. Mavzuni o‘zingiz tanlang: h2 sarlavha yozing, uning ostiga xatboshi, xatboshida esa bitta so‘zni qalin yoki qiya qiling.',
-      'Газета починена! Теперь твоя статья. Тему выбери сам: напиши заголовок h2, под ним абзац, а в абзаце выдели одно слово жирным или наклонным.',
+      'Газета починена! Теперь твоя статья. Тему выбери любую: напиши заголовок h2, под ним абзац, а в абзаце выдели одно слово жирным или наклонным.',
       'The newspaper is fixed! Now your article. Pick any topic: write an h2 heading, a paragraph under it, and make one word in the paragraph bold or italic.'),
     empty: L3('Maqolangiz shu yerda chiqadi', 'Здесь появится твоя статья', 'Your article will appear here'),
     hints: [
@@ -7671,6 +7670,53 @@ const useMine = () => {
   const pick = usePick();
   return { title: store.get('myTitle') || pick(UI.mySite), text: store.get('myText') || pick(UI.hello) };
 };
+// =============================================================================
+// СВОЙ ТЕКСТ УЧЕНИКА (урок 1: s7 — название, s10 — приветствие; урок 2: свой заголовок
+// и свой абзац). Общий для бумажных уроков. Предпросмотр — сразу
+// при наборе; засчитывается только по кнопке «Готово» (заказчик, 23.10.2026:
+// пауза в наборе не завершает задание — ребёнок мог остановиться после первой
+// буквы). Пустое поле, одни пробелы и теги не принимаются. Похвала и событие в
+// журнале — один раз. После засчёта правка сохраняется сама (страница и
+// итоговый артефакт берут новый текст), «Готово» её отмечает, без новой похвалы.
+// =============================================================================
+function useTypedDone({ storeKey, screenId, type, lad }) {
+  const log = useLog();
+  const store = useStore();
+  const [rec, put] = useRec(screenId);
+  const solved = !!(rec && rec.done);
+  const [val, setVal] = useState(store.get(storeKey) || '');
+  const [saved, setSaved] = useState(store.get(storeKey) || '');
+  const [stamp, setStamp] = useState(0);
+  const doneRef = useRef(solved);
+  useEffect(() => {
+    if (!doneRef.current || !okText(val) || val.trim() === saved) return;
+    store.set(storeKey, val.trim()); setSaved(val.trim());
+  }, [val]); // eslint-disable-line react-hooks/exhaustive-deps
+  const ready = okText(val);   // повторное «Готово» после засчёта только отмечает текст: похвала и журнал — один раз
+  const commit = (first) => {
+    if (!okText(val)) return false;
+    const v = val.trim();
+    store.set(storeKey, v); setSaved(v); setStamp((x) => x + 1); sfx('ok', true);
+    if (!doneRef.current) {
+      doneRef.current = true;
+      put({ done: true });
+      log({ screenId, type, correct: true, hints: lad.asked.current, depth: lad.lv });
+      if (first) first();
+    }
+    return true;
+  };
+  return { solved, val, setVal, saved, stamp, ready, commit, shown: okText(val) ? val : saved };
+}
+// Кнопка «Готово» под кодом: горит, когда текст можно засчитать.
+function ReadyBtn({ on, glow, onClick }) {
+  const pick = usePick();
+  return (
+    <div className="kz-row">
+      <button type="button" className="kz-btn is-coral kz-ready" disabled={!on} onClick={onClick}>{pick(UI.ready)}<Led on={glow} /></button>
+    </div>
+  );
+}
+
 function makeArtifact(store) {
   const t = store.get('myTitle'), x = store.get('myText');
   if (!t && !x) return null;
@@ -8746,7 +8792,14 @@ function useTask(cfg) {
   // сам — здесь только ступень в заметке).
   const openHint = () => {
     const cur = ref.current;
-    if (cur.solved) return;
+    if (cur.solved) {
+      // Дополнительная задача: лампочка даёт правило задания (вторая ступень), без готового ответа.
+      if (cur.drill && !cur.drill.done) {
+        const n = cur.n + 1;
+        put({ n, drill: Object.assign({}, cur.drill, { note: { kind: 'hint', level: 2, text: cfg.hint(2, cur.st).text, n } }) });
+      }
+      return;
+    }
     const { lv, h, patch } = nextHint(cur);
     const n = cur.n + 1;
     const v = put(Object.assign({ n, note: { kind: 'hint', level: lv, text: h.text, n } }, patch));
@@ -8917,7 +8970,7 @@ function TaskScreen({ p, make }) {
   const st = drilling ? rec.drill.st : rec.st;
   const spec = cur.spec;
   const typing = spec.kind !== 'fields' && !(spec.kind === 'gap' && st.at == null);
-  const stageHint = drilling ? dcfg.order : rec.solved ? cfg.C.done : cfg.hint(Math.min(3, rec.hint + 1), rec.st).text;
+  const stageHint = drilling ? cfg.hint(2, rec.st).text : rec.solved ? cfg.C.done : cfg.hint(Math.min(3, rec.hint + 1), rec.st).text;
   const keep = (e) => e.preventDefault();
   // Нажатое место в задании с выбором места (t6): верное раскрывается в строку
   // ввода, неверное трясётся и называет причину.
@@ -9081,7 +9134,7 @@ function cfgT1(pick) {
     check: (st) => checkLevel(st.code, mast, 1),
     hint: (lv) => ({ text: C.t1.hints[lv - 1] }),
     fx: (rec) => (rec.solved ? null : { led: rec.hint >= 3 }),
-    h3: () => <CodeSample code={'<h1>' + pick(TXT.news) + '</h1>'} />,
+    h3: () => <CodeSample code={'<h1>' + pick(TXT.otherPaper) + '</h1>'} />,
     drill: { make: () => ({
       order: C.t1.drill,
       spec: { kind: 'line', before: frame(top, ['    <h1>' + mast + '</h1>']), after: ['    <p>' + partsHtml(pick(TXT.footText)) + '</p>'].concat(END), ind: 4 },

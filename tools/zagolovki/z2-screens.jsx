@@ -986,75 +986,62 @@ function S12({ p }) {
 }
 
 // =============================================================================
-// S13. СВОЯ СТРАНИЦА — два шага: название в h1, потом предложение в p. Свой
-// текст засчитывается после паузы в наборе (как в уроке 1), окно меняется сразу.
+// S13. СВОЙ ЗАГОЛОВОК и S13b. СВОЙ АБЗАЦ — своя страница двумя экранами (одно
+// действие на экран): сначала заголовок в h1, потом предложение в p. Окно
+// меняется сразу при наборе; засчитывается только по «Готово» (useTypedDone из
+// набора, как в уроке 1; заказчик: пауза в наборе не завершает задание).
 // =============================================================================
-function S13({ p }) {
+function OwnTextScreen({ p, id, storeKey, type, max, code }) {
   const pick = usePick();
-  const log = useLog();
-  const store = useStore();
-  const c = C.s13;
-  const [rec, put] = useRec('s13');
-  const solved = !!(rec && rec.done);
-  const [title, setTitle] = useState(store.get('myTitle') || '');
-  const [text, setText] = useState(store.get('myText') || '');
-  const [step, setStep] = useState(solved ? 2 : store.get('myTitle') ? 1 : 0);
-  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : step === 1 ? c.sayP : c.say, pose: solved ? 'smile' : 'point' }]);
+  const c = C[id];
+  const [rec] = useRec(id);
+  const lad = useKzLadder(!(rec && rec.done));
+  const ty = useTypedDone({ storeKey, screenId: id, type, lad });
+  const [speaker, , spoken, sayNow] = useVoice([{ text: ty.solved ? c.ok : c.say, pose: ty.solved ? 'smile' : 'point' }]);
   const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved || step === 2, spoken);
-  const lad = useKzLadder(step < 2);
-  const led = useIdleLed(canTap && step < 2 && !(step === 0 ? title : text).trim(), step);
-  const pRef = useRef(null);
-  useEffect(() => {
-    if (step !== 0 || !okText(title)) return undefined;
-    const t = setTimeout(() => {
-      store.set('myTitle', title.trim()); sfx('ok', true); setStep(1); sayNow(c.sayP, 'point');
-      setTimeout(() => { if (pRef.current) pRef.current.focus(); }, 80);
-    }, WAIT_MS);
-    return () => clearTimeout(t);
-  }, [title, step]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (step === 2 && okText(title)) store.set('myTitle', title.trim());
-  }, [title]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (step < 1 || !okText(text) || text.trim() === (store.get('myText') || '') && step === 2) return undefined;
-    const t = setTimeout(() => {
-      store.set('myText', text.trim()); sfx('ok', true);
-      if (step === 1) {
-        setStep(2); put({ done: true });
-        log({ screenId: 's13', type: 'own-page', correct: true, hints: lad.asked.current, depth: lad.lv });
-        sayNow(c.ok, 'smile');
-      }
-    }, WAIT_MS);
-    return () => clearTimeout(t);
-  }, [text, step]); // eslint-disable-line react-hooks/exhaustive-deps
-  const tShow = okText(title) ? title : '';
-  const xShow = okText(text) ? text : '';
-  const bad = (step === 0 ? hasTags(title) : hasTags(text)) ? UI.noTags : null;
-  const askText = step === 2 ? c.ok : step === 0 ? c.askTitle : c.askP;
-  const blocks = [tShow ? { t: 'h1', parts: [tShow] } : null, xShow ? { t: 'p', parts: [xShow] } : null].filter(Boolean);
+  const canGo = useAdvanceGate(ty.solved, spoken);
+  const led = useIdleLed(canTap && !ty.solved && !ty.val.trim(), 0);
+  const confirm = () => { if (canTap && ty.ready) ty.commit(() => sayNow(c.ok, 'smile')); };
+  const hint = hasTags(ty.val) ? UI.noTags : hintAt(lad.lv, c.hints);
+  const input = <span key="g" className={'kz-gap' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={ty.setVal} onEnter={confirm} placeholder={c.ph} label={c.ask} max={max} /></span>;
+  const v = code(input, ty.shown);
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || askText} nav={navOf(p, canGo)}>
-      <Sheet cls="z2-sheet">
-        <KzAsk text={askText} hint={step === 2 ? null : (bad || hintAt(lad.lv, c.hints))} n={step === 2 ? null : (step + 1) + '/2'} />
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="z2-sheet kz-typed">
+        <KzAsk text={ty.solved ? c.ok : c.ask} hint={ty.solved && !hasTags(ty.val) ? null : hint} />
         <div className="kz-scene kz-scene-col">
           <div className="kz-col">
-            <PaperBrowser title={pick(UI.mySite)} short cls="z2-br" pageHl={step < 2}>{blocks.length ? <PageDoc blocks={blocks} /> : null}</PaperBrowser>
-            <KzCode lines={[
-              { k: 'b', d: 0, cls: 'z2-edge', parts: [T_('body')] },
-              { k: 'h', d: 1, cls: step === 0 ? 'is-hl' : '', parts: [T_('h1'),
-                <span key="g" className={'kz-gap' + (led && step === 0 ? ' kz-gap-led' : '')}><InlineInput value={title} onChange={setTitle} placeholder={c.phTitle} label={c.askTitle} max={30} /></span>,
-                T_('h1', true)] },
-              { k: 'p', d: 1, cls: step === 1 ? 'is-hl' : step === 0 ? 'z2-later' : '', parts: [T_('p'),
-                <span key="g" className={'kz-gap' + (led && step === 1 ? ' kz-gap-led' : '')}><InlineInput value={text} onChange={setText} inputRef={pRef} placeholder={c.phP} label={c.askP} max={70} /></span>,
-                T_('p', true)] },
-              { k: 'bc', d: 0, cls: 'z2-edge', parts: [T_('body', true)] }
-            ]} />
+            <PaperBrowser title={pick(UI.mySite)} short cls="z2-br" pageHl={!ty.solved}>{v.blocks.length ? <PageDoc blocks={v.blocks} /> : null}</PaperBrowser>
+            <KzCode lines={v.lines} />
           </div>
         </div>
+        <ReadyBtn on={canTap && ty.ready} glow={canTap && ty.ready && !ty.solved} onClick={confirm} />
       </Sheet>
     </Stage>
   );
+}
+function S13({ p }) {
+  return <OwnTextScreen p={p} id="s13" storeKey="myTitle" type="own-heading" max={30} code={(input, shown) => ({
+    blocks: shown ? [{ t: 'h1', parts: [shown] }] : [],
+    lines: [
+      { k: 'b', d: 0, cls: 'z2-edge', parts: [T_('body')] },
+      { k: 'h', d: 1, cls: 'is-hl', parts: [T_('h1'), input, T_('h1', true)] },
+      { k: 'p', d: 1, cls: 'z2-later', parts: [T_('p'), <span key="d" className="kz-dim">…</span>, T_('p', true)] },
+      { k: 'bc', d: 0, cls: 'z2-edge', parts: [T_('body', true)] }
+    ]
+  })} />;
+}
+function S13B({ p }) {
+  const mine = useMine2();
+  return <OwnTextScreen p={p} id="s13b" storeKey="myText" type="own-paragraph" max={70} code={(input, shown) => ({
+    blocks: [{ t: 'h1', parts: [mine.title] }].concat(shown ? [{ t: 'p', parts: [shown] }] : []),
+    lines: [
+      { k: 'b', d: 0, cls: 'z2-edge', parts: [T_('body')] },
+      { k: 'h', d: 1, cls: 'z2-ctx', parts: [T_('h1'), W_(mine.title), T_('h1', true)] },
+      { k: 'p', d: 1, cls: 'is-hl', parts: [T_('p'), input, T_('p', true)] },
+      { k: 'bc', d: 0, cls: 'z2-edge', parts: [T_('body', true)] }
+    ]
+  })} />;
 }
 
 // Своя страница ученика (s13–s15): название и текст, образец — если пропущено.
@@ -1137,6 +1124,180 @@ function S14({ p }) {
 }
 
 // =============================================================================
+// Q1. ПРОВЕРЬ СЕБЯ — новая страница про собаку без образца: три строки без тегов,
+// бирки h1, p, b и лишняя h6. Ученик сам решает, какой тег куда (перетащить или
+// нажать тег, потом место). До первой попытки ответ не подсвечен. Не туда —
+// браузер честно на миг показывает, что вышло, Коди называет причину, бирка
+// возвращается. Подсказки — по лампочке (третья ступень подсвечивает тег и место).
+// =============================================================================
+const Q1_TAGS = ['b', 'h1', 'h6', 'p'];
+const Q1_WANT = { head: 'h1', line: 'p', word: 'b' };
+function Q1({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.q1;
+  const [rec, put] = useRec('q1');
+  const solved = !!(rec && rec.done);
+  const [slots, setSlots] = useState(solved ? Object.assign({}, Q1_WANT) : { head: null, line: null, word: null });
+  const [sel, setSel] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [shake, setShake] = useState(null);
+  const [peek, setPeek] = useState(null);   // { where, tag } — что на миг показал браузер при ошибке
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'curious' }]);
+  const canTap = useCanAnswer(spoken);
+  const done = !!(slots.head && slots.line && slots.word);
+  const canGo = useAdvanceGate(solved || done, spoken);
+  const lad = useKzLadder(!done);
+  const st = useRef({ tries: 0, misses: 0 });
+  const peekT = useRef(0);
+  useEffect(() => () => clearTimeout(peekT.current), []);
+  const nFull = (slots.head ? 1 : 0) + (slots.line ? 1 : 0) + (slots.word ? 1 : 0);
+  const led = useIdleLed(canTap && !done, nFull + (sel ? 10 : 0));
+  const whyOf = (where, tag) => (where === 'head' ? (tag === 'h6' ? c.why.headH6 : tag === 'p' ? c.why.headP : c.why.allB)
+    : where === 'line' ? (tag === 'h1' ? c.why.lineH1 : tag === 'h6' ? c.why.lineH6 : c.why.allB) : c.why.wordBlock);
+  const place = (tag, where) => {
+    if (!canTap || done || !tag || !where || slots[where]) return false;
+    st.current.tries += 1;
+    if (Q1_WANT[where] !== tag) {
+      st.current.misses += 1;
+      sfx('soft', true); setShake(tag); setTimeout(() => setShake(null), 520);
+      clearTimeout(peekT.current); setPeek({ where, tag }); peekT.current = setTimeout(() => setPeek(null), 1800);
+      const m = whyOf(where, tag);
+      setMsg(m); setSel(null); sayNow(m, 'think');
+      if (st.current.misses >= 2) lad.bump();
+      return false;
+    }
+    sfx('pop', true);
+    const ns = Object.assign({}, slots, { [where]: tag });
+    setSlots(ns); setSel(null); setMsg(null); setPeek(null);
+    if (ns.head && ns.line && ns.word) {
+      put({ done: true });
+      log({ screenId: 'q1', type: 'place-text-tags', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
+      sayNow(c.ok, 'smile');
+    }
+    return true;
+  };
+  const dnd = useKzDrag((tag, where) => place(tag, where));
+  const pickSlot = (where) => { if (!sel) { setMsg(c.pickFirst); return; } place(sel, where); };
+  const lit = lad.lv >= 3;
+  const nextWhere = !slots.head ? 'head' : !slots.line ? 'line' : 'word';
+  const head = pick(c.head), line = pick(c.line), pre = pick(c.pre), word = pick(c.word), post = pick(c.post);
+  // Честная страница: тег на месте или тот, что на миг показан при ошибке.
+  const tagOf = (where) => slots[where] || (peek && peek.where === where ? peek.tag : null);
+  const blocks = (() => {
+    const out = [];
+    const push = (t, parts) => {
+      if (!t || t === 'b') {   // без тега или b — строчный текст: склеивается с соседним строчным
+        const prt = t === 'b' ? [{ b: parts.join('') }] : parts;
+        const last = out[out.length - 1];
+        if (last && last.t === 'raw') last.parts = last.parts.concat([' '], prt); else out.push({ t: 'raw', parts: prt, k: 'r' + out.length });
+      } else out.push({ t, parts, k: t + out.length });
+    };
+    push(tagOf('head'), [head]);
+    push(tagOf('line'), [line]);
+    const w = tagOf('word');
+    if (!w || w === 'b') out.push({ t: 'p', parts: [pre, w ? { b: word } : word, post], k: 'p3' });
+    else { out.push({ t: 'p', parts: [pre], k: 'p3a' }); out.push({ t: w, parts: [word], k: 'w3' }); out.push({ t: 'p', parts: [post], k: 'p3b' }); }
+    return out;
+  })();
+  const slot = (where) => (
+    <button key={'s' + where} type="button" data-place={where} disabled={!canTap || done || !!slots[where]} onClick={() => pickSlot(where)}
+      className={'kz-dash kz-drop kz-q1-slot' + (dnd.hover === where ? ' is-hover' : '') + (dnd.active || sel ? ' is-call' : '')}>
+      <Led on={(led && !!sel) || (lit && where === nextWhere)} />
+    </button>
+  );
+  const wrapped = (where, text) => (slots[where] ? [T_(slots[where]), W_(text), T_(slots[where], true)] : [slot(where), W_(text)]);
+  const hint = hintAt(lad.lv, c.hints);
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="z2-sheet">
+        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} n={done ? null : nFull + '/3'} />
+        <div className={'kz-scene kz-scene-col z2-q1' + (dnd.active || sel ? ' is-dragging' : '')}>
+          <div className="kz-col">
+            <PaperBrowser title={pick(UI.mySite)} short cls="z2-br" pageHl={!!peek}><PageDoc blocks={blocks} /></PaperBrowser>
+            <KzCode lines={[
+              { k: 'b', d: 0, cls: 'z2-edge', parts: [T_('body')] },
+              { k: 'h', d: 1, cls: slots.head ? 'is-new' : '', parts: wrapped('head', head) },
+              { k: 'l', d: 1, cls: slots.line ? 'is-new' : '', parts: wrapped('line', line) },
+              { k: 'w', d: 1, cls: slots.word ? 'is-new' : '', parts: [T_('p'), W_(pre)].concat(wrapped('word', word), [W_(post), T_('p', true)]) },
+              { k: 'bc', d: 0, cls: 'z2-edge', parts: [T_('body', true)] }
+            ]} cls="kz-code-sm" />
+          </div>
+        </div>
+        {!done ? (
+          <div className="kz-tray">
+            {Q1_TAGS.map((tg, i) => ((slots.head === tg || slots.line === tg || slots.word === tg) ? null : (
+              <button key={tg} type="button" disabled={!canTap} data-id={tg}
+                className={'kz-scrap kz-scrap-tag' + (sel === tg ? ' is-sel' : '') + (shake === tg ? ' kz-a-shake' : '') + (lit && tg === Q1_WANT[nextWhere] ? ' is-led' : '')}
+                style={{ '--r': ((i % 2 ? 1 : -1) * 2) + 'deg' }}
+                onPointerDown={(e) => { if (canTap && !done) dnd.start(e, tg, '<' + tg + '>'); }}
+                onClick={() => { setSel(sel === tg ? null : tg); setMsg(null); sfx('tap', true); }}>
+                <span translate="no">{'<' + tg + '>'}</span><Led on={led && !sel} />
+              </button>
+            )))}
+          </div>
+        ) : null}
+      </Sheet>
+      <KzGhost ghost={dnd.ghost} />
+    </Stage>
+  );
+}
+
+// =============================================================================
+// Q2. СКОЛЬКО h1? — три варианта, верный не первый. До первой попытки ничего не
+// подсвечено; неверный вариант гаснет, Коди называет причину, можно снова.
+// Подсказки — по лампочке (третья ступень подсвечивает ответ).
+// =============================================================================
+function Q2({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.q2;
+  const mine = useMine2();
+  const [rec, put] = useRec('q2');
+  const solved = !!(rec && rec.done);
+  const [off, setOff] = useState([]);
+  const [okNow, setOkNow] = useState(solved);
+  const [msg, setMsg] = useState(null);
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'curious' }]);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(solved || okNow, spoken);
+  const lad = useKzLadder(!okNow);
+  const led = useIdleLed(canTap && !okNow, off.length);
+  const choose = (o) => {
+    if (!canTap || okNow || off.indexOf(o.id) >= 0) return;
+    if (o.right) {
+      sfx('win', true); setOkNow(true); setMsg(null); put({ done: true });
+      log({ screenId: 'q2', type: 'how-many-h1', correct: true, firstTry: off.length === 0 && lad.asked.current === 0, attempts: off.length + 1, hints: lad.asked.current, depth: lad.lv });
+      sayNow(c.ok, 'smile');
+      return;
+    }
+    sfx('soft', true); setOff(off.concat(o.id)); setMsg(o.why); sayNow(o.why, 'think');
+    if (off.length + 1 >= 2) lad.bump();
+  };
+  const lit = lad.lv >= 3;
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="z2-sheet">
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hintAt(lad.lv, c.hints))} />
+        <div className="kz-scene kz-scene-col kz-q2">
+          <div className="kz-col">
+            <KzCode lines={[{ k: 'h', d: 0, parts: [<span key="o" className="kz-q2-close">{T_('h1')}</span>, W_(mine.title), <span key="c" className="kz-q2-close">{T_('h1', true)}</span>] }]} />
+            <div className="kz-quiz">
+              {c.opts.map((o) => (
+                <button key={o.id} type="button" disabled={!canTap || okNow || off.indexOf(o.id) >= 0} onClick={() => choose(o)}
+                  className={'kz-btn ' + (okNow && o.right ? 'is-ok' : off.indexOf(o.id) >= 0 ? 'is-off' : 'is-ghost') + (lit && o.right && !okNow ? ' is-led' : '')}>
+                  {pick(o.t)}<Led on={led && !okNow && off.indexOf(o.id) < 0} />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Sheet>
+    </Stage>
+  );
+}
+
+// =============================================================================
 // S15. ВЫВОД — своя страница ученика в бумажном браузере; роли тегов загораются,
 // пока Коди их называет. Единственный праздник урока.
 // =============================================================================
@@ -1186,12 +1347,14 @@ const SCREENS = [
   { id: 's3', code: 'SHOW', Comp: S3 }, { id: 's4', code: 'LEVEL-1', Comp: S4 }, { id: 's5', code: 'CHECK-1', Comp: S5 },
   { id: 's6', code: 'SHOW', Comp: S6 }, { id: 's7', code: 'LEVEL-2', Comp: S7 }, { id: 's8', code: 'PREDICT', Comp: S8 },
   { id: 's9', code: 'SHOW', Comp: S9 }, { id: 's10', code: 'LEVEL-3', Comp: S10 }, { id: 's11', code: 'CHECK-2', Comp: S11 },
-  { id: 's12', code: 'SHOW', Comp: S12 }, { id: 's13', code: 'LEVEL-4', Comp: S13 }, { id: 's14', code: 'CHECK-3', Comp: S14 },
+  { id: 's12', code: 'SHOW', Comp: S12 }, { id: 's13', code: 'LEVEL-4', Comp: S13 }, { id: 's13b', code: 'LEVEL-4B', Comp: S13B },
+  { id: 's14', code: 'CHECK-3', Comp: S14 },
+  { id: 'q1', code: 'CHECK-4', Comp: Q1 }, { id: 'q2', code: 'QUIZ', Comp: Q2 },
   { id: 's15', code: 'ACHIEVEMENT', Comp: S15 }
 ];
 // «Повторить» стирает только экран; название и текст ученика (myTitle, myText) остаются.
 const SCREEN_RESET = { s1: ['s1'], s2: ['s2'], s3: ['s3'], s4: ['s4'], s5: ['s5'], s6: ['s6'], s7: ['s7'], s8: ['s8'], s9: ['s9'],
-  s10: ['s10'], s11: ['s11'], s12: ['s12'], s13: ['s13'], s14: ['s14'] };
+  s10: ['s10'], s11: ['s11'], s12: ['s12'], s13: ['s13'], s13b: ['s13b'], s14: ['s14'], q1: ['q1'], q2: ['q2'] };
 
 // Артефакт урока — страница ученика: название на вкладке и в h1, абзац с жирным словом.
 function lesson2Artifact(store, lang) {

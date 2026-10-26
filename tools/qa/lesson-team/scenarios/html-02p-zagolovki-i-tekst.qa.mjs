@@ -145,6 +145,8 @@ export default {
       qa.type('.ed-ta', '<h2>Мой кот</h2>\n<p>Он любит <b>спать</b>.</p>', 'статья');
       await qa.click('.pp-go', 'Проверить'); await qa.sleep(350);
       await qa.waitFor(() => qa.q('.pp-drill-tag'), 4000, 'дополнительная задача');
+      qa.platform.hint(); await qa.sleep(500);
+      qa.expect(!!qa.q('.pp-note.is-hint'), 'в дополнительной задаче лампочка даёт правило (2-я ступень)', { note: qa.text('.pp-note') });
       qa.expect(!qa.platform.nextEnabled(), '«Дальше» ждёт дополнительную задачу');
       qa.type('.ed-ta', '<p>Мы <i>чиним</i> всё.</p>', 'абзац мастерской');
       await qa.click('.pp-go', 'Проверить'); await qa.sleep(350);
