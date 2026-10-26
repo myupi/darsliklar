@@ -32,5 +32,7 @@ export default {
       topics: ['html', 'head', 'title', 'body'] },
     { n: 14, slug: 'zagolovki-robofutbol', title: 'Заголовки и текст — робофутбол (прежний урок 2 курса до 22.10.2026)',
       topics: ['h1–h6', 'p', 'b', 'i'] },
+    { n: 15, slug: 'bumazhnaya-stranitsa', title: 'Структура HTML-документа — копия урока 1 курса «Бумажная страница» (24.10.2026)',
+      topics: ['html', 'head', 'title', 'body'] },
   ],
 };
