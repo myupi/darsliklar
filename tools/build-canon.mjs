@@ -113,6 +113,7 @@ swapEmotion();
 swapUzPace();
 swapAnswerSafety();
 swapCalmVoice();
+swapNoBubble();
 
 swap("  ui: '#1E88E5',", "  // КУРС HTML: интерфейс — #FF4F28 (заказчик, 12.10.2026), а не голубой.\n  ui: '#FF4F28',");
 swap("  uiSoft: '#E3F2FD',", "  uiSoft: '#FFE8E1',");
@@ -858,4 +859,26 @@ function swapCalmVoice() {
   if (/\\?$/.test(s)) return '[curious] ';
   return '[friendly] ';`);
   swap(`const HINT_BTN = { uz: 'Maslahat', ru: 'Подсказка', en: 'Hint' };`, `const HINT_BTN = { uz: 'Yordam', ru: 'Подсказка', en: 'Hint' };`);
+}
+
+// БЕЗ ОБЛАКА С ТЕКСТОМ РЕПЛИКИ (заказчик, 26.10.2026: «давай уберём вот эти
+// штуки» — облако «Salom! Men Kodi…» под листом). Облако появлялось, когда
+// голоса нет: до первого касания и при сбое озвучки. Теперь реплику никогда
+// не печатаем — Коди говорит голосом, волны у кружка показывают речь, задание
+// написано строкой на листе; текст реплики остаётся только для экранного
+// диктора (sv-sr). Вёрстка «без облака» в каноне уже есть (:not(:has(.speaker-bubble))).
+// Кружок Коди по нажатию повторяет реплику всегда, а не только без голоса.
+function swapNoBubble() {
+  swap(`      <span className="speaker-av" onClick={silent && !quiet ? replay : undefined}>`,
+    `      <span className="speaker-av" onClick={!quiet ? replay : undefined}>`);
+  swap(`      {quiet ? null : silent ? (
+        <>`, `      {quiet ? null : (
+        <>`);
+  swap(`          <span className="sv-sr">{line}</span>
+        </>
+      ) : (
+        <div className="speaker-bubble">{line}</div>
+      )}`, `          <span className="sv-sr">{line}</span>
+        </>
+      )}`);
 }

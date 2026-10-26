@@ -1971,10 +1971,10 @@ function PersonaBubble({ who = 'bot', pose, text, onSpoken, nonce, quiet }) {
       {/* Робот рисуется кодом — внешних картинок в уроке нет. По нажатию
           повторяет реплику: ребёнку естественнее ткнуть в героя, чем искать
           кнопку, поэтому персонаж и кнопка делают одно и то же. */}
-      <span className="speaker-av" onClick={silent && !quiet ? replay : undefined}>
+      <span className="speaker-av" onClick={!quiet ? replay : undefined}>
         <RobotSVG pose={pose} talking={speaking} />
       </span>
-      {quiet ? null : silent ? (
+      {quiet ? null : (
         <>
           {/* КУРС HTML: речь показывают волны вокруг кружка с головой Коди —
               отдельного кружка с полосками больше нет. */}
@@ -1982,8 +1982,6 @@ function PersonaBubble({ who = 'bot', pose, text, onSpoken, nonce, quiet }) {
               Отдельным узлом, а не внутри кнопки: aria-label кнопки перебил бы её. */}
           <span className="sv-sr">{line}</span>
         </>
-      ) : (
-        <div className="speaker-bubble">{line}</div>
       )}
     </div>
   );
