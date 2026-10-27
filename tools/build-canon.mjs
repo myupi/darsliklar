@@ -114,6 +114,7 @@ swapUzPace();
 swapAnswerSafety();
 swapCalmVoice();
 swapNoBubble();
+swapTapWait();
 
 swap("  ui: '#1E88E5',", "  // КУРС HTML: интерфейс — #FF4F28 (заказчик, 12.10.2026), а не голубой.\n  ui: '#FF4F28',");
 swap("  uiSoft: '#E3F2FD',", "  uiSoft: '#FFE8E1',");
@@ -881,4 +882,83 @@ function swapNoBubble() {
       )}`, `          <span className="sv-sr">{line}</span>
         </>
       )}`);
+}
+
+// ПЕРВАЯ РЕПЛИКА ЖДЁТ КАСАНИЯ, А НЕ «ПРОЖИВАЕТСЯ» МОЛЧА (заказчик, 27.10.2026:
+// «Коди не сразу говорит или вообще не говорит, пока не тыкну его»). Браузер не
+// отдаёт звук до первого касания внутри урока. Раньше реплика до касания
+// показывалась облаком и через время своей длины закрывалась сама — урок шёл
+// дальше. Облака больше нет, и ученик видел тишину: первые фразы урока не
+// звучали никогда, а голос появлялся, только если ткнуть в Коди. Теперь:
+//   · до первого касания реплика ждёт его без страховочного таймера и после
+//     касания звучит с начала (таймер остаётся, только если голоса нет вовсе:
+//     звук выключен или ни сервиса, ни голоса браузера);
+//   · пока ждёт, кружок Коди зовёт нажать — расходятся оранжевые кольца;
+//     первое касание где угодно включает голос.
+function swapTapWait() {
+  swap(`  const [gestured, setGestured] = useState(false);
+`, `  const [gestured, setGestured] = useState(false);
+  // КУРС HTML: реплика ждёт первого касания — кружок Коди зовёт нажать.
+  const [tapWait, setTapWait] = useState(false);
+`);
+  swap(`      setGestured(true);
+      unlock();`, `      setGestured(true);
+      setTapWait(false);
+      unlock();`);
+  swap(`      const waitGesture = () => {
+        setFailed(true);
+        const guard = setTimeout(finish, est);
+        timers.current.push(guard);
+        gestureWait.current = () => {
+          gestureWait.current = null;
+          if (done) return;
+          clearTimeout(guard);
+          setFailed(false);
+          play();
+        };
+      };`, `      const waitGesture = () => {
+        setFailed(true);
+        // КУРС HTML: голос возможен — ждём касания без таймера, реплика не
+        // пропадает молча. Голоса нет вовсе — урок не запирается.
+        const canVoice = onRef.current && (!!ttsApiBase || localVoiceOk());
+        const guard = canVoice ? null : setTimeout(finish, est);
+        if (guard) timers.current.push(guard);
+        else setTapWait(true);
+        gestureWait.current = () => {
+          gestureWait.current = null;
+          setTapWait(false);
+          if (done) return;
+          if (guard) clearTimeout(guard);
+          setFailed(false);
+          play();
+        };
+      };`);
+  swap(`  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };`,
+    `  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed, tapWait };`);
+  // Метка — на корне документа: так зовёт и Коди в строке героя, и кружок в
+  // шапке (VoiceDot практик и телефона), не трогая замороженные помощники.
+  swap(`  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+`, `  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  useEffect(() => {
+    try { document.documentElement.classList.toggle('kodi-tap-wait', tapWait); } catch (e) { /* no-op */ }
+  }, [tapWait]);
+`);
+  swap(`.speaker-av:active .kodi-av { transform: scale(.93); }
+`, `.speaker-av:active .kodi-av { transform: scale(.93); }
+/* КУРС HTML: реплика ждёт первого касания — от кружка расходятся кольца. */
+.kodi-tap-wait .speaker-av .kodi-av::before, .kodi-tap-wait .speaker-av .kodi-av::after,
+.kodi-tap-wait .kodi-dot .kodi-av::before, .kodi-tap-wait .kodi-dot .kodi-av::after {
+  content: ''; position: absolute; inset: 2%; border-radius: 50%; pointer-events: none;
+  border: 3px solid #FF4F28; opacity: 0; animation: kodiTapRing 1.8s ease-out infinite; }
+.kodi-tap-wait .speaker-av .kodi-av::after, .kodi-tap-wait .kodi-dot .kodi-av::after { animation-delay: .9s; }
+.kodi-tap-wait .speaker-av .kodi-av, .kodi-tap-wait .kodi-dot .kodi-av { animation: kodiTapNudge 1.8s ease-in-out infinite; }
+@keyframes kodiTapRing { 0% { opacity: .85; transform: scale(1); } 100% { opacity: 0; transform: scale(1.45); } }
+@keyframes kodiTapNudge { 0%, 100% { transform: scale(1); } 12% { transform: scale(1.07); } 24% { transform: scale(1); } }
+`);
+  swap(`  .kodi .kodi-glare { display: none; }
+}`, `  .kodi .kodi-glare { display: none; }
+  .kodi-tap-wait .speaker-av .kodi-av, .kodi-tap-wait .kodi-dot .kodi-av { animation: none; }
+  .kodi-tap-wait .speaker-av .kodi-av::before, .kodi-tap-wait .kodi-dot .kodi-av::before { animation: none; opacity: .9; transform: scale(1.12); }
+  .kodi-tap-wait .speaker-av .kodi-av::after, .kodi-tap-wait .kodi-dot .kodi-av::after { display: none; }
+}`);
 }
