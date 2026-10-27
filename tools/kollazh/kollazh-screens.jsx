@@ -229,7 +229,8 @@ function RD({ p }) {
 
 // =============================================================================
 // S3. ЧТО ТАКОЕ ТЕГ — на бирках рамки html (заказчик, 26.10.2026: отдельный экран
-// «что такое тег» убран, всё — здесь). Бумажный браузер в рамке html (рамка — вокруг
+// «что такое тег» убран, всё — здесь; 27.10.2026: сначала угловые скобки, потом имя
+// тега, потом вся запись — подсветка внутри бирки за словами). Бумажный браузер в рамке html (рамка — вокруг
 // всего браузера, с вкладкой); две бирки. Показ: Коди спрашивает, что это за надписи
 // (обе бирки в «прожекторе»), — это тег (верхняя), открывающий (верхняя), закрывающий
 // с косой чертой (нижняя, черта крупно), пара — страница между ними, рамка — для
@@ -255,7 +256,7 @@ function S3({ p }) {
   // Показ: загорается верхняя бирка — «это тег», «открывающий»; потом нижняя — «закрывающий».
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
     { look: () => boxRef.current && boxRef.current.querySelector('.kz-frame-lbl-top'), act: () => { sfx('tap', true); setN(1); } },
-    { say: [{ text: c.sayTag, pose: 'wonder' }, { text: c.top, pose: 'point' }] },
+    { say: [{ text: c.br, pose: 'point' }, { text: c.nm, pose: 'point' }, { text: c.sayTag, pose: 'wonder' }, { text: c.top, pose: 'point' }] },
     { look: () => boxRef.current && boxRef.current.querySelector('.kz-frame-lbl-bot'), act: () => { sfx('ok', true); setN(2); } },
     { say: [{ text: c.bottom, pose: 'explain' }, { text: c.pair, pose: 'smile' }, { text: c.done, pose: 'smile' }] },
     { act: () => put({ done: true }) }
@@ -264,7 +265,9 @@ function S3({ p }) {
   // «Прожектор» за речью: обе бирки → верхняя (тег, открывающий) → нижняя (закрывающий, черта) →
   // обе и страница (пара) → рамка (секрет).
   const t = speaker.text;
-  const spotTop = t === c.say || t === c.sayTag || t === c.top;
+  const spotTop = t === c.say || t === c.br || t === c.nm || t === c.sayTag || t === c.top;
+  // Внутри верхней бирки: «эти знаки» — светятся < и >; «между ними html» — светится имя.
+  const topPart = t === c.br ? ' hl-br' : t === c.nm ? ' hl-nm' : '';
   const spotBot = t === c.say || t === c.bottom;
   const spotting = spotTop || spotBot;
   const pairNow = t === c.pair;
@@ -276,7 +279,7 @@ function S3({ p }) {
         <div className="kz-scene" ref={boxRef}>
           <ManBox frame frameAnim={!solved} frameHl={t === c.done} cls={spotting ? 'is-spot' : pairNow ? 'is-pair' : ''} br={<FramedPage anim={!solved} />}
             labels={<>
-              <KzLabel t="html" cls={'kz-frame-lbl-top' + (spotTop ? ' is-spot' : '')} on={n >= 1} hl={spotTop || pairNow} />
+              <KzLabel t="html" cls={'kz-frame-lbl-top' + (spotTop ? ' is-spot' : '') + topPart} on={n >= 1} hl={spotTop || pairNow} />
               <KzLabel t="html" close cls={'kz-frame-lbl-bot' + (spotBot ? ' is-spot' : '') + (t === c.bottom ? ' is-slash' : '')} on={n >= 2} hl={spotBot || pairNow} />
             </>} />
         </div>
@@ -297,6 +300,9 @@ function S4({ p }) {
   const ty = useTagTyping({ max: 12 });
   const [msg, setMsg] = useState(null);
   const [okNow, setOkNow] = useState(solved);
+  // Причину нельзя назвать точно (знаки не в том порядке) — опора: верхний тег на рамке
+  // и кнопки набора, которые загораются по порядку < / html >.
+  const [orderHint, setOrderHint] = useState(false);
   const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'explain' }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || okNow, spoken);
@@ -317,6 +323,7 @@ function S4({ p }) {
       return;
     }
     st.current.misses += 1;
+    setOrderHint(issue === c.msgs.generic);
     sfx('soft', true); setMsg(issue); sayNow(issue, 'think');
     if (st.current.misses >= 2) lad.bump();
   };
@@ -336,13 +343,13 @@ function S4({ p }) {
         <div className="kz-scene is-tight">
           <ManBox frame frameSides={{ top: 1, right: 1, left: 1, bottom: okNow ? 'new' : 0 }} br={<FramedPage anim={false} />}
             labels={<>
-              <KzLabel t="html" cls="kz-frame-lbl-top" on={lad.lv >= 1 && !okNow} />
+              <KzLabel t="html" cls="kz-frame-lbl-top" on={(lad.lv >= 1 || orderHint) && !okNow} />
               {okNow ? <KzLabel t="html" close cls="kz-frame-lbl-bot" anim="stamp" />
                 : <span className={'kz-frame-miss' + (blink ? ' is-blink' : '')} aria-hidden="true"><span className="kz-frame-miss-q">?</span></span>}
             </>} />
           <div className="kz-col"><KzCode lines={lines} /></div>
         </div>
-        {!okNow ? <KeyRow keys={['<', '/', 'html', '>']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 4} /> : null}
+        {!okNow ? <div className={'kz-keys-wrap' + (orderHint && msg ? ' kz-order-hint' : '')}><KeyRow keys={['<', '/', 'html', '>']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 4} /></div> : null}
       </Sheet>
     </Stage>
   );
@@ -441,7 +448,8 @@ function S5({ p }) {
 }
 
 // =============================================================================
-// S6. ГОЛОВА СТРАНИЦЫ — показ короткими шагами, у каждого своя подсветка:
+// S6. ГОЛОВА СТРАНИЦЫ — показ короткими шагами, у каждого своя подсветка
+// (27.10.2026: в конце «внутри head» — через код: <head>, </head>, строка title между ними):
 // «голова напоминает head» — голова и строки head; «в окне не видно» — окно;
 // голова приподнимается, внутри карточка title, в коде — строка title; карточка
 // улетает на вкладку — вкладка; «в head — title, в title — название».
@@ -469,17 +477,27 @@ function S6({ p }) {
     } },
     { wait: 800 },
     { act: () => { setFlying(false); setStep(2); setStamp((v) => v + 1); sfx('ok', true); } },
-    { say: [{ text: c.flew, pose: 'wonder' }, { text: c.done, pose: 'smile' }] },
+    { say: [{ text: c.flew, pose: 'wonder' }, { text: c.inHead, pose: 'point' }, { text: c.done, pose: 'smile' }] },
     { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
   const title = pick(UI.mySite);
+  // «Внутри head» через код (заказчик, 27.10.2026): на inHead загорается <head>, чуть позже </head>;
+  // на done — строка title между ними.
+  const [inStep, setInStep] = useState(0);
+  useEffect(() => {
+    if (speaker.text !== c.inHead) return undefined;
+    setInStep(1);
+    const tm = setTimeout(() => setInStep(2), reduceMotion() ? 300 : 1700);
+    return () => clearTimeout(tm);
+  }, [speaker.text]); // eslint-disable-line react-hooks/exhaustive-deps
+  const inNow = speaker.text === c.inHead;
   const askText = step === 0 ? c.ask : step === 1 ? c.askCard : c.done;
   // Подсветка за речью: голова и строки head → окно → строка title → вкладка.
   const hlHead = speaker.text === c.say;
   const hlWin = speaker.text === c.sayInfo;
   const hlTitle = speaker.text === c.opened;
-  const hlAll = speaker.text === c.done;   // «title внутри head» — три строки head вместе
+  const hlAll = speaker.text === c.done;   // «строка title между ними» — title ярко, head-строки рядом
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Sheet>
@@ -493,9 +511,9 @@ function S6({ p }) {
               <PageBits text={pick(UI.hello)} />
             </PaperBrowser>
             <KzCode lines={[
-              { k: 'h', d: 0, cls: hlHead || hlAll || step === 1 ? 'is-hl' : '', parts: [T_('head')] },
-              { k: 't', d: 1, cls: hlTitle || hlAll ? 'is-read' : step >= 2 ? 'is-new' : '', parts: step >= 1 ? [T_('title'), W_(title), T_('title', true)] : [<span key="d" className="kz-dim">…</span>] },
-              { k: 'hc', d: 0, cls: hlHead || hlAll || step === 1 ? 'is-hl' : '', parts: [T_('head', true)] }
+              { k: 'h', d: 0, cls: inNow && inStep >= 1 ? 'is-read' : hlHead || hlAll || step === 1 ? 'is-hl' : '', parts: [T_('head')] },
+              { k: 't', d: 1, cls: hlTitle || hlAll ? 'is-read' : step >= 2 && !inNow ? 'is-new' : '', parts: step >= 1 ? [T_('title'), W_(title), T_('title', true)] : [<span key="d" className="kz-dim">…</span>] },
+              { k: 'hc', d: 0, cls: inNow && inStep >= 2 ? 'is-read' : hlHead || hlAll || step === 1 ? 'is-hl' : '', parts: [T_('head', true)] }
             ]} />
           </div>
         </div>
@@ -754,7 +772,9 @@ function S9({ p }) {
             </PaperBrowser>
             <KzCode lines={[
               { k: 'b', d: 0, cls: going ? 'is-hl' : '', parts: [T_('body')] },
-              { k: 'x', d: 1, cls: out ? 'is-new' : '', parts: out ? [W_(hello), <span key="p" className="kz-dim">{' + ' + pick(UI.pic) + ' + ' + pick(UI.play)}</span>] : [<span key="d" className="kz-dim">…</span>] },
+              // В коде — только настоящий текст между тегами body; картинка и кнопка — лишь иллюстрация в окне
+              // (заказчик, 27.10.2026: запись «+ картинка + Играть» учила бы неверному способу).
+              { k: 'x', d: 1, cls: out ? 'is-new' : '', parts: out ? [W_(hello)] : [<span key="d" className="kz-dim">…</span>] },
               { k: 'bc', d: 0, cls: going ? 'is-hl' : '', parts: [T_('body', true)] }
             ]} />
           </div>
@@ -788,7 +808,9 @@ function S10({ p }) {
   const solved0 = !!(rec && rec.done);
   const lad = useKzLadder(!solved0);
   const ty = useTypedDone({ storeKey: 'myText', screenId: 's10', type: 'write-body', lad });
-  const [speaker, , spoken, sayNow] = useVoice([{ text: ty.solved ? c.ok : c.say, pose: ty.solved ? 'smile' : 'point' }]);
+  // Сначала — где писать (поле в коде мигает), потом — где появится (окно в «прожекторе»).
+  const [speaker, , spoken, sayNow] = useVoice(ty.solved ? [{ text: c.ok, pose: 'smile' }]
+    : [{ text: c.say, pose: 'point' }, { text: c.sayWin, pose: 'point' }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(ty.solved, spoken);
   const led = useIdleLed(canTap && !ty.solved && !ty.val.trim(), 0) || (!ty.solved && !ty.val && speaker.text === c.say);
@@ -800,7 +822,7 @@ function S10({ p }) {
         <KzAsk text={ty.solved ? c.ok : c.ask} hint={ty.solved && !hasTags(ty.val) ? null : hint} />
         <div className="kz-scene kz-scene-col">
           <div className="kz-col">
-            <PaperBrowser title={mine.title} short pageHl={!ty.solved}>
+            <PaperBrowser title={mine.title} short pageHl={speaker.text === c.sayWin} spot={speaker.text === c.sayWin ? 'page' : null}>
               <div className={'kz-br-text' + (ty.stamp ? ' kz-a-stamp' : '')} key={'f' + ty.stamp}>{ty.shown}</div>
             </PaperBrowser>
             <KzCode lines={[

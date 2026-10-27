@@ -279,7 +279,19 @@
 .kz-label.is-spot { z-index: 7; scale: 1.18; animation: kzSpotLbl .5s steps(5, end) both; }
 .kz-label.is-spot::after { content: ''; position: absolute; inset: -7px -11px; border: 3px solid #E0643F; border-radius: 50%; rotate: -4deg;
   pointer-events: none; animation: kzRingIn .45s steps(5, end) .1s both; }
-.kz-label.is-slash .kz-tag .kz-tk-b:nth-child(2) { display: inline-block; padding: 0 2px; background: #1F2A44; color: #FFB199; border-radius: 3px; scale: 1.35; }
+/* «/ сразу после <»: на закрывающем светятся первая скобка и косая черта вместе. */
+.kz-label.is-slash .kz-tag .kz-tk-b:nth-child(-n+2) { display: inline-block; padding: 0 2px; background: #1F2A44; color: #FFB199; border-radius: 3px; scale: 1.3; }
+/* s3: «эти знаки — угловые скобки» — светятся < и >; «между ними html — название тега» — светится имя. */
+.kz-label.hl-br .kz-tag .kz-tk-b, .kz-label.hl-nm .kz-tag .kz-tk-n { display: inline-block; padding: 0 3px; background: #1F2A44; color: #FFD166; border-radius: 3px;
+  scale: 1.3; animation: kzPartOn .45s steps(4, end) both; }
+@keyframes kzPartOn { 0% { scale: 1; } 60% { scale: 1.45; } 100% { scale: 1.3; } }
+/* s4: знаки не в том порядке — кнопки набора загораются по порядку < / html >. */
+.kz-keys-wrap { display: contents; }
+.kz-order-hint .key-b:nth-child(-n+4) { animation: kzLed 1.6s ease-in-out infinite; }
+.kz-order-hint .key-b:nth-child(2) { animation-delay: .4s; }
+.kz-order-hint .key-b:nth-child(3) { animation-delay: .8s; }
+.kz-order-hint .key-b:nth-child(4) { animation-delay: 1.2s; }
+@media (prefers-reduced-motion: reduce) { .kz-label.hl-br .kz-tag .kz-tk-b, .kz-label.hl-nm .kz-tag .kz-tk-n, .kz-order-hint .key-b { animation: none; } }
 @keyframes kzSpotLbl { 0% { scale: 1; } 60% { scale: 1.28; } 100% { scale: 1.18; } }
 @keyframes kzRingIn { 0% { opacity: 0; scale: .7; } 100% { opacity: 1; scale: 1; } }
 @media (prefers-reduced-motion: reduce) { .kz-label.is-spot, .kz-label.is-spot::after { animation: none; } }

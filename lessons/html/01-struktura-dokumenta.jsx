@@ -6781,9 +6781,9 @@ const C = {
       'А тело? Оно собралось из того, что видно на странице: текста, картинки и кнопки.',
       'And the body? It’s made of what you see on the page: text, a picture and a button.'),
     // Короткая цель вместо экрана плана (заказчик, 26.10.2026).
-    done: L3('Bugun shunday sahifani kod bilan o‘zingiz yig‘asiz! Keling, avval kod qanday ko‘rinishini ko‘ramiz.',
-      'Сегодня ты соберёшь такую страницу кодом! Сначала посмотрим, как выглядит код.',
-      'Today you’ll build a page like this with code! First, let’s see what code looks like.'),
+    done: L3('Bugun o‘zingiz nom bergan va salom yozgan sahifa yaratasiz! Keling, avval kod qanday ko‘rinishini ko‘ramiz.',
+      'Сегодня ты создашь страницу со своим названием и приветствием! Сначала посмотрим, как выглядит код.',
+      'Today you’ll create a page with your own page name and greeting! First, let’s see what code looks like.'),
     ask: L3('«Aylantirish» tugmasini bosing', 'Нажми «Превратить»', 'Tap “Transform”'),
     askLook: L3('Qarang: brauzer yorlig‘i', 'Смотри: вкладка браузера', 'Look: the browser tab'),
     askDone: L3('Boshda — sahifa haqida ma’lumot, tanada — ko‘rinadigan narsalar',
@@ -6820,18 +6820,25 @@ const C = {
     say: L3('Ramkaga qarang: unda ikkita qiziq yozuv bor. Ular nima ekan?',
       'Посмотри на рамку: на ней две интересные надписи. Что же это такое?',
       'Look at the frame: there are two interesting labels on it. What are they?'),
-    sayTag: L3('Bu teg! Burchakli qavsdagi so‘z teg deyiladi. Brauzer tegni sahifada ko‘rsatmaydi, uni o‘qib oladi.',
-      'Это тег! Слово в угловых скобках называется тег. Браузер не показывает тег на странице, а читает его.',
-      'It’s a tag! A word in angle brackets is called a tag. The browser doesn’t show a tag on the page, it reads it.'),
+    // Сначала знаки, потом имя, потом вся запись — подсветка точно за словами (заказчик, 27.10.2026).
+    br: L3('Mana bu belgilarga qarang. Ular burchakli qavslar deyiladi.',
+      'Посмотри на эти знаки. Они называются угловыми скобками.',
+      'Look at these signs. They’re called angle brackets.'),
+    nm: L3('Ularning orasida html yozilgan. Bu tegning nomi.',
+      'Между ними написано html. Это название тега.',
+      'Between them it says html. That’s the tag’s name.'),
+    sayTag: L3('Hammasi birga html tegi deyiladi. Brauzer tegni sahifada ko‘rsatmaydi, uni o‘qib oladi.',
+      'Вся запись вместе — тег html. Браузер не показывает тег на странице, а читает его.',
+      'All together, it’s the html tag. The browser doesn’t show a tag on the page, it reads it.'),
     top: L3('Tepadagisi ochuvchi html tegi. U brauzerga: «Sahifa shu yerdan boshlanadi», deydi.',
       'Верхний — открывающий тег html. Он говорит браузеру: «Здесь страница начинается».',
       'The top one is the opening html tag. It tells the browser: “The page starts here.”'),
-    bottom: L3('Pastdagisida qiya chiziq bor, ko‘ryapsizmi? Bu yopuvchi html tegi. U: «Sahifa shu yerda tugaydi», deydi.',
-      'А на нижнем видишь косую черту? Это закрывающий тег html. Он говорит: «Здесь страница заканчивается».',
-      'See the slash on the bottom one? It’s the closing html tag. It says: “The page ends here.”'),
-    pair: L3('Ochuvchi va yopuvchi teg juftlik bo‘lib keladi. Butun sahifa ularning o‘rtasida, xuddi buterbrod ichidagi narsadek!',
-      'Открывающий и закрывающий теги — пара. А вся страница между ними, как начинка в бутерброде!',
-      'Opening and closing tags are a pair. The whole page sits between them, like the filling in a sandwich!'),
+    bottom: L3('Pastdagisiga qarang: birinchi qavsdan keyin darhol qiya chiziq turadi. Bu yopuvchi html tegi, u «Sahifa shu yerda tugaydi», deydi.',
+      'А на нижнем сразу после первой скобки стоит косая черта. Это закрывающий тег html, он говорит: «Здесь страница заканчивается».',
+      'On the bottom one, a slash comes right after the first bracket. It’s the closing html tag. It says: “The page ends here.”'),
+    pair: L3('Ochuvchi teg boshlanishni, yopuvchi teg tugashni bildiradi. Sahifadagi hamma narsa ularning orasida turadi.',
+      'Открывающий тег обозначает начало, закрывающий — конец. Всё содержимое страницы стоит между ними.',
+      'The opening tag marks the start, the closing tag marks the end. Everything on the page goes between them.'),
     done: L3('Bir sir aytaymi? Ramkani biz tushunarli bo‘lsin deb chizdik. Brauzerda uni ko‘rmaysiz.',
       'Маленький секрет: рамку мы нарисовали для наглядности. В браузере её не увидишь.',
       'A little secret: we drew the frame to make it clear. You won’t see it in a browser.'),
@@ -6858,9 +6865,9 @@ const C = {
       wrongName: L3('Teg ichidagi so‘zga qarang: bu yerda html kerak.',
       'Посмотри на слово внутри тега: здесь нужен html.',
       'Check the word inside the tag: here you need html.'),
-      generic: L3('Qiya chiziq «/» birinchi burchakli qavsdan keyin darhol turadi.',
-      'Косая черта «/» стоит сразу после первой угловой скобки.',
-      'The slash “/” goes right after the first angle bracket.')
+      generic: L3('Belgilar tartibini tekshiring: burchakli qavs «<», qiya chiziq «/», html so‘zi va burchakli qavs «>».',
+      'Проверь порядок знаков: угловая скобка «<», косая черта «/», слово html и угловая скобка «>».',
+      'Check the order: angle bracket “<”, slash “/”, the word html, angle bracket “>”.')
     },
     hints: [L3('Ramkaning tepasidagi tegga qarang.', 'Посмотри на верхний тег на рамке.', 'Look at the top tag on the frame.'),
       L3('Yopuvchi teg o‘sha so‘z, faqat qiya chiziq bilan.', 'Закрывающий тег — то же слово, но с косой чертой.', 'The closing tag is the same word with a slash.'),
@@ -6918,9 +6925,13 @@ const C = {
     flew: L3('Nom yorliqqa uchib o‘tdi! Brauzer title ichidagi nomni aynan shu yerda ko‘rsatadi.',
       'Название перелетело на вкладку! Браузер показывает текст из title именно там.',
       'The name flew to the tab! The browser shows the text from title right there.'),
-    done: L3('Demak, eslab qoling: title head ichida turadi, undagi nom esa yorliqda chiqadi.',
-      'Запомним: title живёт внутри head, а название из него видно на вкладке.',
-      'Let’s remember: title lives inside head, and its name shows on the tab.'),
+    // «Внутри head» — через код: сверху <head>, снизу </head>, title между ними (заказчик, 27.10.2026).
+    inHead: L3('Kodga qarang: tepada ochuvchi head tegi, pastda yopuvchi head tegi.',
+      'Посмотри на код: сверху открывающий тег head, снизу закрывающий.',
+      'Look at the code: the opening head tag is at the top, the closing one at the bottom.'),
+    done: L3('title qatori ular orasida turibdi. Demak, title head ichida.',
+      'Строка title стоит между ними. Значит, title находится внутри head.',
+      'The title line sits between them. So title is inside head.'),
     ask: L3('Qarang: odamchaning boshi', 'Смотри: голова человечка', 'Watch: the buddy’s head'),
     askCard: L3('Qarang: title tegi', 'Смотри: тег title', 'Watch: the title tag')
   },
@@ -6929,9 +6940,9 @@ const C = {
     say: L3('Endi eng qiziq joyi: sahifangizga o‘zingiz nom bering! title ichiga yozing, masalan, «Futbol». Nom darhol yorliqda paydo bo‘ladi. Keyin «Tayyor»ni bosing.',
       'А теперь самое интересное: придумай своей странице название! Напиши его внутри title, например «Футбол». Оно сразу появится на вкладке. Потом нажми «Готово».',
       'Now the fun part: name your page! Type it inside title, for example “Football”. It shows up on the tab right away. Then tap “Done”.'),
-    ok: L3('Zo‘r! Endi yorliqda sizning nomingiz turibdi.',
-      'Класс! Теперь на вкладке твоё название.',
-      'Cool! Now your name is on the tab.'),
+    ok: L3('Zo‘r! Endi yorliqda sahifangizning nomi ko‘rinib turibdi.',
+      'Класс! Теперь на вкладке видно название твоей страницы.',
+      'Cool! Your page name is now on the tab.'),
     hints: [L3('Nom qaysi teg ichiga yoziladi? Kodga qarang.', 'В каком теге пишут название? Посмотри на код.', 'Which tag holds the name? Look at the code.'),
       L3('Nom ikki title tegi orasiga yoziladi.', 'Название пишут между двумя тегами title.', 'The name goes between the two title tags.'),
       L3('Ikki title tegi orasidagi bo‘sh joyni bosing, nom yozing va «Tayyor»ni bosing.',
@@ -6984,26 +6995,34 @@ const C = {
     say: L3('Nom tayyor. Endi sahifaning o‘zini to‘ldiramiz! html ichidagi ikkinchi qism body, xuddi odamchaning tanasidek. Qarang-chi, undan nima chiqarkin!',
       'Название готово. Теперь заполним саму страницу! Вторая часть внутри html — body, как тело человечка. Смотри, что из него вылетит!',
       'The name is ready. Now let’s fill the page itself! The second part inside html is body, like the buddy’s body. Watch what comes out of it!'),
-    out: L3('Ana! Matn, rasm va tugma tanadan chiqib, oynaga tushdi. Ular body ichida yozilgan.',
-      'Вот это да! Текст, картинка и кнопка вылетели из тела в окно. Они записаны внутри body.',
-      'How about that! The text, the picture and the button flew from the body into the window. They’re written inside body.'),
-    done: L3('body ichidagi hamma narsa oynada ko‘rinadi.',
-      'Всё, что внутри body, видно в окне.',
-      'Everything inside body shows in the window.'),
+    out: L3('Ana! Matn, rasm va tugma tanadan chiqib, oynaga tushdi.',
+      'Вот это да! Текст, картинка и кнопка вылетели из тела в окно.',
+      'How about that! The text, the picture and the button flew from the body into the window.'),
+    done: L3('Sahifada ko‘rinadigan matn, rasm va tugmalar body ichida joylashadi.',
+      'Текст, картинки и кнопки, которые видны на странице, располагаются внутри body.',
+      'The text, pictures and buttons you see on the page go inside body.'),
     ask: L3('Qarang: odamchaning tanasi', 'Смотри: тело человечка', 'Watch: the buddy’s body')
   },
   s10: {
     eyebrow: L3('Oynadagi salom', 'Привет в окне', 'Hello in the window'),
-    say: L3('Endi oynaga o‘z salomingizni yozing! body ichiga yozing, masalan, «Salom!». Matn darhol oynada chiqadi. Keyin «Tayyor»ni bosing.',
-      'Теперь напиши в окне своё приветствие! Пиши внутри body, например «Привет!». Текст сразу появится в окне. Потом нажми «Готово».',
-      'Now write your own greeting in the window! Type it inside body, for example “Hello!”. It shows up in the window right away. Then tap “Done”.'),
+    // Сначала поле в коде (оно мигает), потом окно с результатом (заказчик, 27.10.2026).
+    say: L3('Endi body teglari orasidagi bo‘sh joyga salom yozing. Masalan, «Salom!».',
+      'Теперь напиши приветствие в пустом поле между тегами body. Например, «Привет!».',
+      'Now type a greeting in the empty field between the body tags. For example, “Hello!”.'),
+    sayWin: L3('Matn oynada paydo bo‘ladi. Keyin «Tayyor»ni bosing.',
+      'Текст появится в окне. Потом нажми «Готово».',
+      'The text will appear in the window. Then tap “Done”.'),
     ok: L3('Ajoyib! Salomingiz oynada turibdi.',
       'Отлично! Твоё приветствие уже в окне.',
       'Great! Your greeting is in the window.'),
-    hints: [L3('Oynadagi matn qaysi teg ichida bo‘ladi? Kodga qarang.', 'В каком теге текст для окна? Посмотри на код.', 'Which tag holds the text for the window? Look at the code.'),
+    hints: [L3('Kodga qarang: body teglari orasida bo‘sh joy bor.',
+      'Посмотри на код: между тегами body есть пустое поле.',
+      'Look at the code: there’s an empty field between the body tags.'),
       L3('Matn ikki body tegi orasiga yoziladi.', 'Текст пишут между двумя тегами body.', 'The text goes between the two body tags.'),
-      L3('Ikki body tegi orasidagi bo‘sh joyni bosing, matn yozing va «Tayyor»ni bosing.', 'Нажми пустое место между тегами body, напиши текст и нажми «Готово».', 'Tap the empty spot between the body tags, type your text and tap “Done”.')],
-    ask: L3('body ichiga salom yozing va «Tayyor»ni bosing', 'Напиши приветствие в body и нажми «Готово»', 'Type a greeting in body and tap “Done”')
+      L3('Ikki body tegi orasidagi bo‘sh joyni bosing, matn yozing va «Tayyor»ni bosing.',
+      'Нажми пустое поле между тегами body, напиши текст и нажми «Готово».',
+      'Tap the empty field between the body tags, type your text and tap “Done”.')],
+    ask: L3('body teglari orasiga salom yozing va «Tayyor»ni bosing', 'Напиши приветствие между тегами body и нажми «Готово»', 'Type a greeting between the body tags and tap “Done”')
   },
   s11: {
     eyebrow: L3('Bo‘laklarni joylang', 'Разложи вырезки', 'Sort the cut-outs'),
@@ -7011,9 +7030,9 @@ const C = {
       'Наведём порядок! Где живёт каждая вырезка: в head или в body? Перетащи её или нажми вырезку, а потом часть.',
       'Let’s tidy up! Where does each cut-out live: in head or in body? Drag it, or tap a cut-out, then a part.'),
     items: [
-      { id: 'name', want: 'head', why: L3('Qarang: bu title ichidagi sahifa nomi. U yorliqda ko‘rinadi, demak head ichida turadi.',
-      'Смотри: это название в теге title. Его видно на вкладке, значит, оно в head.',
-      'Look: this is the page name in title. It shows on the tab, so it goes in head.') },
+      { id: 'name', want: 'head', why: L3('Qarang: bu title qatori. title head ichida turadi, shuning uchun uning joyi head.',
+      'Смотри: это строка title. title стоит внутри head, поэтому её место в head.',
+      'Look: this is the title line. title sits inside head, so it belongs in head.') },
       { id: 'hello', want: 'body', why: L3('Deyarli! Bu matn oynada ko‘rinishi kerak, demak u body ichida.',
       'Почти! Этот текст должен быть виден в окне, значит, он в body.',
       'Almost! This text should show in the window, so it goes in body.') },
@@ -7024,14 +7043,14 @@ const C = {
       'Подумай: где мы нажимаем кнопку? В окне! Значит, она в body.',
       'Think: where do we press the button? In the window! So it goes in body.') }
     ],
-    ok: L3('Hammasi joy-joyida! Sahifa nomi head ichida, ko‘rinadigan narsalar body ichida.',
-      'Порядок! Название — в head, всё, что видно, — в body.',
-      'All sorted! The page name is in head, everything you see is in body.'),
+    ok: L3('Hammasi joy-joyida! title head ichida, matn, rasm va tugma body ichida.',
+      'Порядок! title — в head, текст, картинка и кнопка — в body.',
+      'All sorted! title is in head; the text, the picture and the button are in body.'),
     pickFirst: L3('Avval bo‘lakni tanlang.', 'Сначала выбери вырезку.', 'Pick a cut-out first.'),
     hints: [L3('Bu narsa brauzer oynasida ko‘rinadimi?', 'Эту вещь видно в окне браузера?', 'Can you see this in the browser window?'),
-      L3('Oynada ko‘rinadigan narsalar body ichida. Sahifa nomi head ichida.',
-      'То, что видно в окне, — в body. Название страницы — в head.',
-      'What you see in the window goes in body. The page name goes in head.'),
+      L3('Sahifadagi matn, rasm va tugmalar body ichida. title qatori head ichida.',
+      'Текст, картинки и кнопки страницы — в body. Строка title — в head.',
+      'The page’s text, pictures and buttons go in body. The title line goes in head.'),
       L3('Yonib turgan bo‘lakni yonib turgan joyga torting.', 'Перетащи светящуюся вырезку в светящееся место.', 'Drag the glowing cut-out to the glowing place.')],
     ask: L3('Bo‘lakni head yoki body ichiga torting', 'Перетащи вырезку в head или в body', 'Drag a cut-out into head or body'),
     askPlace: L3('Endi head yoki body qismini bosing', 'Теперь нажми head или body', 'Now tap head or body')
@@ -7065,12 +7084,12 @@ const C = {
       head: L3('Mana head, sahifaning «boshi». Unda sahifa haqidagi ma’lumotlar bor.',
       'А вот head, «голова» страницы. В ней сведения о странице.',
       'Here’s head, the page’s “head”. It holds information about the page.'),
-      title: L3('head ichida esa title yashaydi. Undagi nomni yorliqda ko‘rasiz.',
-      'Внутри head живёт title. Его название ты видишь на вкладке.',
-      'Inside head lives title. You see its name on the tab.'),
-      body: L3('Mana body, sahifaning «tanasi». Undagi hamma narsa oynada ko‘rinadi.',
-      'А вот body, «тело» страницы. Всё, что в нём, видно в окне.',
-      'And here’s body, the page’s “body”. Everything in it shows in the window.'),
+      title: L3('head ichida title. Uning ichiga sahifa nomi yoziladi, brauzer bu nomni yorliqda ko‘rsatadi.',
+      'Внутри head — title. В нём пишут название страницы, браузер показывает это название на вкладке.',
+      'Inside head is title. Inside it goes the page name, and the browser shows that name on the tab.'),
+      body: L3('Mana body, sahifaning «tanasi». Unda sahifada ko‘rinadigan matn, rasm va tugmalar joylashadi.',
+      'А вот body, «тело» страницы. В нём текст, картинки и кнопки, которые видны на странице.',
+      'And here’s body, the page’s “body”. It holds the text, pictures and buttons you see on the page.'),
       text: L3('Mana, bu siz yozgan matn! U body ichida, shuning uchun oynada.',
       'А вот и твой текст! Он внутри body, поэтому в окне.',
       'And here’s your text! It’s inside body, so it’s in the window.')
@@ -7082,13 +7101,13 @@ const C = {
       'А теперь главное испытание: собери весь код! Первая строка уже стоит. Нажми полоску — она встанет в следующую пустую строку.',
       'Now the big challenge: build the whole code! The first line is in place. Tap a strip, and it goes into the next empty line.'),
     // Звучит один раз — после первой поставленной полоски; стрелки ▲ ▼ в это время мигают.
-    sayMove: L3('Qator noto‘g‘ri joyga tushdimi? Qo‘rqmang, uni o‘qchalar bilan yuqoriga yoki pastga suring. Hammasi joyida bo‘lsa, «Tekshirish»ni bosing.',
-      'Полоска встала не туда? Не страшно: сдвинь её стрелками вверх или вниз. Когда всё на местах, нажми «Проверить».',
-      'Strip in the wrong spot? No problem: move it up or down with the arrows. When everything’s in place, tap “Check”.'),
+    sayMove: L3('Tartibni o‘zgartirish kerak bo‘lsa, qatorni o‘qchalar bilan yuqoriga yoki pastga suring. Hammasi joyida bo‘lsa, «Tekshirish»ni bosing.',
+      'Если нужно изменить порядок, сдвинь полоску стрелками вверх или вниз. Когда всё на местах, нажми «Проверить».',
+      'If you need to change the order, move a strip up or down with the arrows. When everything’s in place, tap “Check”.'),
     rules: {
-      html: L3('html birinchi ochiladi va oxirida yopiladi: butun sahifa uning ichida.',
-      'html открывается первым и закрывается последним: внутри него вся страница.',
-      'html opens first and closes last: the whole page is inside it.'),
+      html: L3('DOCTYPE qatoridan keyin ochuvchi html tegini qo‘ying. Yopuvchisi eng oxirida turadi.',
+      'После строки DOCTYPE поставь открывающий тег html. Закрывающий — в самом конце.',
+      'Put the opening html tag right after the DOCTYPE line. The closing one goes at the very end.'),
       pair: L3('Yopuvchi teg o‘z ochuvchi tegidan keyin turadi.',
       'Закрывающий тег стоит после своего открывающего.',
       'A closing tag comes after its opening tag.'),
@@ -7097,11 +7116,15 @@ const C = {
       title: L3('title head ichida turadi.', 'title стоит внутри head.', 'title goes inside head.'),
       text: L3('Sahifa matni body ichida turadi.', 'Текст страницы стоит внутри body.', 'The page text goes inside body.')
     },
-    hints: [L3('Qaysi teg birinchi ochilib, oxirida yopiladi?', 'Какой тег открывается первым и закрывается последним?', 'Which tag opens first and closes last?'),
+    hints: [L3('DOCTYPE dan keyin qaysi teg turadi, eng oxirida-chi?',
+      'Какой тег стоит сразу после DOCTYPE, а какой — в самом конце?',
+      'Which tag comes right after DOCTYPE, and which one goes at the very end?'),
       L3('html ichida avval title bilan head, keyin matn bilan body keladi.',
       'Внутри html сначала head с title, потом body с текстом.',
       'Inside html: first head with title, then body with the text.'),
-      L3('Belgilangan ikki qatorning o‘rnini almashtiring.', 'Поменяй местами две отмеченные полоски.', 'Swap the two marked strips.')],
+      L3('Belgilangan qatorlardan birini bosing, keyin ikkinchisini. Ular joy almashadi.',
+      'Нажми одну отмеченную полоску, потом другую — они поменяются местами.',
+      'Tap one marked strip, then the other: they swap places.')],
     ok: L3('Qoyil, kod to‘g‘ri yig‘ildi! Sahifa nomi head ichida, matn body ichida.',
       'Вот это да, код собран верно! Название — в head, текст — в body.',
       'Look at that, the code is right! The page name is in head, the text is in body.'),
@@ -7169,11 +7192,13 @@ const C = {
       'Not quite: a closing tag doesn’t show on the page and doesn’t put the name in the window.') },
       { id: 'end', right: true, t: L3('Sahifa nomi qayerda tugashini ko‘rsatadi', 'Показывает, где заканчивается название страницы', 'It shows where the page name ends') },
       { id: 'new', t: L3('Yangi sahifani boshlaydi', 'Начинает новую страницу', 'It starts a new page'),
-        why: L3('Unday emas: sahifa html tegi bilan boshlanadi. Yopuvchi title tegi esa nomni tugatadi.',
-      'Не совсем: страница начинается с тега html. А закрывающий тег title заканчивает название.',
-      'Not quite: a page starts with the html tag. The closing title tag ends the name.') }
+        why: L3('Unday emas: bu teg yangi sahifani boshlamaydi. U nom qayerda tugashini ko‘rsatadi.',
+      'Не совсем: этот тег не начинает новую страницу. Он показывает, где заканчивается название.',
+      'Not quite: this tag doesn’t start a new page. It shows where the name ends.') }
     ],
-    hints: [L3('Oldingi ekranni eslang: u yerda yopuvchi title tegi yo‘q edi.', 'Вспомни прошлый экран: там не было закрывающего тега title.', 'Remember the last screen: the closing title tag was missing.'),
+    hints: [L3('Matn yorliqqa chiqib ketgan sahifani eslang. Unda qaysi teg yetishmagan edi?',
+      'Вспомни страницу, где текст попал на вкладку. Какого тега там не хватало?',
+      'Remember the page where the text ended up on the tab. Which tag was missing there?'),
       L3('Qiya chiziqli teg biror qismni tugatadi. title ichida nima turadi?', 'Тег с косой чертой заканчивает часть. Что стоит внутри title?', 'A tag with a slash ends a part. What’s inside title?'),
       L3('Yopuvchi title tegi sahifa nomini tugatadi.', 'Закрывающий тег title заканчивает название страницы.', 'The closing title tag ends the page name.')],
     ok: L3('Aynan! U nom qayerda tugashini ko‘rsatadi. Usiz sahifa matni yorliqqa chiqib ketadi.',
@@ -7196,12 +7221,12 @@ const C = {
       { text: L3('head sahifa haqidagi ma’lumotlarni saqlaydi.',
       'head хранит сведения о странице.',
       'head keeps information about the page.'), k: 'head' },
-      { text: L3('title esa head ichida. Undagi nomni yorliqda ko‘rasiz.',
-      'А title живёт внутри head: его название ты видишь на вкладке.',
-      'And title lives inside head: you see its name on the tab.'), k: 'title' },
-      { text: L3('body ichidagi hamma narsa oynada ko‘rinadi.',
-      'Всё, что внутри body, видно в окне.',
-      'Everything inside body shows in the window.'), k: 'body' },
+      { text: L3('title head ichida turadi. Unga sahifa nomi yoziladi, brauzer bu nomni yorliqda ko‘rsatadi.',
+      'title стоит внутри head. В нём пишут название страницы, браузер показывает это название на вкладке.',
+      'title is inside head. Inside it goes the page name, and the browser shows that name on the tab.'), k: 'title' },
+      { text: L3('Sahifada ko‘rinadigan matn, rasm va tugmalar body ichida joylashadi.',
+      'Текст, картинки и кнопки, которые видны на странице, располагаются внутри body.',
+      'The text, pictures and buttons you see on the page go inside body.'), k: 'body' },
       { text: L3('Tabriklayman! Birinchi HTML sahifangiz tayyor. Endi siz haqiqiy veb-dasturchiga bir qadam yaqinsiz!',
       'Ура! Твоя первая HTML-страница готова. Ты на шаг ближе к настоящему веб-программисту!',
       'Hooray! Your first HTML page is ready. You’re one step closer to being a real web developer!'), k: null }
@@ -7209,8 +7234,8 @@ const C = {
     roles: {
       html: L3('html — hamma qismlarni o‘z ichiga oladi', 'html — объединяет все части страницы', 'html — holds all the parts of the page'),
       head: L3('head — sahifa haqida ma’lumot', 'head — сведения о странице', 'head — information about the page'),
-      title: L3('title — yorliqdagi sahifa nomi', 'title — название на вкладке', 'title — the page name on the tab'),
-      body: L3('body — oynada ko‘rinadigan hamma narsa', 'body — всё, что видно в окне', 'body — everything you see in the window')
+      title: L3('title — sahifa nomi', 'title — название страницы', 'title — the page name'),
+      body: L3('body — matn, rasm, tugmalar', 'body — текст, картинки, кнопки', 'body — text, pictures, buttons')
     },
     ask: L3('Sahifangizga qarang', 'Посмотри на свою страницу', 'Look at your page')
   }
@@ -7922,7 +7947,7 @@ function GoalCard({ goal, n, total, done, doneText }) {
 }
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { pair: 1, read1: 1, read2: 1, read3: 1, magic: 1, magicHead: 1, magicWin: 1, sayTab: 1, sayGo: 1, sayInfo: 1, sayTag: 1, sayHow: 1, sayMove: 1, why: 1, opts: 1, rules: 1, miss: 1, askTitle: 1, askBody: 1, toWin: 1, toTab: 1, tapSay: 1, parts: 1, order5: 1, top: 1, bottom: 1, msgs: 1, opened: 1, flew: 1, out: 1, back: 1, items: 1 });
+Object.assign(SPOKEN, { br: 1, nm: 1, inHead: 1, sayWin: 1, pair: 1, read1: 1, read2: 1, read3: 1, magic: 1, magicHead: 1, magicWin: 1, sayTab: 1, sayGo: 1, sayInfo: 1, sayTag: 1, sayHow: 1, sayMove: 1, why: 1, opts: 1, rules: 1, miss: 1, askTitle: 1, askBody: 1, toWin: 1, toTab: 1, tapSay: 1, parts: 1, order5: 1, top: 1, bottom: 1, msgs: 1, opened: 1, flew: 1, out: 1, back: 1, items: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { id: 1, want: 1 }, opts: { t: 1, id: 1, right: 1 } });
 
 // Сгенерировано tools/kollazh/paper-data.mjs из assets/paper.mp3 — не править руками.
@@ -9077,7 +9102,8 @@ function RD({ p }) {
 
 // =============================================================================
 // S3. ЧТО ТАКОЕ ТЕГ — на бирках рамки html (заказчик, 26.10.2026: отдельный экран
-// «что такое тег» убран, всё — здесь). Бумажный браузер в рамке html (рамка — вокруг
+// «что такое тег» убран, всё — здесь; 27.10.2026: сначала угловые скобки, потом имя
+// тега, потом вся запись — подсветка внутри бирки за словами). Бумажный браузер в рамке html (рамка — вокруг
 // всего браузера, с вкладкой); две бирки. Показ: Коди спрашивает, что это за надписи
 // (обе бирки в «прожекторе»), — это тег (верхняя), открывающий (верхняя), закрывающий
 // с косой чертой (нижняя, черта крупно), пара — страница между ними, рамка — для
@@ -9103,7 +9129,7 @@ function S3({ p }) {
   // Показ: загорается верхняя бирка — «это тег», «открывающий»; потом нижняя — «закрывающий».
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
     { look: () => boxRef.current && boxRef.current.querySelector('.kz-frame-lbl-top'), act: () => { sfx('tap', true); setN(1); } },
-    { say: [{ text: c.sayTag, pose: 'wonder' }, { text: c.top, pose: 'point' }] },
+    { say: [{ text: c.br, pose: 'point' }, { text: c.nm, pose: 'point' }, { text: c.sayTag, pose: 'wonder' }, { text: c.top, pose: 'point' }] },
     { look: () => boxRef.current && boxRef.current.querySelector('.kz-frame-lbl-bot'), act: () => { sfx('ok', true); setN(2); } },
     { say: [{ text: c.bottom, pose: 'explain' }, { text: c.pair, pose: 'smile' }, { text: c.done, pose: 'smile' }] },
     { act: () => put({ done: true }) }
@@ -9112,7 +9138,9 @@ function S3({ p }) {
   // «Прожектор» за речью: обе бирки → верхняя (тег, открывающий) → нижняя (закрывающий, черта) →
   // обе и страница (пара) → рамка (секрет).
   const t = speaker.text;
-  const spotTop = t === c.say || t === c.sayTag || t === c.top;
+  const spotTop = t === c.say || t === c.br || t === c.nm || t === c.sayTag || t === c.top;
+  // Внутри верхней бирки: «эти знаки» — светятся < и >; «между ними html» — светится имя.
+  const topPart = t === c.br ? ' hl-br' : t === c.nm ? ' hl-nm' : '';
   const spotBot = t === c.say || t === c.bottom;
   const spotting = spotTop || spotBot;
   const pairNow = t === c.pair;
@@ -9124,7 +9152,7 @@ function S3({ p }) {
         <div className="kz-scene" ref={boxRef}>
           <ManBox frame frameAnim={!solved} frameHl={t === c.done} cls={spotting ? 'is-spot' : pairNow ? 'is-pair' : ''} br={<FramedPage anim={!solved} />}
             labels={<>
-              <KzLabel t="html" cls={'kz-frame-lbl-top' + (spotTop ? ' is-spot' : '')} on={n >= 1} hl={spotTop || pairNow} />
+              <KzLabel t="html" cls={'kz-frame-lbl-top' + (spotTop ? ' is-spot' : '') + topPart} on={n >= 1} hl={spotTop || pairNow} />
               <KzLabel t="html" close cls={'kz-frame-lbl-bot' + (spotBot ? ' is-spot' : '') + (t === c.bottom ? ' is-slash' : '')} on={n >= 2} hl={spotBot || pairNow} />
             </>} />
         </div>
@@ -9145,6 +9173,9 @@ function S4({ p }) {
   const ty = useTagTyping({ max: 12 });
   const [msg, setMsg] = useState(null);
   const [okNow, setOkNow] = useState(solved);
+  // Причину нельзя назвать точно (знаки не в том порядке) — опора: верхний тег на рамке
+  // и кнопки набора, которые загораются по порядку < / html >.
+  const [orderHint, setOrderHint] = useState(false);
   const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'explain' }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || okNow, spoken);
@@ -9165,6 +9196,7 @@ function S4({ p }) {
       return;
     }
     st.current.misses += 1;
+    setOrderHint(issue === c.msgs.generic);
     sfx('soft', true); setMsg(issue); sayNow(issue, 'think');
     if (st.current.misses >= 2) lad.bump();
   };
@@ -9184,13 +9216,13 @@ function S4({ p }) {
         <div className="kz-scene is-tight">
           <ManBox frame frameSides={{ top: 1, right: 1, left: 1, bottom: okNow ? 'new' : 0 }} br={<FramedPage anim={false} />}
             labels={<>
-              <KzLabel t="html" cls="kz-frame-lbl-top" on={lad.lv >= 1 && !okNow} />
+              <KzLabel t="html" cls="kz-frame-lbl-top" on={(lad.lv >= 1 || orderHint) && !okNow} />
               {okNow ? <KzLabel t="html" close cls="kz-frame-lbl-bot" anim="stamp" />
                 : <span className={'kz-frame-miss' + (blink ? ' is-blink' : '')} aria-hidden="true"><span className="kz-frame-miss-q">?</span></span>}
             </>} />
           <div className="kz-col"><KzCode lines={lines} /></div>
         </div>
-        {!okNow ? <KeyRow keys={['<', '/', 'html', '>']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 4} /> : null}
+        {!okNow ? <div className={'kz-keys-wrap' + (orderHint && msg ? ' kz-order-hint' : '')}><KeyRow keys={['<', '/', 'html', '>']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 4} /></div> : null}
       </Sheet>
     </Stage>
   );
@@ -9289,7 +9321,8 @@ function S5({ p }) {
 }
 
 // =============================================================================
-// S6. ГОЛОВА СТРАНИЦЫ — показ короткими шагами, у каждого своя подсветка:
+// S6. ГОЛОВА СТРАНИЦЫ — показ короткими шагами, у каждого своя подсветка
+// (27.10.2026: в конце «внутри head» — через код: <head>, </head>, строка title между ними):
 // «голова напоминает head» — голова и строки head; «в окне не видно» — окно;
 // голова приподнимается, внутри карточка title, в коде — строка title; карточка
 // улетает на вкладку — вкладка; «в head — title, в title — название».
@@ -9317,17 +9350,27 @@ function S6({ p }) {
     } },
     { wait: 800 },
     { act: () => { setFlying(false); setStep(2); setStamp((v) => v + 1); sfx('ok', true); } },
-    { say: [{ text: c.flew, pose: 'wonder' }, { text: c.done, pose: 'smile' }] },
+    { say: [{ text: c.flew, pose: 'wonder' }, { text: c.inHead, pose: 'point' }, { text: c.done, pose: 'smile' }] },
     { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
   const title = pick(UI.mySite);
+  // «Внутри head» через код (заказчик, 27.10.2026): на inHead загорается <head>, чуть позже </head>;
+  // на done — строка title между ними.
+  const [inStep, setInStep] = useState(0);
+  useEffect(() => {
+    if (speaker.text !== c.inHead) return undefined;
+    setInStep(1);
+    const tm = setTimeout(() => setInStep(2), reduceMotion() ? 300 : 1700);
+    return () => clearTimeout(tm);
+  }, [speaker.text]); // eslint-disable-line react-hooks/exhaustive-deps
+  const inNow = speaker.text === c.inHead;
   const askText = step === 0 ? c.ask : step === 1 ? c.askCard : c.done;
   // Подсветка за речью: голова и строки head → окно → строка title → вкладка.
   const hlHead = speaker.text === c.say;
   const hlWin = speaker.text === c.sayInfo;
   const hlTitle = speaker.text === c.opened;
-  const hlAll = speaker.text === c.done;   // «title внутри head» — три строки head вместе
+  const hlAll = speaker.text === c.done;   // «строка title между ними» — title ярко, head-строки рядом
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Sheet>
@@ -9341,9 +9384,9 @@ function S6({ p }) {
               <PageBits text={pick(UI.hello)} />
             </PaperBrowser>
             <KzCode lines={[
-              { k: 'h', d: 0, cls: hlHead || hlAll || step === 1 ? 'is-hl' : '', parts: [T_('head')] },
-              { k: 't', d: 1, cls: hlTitle || hlAll ? 'is-read' : step >= 2 ? 'is-new' : '', parts: step >= 1 ? [T_('title'), W_(title), T_('title', true)] : [<span key="d" className="kz-dim">…</span>] },
-              { k: 'hc', d: 0, cls: hlHead || hlAll || step === 1 ? 'is-hl' : '', parts: [T_('head', true)] }
+              { k: 'h', d: 0, cls: inNow && inStep >= 1 ? 'is-read' : hlHead || hlAll || step === 1 ? 'is-hl' : '', parts: [T_('head')] },
+              { k: 't', d: 1, cls: hlTitle || hlAll ? 'is-read' : step >= 2 && !inNow ? 'is-new' : '', parts: step >= 1 ? [T_('title'), W_(title), T_('title', true)] : [<span key="d" className="kz-dim">…</span>] },
+              { k: 'hc', d: 0, cls: inNow && inStep >= 2 ? 'is-read' : hlHead || hlAll || step === 1 ? 'is-hl' : '', parts: [T_('head', true)] }
             ]} />
           </div>
         </div>
@@ -9602,7 +9645,9 @@ function S9({ p }) {
             </PaperBrowser>
             <KzCode lines={[
               { k: 'b', d: 0, cls: going ? 'is-hl' : '', parts: [T_('body')] },
-              { k: 'x', d: 1, cls: out ? 'is-new' : '', parts: out ? [W_(hello), <span key="p" className="kz-dim">{' + ' + pick(UI.pic) + ' + ' + pick(UI.play)}</span>] : [<span key="d" className="kz-dim">…</span>] },
+              // В коде — только настоящий текст между тегами body; картинка и кнопка — лишь иллюстрация в окне
+              // (заказчик, 27.10.2026: запись «+ картинка + Играть» учила бы неверному способу).
+              { k: 'x', d: 1, cls: out ? 'is-new' : '', parts: out ? [W_(hello)] : [<span key="d" className="kz-dim">…</span>] },
               { k: 'bc', d: 0, cls: going ? 'is-hl' : '', parts: [T_('body', true)] }
             ]} />
           </div>
@@ -9636,7 +9681,9 @@ function S10({ p }) {
   const solved0 = !!(rec && rec.done);
   const lad = useKzLadder(!solved0);
   const ty = useTypedDone({ storeKey: 'myText', screenId: 's10', type: 'write-body', lad });
-  const [speaker, , spoken, sayNow] = useVoice([{ text: ty.solved ? c.ok : c.say, pose: ty.solved ? 'smile' : 'point' }]);
+  // Сначала — где писать (поле в коде мигает), потом — где появится (окно в «прожекторе»).
+  const [speaker, , spoken, sayNow] = useVoice(ty.solved ? [{ text: c.ok, pose: 'smile' }]
+    : [{ text: c.say, pose: 'point' }, { text: c.sayWin, pose: 'point' }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(ty.solved, spoken);
   const led = useIdleLed(canTap && !ty.solved && !ty.val.trim(), 0) || (!ty.solved && !ty.val && speaker.text === c.say);
@@ -9648,7 +9695,7 @@ function S10({ p }) {
         <KzAsk text={ty.solved ? c.ok : c.ask} hint={ty.solved && !hasTags(ty.val) ? null : hint} />
         <div className="kz-scene kz-scene-col">
           <div className="kz-col">
-            <PaperBrowser title={mine.title} short pageHl={!ty.solved}>
+            <PaperBrowser title={mine.title} short pageHl={speaker.text === c.sayWin} spot={speaker.text === c.sayWin ? 'page' : null}>
               <div className={'kz-br-text' + (ty.stamp ? ' kz-a-stamp' : '')} key={'f' + ty.stamp}>{ty.shown}</div>
             </PaperBrowser>
             <KzCode lines={[
@@ -11694,7 +11741,19 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-label.is-spot { z-index: 7; scale: 1.18; animation: kzSpotLbl .5s steps(5, end) both; }
 .kz-label.is-spot::after { content: ''; position: absolute; inset: -7px -11px; border: 3px solid #E0643F; border-radius: 50%; rotate: -4deg;
   pointer-events: none; animation: kzRingIn .45s steps(5, end) .1s both; }
-.kz-label.is-slash .kz-tag .kz-tk-b:nth-child(2) { display: inline-block; padding: 0 2px; background: #1F2A44; color: #FFB199; border-radius: 3px; scale: 1.35; }
+/* «/ сразу после <»: на закрывающем светятся первая скобка и косая черта вместе. */
+.kz-label.is-slash .kz-tag .kz-tk-b:nth-child(-n+2) { display: inline-block; padding: 0 2px; background: #1F2A44; color: #FFB199; border-radius: 3px; scale: 1.3; }
+/* s3: «эти знаки — угловые скобки» — светятся < и >; «между ними html — название тега» — светится имя. */
+.kz-label.hl-br .kz-tag .kz-tk-b, .kz-label.hl-nm .kz-tag .kz-tk-n { display: inline-block; padding: 0 3px; background: #1F2A44; color: #FFD166; border-radius: 3px;
+  scale: 1.3; animation: kzPartOn .45s steps(4, end) both; }
+@keyframes kzPartOn { 0% { scale: 1; } 60% { scale: 1.45; } 100% { scale: 1.3; } }
+/* s4: знаки не в том порядке — кнопки набора загораются по порядку < / html >. */
+.kz-keys-wrap { display: contents; }
+.kz-order-hint .key-b:nth-child(-n+4) { animation: kzLed 1.6s ease-in-out infinite; }
+.kz-order-hint .key-b:nth-child(2) { animation-delay: .4s; }
+.kz-order-hint .key-b:nth-child(3) { animation-delay: .8s; }
+.kz-order-hint .key-b:nth-child(4) { animation-delay: 1.2s; }
+@media (prefers-reduced-motion: reduce) { .kz-label.hl-br .kz-tag .kz-tk-b, .kz-label.hl-nm .kz-tag .kz-tk-n, .kz-order-hint .key-b { animation: none; } }
 @keyframes kzSpotLbl { 0% { scale: 1; } 60% { scale: 1.28; } 100% { scale: 1.18; } }
 @keyframes kzRingIn { 0% { opacity: 0; scale: .7; } 100% { opacity: 1; scale: 1; } }
 @media (prefers-reduced-motion: reduce) { .kz-label.is-spot, .kz-label.is-spot::after { animation: none; } }

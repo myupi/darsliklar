@@ -34,6 +34,8 @@ const STEPS = [
     await qa.platform.next();
     qa.expect(!qa.q('.kz-sheet .kz-btn') && !qa.q('.kz-hand'), 'показ: ни кнопок, ни руки');
     await qa.waitFor(() => qa.q('.kz-label.is-spot'), 30000, '«прожектор» на бирке, о которой говорит Коди');
+    await qa.waitFor(() => qa.q('.kz-label.hl-br'), 40000, '«угловые скобки» — светятся < и >');
+    await qa.waitFor(() => qa.q('.kz-label.hl-nm'), 40000, '«название тега» — светится html');
     await qa.waitFor(() => qa.q('.kz-label.is-slash'), 60000, 'на закрывающем — косая черта крупно');
     await qa.waitFor(() => qa.platform.nextEnabled(), 60000, 'показ: обе бирки загорелись, Коди назвал их');
     const said = (re) => qa.events('tts').some((e) => re.test((e.data && e.data.text) || ''));
@@ -60,6 +62,7 @@ const STEPS = [
   } },
   { name: 's6: голова → карточка title → имя на вкладке', shot: 's6-done', run: async (qa) => {
     await qa.platform.next();
+    qa.expect(!qa.q('.speaker-bubble') && !qa.q('.ctl-subs'), 'облака с текстом и кнопки «Aa» нет');
     await qa.waitFor(() => qa.text('.kz-br-tab-t') === qa.data.site, 60000, 'показ: карточка title улетела на вкладку');
     await qa.waitFor(() => qa.platform.nextEnabled(), 40000, 'показ закончен');
     const said = (re) => qa.events('tts').some((e) => re.test((e.data && e.data.text) || ''));
@@ -83,6 +86,7 @@ const STEPS = [
     await qa.platform.next();
     await qa.waitFor(() => qa.q('.kz-bit-pic'), 40000, 'показ: картинка вылетела в окно');
     await qa.waitFor(() => qa.platform.nextEnabled(), 40000, 'показ закончен');
+    qa.expect(!/\+/.test(qa.text('.kz-code')) && qa.text('.kz-code').indexOf(qa.data.pic) < 0, 'в коде body только текст, без «+ картинка + Играть»', { code: qa.text('.kz-code') });
     const said = (re) => qa.events('tts').some((e) => re.test((e.data && e.data.text) || ''));
     qa.expect(said(new RegExp(qa.data.endS9)), 'последняя реплика показа прозвучала');
   } },
@@ -202,20 +206,20 @@ export default {
   inputScreens: [4, 7, 9],
   expectFinish: true,
   data: {
-    ru: { site: 'Мой сайт', myTitle: 'Шахматы', myText: 'Сыграем партию?', hello: 'Привет, мир!', pic: 'картинка', play: 'Играть', robots: 'Роботы', salom: 'Привет!', draft: 'Черновик', endS6: 'Запомним: title живёт внутри head', endS9: 'Всё, что внутри body, видно в окне', walkS12: 'А вот и твой текст', endS12: 'услышать какую-то часть ещё раз', goalS1: 'соберёшь такую страницу кодом', tagS3: 'называется тег', lrRD: 'слева направо', tbRD: 'сверху вниз', moveS13: 'сдвинь её стрелками' },
-    uz: { site: 'Mening saytim', myTitle: 'Shaxmat', myText: 'Bir o‘yin o‘ynaymizmi?', hello: 'Salom, dunyo!', pic: 'rasm', play: 'O‘ynash', robots: 'Robotlar', salom: 'Salom!', draft: 'Qoralama', endS6: 'undagi nom esa yorliqda chiqadi', endS9: 'body ichidagi hamma narsa oynada', walkS12: 'bu siz yozgan matn', endS12: 'yana eshitmoqchi', goalS1: 'kod bilan o.zingiz yig.asiz', tagS3: 'so.z t[ae]g deyiladi', lrRD: 'chapdan o.ngga', tbRD: 'yuqoridan pastga', moveS13: 'o.qchalar bilan' },
-    en: { site: 'My site', myTitle: 'Chess', myText: 'Shall we play a game?', hello: 'Hello, world!', pic: 'picture', play: 'Play', robots: 'Robots', salom: 'Hello!', draft: 'Draft', endS6: 'its name shows on the tab', endS9: 'Everything inside body shows in the window', walkS12: 'here’s your text', endS12: 'hear a part again', goalS1: 'build a page like this with code', tagS3: 'is called a tag', lrRD: 'left to right', tbRD: 'top to bottom', moveS13: 'with the arrows' }
+    ru: { site: 'Мой сайт', myTitle: 'Шахматы', myText: 'Сыграем партию?', hello: 'Привет, мир!', pic: 'картинка', play: 'Играть', robots: 'Роботы', salom: 'Привет!', draft: 'Черновик', endS6: 'Значит, title находится внутри head', endS9: 'располагаются внутри body', walkS12: 'А вот и твой текст', endS12: 'услышать какую-то часть ещё раз', goalS1: 'создашь страницу со своим названием', tagS3: 'Вся запись вместе', lrRD: 'слева направо', tbRD: 'сверху вниз', moveS13: 'стрелками вверх или вниз', hintS8: 'тегами', noTags: 'угловых скобок' },
+    uz: { site: 'Mening saytim', myTitle: 'Shaxmat', myText: 'Bir o‘yin o‘ynaymizmi?', hello: 'Salom, dunyo!', pic: 'rasm', play: 'O‘ynash', robots: 'Robotlar', salom: 'Salom!', draft: 'Qoralama', endS6: 'Demak, title head ichida', endS9: 'body ichida joylashadi', walkS12: 'bu siz yozgan matn', endS12: 'yana eshitmoqchi', goalS1: 'salom yozgan sahifa', tagS3: 'Hammasi birga', lrRD: 'chapdan o.ngga', tbRD: 'yuqoridan pastga', moveS13: 'o.qchalar bilan', hintS8: 'teglar orasida', noTags: 'qavslarsiz' },
+    en: { site: 'My site', myTitle: 'Chess', myText: 'Shall we play a game?', hello: 'Hello, world!', pic: 'picture', play: 'Play', robots: 'Robots', salom: 'Hello!', draft: 'Draft', endS6: 'So title is inside head', endS9: 'go inside body', walkS12: 'here’s your text', endS12: 'hear a part again', goalS1: 'your own page name and greeting', tagS3: 'All together', lrRD: 'left to right', tbRD: 'top to bottom', moveS13: 'with the arrows', hintS8: 'Which tags', noTags: 'angle brackets' }
   },
   steps: STEPS,
   flows: [
-    { name: 's4: открывающий вместо закрывающего', start: 3, langs: ['ru'], steps: [{ name: '<html> → причина, без засчёта', run: async (qa) => {
+    { name: 's4: открывающий вместо закрывающего', start: 3, langs: ['ru', 'uz', 'en'], steps: [{ name: '<html> → причина, без засчёта', run: async (qa) => {
       await qa.platform.ready();
       qa.type('.kz-line textarea', '<html>', 'открывающий');
       await qa.click('.key-go', 'Проверить');
       await qa.waitFor(() => qa.q('.kz-ask.is-hint'), 3000, 'причина на месте задания');
       qa.expect(!qa.platform.nextEnabled(), '«Дальше» закрыта');
     } }] },
-    { name: 's8: промах → дополнительный раунд, после двух — подсказка', start: 9, langs: ['ru'], steps: [{ name: 'неверные ответы', run: async (qa) => {
+    { name: 's8: промах → дополнительный раунд, после двух — подсказка', start: 9, langs: ['ru', 'uz', 'en'], steps: [{ name: 'неверные ответы', run: async (qa) => {
       await qa.platform.ready();
       const wrong = async () => { const slip = qa.text('.kz-slip'); await qa.clickNth('.kz-pick .kz-btn', slip.indexOf('<title>') >= 0 ? 1 : 0, 'неверный ответ'); };
       await wrong();
@@ -223,9 +227,9 @@ export default {
       await qa.waitFor(() => qa.qa('.kz-pick .kz-btn').every((b) => !b.disabled), 30000, 'следующий раунд');
       await wrong();
       await qa.waitFor(() => qa.qa('.kz-pick .kz-btn').every((b) => !b.disabled) && qa.q('.kz-ask.is-hint'), 30000, 'после двух промахов — подсказка');
-      qa.expect(/тегами/.test(qa.text('.kz-ask')), 'первая ступень: «Между какими тегами стоит слово?»', { ask: qa.text('.kz-ask') });
+      qa.expect(new RegExp(qa.data.hintS8).test(qa.text('.kz-ask')), 'первая ступень: «Между какими тегами стоит слово?»', { ask: qa.text('.kz-ask') });
     } }] },
-    { name: 's14: две ошибки → подсказка, светится </title>', start: 13, langs: ['ru'], steps: [{ name: '<title>, потом </head>', run: async (qa) => {
+    { name: 's14: две ошибки → подсказка, светится </title>', start: 13, langs: ['ru', 'uz', 'en'], steps: [{ name: '<title>, потом </head>', run: async (qa) => {
       await qa.platform.ready();
       await qa.clickText('.kz-scrap', '<title>');
       await qa.waitFor(() => qa.q('.kz-ask.is-hint'), 3000, 'причина на месте задания');
@@ -234,20 +238,20 @@ export default {
       await qa.waitFor(() => qa.q('.kz-scrap.is-led'), 3000, 'светится </title>');
       qa.expect(qa.q('.kz-scrap.is-led').textContent === '</title>' && !qa.platform.nextEnabled(), 'подсвечен верный тег, «Дальше» закрыта');
     } }] },
-    { name: 's11: имя в тело — объяснение', start: 10, langs: ['ru'], steps: [{ name: 'имя → body', run: async (qa) => {
+    { name: 's11: имя в тело — объяснение', start: 10, langs: ['ru', 'uz', 'en'], steps: [{ name: 'имя → body', run: async (qa) => {
       await qa.platform.ready();
       await qa.clickText('.kz-scrap', '<title>' + qa.data.site + '</title>');
       await qa.click('.kz-zone[data-place="body"]', 'тело');
       await qa.waitFor(() => qa.q('.kz-ask.is-hint'), 3000, 'объяснение на месте задания');
       qa.expect(qa.qa('.kz-tray .kz-scrap').length === 4, 'вырезка не легла');
     } }] },
-    { name: 's7: «Готово» — только по кнопке, один раз; правка — в артефакт', start: 6, langs: ['ru'], steps: [{ name: 'пробелы, теги, засчёт, правка', run: async (qa) => {
+    { name: 's7: «Готово» — только по кнопке, один раз; правка — в артефакт', start: 6, langs: ['ru', 'uz', 'en'], steps: [{ name: 'пробелы, теги, засчёт, правка', run: async (qa) => {
       await qa.platform.ready();
       qa.type('.kz-line textarea', '   ', 'одни пробелы');
       qa.expect(qa.q('.kz-ready').disabled, 'пробелы: «Готово» выключена');
       qa.type('.kz-line textarea', '<b>Шахматы</b>', 'с тегами');
       await qa.sleep(200);
-      qa.expect(qa.q('.kz-ready').disabled && /угловых скобок/.test(qa.text('.kz-ask')), 'теги: «Готово» выключена, причина на месте задания', { ask: qa.text('.kz-ask') });
+      qa.expect(qa.q('.kz-ready').disabled && new RegExp(qa.data.noTags).test(qa.text('.kz-ask')), 'теги: «Готово» выключена, причина на месте задания', { ask: qa.text('.kz-ask') });
       qa.type('.kz-line textarea', 'Ш', 'одна буква');
       await qa.sleep(1500);
       qa.expect(qa.q('.kz-ready').disabled && !qa.platform.nextEnabled(), 'одна буква и пауза — не засчитано');
@@ -258,13 +262,60 @@ export default {
       await qa.sleep(300);
       qa.expect(qa.text('.kz-br-tab-t') === 'Шашки', 'вкладка показывает правку');
     } }] },
-    { name: 'q1: фраза не туда → причина', start: 14, langs: ['ru'], steps: [{ name: '«Роботы» в body', run: async (qa) => {
+    { name: 'q1: фраза не туда → причина', start: 14, langs: ['ru', 'uz', 'en'], steps: [{ name: '«Роботы» в body', run: async (qa) => {
       await qa.platform.ready();
-      await qa.clickText('.kz-scrap', 'Роботы'); await qa.click('.kz-q1-slot[data-place="win"]', 'место в body');
+      await qa.clickText('.kz-scrap', qa.data.robots); await qa.click('.kz-q1-slot[data-place="win"]', 'место в body');
       await qa.waitFor(() => qa.q('.kz-ask.is-hint'), 3000, 'причина на месте задания');
       qa.expect(/title/.test(qa.text('.kz-ask')) && qa.qa('.kz-tray .kz-scrap').length === 2 && !qa.platform.nextEnabled(), 'фраза вернулась, «Дальше» закрыта', { ask: qa.text('.kz-ask') });
     } }] },
-    { name: 'q2: неверный ответ → причина, снова', start: 15, langs: ['ru'], steps: [{ name: 'первый вариант', run: async (qa) => {
+    { name: 's4: знаки не по порядку → «проверь порядок» и опора', start: 3, langs: ['ru', 'uz', 'en'], steps: [{ name: '<ht/ml>', run: async (qa) => {
+      await qa.platform.ready();
+      qa.type('.kz-line textarea', '<ht/ml>', 'черта не на месте');
+      await qa.click('.key-go', 'Проверить');
+      await qa.waitFor(() => qa.q('.kz-ask.is-hint'), 3000, 'причина на месте задания');
+      qa.expect(qa.q('.kz-order-hint') && qa.q('.kz-frame-lbl-top.is-on'), 'опора: кнопки набора по порядку и верхний тег на рамке');
+      qa.expect(qa.q('.kz-line textarea').value === '<ht/ml>' && !qa.platform.nextEnabled(), 'набранное сохранено, «Дальше» закрыта');
+    } }] },
+    { name: 's5: тег с обратной чертой → причина', start: 4, langs: ['ru', 'uz', 'en'], steps: [{ name: 'обратная черта наверх', run: async (qa) => {
+      await qa.platform.ready();
+      await qa.click(qa.qa('.kz-tray .kz-scrap').find((x) => x.textContent.indexOf('\\') >= 0), 'тег с обратной чертой'); await qa.click('.kz-slot-top', 'верхнее место');
+      await qa.waitFor(() => qa.q('.kz-ask.is-hint'), 3000, 'причина на месте задания');
+      qa.expect(qa.qa('.kz-tray .kz-scrap').length === 3 && !qa.platform.nextEnabled(), 'тег вернулся в лоток');
+    } }] },
+    { name: 's10: теги в приветствии → причина', start: 8, langs: ['ru', 'uz', 'en'], steps: [{ name: 'с тегами', run: async (qa) => {
+      await qa.platform.ready();
+      qa.type('.kz-line textarea', '<b>' + qa.data.myText + '</b>', 'с тегами');
+      await qa.sleep(200);
+      qa.expect(qa.q('.kz-ready').disabled && new RegExp(qa.data.noTags).test(qa.text('.kz-ask')), 'теги: «Готово» выключена, причина на месте задания', { ask: qa.text('.kz-ask') });
+    } }] },
+    { name: 's13: неверный порядок → правило; подсказка 3 → обмен нажатиями', start: 12, langs: ['ru', 'uz', 'en'], steps: [{ name: 'закрывающий head раньше открывающего, потом обмен', run: async (qa) => {
+      await qa.platform.ready();
+      // Экран открыт сразу — в полоске текста стоит приветствие по умолчанию: это единственная полоска не с «<».
+      for (const t of ['<html>', '</head>', '<title>…</title>', '<head>', '<body>', null, '</body>', '</html>']) {
+        await qa.waitFor(() => !qa.q('.kz-pool .kz-scrap:disabled'), 30000, 'полоски доступны');
+        const b = qa.qa('.kz-pool .kz-scrap').find((x) => (t === null ? x.textContent.trim().charAt(0) !== '<' : x.textContent.replace(/\s+/g, '') === t.replace(/\s+/g, '')));
+        qa.expect(!!b, 'полоска в лотке: ' + (t || 'текст'));
+        await qa.click(b, 'полоска ' + (t || 'текст')); await qa.sleep(150);
+      }
+      await qa.waitFor(() => qa.q('.kz-build-side .kz-btn') && !qa.q('.kz-build-side .kz-btn').disabled, 30000, '«Проверить» доступна');
+      await qa.click('.kz-build-side .kz-btn', 'Проверить');
+      await qa.waitFor(() => qa.q('.kz-ask.is-hint') && qa.qa('.kz-line.is-mark').length === 2, 4000, 'правило названо, две полоски отмечены');
+      for (let i = 0; i < 3; i += 1) { qa.platform.hint(); await qa.sleep(500); }
+      await qa.waitFor(() => qa.qa('.kz-line.is-mark .led.on, .kz-line.is-mark .led.is-on').length >= 1 || qa.qa('.kz-line.is-mark').length === 2, 5000, 'отмеченные полоски на месте');
+      await qa.waitFor(() => !qa.qa('.kz-line.is-mark')[0].disabled, 30000, 'полоски можно нажать');
+      const m = qa.qa('.kz-line.is-mark');
+      await qa.click(m[0], 'первая отмеченная'); await qa.sleep(200);
+      await qa.click(qa.qa('.kz-line.is-mark').find((x) => x !== m[0]) || m[1], 'вторая отмеченная'); await qa.sleep(300);
+      await qa.click('.kz-build-side .kz-btn', 'Проверить');
+      await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'после обмена код верный');
+    } }] },
+    { name: 'q2: второй неверный ответ → причина', start: 15, langs: ['ru', 'uz', 'en'], steps: [{ name: '«Начинает новую страницу»', run: async (qa) => {
+      await qa.platform.ready();
+      await qa.clickNth('.kz-quiz .kz-btn', 2, 'неверный ответ');
+      await qa.waitFor(() => qa.q('.kz-ask.is-hint'), 3000, 'причина на месте задания');
+      qa.expect(qa.qa('.kz-quiz .kz-btn.is-off').length === 1 && !qa.platform.nextEnabled(), 'вариант погас');
+    } }] },
+    { name: 'q2: неверный ответ → причина, снова', start: 15, langs: ['ru', 'uz', 'en'], steps: [{ name: 'первый вариант', run: async (qa) => {
       await qa.platform.ready();
       await qa.clickNth('.kz-quiz .kz-btn', 0, 'неверный ответ');
       await qa.waitFor(() => qa.q('.kz-ask.is-hint'), 3000, 'причина на месте задания');
