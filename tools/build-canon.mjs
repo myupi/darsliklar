@@ -114,7 +114,9 @@ swapUzPace();
 swapAnswerSafety();
 swapCalmVoice();
 swapNoBubble();
-swapTapWait();
+// swapTapWait() выключен (заказчик, 28.10.2026: «в других уроках не нужно нажимать, делай как
+// раньше»): урок снова не ждёт касания — как в других уроках; функция оставлена ниже.
+// swapTapWait();
 
 swap("  ui: '#1E88E5',", "  // КУРС HTML: интерфейс — #FF4F28 (заказчик, 12.10.2026), а не голубой.\n  ui: '#FF4F28',");
 swap("  uiSoft: '#E3F2FD',", "  uiSoft: '#FFE8E1',");

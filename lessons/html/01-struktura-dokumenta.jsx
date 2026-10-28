@@ -456,23 +456,11 @@ const KODI_CSS = `
 
 .speaker-av .kodi-av { transition: transform .22s cubic-bezier(.34,1.56,.64,1); }
 .speaker-av:active .kodi-av { transform: scale(.93); }
-/* КУРС HTML: реплика ждёт первого касания — от кружка расходятся кольца. */
-.kodi-tap-wait .speaker-av .kodi-av::before, .kodi-tap-wait .speaker-av .kodi-av::after,
-.kodi-tap-wait .kodi-dot .kodi-av::before, .kodi-tap-wait .kodi-dot .kodi-av::after {
-  content: ''; position: absolute; inset: 2%; border-radius: 50%; pointer-events: none;
-  border: 3px solid #FF4F28; opacity: 0; animation: kodiTapRing 1.8s ease-out infinite; }
-.kodi-tap-wait .speaker-av .kodi-av::after, .kodi-tap-wait .kodi-dot .kodi-av::after { animation-delay: .9s; }
-.kodi-tap-wait .speaker-av .kodi-av, .kodi-tap-wait .kodi-dot .kodi-av { animation: kodiTapNudge 1.8s ease-in-out infinite; }
-@keyframes kodiTapRing { 0% { opacity: .85; transform: scale(1); } 100% { opacity: 0; transform: scale(1.45); } }
-@keyframes kodiTapNudge { 0%, 100% { transform: scale(1); } 12% { transform: scale(1.07); } 24% { transform: scale(1); } }
 
 @media (prefers-reduced-motion: reduce) {
   .kodi .kodi-gaze, .kodi .kodi-blink, .kodi .kodi-glare,
   .kodi.is-talking .kodi-mouth, .kodi.is-talking .kodi-ear { animation: none !important; }
   .kodi .kodi-glare { display: none; }
-  .kodi-tap-wait .speaker-av .kodi-av, .kodi-tap-wait .kodi-dot .kodi-av { animation: none; }
-  .kodi-tap-wait .speaker-av .kodi-av::before, .kodi-tap-wait .kodi-dot .kodi-av::before { animation: none; opacity: .9; transform: scale(1.12); }
-  .kodi-tap-wait .speaker-av .kodi-av::after, .kodi-tap-wait .kodi-dot .kodi-av::after { display: none; }
 }
 `;
 
@@ -1107,8 +1095,6 @@ function useAudioEngine(ttsApiBase, lang) {
   // Было ли касание страницы. Браузер не отдаёт речь до первого жеста, поэтому
   // до него реплика показывается ТЕКСТОМ, а после — произносится.
   const [gestured, setGestured] = useState(false);
-  // КУРС HTML: реплика ждёт первого касания — кружок Коди зовёт нажать.
-  const [tapWait, setTapWait] = useState(false);
   const elRef = useRef(null);
   const onRef = useRef(true);
   const resolvers = useRef([]);   // «досрочно закрыть» все ждущие speak()
@@ -1121,9 +1107,6 @@ function useAudioEngine(ttsApiBase, lang) {
 
   useEffect(() => { if (!gestured && !ttsApiBase) setFailed(true); }, [ttsApiBase, gestured]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
-  useEffect(() => {
-    try { document.documentElement.classList.toggle('kodi-tap-wait', tapWait); } catch (e) { /* no-op */ }
-  }, [tapWait]);
 
   // Список системных голосов приезжает асинхронно: первый getVoices() часто
   // пуст. Прогреваем заранее, чтобы к первой реплике резерв был готов.
@@ -1254,7 +1237,6 @@ function useAudioEngine(ttsApiBase, lang) {
     if (typeof window === 'undefined') return undefined;
     const h = () => {
       setGestured(true);
-      setTapWait(false);
       unlock();
       // Реплика, ждавшая касания, начинает звучать прямо сейчас.
       const fn = gestureWait.current;
@@ -1509,17 +1491,12 @@ function useAudioEngine(ttsApiBase, lang) {
       // «проживается» и урок идёт дальше, а не запирается.
       const waitGesture = () => {
         setFailed(true);
-        // КУРС HTML: голос возможен — ждём касания без таймера, реплика не
-        // пропадает молча. Голоса нет вовсе — урок не запирается.
-        const canVoice = onRef.current && (!!ttsApiBase || localVoiceOk());
-        const guard = canVoice ? null : setTimeout(finish, est);
-        if (guard) timers.current.push(guard);
-        else setTapWait(true);
+        const guard = setTimeout(finish, est);
+        timers.current.push(guard);
         gestureWait.current = () => {
           gestureWait.current = null;
-          setTapWait(false);
           if (done) return;
-          if (guard) clearTimeout(guard);
+          clearTimeout(guard);
           setFailed(false);
           play();
         };
@@ -1595,7 +1572,7 @@ function useAudioEngine(ttsApiBase, lang) {
   }, [ttsApiBase, lang]);
 
   useEffect(() => () => stop(), [stop]);
-  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed, tapWait };
+  return { speak, stop, abort, unlock, toggle, toggleMute, replay, warm, paused, replayNonce, on, muted, gestured, playing, failed };
 }
 
 // Реплики экрана для прогрева: всё, что герой произносит, лежит в данных
