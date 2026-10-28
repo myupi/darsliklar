@@ -135,3 +135,101 @@ const StageB = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroF
     </div>
   );
 };
+
+// ── Реплики v2 (28.10.2026) ─────────────────────────────────────────────────
+Object.assign(SPOKEN, { more: 1 });
+
+// Варианты ответа в случайном порядке, верный — не первым.
+function b16Shuffle(list) {
+  const a = list.slice();
+  for (let i = a.length - 1; i > 0; i -= 1) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; }
+  if (a[0] && a[0].right && a.length > 1) a.push(a.shift());
+  return a;
+}
+
+// Показ урока 1 (useKzDemo) + шаг «нажми сам» (заказчик, v2: на экранах 3 и 6 ученик
+// нажимает бирку, голову, бумажку): { tap: 'ключ', el: () => вещь, act }. Пока шаг ждёт,
+// вещь мягко пульсирует; экран зовёт demo.tap('ключ') по нажатию.
+function useB16Demo({ steps, run: run0, spoken, sayNow, say }) {
+  const runRef = useRef(run0);
+  const run = runRef.current;
+  const [idx, setIdx] = useState(-1);
+  const [wait, setWait] = useState(null);
+  const ran = useRef(-1);
+  const tm = useRef([]);
+  const audio = useAudio();
+  const pausedRef = useRef(false);
+  pausedRef.current = !!(audio && audio.paused);
+  useEffect(() => () => tm.current.forEach(clearTimeout), []);
+  const later = (ms, f) => {
+    const go = () => { if (pausedRef.current) { tm.current.push(setTimeout(go, 300)); return; } f(); };
+    tm.current.push(setTimeout(go, ms));
+  };
+  const next = (i) => setIdx((v) => (v === i ? i + 1 : v));
+  const lookAt = (el, i, act) => {
+    const done = () => { if (act) act(); next(i); };
+    if (!el || !el.classList || reduceMotion()) { done(); return; }
+    el.classList.add('kz-demo-on');
+    later(560, done);
+    later(900, () => el.classList.remove('kz-demo-on'));
+  };
+  useEffect(() => {
+    if (!run) return;
+    if (idx === -1) { if (spoken) setIdx(0); return; }
+    const st = steps[idx];
+    if (!st) return;
+    if (ran.current !== idx) {
+      if (st.tap && !spoken) return;   // просьба нажать — когда Коди договорил
+      ran.current = idx;
+      const i = idx;
+      if (st.say) { sayNow(st.say[0].text, st.say[0].pose); st.say.slice(1).forEach((l) => say(l.text, l.pose)); return; }
+      if (st.tap) { setWait({ key: st.tap, i }); return; }
+      if (st.look) { later(200, () => lookAt(st.look(), i, st.act)); return; }
+      if (st.wait) { if (st.act) st.act(); later(st.wait, () => next(i)); return; }
+      if (st.act) st.act();
+      next(i);
+      return;
+    }
+    if (st.say && spoken) next(idx);
+  }, [idx, spoken, run]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!wait) return undefined;
+    const st = steps[wait.i];
+    const el = st && st.el ? st.el() : null;
+    if (el && el.classList) el.classList.add('b16-tapme');
+    return () => { if (el && el.classList) el.classList.remove('b16-tapme'); };
+  }, [wait]); // eslint-disable-line react-hooks/exhaustive-deps
+  const tap = (key) => {
+    if (!wait || wait.key !== key) return false;
+    const st = steps[wait.i];
+    const i = wait.i;
+    setWait(null);
+    if (st.act) st.act();
+    next(i);
+    return true;
+  };
+  return { idx, done: !run || idx >= steps.length, step: Math.max(0, Math.min(idx, steps.length)), waiting: wait ? wait.key : null, tap };
+}
+
+// Английские слова в узбекской и русской речи — по-английски (заказчик, 28.10.2026:
+// «слово tag и все теги читались на английском»). Сервис понимает пометки языка в
+// квадратных скобках (как [O'zbekcha tallaffuz] в начале реплики и теги эмоций):
+// перед английскими словами ставим [English pronunciation], сразу после — пометку
+// языка урока. Узбекское окончание («tag-i») идёт уже после неё.
+const B16_BACK = { uz: "[O'zbekcha tallaffuz]", ru: '[Русское произношение]' };
+const B16_EN = '(?:tag|HTML|html|head|title|body|doctype|DOCTYPE|H (?:one|two|three|four|five|six))';
+const B16_EN_RE = new RegExp("(^|[^A-Za-z'‘’ʻʼ-])(" + B16_EN + '(?:\\s+' + B16_EN + ')*)(-[A-Za-z]+)?(?![A-Za-z])', 'g');
+function b16EnWords(s, lang) {
+  const back = B16_BACK[lang];
+  if (!back) return s;
+  return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
+}
+// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
+// бы их вслух — для него они убираются.
+if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
+  const BaseUtt = window.SpeechSynthesisUtterance;
+  window.__b16Utt = true;
+  window.SpeechSynthesisUtterance = function B16Utterance(t) {
+    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
+  };
+}

@@ -12,6 +12,10 @@
   --b-font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
+/* Фон под листом — белый, как шапка и низ (заказчик, 28.10.2026) */
+.b-stage, .b-stage .stage-content { background: #FFFFFF; }
+html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
+
 /* Шапка: ✕ · прогресс · счётчик · Коди, лампочка, пауза — один ряд */
 .b-stage .stage-header.b-head { background: #FFFFFF; padding-top: 0; padding-bottom: 0; border-bottom: 2px solid var(--b-line); box-shadow: none; }
 .b-head-row { display: flex; align-items: center; gap: 16px; min-height: 40px; padding-top: 10px; font-family: var(--b-font); }
@@ -110,7 +114,7 @@
   .b-sheet .btn-accent, .b-sheet .btn-ghost, .b-btn-hint { height: 48px; min-height: 48px; }
   .b-sheet .btn-ghost { width: 48px; flex: 0 0 48px; }
   /* Вывод (s15): шапка в два ряда выше — коллаж чуть меньше */
-  .b-stage .kz-s15 .kz-collage { width: min(100%, 280px); }
+  .b-stage .kz-s15 .kz-collage { width: min(100%, 260px); }
 }
 .is-kbd .b-stage .stage-nav { padding-block: 4px; }
 .is-kbd .b-head-row { padding-top: 6px; }
@@ -123,3 +127,9 @@
   .b-sheet, .b-sheet-ic { animation: none; }
   .b-stage .stage-nav button:active, .b-stage .b-head .ctl-btn:active { transform: none; }
 }
+
+/* Реплики v2: вещь, которую просят нажать (экраны 3 и 6), мягко пульсирует */
+.b16-tapme { cursor: pointer; pointer-events: auto !important; animation: b16Tap 1.1s ease-in-out infinite; }
+.kz-man .b16-tapme { filter: drop-shadow(0 0 6px rgba(240, 177, 63, .95)); }
+@keyframes b16Tap { 0%, 100% { scale: 1; } 50% { scale: 1.08; } }
+@media (prefers-reduced-motion: reduce) { .b16-tapme { animation: none; outline: 3px solid #F0B13F; outline-offset: 3px; } }
