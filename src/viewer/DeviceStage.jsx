@@ -8,9 +8,22 @@ export const DEVICE_SIZES = {
   laptop: { w: 1366, h: 800, label: 'Ноутбук' },
 };
 
+// Браузер даёт окну урока звук только после нажатия на странице (заказчик, 28.10.2026:
+// «Коди должен говорить сразу, без нажатий»). Урок, открытый кликом по списку, уже
+// говорит сам. После обновления страницы или открытия по ссылке нажатия ещё не было —
+// тогда вместо урока кнопка «Начать урок», как на платформе: нажал — урок открылся
+// и Коди заговорил.
+const hasClicked = () => typeof navigator === 'undefined' || !navigator.userActivation || navigator.userActivation.hasBeenActive;
+
 export default function DeviceStage({ src, device, rotated, title, frameRef }) {
   const wrapRef = useRef(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
+  const [armed, setArmed] = useState(hasClicked);
+  const startBtn = (
+    <button type="button" className="start-lesson" onClick={() => setArmed(true)}>
+      <span className="start-lesson-ic" aria-hidden="true">▶</span>Начать урок
+    </button>
+  );
 
   useLayoutEffect(() => {
     const el = wrapRef.current;
@@ -29,18 +42,20 @@ export default function DeviceStage({ src, device, rotated, title, frameRef }) {
   return (
     <div className={'stage' + (fill ? ' is-fill' : '')} ref={wrapRef}>
       {fill ? (
-        <iframe ref={frameRef} key={src} className="frame-fill" src={src} title={title} allow="autoplay; clipboard-write" />
+        armed ? <iframe ref={frameRef} key={src} className="frame-fill" src={src} title={title} allow="autoplay; clipboard-write" /> : startBtn
       ) : (
         <>
           <div className="device" style={{ width: w * scale, height: h * scale }}>
-            <iframe
-              ref={frameRef}
-              key={src}
-              src={src}
-              title={title}
-              allow="autoplay; clipboard-write"
-              style={{ width: w, height: h, transform: `scale(${scale})` }}
-            />
+            {armed ? (
+              <iframe
+                ref={frameRef}
+                key={src}
+                src={src}
+                title={title}
+                allow="autoplay; clipboard-write"
+                style={{ width: w, height: h, transform: `scale(${scale})` }}
+              />
+            ) : startBtn}
           </div>
           <div className="device-meta">
             {d.label}{rotated ? ' · лёжа' : ''} · {w}×{h} · {Math.round(scale * 100)}%
