@@ -19,6 +19,8 @@ spokenHtml = (text, lang) => {
   s = s.replace(new RegExp('[«“"]\\s*[<>/\\\\]\\s*[»”"]\\s*(' + KZ_SIGN_WORD + ')', 'gi'), '$1');
   const nm = KZ_SIGN_NAME[lang] || KZ_SIGN_NAME.ru;
   s = s.replace(/[«“"]\s*([<>/\\])\s*[»”"]/g, (all, c) => ' ' + (nm[c] || nm['/']) + ' ');
+  // «yopuvchi </html> tegi» — без повтора: «yopuvchi html tegi» (тексты заказчика, 28.10.2026).
+  if (lang === 'uz') s = s.replace(/yopuvchi\s+<\s*\/\s*([a-z][a-z0-9]*)\s*>\s+teg/gi, 'yopuvchi $1 teg');
   if (lang === 'uz') s = s.replace(/<\s*\/\s*([a-z][a-z0-9]*)\s*>/gi, (all, t) => 'yopuvchi ' + t + ' tegi');
   const out = spokenHtmlL2(s, lang);
   return lang === 'uz' ? kzTagWord(out) : out;

@@ -502,7 +502,7 @@ function S6({ p }) {
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Sheet>
         <KzAsk text={askText} n={solved ? null : step + '/2'} />
-        <div ref={sceneRef} className={'kz-scene' + (flying ? ' is-flying' : '')}>
+        <div ref={sceneRef} className={'kz-scene kz-s6' + (flying ? ' is-flying' : '')}>
           <ManBox man={<PaperMan anim={false} headOpen={step === 1} hl={hlHead ? 'head' : null} spot
             titleText={step === 1 ? title : null} />} cls="kz-s6-box" />
           <div className="kz-col">
@@ -539,7 +539,7 @@ function S7({ p }) {
   // Пока Коди называет место («внутри title»), поле мигает; потом — когда ученик медлит.
   const led = useIdleLed(canTap && !ty.solved && !ty.val.trim(), 0) || (!ty.solved && !ty.val && speaker.text === c.say);
   const confirm = () => { if (canTap && ty.ready) ty.commit(() => sayNow(c.ok, 'smile')); };
-  const hint = hasTags(ty.val) ? UI.noTags : hintAt(lad.lv, c.hints);
+  const hint = hasTags(ty.val) ? (c.noTags || UI.noTags) : hintAt(lad.lv, c.hints);
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="kz-typed">
@@ -815,7 +815,7 @@ function S10({ p }) {
   const canGo = useAdvanceGate(ty.solved, spoken);
   const led = useIdleLed(canTap && !ty.solved && !ty.val.trim(), 0) || (!ty.solved && !ty.val && speaker.text === c.say);
   const confirm = () => { if (canTap && ty.ready) ty.commit(() => sayNow(c.ok, 'smile')); };
-  const hint = hasTags(ty.val) ? UI.noTags : hintAt(lad.lv, c.hints);
+  const hint = hasTags(ty.val) ? (c.noTags || UI.noTags) : hintAt(lad.lv, c.hints);
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="kz-typed">
