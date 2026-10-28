@@ -34,5 +34,7 @@ export default {
       topics: ['h1–h6', 'p', 'b', 'i'] },
     { n: 15, slug: 'bumazhnaya-stranitsa', title: 'Структура HTML-документа — копия урока 1 курса «Бумажная страница» (24.10.2026)',
       topics: ['html', 'head', 'title', 'body'] },
+    { n: 16, slug: 'b-oyin', title: 'Урок 1 «Бумажная страница» в рамке дизайна «B · O‘yin» (шапка, низ, панели результата; 28.10.2026)',
+      topics: ['html', 'head', 'title', 'body', 'дизайн B · O‘yin'] },
   ],
 };
