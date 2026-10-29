@@ -7,7 +7,7 @@
 //   · META — свой id и название; реплики — b16-texts.jsx (v2 заказчика), экраны — b16-screens.jsx;
 //   · экраны рисуют StageB вместо Stage канона;
 //   · KzAsk сообщает рамке текст задания и подсказку и показывает на листе только
-//     задание (подсказка и причина ошибки — в панели «Maslahat» снизу);
+//     задание (причина ошибки — красная панель снизу, подсказка лампочки и бездействия — жёлтая);
 //   · английские слова речи (tag, html, head, title, body) — с пометкой [English pronunciation];
 //   · к CSS урока добавляется b16.css.
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
@@ -37,7 +37,7 @@ for (const f of readdirSync(L1)) {
   if (f === 'kollazh-kit.jsx') {
     s = must(s,
       "function KzAsk({ text, hint, n }) {\n  const pick = usePick();\n  return (\n    <div className=\"kz-ask-wrap\">\n      <p className={'kz-ask' + (hint ? ' is-hint' : '')} aria-live=\"polite\">\n        {n ? <span className=\"kz-ask-n\">{n}</span> : null}{pick(hint || text)}",
-      "function KzAsk({ text, hint, n }) {\n  const pick = usePick();\n  // Рамка B · O'yin: подсказка — в панели «Maslahat», на листе — задание.\n  const ts = text ? pick(text) : '', hs = hint ? pick(hint) : '';\n  useEffect(() => { if (_bAskSet) _bAskSet({ text: ts, hint: hs }); }, [ts, hs]);\n  return (\n    <div className=\"kz-ask-wrap\">\n      <p className=\"kz-ask\" aria-live=\"polite\">\n        {n ? <span className=\"kz-ask-n\">{n}</span> : null}{ts}",
+      "function KzAsk({ text, hint, n, err }) {\n  const pick = usePick();\n  // Рамка B · O'yin: подсказка — в панели снизу, на листе — задание. err — причина ошибки\n  // (красная панель), иначе подсказка лампочки или бездействия (жёлтая).\n  const ts = text ? pick(text) : '', hs = hint ? pick(hint) : '', er = !!(hs && err);\n  useEffect(() => { if (_bAskSet) _bAskSet({ text: ts, hint: hs, err: er }); }, [ts, hs, er]);\n  return (\n    <div className=\"kz-ask-wrap\">\n      <p className=\"kz-ask\" aria-live=\"polite\">\n        {n ? <span className=\"kz-ask-n\">{n}</span> : null}{ts}",
       'KzAsk');
     // Английские слова речи — с пометкой [English pronunciation] (b16EnWords в b16-chrome.jsx).
     s = must(s, "  return lang === 'uz' ? kzTagWord(out) : out;", "  return b16EnWords(lang === 'uz' ? kzTagWord(out) : out, lang);", 'spokenHtml');

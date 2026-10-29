@@ -304,6 +304,7 @@ function S4({ p }) {
   const solved = !!(rec && rec.done);
   const ty = useTagTyping({ max: 12 });
   const [msg, setMsg] = useState(null);
+  useTipClears(setMsg);
   const [okNow, setOkNow] = useState(solved);
   // Причину нельзя назвать точно (знаки не в том порядке) — опора: верхний тег на рамке
   // и кнопки набора, которые загораются по порядку < / html >.
@@ -314,9 +315,11 @@ function S4({ p }) {
   const lad = useKzLadder(!okNow);
   const st = useRef({ tries: 0, misses: 0 });
   const led = useIdleLed(canTap && !okNow && !ty.val, 0);
-  // Пока Коди говорит «нет нижнего края» (и когда ученик медлит), пустое место
-  // края на рамке и пустая строка в коде мигают вместе: это одно и то же место.
+  // Пока Коди говорит «нет нижнего края» (и когда ученик медлит), светится только
+  // поле в пустой строке кода — сюда пишут. «?» на рамке не мигает (заказчик, 28.10.2026:
+  // ученик нажимал на мигающее вместо того, чтобы писать); нажатие по нему ставит курсор в поле.
   const blink = !okNow && (speaker.text === c.say || led);
+  const toField = () => { if (ty.inputRef.current) ty.inputRef.current.focus(); };
   const check = () => {
     if (!canTap || okNow || !ty.val.trim()) return;
     st.current.tries += 1;
@@ -337,20 +340,21 @@ function S4({ p }) {
     { k: 'o', d: 0, parts: [T_('html')] },
     { k: 'm', d: 1, parts: [<span key="m" className="kz-dim">…</span>] },
     { k: 'c', d: 0, cls: okNow ? 'is-new' : 'is-gap', parts: okNow ? [T_('html', true)] : [
-      <span key="g" className={'kz-gap' + (blink ? ' kz-gap-led' : '')}>
-        <InlineInput value={ty.val} onChange={(v) => { ty.setVal(v); setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={12} cls="kz-tag-in" />
+      <span key="g" className={'kz-gap kz-write' + (blink ? ' kz-gap-led' : '')}>
+        <InlineInput value={ty.val} onChange={(v) => { ty.setVal(v); setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={UI.writeHere} label={c.ask} max={12} cls="kz-tag-in" />
+        {ty.val ? null : <span className="kz-caret" aria-hidden="true" />}
       </span>] }
   ];
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hint)} />
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hint)} err={!!msg} />
         <div className="kz-scene is-tight">
           <ManBox frame frameSides={{ top: 1, right: 1, left: 1, bottom: okNow ? 'new' : 0 }} br={<FramedPage anim={false} />}
             labels={<>
               <KzLabel t="html" cls="kz-frame-lbl-top" on={(lad.lv >= 1 || orderHint) && !okNow} />
               {okNow ? <KzLabel t="html" close cls="kz-frame-lbl-bot" anim="stamp" />
-                : <span className={'kz-frame-miss' + (blink ? ' is-blink' : '')} aria-hidden="true"><span className="kz-frame-miss-q">?</span></span>}
+                : <span className="kz-frame-miss" aria-hidden="true" onClick={toField}><span className="kz-frame-miss-q">?</span></span>}
             </>} />
           <div className="kz-col"><KzCode lines={lines} /></div>
         </div>
@@ -374,6 +378,7 @@ function S5({ p }) {
   const [slots, setSlots] = useState(solved ? { top: 'o', bot: 'c' } : { top: null, bot: null });
   const [sel, setSel] = useState(null);
   const [msg, setMsg] = useState(null);
+  useTipClears(setMsg);
   const [shake, setShake] = useState(null);
   const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.ok, pose: 'smile' }]
     : [{ text: c.say, pose: 'explain' }, { text: c.sayHow, pose: 'point' }]);
@@ -423,7 +428,7 @@ function S5({ p }) {
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} n={done ? null : ((slots.top ? 1 : 0) + (slots.bot ? 1 : 0)) + '/2'} />
+        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} err={!!msg} n={done ? null : ((slots.top ? 1 : 0) + (slots.bot ? 1 : 0)) + '/2'} />
         <div ref={sceneRef} className={'kz-scene is-tight' + (dnd.active || sel ? ' is-dragging' : '')}>
           <ManBox frame frameAnim={!solved} br={<FramedPage anim={!solved} />} cls="kz-s5-box"
             labels={<>{slotBtn('top', 'kz-slot-top')}{slotBtn('bot', 'kz-slot-bot')}</>} />
@@ -553,7 +558,7 @@ function S7({ p }) {
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="kz-typed">
-        <KzAsk text={ty.solved ? c.ok : c.ask} hint={ty.solved && !hasTags(ty.val) ? null : hint} />
+        <KzAsk text={ty.solved ? c.ok : c.ask} hint={ty.solved && !hasTags(ty.val) ? null : hint} err={hasTags(ty.val)} />
         <div className="kz-scene kz-scene-col">
           <div className="kz-col">
             <PaperBrowser title={ty.shown} stamp={ty.stamp} tabHl={!ty.solved} short>
@@ -831,7 +836,7 @@ function S10({ p }) {
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="kz-typed">
-        <KzAsk text={ty.solved ? c.ok : c.ask} hint={ty.solved && !hasTags(ty.val) ? null : hint} />
+        <KzAsk text={ty.solved ? c.ok : c.ask} hint={ty.solved && !hasTags(ty.val) ? null : hint} err={hasTags(ty.val)} />
         <div className="kz-scene kz-scene-col">
           <div className="kz-col">
             <PaperBrowser title={mine.title} short pageHl={speaker.text === c.sayWin} spot={speaker.text === c.sayWin ? 'page' : null}>
@@ -864,6 +869,7 @@ function S11({ p }) {
   const [placed, setPlaced] = useState(solved ? { name: 'head', hello: 'body', pic: 'body', btn: 'body' } : {});
   const [sel, setSel] = useState(null);
   const [msg, setMsg] = useState(null);
+  useTipClears(setMsg);
   const [shake, setShake] = useState(null);
   const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'explain' }]);
   const canTap = useCanAnswer(spoken);
@@ -923,7 +929,7 @@ function S11({ p }) {
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} n={done ? null : doneN + '/4'} />
+        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} err={!!msg} n={done ? null : doneN + '/4'} />
         <div className="kz-zones">{zone('head')}{zone('body')}</div>
         <div className="kz-tray">
           {c.items.map((it, i) => {
@@ -1097,6 +1103,13 @@ function S13({ p }) {
     sayNow(c.sayMove, 'point');
   }, [placedN]); // eslint-disable-line react-hooks/exhaustive-deps
   const moveHl = speaker.text === c.sayMove;
+  // Все места заняты — Коди один раз зовёт нажать «Проверить», кнопка пульсирует.
+  useEffect(() => {
+    if (solved || !full || res || st.current.checkTold) return;
+    st.current.checkTold = true;
+    sayNow(c.sayCheck, 'point');
+  }, [full]); // eslint-disable-line react-hooks/exhaustive-deps
+  const callCheck = full && !solved && !res;
   const tray = TRAY13.filter((id) => slots.indexOf(id) < 0);
   const led = useIdleLed(canTap && !solved && !full, slots.filter(Boolean).length);
   const partsOf = (id) => ({
@@ -1133,7 +1146,8 @@ function S13({ p }) {
       sayNow(c.ok, 'smile');
       return;
     }
-    sfx('soft', true); setRes(r); sayNow(c.rules[r.rule], 'think');
+    // Первая ошибка: после правила — чем исправлять (стрелки ▲ ▼ у отмеченных полосок мигают).
+    sfx('soft', true); setRes(r); sayNow(st.current.checks === 1 ? joinL(c.rules[r.rule], c.sayFix) : c.rules[r.rule], 'think');
     if (st.current.checks >= 2) lad.bump();
   };
   // ▲ ▼ у поставленной полоски: на строку вверх или вниз (меняется местами с соседней,
@@ -1179,7 +1193,7 @@ function S13({ p }) {
         k: 's' + k + (moved && (moved.to === k || moved.from === k) ? ':' + moved.n : ''), d: id ? DEPTH13(slots, k) : 0,
         cls: (!id && cur === k && !solved ? 'is-cur' : '') + (held === k ? ' is-sel' : '') + (marked ? ' is-mark' : '') + (moved && moved.to === k ? ' kz-slide-up' : moved && moved.from === k && slots[k] ? ' kz-slide-under' : ''),
         style: moved && (moved.to === k || moved.from === k) ? { '--dy': (moved.to === k ? moved.dy : -moved.dy).toFixed(1) + 'px' } : null,
-        move: solved || !id ? { hide: true } : { up: k > 0 ? () => move(k, -1) : null, down: k < 7 ? () => move(k, 1) : null, hl: moveHl },
+        move: solved || !id ? { hide: true } : { up: k > 0 ? () => move(k, -1) : null, down: k < 7 ? () => move(k, 1) : null, hl: moveHl || marked },
         onTap: solved ? null : () => tapSlot(k), disabled: !canTap, led: (led && !id && cur === k) || (lad.lv >= 3 && marked),
         parts: id ? partsOf(id) : [<span key="e" className="kz-dash" aria-label={'slot ' + (k + 2)} />]
       };
@@ -1187,7 +1201,7 @@ function S13({ p }) {
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={solved ? c.ok : c.ask} hint={solved ? null : (res ? c.rules[res.rule] : hint)} n={solved ? null : slots.filter(Boolean).length + '/8'} />
+        <KzAsk text={solved ? c.ok : res ? c.askFix : full ? c.askCheck : c.ask} hint={solved ? null : (res ? c.rules[res.rule] : hint)} err={!!res} n={solved || full ? null : slots.filter(Boolean).length + '/8'} />
         <div className="kz-build">
           <div ref={hostRef} className="kz-code-host" onPointerDown={(e) => {
             if (!canTap || solved) return;
@@ -1212,8 +1226,12 @@ function S13({ p }) {
                 ))}
               </div>
             ) : null}
-            {full && !solved ? <button type="button" className="kz-btn is-coral" disabled={!canTap} onClick={check}><Icon name="check" size={17} />{pick(UI.check)}</button> : null}
-            {slots.some(Boolean) && !solved ? <p className="kz-msg">{pick(UI.swap)}</p> : null}
+            {full && !solved ? <button type="button" className={'kz-btn is-coral' + (callCheck ? ' kz-call' : '')} disabled={!canTap} onClick={check}><Icon name="check" size={17} />{pick(UI.check)}</button> : null}
+            {/* Подпись — про стрелки ▲ ▼ (ими меняют порядок); после ошибки она горит. */}
+            {slots.some(Boolean) && !solved ? (
+              <p className={'kz-msg kz-move-tip' + (res ? ' is-on' : '')}>
+                <span className="kz-move-tip-k" aria-hidden="true">▲</span><span className="kz-move-tip-k" aria-hidden="true">▼</span>{pick(c.moveTip)}
+              </p>) : null}
           </div>
         </div>
       </Sheet>
@@ -1237,6 +1255,7 @@ function S14({ p }) {
   const [off, setOff] = useState([]);
   const [okNow, setOkNow] = useState(solved);
   const [msg, setMsg] = useState(null);
+  useTipClears(setMsg);
   const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.ok, pose: 'smile' }]
     : [{ text: c.say, pose: 'wonder' }, { text: c.sayHow, pose: 'point' }]);
   const canTap = useCanAnswer(spoken);
@@ -1264,7 +1283,7 @@ function S14({ p }) {
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hint)} />
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hint)} err={!!msg} />
         <div className="kz-scene kz-s14">
           <div className="kz-col">
             <PaperBrowser title={okNow ? mine.title : eaten} stamp={okNow ? 1 : 0} tabHl={!okNow} pageHl={okNow}>
@@ -1315,6 +1334,7 @@ function Q1({ p }) {
   const [slots, setSlots] = useState(solved ? { tab: 't', win: 'w' } : { tab: null, win: null });
   const [sel, setSel] = useState(null);
   const [msg, setMsg] = useState(null);
+  useTipClears(setMsg);
   const [shake, setShake] = useState(null);
   const [peek, setPeek] = useState(null);   // { where, id } — куда на миг попала фраза при ошибке
   const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'curious' }]);
@@ -1366,7 +1386,7 @@ function Q1({ p }) {
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} n={done ? null : ((slots.tab ? 1 : 0) + (slots.win ? 1 : 0)) + '/2'} />
+        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} err={!!msg} n={done ? null : ((slots.tab ? 1 : 0) + (slots.win ? 1 : 0)) + '/2'} />
         <div className={'kz-scene kz-q1' + (dnd.active || sel ? ' is-dragging' : '')}>
           <div className="kz-col">
             <PaperBrowser title={tabText} stamp={(slots.tab ? 1 : 0) + (peek && peek.where === 'tab' ? 2 : 0)} short tabHl={!!(peek && peek.where === 'tab')} pageHl={!!(peek && peek.where === 'win')}
@@ -1420,6 +1440,7 @@ function Q2({ p }) {
   const [off, setOff] = useState([]);
   const [okNow, setOkNow] = useState(solved);
   const [msg, setMsg] = useState(null);
+  useTipClears(setMsg);
   const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'curious' }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || okNow, spoken);
@@ -1441,7 +1462,7 @@ function Q2({ p }) {
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hint)} />
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hint)} err={!!msg} />
         <div className="kz-scene kz-scene-col kz-q2">
           <div className="kz-col">
             <KzCode lines={[{ k: 't', d: 0, cls: 'kz-q2-line', parts: [T_('title'), W_(mine.title), <span key="c" className="kz-q2-close">{T_('title', true)}</span>] }]} />

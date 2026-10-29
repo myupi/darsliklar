@@ -12,7 +12,7 @@
 //     край (2/2/5/2), при нажатии кнопка «опускается»;
 //   · после решённого задания низ становится зелёной панелью «Barakalla!» с
 //     объяснением (тот же текст, что был в строке задания) и зелёной «Дальше»;
-//   · причина ошибки и подсказка лампочки — лососевая панель «Maslahat» снизу
+//   · причина ошибки — красная панель снизу, подсказка лампочки и бездействия — жёлтая «Maslahat»
 //     с кнопкой «Qayta urinish» (закрыть); строка задания на листе остаётся заданием.
 // Экраны рисуют StageB вместо Stage канона (замена при сборке, build.mjs).
 // ─────────────────────────────────────────────────────────────────────────────
@@ -22,6 +22,8 @@ const B_UI = {
   ok: L3('Barakalla!', 'Молодец!', 'Well done!'),
   hint: L3('Maslahat', 'Подсказка', 'Hint'),
   retry: L3('Qayta urinish', 'Попробовать ещё', 'Try again'),
+  err: L3('Yana bir qarang', 'Посмотри ещё раз', 'Take another look'),
+  gotIt: L3('Tushunarli', 'Понятно', 'Got it'),
   close: L3('Darsdan chiqish', 'Выйти из урока', 'Leave the lesson'),
   show: L3('Tushuntirish', 'Объяснение', 'Explanation'),
   task: L3('Mashq', 'Задание', 'Practice')
@@ -35,6 +37,7 @@ const BIco = ({ d, size = 20, w = 2.5 }) => (
 const B_ICO = {
   x: <><path d="M18 6 6 18" /><path d="m6 6 12 12" /></>,
   check: <path d="M20 6 9 17l-5-5" />,
+  alert: <><circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" /></>,
   bulb: <><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" /><path d="M9 18h6" /><path d="M10 22h4" /></>,
   book: <><path d="M12 7v14" /><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" /></>,
   pencil: <><path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z" /><path d="m15 5 4 4" /></>
@@ -66,12 +69,20 @@ const BProgress = ({ screen, total }) => (
   </div>
 );
 
+// Нажали лампочку или ученик долго не действует — нужна подсказка: текст прошлой ошибки
+// уступает ей место (иначе закрытая красная панель прятала и жёлтую подсказку).
+function useTipClears(clear) {
+  const pulse = useHintPulse();
+  const p0 = useRef(pulse);
+  useEffect(() => { if (pulse !== p0.current) { p0.current = pulse; clear(null); } }, [pulse]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
 const StageB = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroFixed, done, hideSpeaker, hint, voiceTop }) => {
   const pick = usePick();
   const speaking = useSayBusy();
   useEffect(() => { _hintText = hint || null; return () => { _hintText = null; }; }, [hint]);
   const idle = useIdleCoach(!!nav, speaking);
-  const [ask, setAsk] = useState({ text: '', hint: '' });
+  const [ask, setAsk] = useState({ text: '', hint: '', err: false });
   useLayoutEffect(() => { _bAskSet = setAsk; return () => { if (_bAskSet === setAsk) _bAskSet = null; }; }, []);
   const [shut, setShut] = useState('');
   const task = bIsTask(screen, total);
@@ -119,12 +130,13 @@ const StageB = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroF
           </div>
         </div>
       ) : nav && sheet === 'hint' ? (
-        <div className="stage-nav b-sheet is-hint" role="status">
+        // Причина ошибки — красная панель; подсказка лампочки или бездействия — жёлтая (заказчик, 29.10.2026).
+        <div className={'stage-nav b-sheet is-hint ' + (ask.err ? 'is-err' : 'is-tip')} role="status">
           <div className="limit b-sheet-in">
-            <span className="b-sheet-ic"><BIco d={B_ICO.bulb} size={26} w={2.6} /></span>
-            <div className="b-sheet-tx"><b>{pick(B_UI.hint)}</b><p>{ask.hint}</p></div>
+            <span className="b-sheet-ic"><BIco d={ask.err ? B_ICO.alert : B_ICO.bulb} size={26} w={2.6} /></span>
+            <div className="b-sheet-tx"><b>{pick(ask.err ? B_UI.err : B_UI.hint)}</b><p>{ask.hint}</p></div>
             <div className="navrow b-sheet-nav">
-              <button type="button" className="b-btn-hint" onClick={() => setShut(ask.hint)}>{pick(B_UI.retry)}</button>
+              <button type="button" className="b-btn-hint" onClick={() => setShut(ask.hint)}>{pick(ask.err ? B_UI.retry : B_UI.gotIt)}</button>
             </div>
           </div>
         </div>

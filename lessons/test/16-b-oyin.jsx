@@ -6727,6 +6727,7 @@ const fillL = (node, vars) => {
 const UI = {
   inspector: L3('Qoida', 'Правило', 'Rule'),
   check: L3('Tekshirish', 'Проверить', 'Check'),
+  writeHere: L3('Shu yerga yozing', 'Пиши здесь', 'Type here'),
   erase: L3('O‘chirish', 'Стереть', 'Erase'),
   goal: L3('Vazifa', 'Задание', 'Task'),
   save: L3('Saqlash', 'Сохранить', 'Save'),
@@ -7131,7 +7132,19 @@ const C = {
     ok: L3('Qoyil, kodni to‘g‘ri yig‘dingiz! Sahifaning nomi title teglari orasida, title esa head ichida. Siz yozgan matn body ichida.',
       'Вот это да, код собран верно! Название — в head, текст — в body.',
       'Look at that, the code is right! The page name is in head, the text is in body.'),
-    ask: L3('Qatorlarni tartib bilan qo‘ying', 'Расставь полоски по порядку', 'Put the strips in order')
+    ask: L3('Qatorlarni tartib bilan qo‘ying', 'Расставь полоски по порядку', 'Put the strips in order'),
+    // Все места заняты — что дальше (заказчик, 29.10.2026: ученик не понимал, что нажать «Проверить»).
+    sayCheck: L3('Hamma qatorlar joyida! Endi «Tekshirish» tugmasini bosing, kod to‘g‘ri yig‘ilganini bilib olamiz.',
+      'Все полоски на местах! Теперь нажми «Проверить» — узнаем, верно ли собран код.',
+      'All the strips are in place! Now tap “Check” to see if the code is right.'),
+    askCheck: L3('Hamma qatorlar joyida — «Tekshirish»ni bosing', 'Все полоски на местах — нажми «Проверить»', 'All strips are in place — tap “Check”'),
+    // После неверной проверки — чем исправлять: стрелками ▲ ▼ (заказчик, 29.10.2026).
+    sayFix: L3('Belgilangan qatorlarni strelkalar bilan yuqoriga yoki pastga suring, keyin yana «Tekshirish»ni bosing.',
+      'Сдвинь отмеченные полоски стрелками вверх или вниз и снова нажми «Проверить».',
+      'Move the marked strips up or down with the arrows, then tap “Check” again.'),
+    askFix: L3('Belgilangan qatorlarni ▲ ▼ strelkalar bilan suring va yana «Tekshirish»ni bosing', 'Сдвинь отмеченные полоски стрелками ▲ ▼ и снова нажми «Проверить»', 'Move the marked strips with the ▲ ▼ arrows and tap “Check” again'),
+    moveTip: L3('qatorni yuqoriga yoki pastga surish', 'сдвинуть полоску вверх или вниз', 'move a strip up or down'),
+    fixTip: L3('belgilangan qatorlarni suring va yana «Tekshirish»ni bosing', 'сдвинь отмеченные полоски и снова нажми «Проверить»', 'move the marked strips, then tap “Check” again')
   },
   s14: {
     eyebrow: L3('Matn brauzer varag‘iga tushib qoldi', 'Текст попал на вкладку', 'Text on the tab'),
@@ -8292,7 +8305,7 @@ Object.assign(NOT_SPOKEN_IN, { items: { id: 1, want: 1 }, opts: { t: 1, id: 1, r
 //     край (2/2/5/2), при нажатии кнопка «опускается»;
 //   · после решённого задания низ становится зелёной панелью «Barakalla!» с
 //     объяснением (тот же текст, что был в строке задания) и зелёной «Дальше»;
-//   · причина ошибки и подсказка лампочки — лососевая панель «Maslahat» снизу
+//   · причина ошибки — красная панель снизу, подсказка лампочки и бездействия — жёлтая «Maslahat»
 //     с кнопкой «Qayta urinish» (закрыть); строка задания на листе остаётся заданием.
 // Экраны рисуют StageB вместо Stage канона (замена при сборке, build.mjs).
 // ─────────────────────────────────────────────────────────────────────────────
@@ -8302,6 +8315,8 @@ const B_UI = {
   ok: L3('Barakalla!', 'Молодец!', 'Well done!'),
   hint: L3('Maslahat', 'Подсказка', 'Hint'),
   retry: L3('Qayta urinish', 'Попробовать ещё', 'Try again'),
+  err: L3('Yana bir qarang', 'Посмотри ещё раз', 'Take another look'),
+  gotIt: L3('Tushunarli', 'Понятно', 'Got it'),
   close: L3('Darsdan chiqish', 'Выйти из урока', 'Leave the lesson'),
   show: L3('Tushuntirish', 'Объяснение', 'Explanation'),
   task: L3('Mashq', 'Задание', 'Practice')
@@ -8315,6 +8330,7 @@ const BIco = ({ d, size = 20, w = 2.5 }) => (
 const B_ICO = {
   x: <><path d="M18 6 6 18" /><path d="m6 6 12 12" /></>,
   check: <path d="M20 6 9 17l-5-5" />,
+  alert: <><circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" /></>,
   bulb: <><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" /><path d="M9 18h6" /><path d="M10 22h4" /></>,
   book: <><path d="M12 7v14" /><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" /></>,
   pencil: <><path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z" /><path d="m15 5 4 4" /></>
@@ -8346,12 +8362,20 @@ const BProgress = ({ screen, total }) => (
   </div>
 );
 
+// Нажали лампочку или ученик долго не действует — нужна подсказка: текст прошлой ошибки
+// уступает ей место (иначе закрытая красная панель прятала и жёлтую подсказку).
+function useTipClears(clear) {
+  const pulse = useHintPulse();
+  const p0 = useRef(pulse);
+  useEffect(() => { if (pulse !== p0.current) { p0.current = pulse; clear(null); } }, [pulse]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
 const StageB = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroFixed, done, hideSpeaker, hint, voiceTop }) => {
   const pick = usePick();
   const speaking = useSayBusy();
   useEffect(() => { _hintText = hint || null; return () => { _hintText = null; }; }, [hint]);
   const idle = useIdleCoach(!!nav, speaking);
-  const [ask, setAsk] = useState({ text: '', hint: '' });
+  const [ask, setAsk] = useState({ text: '', hint: '', err: false });
   useLayoutEffect(() => { _bAskSet = setAsk; return () => { if (_bAskSet === setAsk) _bAskSet = null; }; }, []);
   const [shut, setShut] = useState('');
   const task = bIsTask(screen, total);
@@ -8399,12 +8423,13 @@ const StageB = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroF
           </div>
         </div>
       ) : nav && sheet === 'hint' ? (
-        <div className="stage-nav b-sheet is-hint" role="status">
+        // Причина ошибки — красная панель; подсказка лампочки или бездействия — жёлтая (заказчик, 29.10.2026).
+        <div className={'stage-nav b-sheet is-hint ' + (ask.err ? 'is-err' : 'is-tip')} role="status">
           <div className="limit b-sheet-in">
-            <span className="b-sheet-ic"><BIco d={B_ICO.bulb} size={26} w={2.6} /></span>
-            <div className="b-sheet-tx"><b>{pick(B_UI.hint)}</b><p>{ask.hint}</p></div>
+            <span className="b-sheet-ic"><BIco d={ask.err ? B_ICO.alert : B_ICO.bulb} size={26} w={2.6} /></span>
+            <div className="b-sheet-tx"><b>{pick(ask.err ? B_UI.err : B_UI.hint)}</b><p>{ask.hint}</p></div>
             <div className="navrow b-sheet-nav">
-              <button type="button" className="b-btn-hint" onClick={() => setShut(ask.hint)}>{pick(B_UI.retry)}</button>
+              <button type="button" className="b-btn-hint" onClick={() => setShut(ask.hint)}>{pick(ask.err ? B_UI.retry : B_UI.gotIt)}</button>
             </div>
           </div>
         </div>
@@ -8740,11 +8765,12 @@ function Sheet({ children, cls }) {
 }
 
 // Строка задания — бумажная полоска; ступень подсказки встаёт на её место.
-function KzAsk({ text, hint, n }) {
+function KzAsk({ text, hint, n, err }) {
   const pick = usePick();
-  // Рамка B · O'yin: подсказка — в панели «Maslahat», на листе — задание.
-  const ts = text ? pick(text) : '', hs = hint ? pick(hint) : '';
-  useEffect(() => { if (_bAskSet) _bAskSet({ text: ts, hint: hs }); }, [ts, hs]);
+  // Рамка B · O'yin: подсказка — в панели снизу, на листе — задание. err — причина ошибки
+  // (красная панель), иначе подсказка лампочки или бездействия (жёлтая).
+  const ts = text ? pick(text) : '', hs = hint ? pick(hint) : '', er = !!(hs && err);
+  useEffect(() => { if (_bAskSet) _bAskSet({ text: ts, hint: hs, err: er }); }, [ts, hs, er]);
   return (
     <div className="kz-ask-wrap">
       <p className="kz-ask" aria-live="polite">
@@ -9746,6 +9772,7 @@ function S4({ p }) {
   const solved = !!(rec && rec.done);
   const ty = useTagTyping({ max: 12 });
   const [msg, setMsg] = useState(null);
+  useTipClears(setMsg);
   const [okNow, setOkNow] = useState(solved);
   // Причину нельзя назвать точно (знаки не в том порядке) — опора: верхний тег на рамке
   // и кнопки набора, которые загораются по порядку < / html >.
@@ -9756,9 +9783,11 @@ function S4({ p }) {
   const lad = useKzLadder(!okNow);
   const st = useRef({ tries: 0, misses: 0 });
   const led = useIdleLed(canTap && !okNow && !ty.val, 0);
-  // Пока Коди говорит «нет нижнего края» (и когда ученик медлит), пустое место
-  // края на рамке и пустая строка в коде мигают вместе: это одно и то же место.
+  // Пока Коди говорит «нет нижнего края» (и когда ученик медлит), светится только
+  // поле в пустой строке кода — сюда пишут. «?» на рамке не мигает (заказчик, 28.10.2026:
+  // ученик нажимал на мигающее вместо того, чтобы писать); нажатие по нему ставит курсор в поле.
   const blink = !okNow && (speaker.text === c.say || led);
+  const toField = () => { if (ty.inputRef.current) ty.inputRef.current.focus(); };
   const check = () => {
     if (!canTap || okNow || !ty.val.trim()) return;
     st.current.tries += 1;
@@ -9779,20 +9808,21 @@ function S4({ p }) {
     { k: 'o', d: 0, parts: [T_('html')] },
     { k: 'm', d: 1, parts: [<span key="m" className="kz-dim">…</span>] },
     { k: 'c', d: 0, cls: okNow ? 'is-new' : 'is-gap', parts: okNow ? [T_('html', true)] : [
-      <span key="g" className={'kz-gap' + (blink ? ' kz-gap-led' : '')}>
-        <InlineInput value={ty.val} onChange={(v) => { ty.setVal(v); setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={12} cls="kz-tag-in" />
+      <span key="g" className={'kz-gap kz-write' + (blink ? ' kz-gap-led' : '')}>
+        <InlineInput value={ty.val} onChange={(v) => { ty.setVal(v); setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={UI.writeHere} label={c.ask} max={12} cls="kz-tag-in" />
+        {ty.val ? null : <span className="kz-caret" aria-hidden="true" />}
       </span>] }
   ];
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hint)} />
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hint)} err={!!msg} />
         <div className="kz-scene is-tight">
           <ManBox frame frameSides={{ top: 1, right: 1, left: 1, bottom: okNow ? 'new' : 0 }} br={<FramedPage anim={false} />}
             labels={<>
               <KzLabel t="html" cls="kz-frame-lbl-top" on={(lad.lv >= 1 || orderHint) && !okNow} />
               {okNow ? <KzLabel t="html" close cls="kz-frame-lbl-bot" anim="stamp" />
-                : <span className={'kz-frame-miss' + (blink ? ' is-blink' : '')} aria-hidden="true"><span className="kz-frame-miss-q">?</span></span>}
+                : <span className="kz-frame-miss" aria-hidden="true" onClick={toField}><span className="kz-frame-miss-q">?</span></span>}
             </>} />
           <div className="kz-col"><KzCode lines={lines} /></div>
         </div>
@@ -9816,6 +9846,7 @@ function S5({ p }) {
   const [slots, setSlots] = useState(solved ? { top: 'o', bot: 'c' } : { top: null, bot: null });
   const [sel, setSel] = useState(null);
   const [msg, setMsg] = useState(null);
+  useTipClears(setMsg);
   const [shake, setShake] = useState(null);
   const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.ok, pose: 'smile' }]
     : [{ text: c.say, pose: 'explain' }, { text: c.sayHow, pose: 'point' }]);
@@ -9865,7 +9896,7 @@ function S5({ p }) {
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} n={done ? null : ((slots.top ? 1 : 0) + (slots.bot ? 1 : 0)) + '/2'} />
+        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} err={!!msg} n={done ? null : ((slots.top ? 1 : 0) + (slots.bot ? 1 : 0)) + '/2'} />
         <div ref={sceneRef} className={'kz-scene is-tight' + (dnd.active || sel ? ' is-dragging' : '')}>
           <ManBox frame frameAnim={!solved} br={<FramedPage anim={!solved} />} cls="kz-s5-box"
             labels={<>{slotBtn('top', 'kz-slot-top')}{slotBtn('bot', 'kz-slot-bot')}</>} />
@@ -9995,7 +10026,7 @@ function S7({ p }) {
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="kz-typed">
-        <KzAsk text={ty.solved ? c.ok : c.ask} hint={ty.solved && !hasTags(ty.val) ? null : hint} />
+        <KzAsk text={ty.solved ? c.ok : c.ask} hint={ty.solved && !hasTags(ty.val) ? null : hint} err={hasTags(ty.val)} />
         <div className="kz-scene kz-scene-col">
           <div className="kz-col">
             <PaperBrowser title={ty.shown} stamp={ty.stamp} tabHl={!ty.solved} short>
@@ -10273,7 +10304,7 @@ function S10({ p }) {
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="kz-typed">
-        <KzAsk text={ty.solved ? c.ok : c.ask} hint={ty.solved && !hasTags(ty.val) ? null : hint} />
+        <KzAsk text={ty.solved ? c.ok : c.ask} hint={ty.solved && !hasTags(ty.val) ? null : hint} err={hasTags(ty.val)} />
         <div className="kz-scene kz-scene-col">
           <div className="kz-col">
             <PaperBrowser title={mine.title} short pageHl={speaker.text === c.sayWin} spot={speaker.text === c.sayWin ? 'page' : null}>
@@ -10306,6 +10337,7 @@ function S11({ p }) {
   const [placed, setPlaced] = useState(solved ? { name: 'head', hello: 'body', pic: 'body', btn: 'body' } : {});
   const [sel, setSel] = useState(null);
   const [msg, setMsg] = useState(null);
+  useTipClears(setMsg);
   const [shake, setShake] = useState(null);
   const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'explain' }]);
   const canTap = useCanAnswer(spoken);
@@ -10365,7 +10397,7 @@ function S11({ p }) {
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} n={done ? null : doneN + '/4'} />
+        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} err={!!msg} n={done ? null : doneN + '/4'} />
         <div className="kz-zones">{zone('head')}{zone('body')}</div>
         <div className="kz-tray">
           {c.items.map((it, i) => {
@@ -10539,6 +10571,13 @@ function S13({ p }) {
     sayNow(c.sayMove, 'point');
   }, [placedN]); // eslint-disable-line react-hooks/exhaustive-deps
   const moveHl = speaker.text === c.sayMove;
+  // Все места заняты — Коди один раз зовёт нажать «Проверить», кнопка пульсирует.
+  useEffect(() => {
+    if (solved || !full || res || st.current.checkTold) return;
+    st.current.checkTold = true;
+    sayNow(c.sayCheck, 'point');
+  }, [full]); // eslint-disable-line react-hooks/exhaustive-deps
+  const callCheck = full && !solved && !res;
   const tray = TRAY13.filter((id) => slots.indexOf(id) < 0);
   const led = useIdleLed(canTap && !solved && !full, slots.filter(Boolean).length);
   const partsOf = (id) => ({
@@ -10575,7 +10614,8 @@ function S13({ p }) {
       sayNow(c.ok, 'smile');
       return;
     }
-    sfx('soft', true); setRes(r); sayNow(c.rules[r.rule], 'think');
+    // Первая ошибка: после правила — чем исправлять (стрелки ▲ ▼ у отмеченных полосок мигают).
+    sfx('soft', true); setRes(r); sayNow(st.current.checks === 1 ? joinL(c.rules[r.rule], c.sayFix) : c.rules[r.rule], 'think');
     if (st.current.checks >= 2) lad.bump();
   };
   // ▲ ▼ у поставленной полоски: на строку вверх или вниз (меняется местами с соседней,
@@ -10621,7 +10661,7 @@ function S13({ p }) {
         k: 's' + k + (moved && (moved.to === k || moved.from === k) ? ':' + moved.n : ''), d: id ? DEPTH13(slots, k) : 0,
         cls: (!id && cur === k && !solved ? 'is-cur' : '') + (held === k ? ' is-sel' : '') + (marked ? ' is-mark' : '') + (moved && moved.to === k ? ' kz-slide-up' : moved && moved.from === k && slots[k] ? ' kz-slide-under' : ''),
         style: moved && (moved.to === k || moved.from === k) ? { '--dy': (moved.to === k ? moved.dy : -moved.dy).toFixed(1) + 'px' } : null,
-        move: solved || !id ? { hide: true } : { up: k > 0 ? () => move(k, -1) : null, down: k < 7 ? () => move(k, 1) : null, hl: moveHl },
+        move: solved || !id ? { hide: true } : { up: k > 0 ? () => move(k, -1) : null, down: k < 7 ? () => move(k, 1) : null, hl: moveHl || marked },
         onTap: solved ? null : () => tapSlot(k), disabled: !canTap, led: (led && !id && cur === k) || (lad.lv >= 3 && marked),
         parts: id ? partsOf(id) : [<span key="e" className="kz-dash" aria-label={'slot ' + (k + 2)} />]
       };
@@ -10629,7 +10669,7 @@ function S13({ p }) {
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={solved ? c.ok : c.ask} hint={solved ? null : (res ? c.rules[res.rule] : hint)} n={solved ? null : slots.filter(Boolean).length + '/8'} />
+        <KzAsk text={solved ? c.ok : res ? c.askFix : full ? c.askCheck : c.ask} hint={solved ? null : (res ? c.rules[res.rule] : hint)} err={!!res} n={solved || full ? null : slots.filter(Boolean).length + '/8'} />
         <div className="kz-build">
           <div ref={hostRef} className="kz-code-host" onPointerDown={(e) => {
             if (!canTap || solved) return;
@@ -10654,8 +10694,12 @@ function S13({ p }) {
                 ))}
               </div>
             ) : null}
-            {full && !solved ? <button type="button" className="kz-btn is-coral" disabled={!canTap} onClick={check}><Icon name="check" size={17} />{pick(UI.check)}</button> : null}
-            {slots.some(Boolean) && !solved ? <p className="kz-msg">{pick(UI.swap)}</p> : null}
+            {full && !solved ? <button type="button" className={'kz-btn is-coral' + (callCheck ? ' kz-call' : '')} disabled={!canTap} onClick={check}><Icon name="check" size={17} />{pick(UI.check)}</button> : null}
+            {/* Подпись — про стрелки ▲ ▼ (ими меняют порядок); после ошибки она горит. */}
+            {slots.some(Boolean) && !solved ? (
+              <p className={'kz-msg kz-move-tip' + (res ? ' is-on' : '')}>
+                <span className="kz-move-tip-k" aria-hidden="true">▲</span><span className="kz-move-tip-k" aria-hidden="true">▼</span>{pick(c.moveTip)}
+              </p>) : null}
           </div>
         </div>
       </Sheet>
@@ -10679,6 +10723,7 @@ function S14({ p }) {
   const [off, setOff] = useState([]);
   const [okNow, setOkNow] = useState(solved);
   const [msg, setMsg] = useState(null);
+  useTipClears(setMsg);
   const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.ok, pose: 'smile' }]
     : [{ text: c.say, pose: 'wonder' }, { text: c.sayHow, pose: 'point' }]);
   const canTap = useCanAnswer(spoken);
@@ -10706,7 +10751,7 @@ function S14({ p }) {
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hint)} />
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hint)} err={!!msg} />
         <div className="kz-scene kz-s14">
           <div className="kz-col">
             <PaperBrowser title={okNow ? mine.title : eaten} stamp={okNow ? 1 : 0} tabHl={!okNow} pageHl={okNow}>
@@ -10757,6 +10802,7 @@ function Q1({ p }) {
   const [slots, setSlots] = useState(solved ? { tab: 't', win: 'w' } : { tab: null, win: null });
   const [sel, setSel] = useState(null);
   const [msg, setMsg] = useState(null);
+  useTipClears(setMsg);
   const [shake, setShake] = useState(null);
   const [peek, setPeek] = useState(null);   // { where, id } — куда на миг попала фраза при ошибке
   const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'curious' }]);
@@ -10808,7 +10854,7 @@ function Q1({ p }) {
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} n={done ? null : ((slots.tab ? 1 : 0) + (slots.win ? 1 : 0)) + '/2'} />
+        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} err={!!msg} n={done ? null : ((slots.tab ? 1 : 0) + (slots.win ? 1 : 0)) + '/2'} />
         <div className={'kz-scene kz-q1' + (dnd.active || sel ? ' is-dragging' : '')}>
           <div className="kz-col">
             <PaperBrowser title={tabText} stamp={(slots.tab ? 1 : 0) + (peek && peek.where === 'tab' ? 2 : 0)} short tabHl={!!(peek && peek.where === 'tab')} pageHl={!!(peek && peek.where === 'win')}
@@ -10862,6 +10908,7 @@ function Q2({ p }) {
   const [off, setOff] = useState([]);
   const [okNow, setOkNow] = useState(solved);
   const [msg, setMsg] = useState(null);
+  useTipClears(setMsg);
   const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'curious' }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || okNow, spoken);
@@ -10883,7 +10930,7 @@ function Q2({ p }) {
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hint)} />
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hint)} err={!!msg} />
         <div className="kz-scene kz-scene-col kz-q2">
           <div className="kz-col">
             <KzCode lines={[{ k: 't', d: 0, cls: 'kz-q2-line', parts: [T_('title'), W_(mine.title), <span key="c" className="kz-q2-close">{T_('title', true)}</span>] }]} />
@@ -12177,6 +12224,17 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-line .tk-input.kz-tag-in { font-family: 'JetBrains Mono', monospace; }
 .kz-line .tk-input:focus { background: #fff; border-bottom-color: #1F2A44; }
 .kz-gap-led .tk-input { animation: kzLed 1.2s ease-in-out infinite; }
+/* S4: пустая строка — явное поле для письма: подпись «Пиши здесь» и мигающий
+   текстовый курсор, пока поле пустое и не в фокусе (заказчик, 28.10.2026). */
+.kz-write { position: relative; display: inline-flex; cursor: text; }
+.kz-line .kz-write .tk-input { min-width: 9em; padding: 3px 8px; border: 2px dashed #E0643F; border-radius: 6px; background: #fff; }
+.kz-line .kz-write .tk-input:placeholder-shown { padding-left: 14px; }
+.kz-line .kz-write .tk-input:focus { border-style: solid; border-color: #1F2A44; }
+.kz-line .kz-write .tk-input::placeholder { color: #9A8F7C; font: italic 600 15px 'Manrope', sans-serif; }
+.kz-caret { position: absolute; left: 8px; top: 50%; translate: 0 -50%; width: 2px; height: 1.15em; background: #1F2A44; border-radius: 1px;
+  pointer-events: none; animation: kzCaret 1s steps(1, end) infinite; }
+.kz-write .tk-input:focus ~ .kz-caret { display: none; }
+@keyframes kzCaret { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
 /* Бумажный браузер — Chrome в Windows из бумаги */
 .kz-br { position: relative; width: 100%; aspect-ratio: 16 / 10.5; min-height: 0; flex: none; align-self: center;
@@ -12418,8 +12476,9 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-frame-miss-q { position: absolute; left: 50%; top: 50%; translate: -50% -50%; padding: 1px 10px 2px; background: #E0643F; color: #FBF6EA;
   font: 800 clamp(14px, 2.4dvh, 20px)/1.2 'Manrope', sans-serif;
   clip-path: polygon(0 10%, 10% 0, 50% 8%, 90% 0, 100% 14%, 96% 52%, 100% 88%, 88% 100%, 50% 92%, 10% 100%, 0 86%, 4% 50%); }
-.kz-frame-miss.is-blink, .kz-frame-miss.is-blink .kz-frame-miss-q { animation: kzMiss 1s steps(1, end) infinite; }
-@keyframes kzMiss { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+/* «?» — спокойная пометка, а не кнопка: не мигает, без заливки (заказчик, 28.10.2026). */
+.kz-frame-miss { cursor: text; }
+.kz-frame-miss .kz-frame-miss-q { background: #FBF6EA; color: #E0643F; padding: 0 8px; }
 .kz-s6-box { z-index: 2; }
 .kz-scene.is-flying .kz-s6-box { z-index: 30; }
 
@@ -12597,7 +12656,7 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-card:disabled, .stage.is-speaking .stage-content .kz-card:disabled { opacity: 1; cursor: default; filter: none; }
 @media (prefers-reduced-motion: reduce) {
   .kz-hand, .kz-hand svg, .kz-ghost { transition: none; }
-  .kz-frame-miss.is-blink, .kz-frame-miss.is-blink .kz-frame-miss-q, .kz-scene.is-dragging .kz-slot .kz-slot-dash { animation: none; }
+  .kz-caret, .kz-scene.is-dragging .kz-slot .kz-slot-dash { animation: none; }
 }
 /* Теги-вырезки в лотке — того же размера и шрифта, что теги на рамке. */
 .kz-scrap.kz-scrap-tag { padding: 8px 16px; font: 800 clamp(16px, 2.8dvh, 22px)/1.2 'JetBrains Mono', ui-monospace, monospace; }
@@ -12765,6 +12824,14 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
   clip-path: polygon(0 10%, 12% 0, 50% 6%, 88% 0, 100% 12%, 96% 52%, 100% 90%, 88% 100%, 50% 94%, 12% 100%, 0 88%, 4% 50%);
   filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .3)); }
 .kz-move-b.is-down svg { rotate: 180deg; }
+/* S13: все места заняты — «Проверить» зовёт к себе; подпись про стрелки ▲ ▼, после ошибки горит (заказчик, 29.10.2026). */
+.kz-btn.kz-call:not(:disabled) { animation: kzCall 1.2s ease-in-out infinite; }
+@keyframes kzCall { 0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 79, 40, .55); } 50% { transform: scale(1.07); box-shadow: 0 0 0 9px rgba(255, 79, 40, 0); } }
+.kz-move-tip { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
+.kz-move-tip-k { display: inline-grid; place-items: center; width: 24px; height: 20px; border-radius: 5px; background: #FBF6EA; box-shadow: 0 1px 0 rgba(31, 42, 68, .25); font-size: 11px; color: #1F2A44; }
+.kz-move-tip.is-on { color: #B4361A; font-weight: 800; }
+.kz-move-tip.is-on .kz-move-tip-k { animation: kzLed 1.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .kz-btn.kz-call:not(:disabled), .kz-move-tip.is-on .kz-move-tip-k { animation: none; outline: 2px solid #E0643F; } }
 .kz-move-b:active:not(:disabled) { translate: 0 1px; background: #FFE4D8; }
 .kz-move-b:disabled { opacity: .3; cursor: default; }
 @media (max-width: 759px) { .kz-move-b { width: 27px; height: 22px; } .kz-line-row > .kz-line { padding-right: 66px; } .kz-move { right: 5px; gap: 3px; } }
@@ -12892,6 +12959,8 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
   --b-ink: #1E1B39; --b-ink2: #4F4B6B; --b-ink3: #6F6B8A; --b-line: #E6E3F2; --b-edge: #D5D1E8; --b-track: #ECEAF5;
   --b-pri: #FA4F28; --b-pri-edge: #C93A18; --b-pri-soft: #FFE8E2; --b-pri-text: #B42A10; --b-pri-ring: #FFD0C4;
   --b-hint: #FF8B71; --b-hint-edge: #E0664B; --b-hint-soft: #FFF0EC; --b-hint-text: #A8361C;
+  --b-err: #F2555A; --b-err-edge: #C9353B; --b-err-soft: #FFECEC; --b-err-text: #B3232A;
+  --b-tip: #FFC93C; --b-tip-edge: #DDA314; --b-tip-soft: #FFF7DB; --b-tip-text: #875C00;
   --b-acc: #6C47FF; --b-acc-edge: #5233D6; --b-acc-soft: #F0ECFF; --b-acc-text: #4B2FD0;
   --b-ok: #2FA84F; --b-ok-edge: #23863C; --b-ok-soft: #E6F7EA; --b-ok-text: #1C6E33;
   --b-off-bg: #ECEAF4; --b-off-edge: #DEDBEB; --b-off-text: #A9A5C0;
@@ -12920,7 +12989,7 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .b-stage .b-head .ctl-btn.is-exit { border: none; background: transparent; color: var(--b-ink3); }
 .b-stage .b-head .ctl-btn.is-paused { background: var(--b-acc); border-color: var(--b-acc-edge); color: #FFFFFF; }
 .b-stage .b-head .ctl-btn.is-replay { color: var(--b-acc-text); }
-.b-stage .b-head .ctl-hint { color: var(--b-hint-text); }
+.b-stage .b-head .ctl-hint { color: var(--b-tip-text); }
 .b-stage .b-head .ctl-btn:focus-visible, .b-stage .stage-nav button:focus-visible { outline: 3px solid var(--b-acc); outline-offset: 2px; }
 .b-stage .eyebrow { display: none; }
 
@@ -12965,6 +13034,15 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .b-sheet-nav > span:empty { display: none; }
 .b-sheet.is-ok .btn-accent:not(:disabled) { background: var(--b-ok); border-color: var(--b-ok-edge); }
 .b-btn-hint { background: var(--b-hint); border-color: var(--b-hint-edge); color: var(--b-ink); min-width: 200px; }
+/* Ошибка — красная панель, подсказка лампочки и бездействия — жёлтая (заказчик, 29.10.2026). */
+.b-sheet.is-hint.is-err { background: var(--b-err-soft) !important; border-top-color: var(--b-err) !important; }
+.b-sheet.is-err .b-sheet-ic { background: var(--b-err); color: #FFFFFF; }
+.b-sheet.is-err .b-sheet-tx b { color: var(--b-err-text); }
+.b-sheet.is-err .b-btn-hint { background: var(--b-err); border-color: var(--b-err-edge); color: #FFFFFF; }
+.b-sheet.is-hint.is-tip { background: var(--b-tip-soft) !important; border-top-color: var(--b-tip) !important; }
+.b-sheet.is-tip .b-sheet-ic { background: var(--b-tip); color: var(--b-ink); }
+.b-sheet.is-tip .b-sheet-tx b { color: var(--b-tip-text); }
+.b-sheet.is-tip .b-btn-hint { background: var(--b-tip); border-color: var(--b-tip-edge); color: var(--b-ink); }
 /* Пока внизу «Barakalla!», строка задания на листе не повторяет тот же текст */
 .b-stage.is-sheet-ok .kz-ask-wrap { visibility: hidden; }
 @keyframes bSheetIn { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }

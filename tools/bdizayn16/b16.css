@@ -5,6 +5,8 @@
   --b-ink: #1E1B39; --b-ink2: #4F4B6B; --b-ink3: #6F6B8A; --b-line: #E6E3F2; --b-edge: #D5D1E8; --b-track: #ECEAF5;
   --b-pri: #FA4F28; --b-pri-edge: #C93A18; --b-pri-soft: #FFE8E2; --b-pri-text: #B42A10; --b-pri-ring: #FFD0C4;
   --b-hint: #FF8B71; --b-hint-edge: #E0664B; --b-hint-soft: #FFF0EC; --b-hint-text: #A8361C;
+  --b-err: #F2555A; --b-err-edge: #C9353B; --b-err-soft: #FFECEC; --b-err-text: #B3232A;
+  --b-tip: #FFC93C; --b-tip-edge: #DDA314; --b-tip-soft: #FFF7DB; --b-tip-text: #875C00;
   --b-acc: #6C47FF; --b-acc-edge: #5233D6; --b-acc-soft: #F0ECFF; --b-acc-text: #4B2FD0;
   --b-ok: #2FA84F; --b-ok-edge: #23863C; --b-ok-soft: #E6F7EA; --b-ok-text: #1C6E33;
   --b-off-bg: #ECEAF4; --b-off-edge: #DEDBEB; --b-off-text: #A9A5C0;
@@ -33,7 +35,7 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .b-stage .b-head .ctl-btn.is-exit { border: none; background: transparent; color: var(--b-ink3); }
 .b-stage .b-head .ctl-btn.is-paused { background: var(--b-acc); border-color: var(--b-acc-edge); color: #FFFFFF; }
 .b-stage .b-head .ctl-btn.is-replay { color: var(--b-acc-text); }
-.b-stage .b-head .ctl-hint { color: var(--b-hint-text); }
+.b-stage .b-head .ctl-hint { color: var(--b-tip-text); }
 .b-stage .b-head .ctl-btn:focus-visible, .b-stage .stage-nav button:focus-visible { outline: 3px solid var(--b-acc); outline-offset: 2px; }
 .b-stage .eyebrow { display: none; }
 
@@ -78,6 +80,15 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .b-sheet-nav > span:empty { display: none; }
 .b-sheet.is-ok .btn-accent:not(:disabled) { background: var(--b-ok); border-color: var(--b-ok-edge); }
 .b-btn-hint { background: var(--b-hint); border-color: var(--b-hint-edge); color: var(--b-ink); min-width: 200px; }
+/* Ошибка — красная панель, подсказка лампочки и бездействия — жёлтая (заказчик, 29.10.2026). */
+.b-sheet.is-hint.is-err { background: var(--b-err-soft) !important; border-top-color: var(--b-err) !important; }
+.b-sheet.is-err .b-sheet-ic { background: var(--b-err); color: #FFFFFF; }
+.b-sheet.is-err .b-sheet-tx b { color: var(--b-err-text); }
+.b-sheet.is-err .b-btn-hint { background: var(--b-err); border-color: var(--b-err-edge); color: #FFFFFF; }
+.b-sheet.is-hint.is-tip { background: var(--b-tip-soft) !important; border-top-color: var(--b-tip) !important; }
+.b-sheet.is-tip .b-sheet-ic { background: var(--b-tip); color: var(--b-ink); }
+.b-sheet.is-tip .b-sheet-tx b { color: var(--b-tip-text); }
+.b-sheet.is-tip .b-btn-hint { background: var(--b-tip); border-color: var(--b-tip-edge); color: var(--b-ink); }
 /* Пока внизу «Barakalla!», строка задания на листе не повторяет тот же текст */
 .b-stage.is-sheet-ok .kz-ask-wrap { visibility: hidden; }
 @keyframes bSheetIn { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
