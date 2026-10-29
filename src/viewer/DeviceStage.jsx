@@ -55,8 +55,10 @@ export default function DeviceStage({ src, device, rotated, title, frameRef }) {
                 allow="autoplay; clipboard-write"
                 style={{ width: w, height: h, transform: `scale(${scale})` }}
               />
-            ) : startBtn}
+            ) : null}
           </div>
+          {/* Кнопка — поверх сцены, а не внутри уменьшенного телефона: там её обрезал край. */}
+          {armed ? null : startBtn}
           <div className="device-meta">
             {d.label}{rotated ? ' · лёжа' : ''} · {w}×{h} · {Math.round(scale * 100)}%
           </div>
