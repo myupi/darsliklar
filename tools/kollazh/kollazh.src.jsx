@@ -70,6 +70,7 @@ const fillL = (node, vars) => {
 const UI = {
   inspector: L3('Qoida', 'Правило', 'Rule'),
   check: L3('Tekshirish', 'Проверить', 'Check'),
+  writeHere: L3('Shu yerga yozing', 'Пиши здесь', 'Type here'),
   erase: L3('O‘chirish', 'Стереть', 'Erase'),
   goal: L3('Vazifa', 'Задание', 'Task'),
   save: L3('Saqlash', 'Сохранить', 'Save'),
@@ -474,7 +475,19 @@ const C = {
     ok: L3('Qoyil, kodni to‘g‘ri yig‘dingiz! Sahifaning nomi title teglari orasida, title esa head ichida. Siz yozgan matn body ichida.',
       'Вот это да, код собран верно! Название — в head, текст — в body.',
       'Look at that, the code is right! The page name is in head, the text is in body.'),
-    ask: L3('Qatorlarni tartib bilan qo‘ying', 'Расставь полоски по порядку', 'Put the strips in order')
+    ask: L3('Qatorlarni tartib bilan qo‘ying', 'Расставь полоски по порядку', 'Put the strips in order'),
+    // Все места заняты — что дальше (заказчик, 29.10.2026: ученик не понимал, что нажать «Проверить»).
+    sayCheck: L3('Hamma qatorlar joyida! Endi «Tekshirish» tugmasini bosing, kod to‘g‘ri yig‘ilganini bilib olamiz.',
+      'Все полоски на местах! Теперь нажми «Проверить» — узнаем, верно ли собран код.',
+      'All the strips are in place! Now tap “Check” to see if the code is right.'),
+    askCheck: L3('Hamma qatorlar joyida — «Tekshirish»ni bosing', 'Все полоски на местах — нажми «Проверить»', 'All strips are in place — tap “Check”'),
+    // После неверной проверки — чем исправлять: стрелками ▲ ▼ (заказчик, 29.10.2026).
+    sayFix: L3('Belgilangan qatorlarni strelkalar bilan yuqoriga yoki pastga suring, keyin yana «Tekshirish»ni bosing.',
+      'Сдвинь отмеченные полоски стрелками вверх или вниз и снова нажми «Проверить».',
+      'Move the marked strips up or down with the arrows, then tap “Check” again.'),
+    askFix: L3('Belgilangan qatorlarni ▲ ▼ strelkalar bilan suring va yana «Tekshirish»ni bosing', 'Сдвинь отмеченные полоски стрелками ▲ ▼ и снова нажми «Проверить»', 'Move the marked strips with the ▲ ▼ arrows and tap “Check” again'),
+    moveTip: L3('qatorni yuqoriga yoki pastga surish', 'сдвинуть полоску вверх или вниз', 'move a strip up or down'),
+    fixTip: L3('belgilangan qatorlarni suring va yana «Tekshirish»ni bosing', 'сдвинь отмеченные полоски и снова нажми «Проверить»', 'move the marked strips, then tap “Check” again')
   },
   s14: {
     eyebrow: L3('Matn brauzer varag‘iga tushib qoldi', 'Текст попал на вкладку', 'Text on the tab'),

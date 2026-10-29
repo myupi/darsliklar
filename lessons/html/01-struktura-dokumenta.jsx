@@ -6726,6 +6726,7 @@ const fillL = (node, vars) => {
 const UI = {
   inspector: L3('Qoida', 'Правило', 'Rule'),
   check: L3('Tekshirish', 'Проверить', 'Check'),
+  writeHere: L3('Shu yerga yozing', 'Пиши здесь', 'Type here'),
   erase: L3('O‘chirish', 'Стереть', 'Erase'),
   goal: L3('Vazifa', 'Задание', 'Task'),
   save: L3('Saqlash', 'Сохранить', 'Save'),
@@ -7130,7 +7131,19 @@ const C = {
     ok: L3('Qoyil, kodni to‘g‘ri yig‘dingiz! Sahifaning nomi title teglari orasida, title esa head ichida. Siz yozgan matn body ichida.',
       'Вот это да, код собран верно! Название — в head, текст — в body.',
       'Look at that, the code is right! The page name is in head, the text is in body.'),
-    ask: L3('Qatorlarni tartib bilan qo‘ying', 'Расставь полоски по порядку', 'Put the strips in order')
+    ask: L3('Qatorlarni tartib bilan qo‘ying', 'Расставь полоски по порядку', 'Put the strips in order'),
+    // Все места заняты — что дальше (заказчик, 29.10.2026: ученик не понимал, что нажать «Проверить»).
+    sayCheck: L3('Hamma qatorlar joyida! Endi «Tekshirish» tugmasini bosing, kod to‘g‘ri yig‘ilganini bilib olamiz.',
+      'Все полоски на местах! Теперь нажми «Проверить» — узнаем, верно ли собран код.',
+      'All the strips are in place! Now tap “Check” to see if the code is right.'),
+    askCheck: L3('Hamma qatorlar joyida — «Tekshirish»ni bosing', 'Все полоски на местах — нажми «Проверить»', 'All strips are in place — tap “Check”'),
+    // После неверной проверки — чем исправлять: стрелками ▲ ▼ (заказчик, 29.10.2026).
+    sayFix: L3('Belgilangan qatorlarni strelkalar bilan yuqoriga yoki pastga suring, keyin yana «Tekshirish»ni bosing.',
+      'Сдвинь отмеченные полоски стрелками вверх или вниз и снова нажми «Проверить».',
+      'Move the marked strips up or down with the arrows, then tap “Check” again.'),
+    askFix: L3('Belgilangan qatorlarni ▲ ▼ strelkalar bilan suring va yana «Tekshirish»ni bosing', 'Сдвинь отмеченные полоски стрелками ▲ ▼ и снова нажми «Проверить»', 'Move the marked strips with the ▲ ▼ arrows and tap “Check” again'),
+    moveTip: L3('qatorni yuqoriga yoki pastga surish', 'сдвинуть полоску вверх или вниз', 'move a strip up or down'),
+    fixTip: L3('belgilangan qatorlarni suring va yana «Tekshirish»ni bosing', 'сдвинь отмеченные полоски и снова нажми «Проверить»', 'move the marked strips, then tap “Check” again')
   },
   s14: {
     eyebrow: L3('Matn brauzer varag‘iga tushib qoldi', 'Текст попал на вкладку', 'Text on the tab'),
@@ -9186,9 +9199,11 @@ function S4({ p }) {
   const lad = useKzLadder(!okNow);
   const st = useRef({ tries: 0, misses: 0 });
   const led = useIdleLed(canTap && !okNow && !ty.val, 0);
-  // Пока Коди говорит «нет нижнего края» (и когда ученик медлит), пустое место
-  // края на рамке и пустая строка в коде мигают вместе: это одно и то же место.
+  // Пока Коди говорит «нет нижнего края» (и когда ученик медлит), светится только
+  // поле в пустой строке кода — сюда пишут. «?» на рамке не мигает (заказчик, 28.10.2026:
+  // ученик нажимал на мигающее вместо того, чтобы писать); нажатие по нему ставит курсор в поле.
   const blink = !okNow && (speaker.text === c.say || led);
+  const toField = () => { if (ty.inputRef.current) ty.inputRef.current.focus(); };
   const check = () => {
     if (!canTap || okNow || !ty.val.trim()) return;
     st.current.tries += 1;
@@ -9209,8 +9224,9 @@ function S4({ p }) {
     { k: 'o', d: 0, parts: [T_('html')] },
     { k: 'm', d: 1, parts: [<span key="m" className="kz-dim">…</span>] },
     { k: 'c', d: 0, cls: okNow ? 'is-new' : 'is-gap', parts: okNow ? [T_('html', true)] : [
-      <span key="g" className={'kz-gap' + (blink ? ' kz-gap-led' : '')}>
-        <InlineInput value={ty.val} onChange={(v) => { ty.setVal(v); setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={12} cls="kz-tag-in" />
+      <span key="g" className={'kz-gap kz-write' + (blink ? ' kz-gap-led' : '')}>
+        <InlineInput value={ty.val} onChange={(v) => { ty.setVal(v); setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={UI.writeHere} label={c.ask} max={12} cls="kz-tag-in" />
+        {ty.val ? null : <span className="kz-caret" aria-hidden="true" />}
       </span>] }
   ];
   return (
@@ -9222,7 +9238,7 @@ function S4({ p }) {
             labels={<>
               <KzLabel t="html" cls="kz-frame-lbl-top" on={(lad.lv >= 1 || orderHint) && !okNow} />
               {okNow ? <KzLabel t="html" close cls="kz-frame-lbl-bot" anim="stamp" />
-                : <span className={'kz-frame-miss' + (blink ? ' is-blink' : '')} aria-hidden="true"><span className="kz-frame-miss-q">?</span></span>}
+                : <span className="kz-frame-miss" aria-hidden="true" onClick={toField}><span className="kz-frame-miss-q">?</span></span>}
             </>} />
           <div className="kz-col"><KzCode lines={lines} /></div>
         </div>
@@ -9962,6 +9978,13 @@ function S13({ p }) {
     sayNow(c.sayMove, 'point');
   }, [placedN]); // eslint-disable-line react-hooks/exhaustive-deps
   const moveHl = speaker.text === c.sayMove;
+  // Все места заняты — Коди один раз зовёт нажать «Проверить», кнопка пульсирует.
+  useEffect(() => {
+    if (solved || !full || res || st.current.checkTold) return;
+    st.current.checkTold = true;
+    sayNow(c.sayCheck, 'point');
+  }, [full]); // eslint-disable-line react-hooks/exhaustive-deps
+  const callCheck = full && !solved && !res;
   const tray = TRAY13.filter((id) => slots.indexOf(id) < 0);
   const led = useIdleLed(canTap && !solved && !full, slots.filter(Boolean).length);
   const partsOf = (id) => ({
@@ -9998,7 +10021,8 @@ function S13({ p }) {
       sayNow(c.ok, 'smile');
       return;
     }
-    sfx('soft', true); setRes(r); sayNow(c.rules[r.rule], 'think');
+    // Первая ошибка: после правила — чем исправлять (стрелки ▲ ▼ у отмеченных полосок мигают).
+    sfx('soft', true); setRes(r); sayNow(st.current.checks === 1 ? joinL(c.rules[r.rule], c.sayFix) : c.rules[r.rule], 'think');
     if (st.current.checks >= 2) lad.bump();
   };
   // ▲ ▼ у поставленной полоски: на строку вверх или вниз (меняется местами с соседней,
@@ -10044,7 +10068,7 @@ function S13({ p }) {
         k: 's' + k + (moved && (moved.to === k || moved.from === k) ? ':' + moved.n : ''), d: id ? DEPTH13(slots, k) : 0,
         cls: (!id && cur === k && !solved ? 'is-cur' : '') + (held === k ? ' is-sel' : '') + (marked ? ' is-mark' : '') + (moved && moved.to === k ? ' kz-slide-up' : moved && moved.from === k && slots[k] ? ' kz-slide-under' : ''),
         style: moved && (moved.to === k || moved.from === k) ? { '--dy': (moved.to === k ? moved.dy : -moved.dy).toFixed(1) + 'px' } : null,
-        move: solved || !id ? { hide: true } : { up: k > 0 ? () => move(k, -1) : null, down: k < 7 ? () => move(k, 1) : null, hl: moveHl },
+        move: solved || !id ? { hide: true } : { up: k > 0 ? () => move(k, -1) : null, down: k < 7 ? () => move(k, 1) : null, hl: moveHl || marked },
         onTap: solved ? null : () => tapSlot(k), disabled: !canTap, led: (led && !id && cur === k) || (lad.lv >= 3 && marked),
         parts: id ? partsOf(id) : [<span key="e" className="kz-dash" aria-label={'slot ' + (k + 2)} />]
       };
@@ -10052,7 +10076,7 @@ function S13({ p }) {
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={solved ? c.ok : c.ask} hint={solved ? null : (res ? c.rules[res.rule] : hint)} n={solved ? null : slots.filter(Boolean).length + '/8'} />
+        <KzAsk text={solved ? c.ok : res ? c.askFix : full ? c.askCheck : c.ask} hint={solved ? null : (res ? c.rules[res.rule] : hint)} n={solved || full ? null : slots.filter(Boolean).length + '/8'} />
         <div className="kz-build">
           <div ref={hostRef} className="kz-code-host" onPointerDown={(e) => {
             if (!canTap || solved) return;
@@ -10077,8 +10101,12 @@ function S13({ p }) {
                 ))}
               </div>
             ) : null}
-            {full && !solved ? <button type="button" className="kz-btn is-coral" disabled={!canTap} onClick={check}><Icon name="check" size={17} />{pick(UI.check)}</button> : null}
-            {slots.some(Boolean) && !solved ? <p className="kz-msg">{pick(UI.swap)}</p> : null}
+            {full && !solved ? <button type="button" className={'kz-btn is-coral' + (callCheck ? ' kz-call' : '')} disabled={!canTap} onClick={check}><Icon name="check" size={17} />{pick(UI.check)}</button> : null}
+            {/* Подпись — про стрелки ▲ ▼ (ими меняют порядок); после ошибки она горит. */}
+            {slots.some(Boolean) && !solved ? (
+              <p className={'kz-msg kz-move-tip' + (res ? ' is-on' : '')}>
+                <span className="kz-move-tip-k" aria-hidden="true">▲</span><span className="kz-move-tip-k" aria-hidden="true">▼</span>{pick(res ? c.fixTip : c.moveTip)}
+              </p>) : null}
           </div>
         </div>
       </Sheet>
@@ -11599,6 +11627,17 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-line .tk-input.kz-tag-in { font-family: 'JetBrains Mono', monospace; }
 .kz-line .tk-input:focus { background: #fff; border-bottom-color: #1F2A44; }
 .kz-gap-led .tk-input { animation: kzLed 1.2s ease-in-out infinite; }
+/* S4: пустая строка — явное поле для письма: подпись «Пиши здесь» и мигающий
+   текстовый курсор, пока поле пустое и не в фокусе (заказчик, 28.10.2026). */
+.kz-write { position: relative; display: inline-flex; cursor: text; }
+.kz-line .kz-write .tk-input { min-width: 9em; padding: 3px 8px; border: 2px dashed #E0643F; border-radius: 6px; background: #fff; }
+.kz-line .kz-write .tk-input:placeholder-shown { padding-left: 14px; }
+.kz-line .kz-write .tk-input:focus { border-style: solid; border-color: #1F2A44; }
+.kz-line .kz-write .tk-input::placeholder { color: #9A8F7C; font: italic 600 15px 'Manrope', sans-serif; }
+.kz-caret { position: absolute; left: 8px; top: 50%; translate: 0 -50%; width: 2px; height: 1.15em; background: #1F2A44; border-radius: 1px;
+  pointer-events: none; animation: kzCaret 1s steps(1, end) infinite; }
+.kz-write .tk-input:focus ~ .kz-caret { display: none; }
+@keyframes kzCaret { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
 /* Бумажный браузер — Chrome в Windows из бумаги */
 .kz-br { position: relative; width: 100%; aspect-ratio: 16 / 10.5; min-height: 0; flex: none; align-self: center;
@@ -11840,8 +11879,9 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-frame-miss-q { position: absolute; left: 50%; top: 50%; translate: -50% -50%; padding: 1px 10px 2px; background: #E0643F; color: #FBF6EA;
   font: 800 clamp(14px, 2.4dvh, 20px)/1.2 'Manrope', sans-serif;
   clip-path: polygon(0 10%, 10% 0, 50% 8%, 90% 0, 100% 14%, 96% 52%, 100% 88%, 88% 100%, 50% 92%, 10% 100%, 0 86%, 4% 50%); }
-.kz-frame-miss.is-blink, .kz-frame-miss.is-blink .kz-frame-miss-q { animation: kzMiss 1s steps(1, end) infinite; }
-@keyframes kzMiss { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+/* «?» — спокойная пометка, а не кнопка: не мигает, без заливки (заказчик, 28.10.2026). */
+.kz-frame-miss { cursor: text; }
+.kz-frame-miss .kz-frame-miss-q { background: #FBF6EA; color: #E0643F; padding: 0 8px; }
 .kz-s6-box { z-index: 2; }
 .kz-scene.is-flying .kz-s6-box { z-index: 30; }
 
@@ -12019,7 +12059,7 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-card:disabled, .stage.is-speaking .stage-content .kz-card:disabled { opacity: 1; cursor: default; filter: none; }
 @media (prefers-reduced-motion: reduce) {
   .kz-hand, .kz-hand svg, .kz-ghost { transition: none; }
-  .kz-frame-miss.is-blink, .kz-frame-miss.is-blink .kz-frame-miss-q, .kz-scene.is-dragging .kz-slot .kz-slot-dash { animation: none; }
+  .kz-caret, .kz-scene.is-dragging .kz-slot .kz-slot-dash { animation: none; }
 }
 /* Теги-вырезки в лотке — того же размера и шрифта, что теги на рамке. */
 .kz-scrap.kz-scrap-tag { padding: 8px 16px; font: 800 clamp(16px, 2.8dvh, 22px)/1.2 'JetBrains Mono', ui-monospace, monospace; }
@@ -12187,6 +12227,14 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
   clip-path: polygon(0 10%, 12% 0, 50% 6%, 88% 0, 100% 12%, 96% 52%, 100% 90%, 88% 100%, 50% 94%, 12% 100%, 0 88%, 4% 50%);
   filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .3)); }
 .kz-move-b.is-down svg { rotate: 180deg; }
+/* S13: все места заняты — «Проверить» зовёт к себе; подпись про стрелки ▲ ▼, после ошибки горит (заказчик, 29.10.2026). */
+.kz-btn.kz-call:not(:disabled) { animation: kzCall 1.2s ease-in-out infinite; }
+@keyframes kzCall { 0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 79, 40, .55); } 50% { transform: scale(1.07); box-shadow: 0 0 0 9px rgba(255, 79, 40, 0); } }
+.kz-move-tip { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
+.kz-move-tip-k { display: inline-grid; place-items: center; width: 24px; height: 20px; border-radius: 5px; background: #FBF6EA; box-shadow: 0 1px 0 rgba(31, 42, 68, .25); font-size: 11px; color: #1F2A44; }
+.kz-move-tip.is-on { color: #B4361A; font-weight: 800; }
+.kz-move-tip.is-on .kz-move-tip-k { animation: kzLed 1.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .kz-btn.kz-call:not(:disabled), .kz-move-tip.is-on .kz-move-tip-k { animation: none; outline: 2px solid #E0643F; } }
 .kz-move-b:active:not(:disabled) { translate: 0 1px; background: #FFE4D8; }
 .kz-move-b:disabled { opacity: .3; cursor: default; }
 @media (max-width: 759px) { .kz-move-b { width: 27px; height: 22px; } .kz-line-row > .kz-line { padding-right: 66px; } .kz-move { right: 5px; gap: 3px; } }

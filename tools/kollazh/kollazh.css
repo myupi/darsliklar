@@ -133,6 +133,17 @@
 .kz-line .tk-input.kz-tag-in { font-family: 'JetBrains Mono', monospace; }
 .kz-line .tk-input:focus { background: #fff; border-bottom-color: #1F2A44; }
 .kz-gap-led .tk-input { animation: kzLed 1.2s ease-in-out infinite; }
+/* S4: пустая строка — явное поле для письма: подпись «Пиши здесь» и мигающий
+   текстовый курсор, пока поле пустое и не в фокусе (заказчик, 28.10.2026). */
+.kz-write { position: relative; display: inline-flex; cursor: text; }
+.kz-line .kz-write .tk-input { min-width: 9em; padding: 3px 8px; border: 2px dashed #E0643F; border-radius: 6px; background: #fff; }
+.kz-line .kz-write .tk-input:placeholder-shown { padding-left: 14px; }
+.kz-line .kz-write .tk-input:focus { border-style: solid; border-color: #1F2A44; }
+.kz-line .kz-write .tk-input::placeholder { color: #9A8F7C; font: italic 600 15px 'Manrope', sans-serif; }
+.kz-caret { position: absolute; left: 8px; top: 50%; translate: 0 -50%; width: 2px; height: 1.15em; background: #1F2A44; border-radius: 1px;
+  pointer-events: none; animation: kzCaret 1s steps(1, end) infinite; }
+.kz-write .tk-input:focus ~ .kz-caret { display: none; }
+@keyframes kzCaret { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
 /* Бумажный браузер — Chrome в Windows из бумаги */
 .kz-br { position: relative; width: 100%; aspect-ratio: 16 / 10.5; min-height: 0; flex: none; align-self: center;
@@ -374,8 +385,9 @@
 .kz-frame-miss-q { position: absolute; left: 50%; top: 50%; translate: -50% -50%; padding: 1px 10px 2px; background: #E0643F; color: #FBF6EA;
   font: 800 clamp(14px, 2.4dvh, 20px)/1.2 'Manrope', sans-serif;
   clip-path: polygon(0 10%, 10% 0, 50% 8%, 90% 0, 100% 14%, 96% 52%, 100% 88%, 88% 100%, 50% 92%, 10% 100%, 0 86%, 4% 50%); }
-.kz-frame-miss.is-blink, .kz-frame-miss.is-blink .kz-frame-miss-q { animation: kzMiss 1s steps(1, end) infinite; }
-@keyframes kzMiss { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+/* «?» — спокойная пометка, а не кнопка: не мигает, без заливки (заказчик, 28.10.2026). */
+.kz-frame-miss { cursor: text; }
+.kz-frame-miss .kz-frame-miss-q { background: #FBF6EA; color: #E0643F; padding: 0 8px; }
 .kz-s6-box { z-index: 2; }
 .kz-scene.is-flying .kz-s6-box { z-index: 30; }
 
@@ -553,7 +565,7 @@
 .kz-card:disabled, .stage.is-speaking .stage-content .kz-card:disabled { opacity: 1; cursor: default; filter: none; }
 @media (prefers-reduced-motion: reduce) {
   .kz-hand, .kz-hand svg, .kz-ghost { transition: none; }
-  .kz-frame-miss.is-blink, .kz-frame-miss.is-blink .kz-frame-miss-q, .kz-scene.is-dragging .kz-slot .kz-slot-dash { animation: none; }
+  .kz-caret, .kz-scene.is-dragging .kz-slot .kz-slot-dash { animation: none; }
 }
 /* Теги-вырезки в лотке — того же размера и шрифта, что теги на рамке. */
 .kz-scrap.kz-scrap-tag { padding: 8px 16px; font: 800 clamp(16px, 2.8dvh, 22px)/1.2 'JetBrains Mono', ui-monospace, monospace; }
@@ -721,6 +733,14 @@
   clip-path: polygon(0 10%, 12% 0, 50% 6%, 88% 0, 100% 12%, 96% 52%, 100% 90%, 88% 100%, 50% 94%, 12% 100%, 0 88%, 4% 50%);
   filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .3)); }
 .kz-move-b.is-down svg { rotate: 180deg; }
+/* S13: все места заняты — «Проверить» зовёт к себе; подпись про стрелки ▲ ▼, после ошибки горит (заказчик, 29.10.2026). */
+.kz-btn.kz-call:not(:disabled) { animation: kzCall 1.2s ease-in-out infinite; }
+@keyframes kzCall { 0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 79, 40, .55); } 50% { transform: scale(1.07); box-shadow: 0 0 0 9px rgba(255, 79, 40, 0); } }
+.kz-move-tip { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
+.kz-move-tip-k { display: inline-grid; place-items: center; width: 24px; height: 20px; border-radius: 5px; background: #FBF6EA; box-shadow: 0 1px 0 rgba(31, 42, 68, .25); font-size: 11px; color: #1F2A44; }
+.kz-move-tip.is-on { color: #B4361A; font-weight: 800; }
+.kz-move-tip.is-on .kz-move-tip-k { animation: kzLed 1.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .kz-btn.kz-call:not(:disabled), .kz-move-tip.is-on .kz-move-tip-k { animation: none; outline: 2px solid #E0643F; } }
 .kz-move-b:active:not(:disabled) { translate: 0 1px; background: #FFE4D8; }
 .kz-move-b:disabled { opacity: .3; cursor: default; }
 @media (max-width: 759px) { .kz-move-b { width: 27px; height: 22px; } .kz-line-row > .kz-line { padding-right: 66px; } .kz-move { right: 5px; gap: 3px; } }

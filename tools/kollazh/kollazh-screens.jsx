@@ -309,9 +309,11 @@ function S4({ p }) {
   const lad = useKzLadder(!okNow);
   const st = useRef({ tries: 0, misses: 0 });
   const led = useIdleLed(canTap && !okNow && !ty.val, 0);
-  // Пока Коди говорит «нет нижнего края» (и когда ученик медлит), пустое место
-  // края на рамке и пустая строка в коде мигают вместе: это одно и то же место.
+  // Пока Коди говорит «нет нижнего края» (и когда ученик медлит), светится только
+  // поле в пустой строке кода — сюда пишут. «?» на рамке не мигает (заказчик, 28.10.2026:
+  // ученик нажимал на мигающее вместо того, чтобы писать); нажатие по нему ставит курсор в поле.
   const blink = !okNow && (speaker.text === c.say || led);
+  const toField = () => { if (ty.inputRef.current) ty.inputRef.current.focus(); };
   const check = () => {
     if (!canTap || okNow || !ty.val.trim()) return;
     st.current.tries += 1;
@@ -332,8 +334,9 @@ function S4({ p }) {
     { k: 'o', d: 0, parts: [T_('html')] },
     { k: 'm', d: 1, parts: [<span key="m" className="kz-dim">…</span>] },
     { k: 'c', d: 0, cls: okNow ? 'is-new' : 'is-gap', parts: okNow ? [T_('html', true)] : [
-      <span key="g" className={'kz-gap' + (blink ? ' kz-gap-led' : '')}>
-        <InlineInput value={ty.val} onChange={(v) => { ty.setVal(v); setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={12} cls="kz-tag-in" />
+      <span key="g" className={'kz-gap kz-write' + (blink ? ' kz-gap-led' : '')}>
+        <InlineInput value={ty.val} onChange={(v) => { ty.setVal(v); setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={UI.writeHere} label={c.ask} max={12} cls="kz-tag-in" />
+        {ty.val ? null : <span className="kz-caret" aria-hidden="true" />}
       </span>] }
   ];
   return (
@@ -345,7 +348,7 @@ function S4({ p }) {
             labels={<>
               <KzLabel t="html" cls="kz-frame-lbl-top" on={(lad.lv >= 1 || orderHint) && !okNow} />
               {okNow ? <KzLabel t="html" close cls="kz-frame-lbl-bot" anim="stamp" />
-                : <span className={'kz-frame-miss' + (blink ? ' is-blink' : '')} aria-hidden="true"><span className="kz-frame-miss-q">?</span></span>}
+                : <span className="kz-frame-miss" aria-hidden="true" onClick={toField}><span className="kz-frame-miss-q">?</span></span>}
             </>} />
           <div className="kz-col"><KzCode lines={lines} /></div>
         </div>
@@ -1085,6 +1088,13 @@ function S13({ p }) {
     sayNow(c.sayMove, 'point');
   }, [placedN]); // eslint-disable-line react-hooks/exhaustive-deps
   const moveHl = speaker.text === c.sayMove;
+  // Все места заняты — Коди один раз зовёт нажать «Проверить», кнопка пульсирует.
+  useEffect(() => {
+    if (solved || !full || res || st.current.checkTold) return;
+    st.current.checkTold = true;
+    sayNow(c.sayCheck, 'point');
+  }, [full]); // eslint-disable-line react-hooks/exhaustive-deps
+  const callCheck = full && !solved && !res;
   const tray = TRAY13.filter((id) => slots.indexOf(id) < 0);
   const led = useIdleLed(canTap && !solved && !full, slots.filter(Boolean).length);
   const partsOf = (id) => ({
@@ -1121,7 +1131,8 @@ function S13({ p }) {
       sayNow(c.ok, 'smile');
       return;
     }
-    sfx('soft', true); setRes(r); sayNow(c.rules[r.rule], 'think');
+    // Первая ошибка: после правила — чем исправлять (стрелки ▲ ▼ у отмеченных полосок мигают).
+    sfx('soft', true); setRes(r); sayNow(st.current.checks === 1 ? joinL(c.rules[r.rule], c.sayFix) : c.rules[r.rule], 'think');
     if (st.current.checks >= 2) lad.bump();
   };
   // ▲ ▼ у поставленной полоски: на строку вверх или вниз (меняется местами с соседней,
@@ -1167,7 +1178,7 @@ function S13({ p }) {
         k: 's' + k + (moved && (moved.to === k || moved.from === k) ? ':' + moved.n : ''), d: id ? DEPTH13(slots, k) : 0,
         cls: (!id && cur === k && !solved ? 'is-cur' : '') + (held === k ? ' is-sel' : '') + (marked ? ' is-mark' : '') + (moved && moved.to === k ? ' kz-slide-up' : moved && moved.from === k && slots[k] ? ' kz-slide-under' : ''),
         style: moved && (moved.to === k || moved.from === k) ? { '--dy': (moved.to === k ? moved.dy : -moved.dy).toFixed(1) + 'px' } : null,
-        move: solved || !id ? { hide: true } : { up: k > 0 ? () => move(k, -1) : null, down: k < 7 ? () => move(k, 1) : null, hl: moveHl },
+        move: solved || !id ? { hide: true } : { up: k > 0 ? () => move(k, -1) : null, down: k < 7 ? () => move(k, 1) : null, hl: moveHl || marked },
         onTap: solved ? null : () => tapSlot(k), disabled: !canTap, led: (led && !id && cur === k) || (lad.lv >= 3 && marked),
         parts: id ? partsOf(id) : [<span key="e" className="kz-dash" aria-label={'slot ' + (k + 2)} />]
       };
@@ -1175,7 +1186,7 @@ function S13({ p }) {
   return (
     <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={solved ? c.ok : c.ask} hint={solved ? null : (res ? c.rules[res.rule] : hint)} n={solved ? null : slots.filter(Boolean).length + '/8'} />
+        <KzAsk text={solved ? c.ok : res ? c.askFix : full ? c.askCheck : c.ask} hint={solved ? null : (res ? c.rules[res.rule] : hint)} n={solved || full ? null : slots.filter(Boolean).length + '/8'} />
         <div className="kz-build">
           <div ref={hostRef} className="kz-code-host" onPointerDown={(e) => {
             if (!canTap || solved) return;
@@ -1200,8 +1211,12 @@ function S13({ p }) {
                 ))}
               </div>
             ) : null}
-            {full && !solved ? <button type="button" className="kz-btn is-coral" disabled={!canTap} onClick={check}><Icon name="check" size={17} />{pick(UI.check)}</button> : null}
-            {slots.some(Boolean) && !solved ? <p className="kz-msg">{pick(UI.swap)}</p> : null}
+            {full && !solved ? <button type="button" className={'kz-btn is-coral' + (callCheck ? ' kz-call' : '')} disabled={!canTap} onClick={check}><Icon name="check" size={17} />{pick(UI.check)}</button> : null}
+            {/* Подпись — про стрелки ▲ ▼ (ими меняют порядок); после ошибки она горит. */}
+            {slots.some(Boolean) && !solved ? (
+              <p className={'kz-msg kz-move-tip' + (res ? ' is-on' : '')}>
+                <span className="kz-move-tip-k" aria-hidden="true">▲</span><span className="kz-move-tip-k" aria-hidden="true">▼</span>{pick(res ? c.fixTip : c.moveTip)}
+              </p>) : null}
           </div>
         </div>
       </Sheet>
