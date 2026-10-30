@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Урок 17 — пример оживления</title>
+<!-- Пример оживления урока 17 без смены стиля (30.10.2026): звук, упругие вещи, живые глаза зон,
+     реакции человечка и Коди, праздник за верный ответ. Не урок и не часть сборки урока — страница-проба. -->
+<style>
+@font-face { font-family: 'Nunito'; font-weight: 900; src: url(../fonts/nunito-black.woff2) format('woff2'); }
+@font-face { font-family: 'Nunito'; font-weight: 600; src: url(../fonts/nunito-semibold.woff2) format('woff2'); }
+:root { --ink: #162038; --coral: #FF6957; --muted: #5F6880; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body { margin: 0; min-height: 100vh; background: #ECEAF2; font-family: 'Nunito', system-ui, sans-serif; color: var(--ink); }
+.top { text-align: center; padding: 16px 12px 4px; }
+.top h1 { margin: 0 0 4px; font-size: 20px; font-weight: 900; }
+.top p { margin: 0 auto 10px; max-width: 640px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.sound { border: 0; border-radius: 999px; padding: 8px 16px; font: 900 14px 'Nunito', sans-serif; background: #fff; color: var(--ink); cursor: pointer; box-shadow: 0 3px 0 #CFCBDD; }
+.row { display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; padding: 14px 12px 40px; }
+.col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.col h2 { margin: 0; font-size: 17px; font-weight: 900; }
+.col .hint { margin: 0; max-width: 330px; text-align: center; font-size: 13px; font-weight: 600; color: var(--muted); }
+.phone { position: relative; width: 340px; height: 640px; border-radius: 34px; overflow: hidden; background: #FCFAF6;
+  box-shadow: 0 0 0 10px #1E1F2B, 0 30px 60px rgba(30, 31, 43, .35); display: flex; flex-direction: column; user-select: none; touch-action: none; }
+
+/* шапка и низ — как в уроке */
+.hd { padding: 12px 14px 8px; border-bottom: 2px solid #EEF0F5; background: #fff; }
+.dots { display: flex; gap: 4px; margin-bottom: 10px; }
+.dots i { flex: 1; height: 9px; border-radius: 9px; background: #ECEEF5; }
+.dots i.on { background: var(--coral); }
+.dots i.cur { background: var(--coral); animation: cur 1.6s ease-in-out infinite; }
+@keyframes cur { 50% { transform: scaleY(1.45); box-shadow: 0 0 0 3px rgba(255, 105, 87, .2); } }
+.bar { display: flex; align-items: center; gap: 8px; }
+.chip { padding: 6px 12px; border-radius: 999px; background: #FFE4DE; color: #B93A2A; font-weight: 900; font-size: 13px; }
+.kodi { width: 48px; height: 48px; margin: 0 auto; border-radius: 50%; background: #fff; box-shadow: 0 0 0 3px #FFE1DA, 0 4px 10px rgba(0, 0, 0, .1); display: grid; place-items: center; }
+.kodi .scr { position: relative; width: 36px; height: 26px; border-radius: 9px; background: #1E2233; box-shadow: inset 0 0 0 2px #E89A5C; }
+.kodi .e { position: absolute; top: 8px; width: 6px; height: 7px; border-radius: 50%; background: #5CE1E6; transition: transform .2s, height .2s, border-radius .2s; }
+.kodi .e.l { left: 9px; } .kodi .e.r { right: 9px; }
+.kodi .m { position: absolute; left: 50%; bottom: 4px; width: 10px; height: 4px; margin-left: -5px; border: 2px solid #5CE1E6; border-top: 0; border-radius: 0 0 8px 8px; transition: transform .2s; }
+.kodi.happy .e { height: 4px; border-radius: 6px 6px 0 0; top: 9px; }
+.kodi.sad .e { height: 4px; border-radius: 0 0 6px 6px; } .kodi.sad .m { transform: rotate(180deg) translateY(-3px); }
+.ib { width: 40px; height: 40px; border-radius: 13px; border: 2px solid #E3E6EF; background: #fff; display: grid; place-items: center; font-size: 17px; box-shadow: 0 3px 0 #E7EAF1; }
+.body { position: relative; flex: 1; min-height: 0; padding: 12px 16px 0; display: flex; flex-direction: column; gap: 10px; }
+.ft { display: flex; gap: 10px; padding: 12px 14px 14px; border-top: 2px solid #EEF0F5; background: #fff; }
+.ft button { height: 50px; border: 0; border-radius: 16px; font: 900 17px 'Nunito', sans-serif; cursor: pointer; }
+.ft .back { flex: 0 0 56px; background: #fff; color: var(--ink); box-shadow: 0 0 0 2px #E3E6EF, 0 4px 0 #E3E6EF; }
+.ft .go { flex: 1; background: #F1F3F7; color: #8C93A6; transition: background .3s, color .3s, box-shadow .3s; }
+.ft .go.ready { background: #2AA84A; color: #fff; box-shadow: 0 5px 0 #1F7F37; }
+
+.ask { position: relative; background: #fff; border-radius: 18px; padding: 10px 14px; text-align: center; font-weight: 900; font-size: 15.5px; line-height: 1.25;
+  box-shadow: 0 0 0 2px #EEF0F5, 0 5px 0 #EEF0F5; }
+.ask b { display: inline-block; margin-right: 6px; padding: 1px 8px; border-radius: 999px; background: #E8F2FF; font-size: 13px; }
+
+/* зоны с глазами */
+.zone { position: relative; margin-top: 24px; min-height: 76px; border-radius: 34px; padding: 26px 10px 10px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-content: center;
+  transition: transform .25s cubic-bezier(.3, 1.6, .5, 1); }
+.zone.head { background: #FFDA6D; box-shadow: inset 0 0 0 10px #FFD35F, inset 0 -8px 6px rgba(217, 166, 50, .2); }
+.zone.bdy { background: #DBF9EB; box-shadow: inset 0 0 0 10px #93E7C7, inset 0 -9px 7px rgba(86, 186, 149, .2); min-height: 88px; }
+.zone .lbl { position: absolute; left: 14px; top: -18px; padding: 5px 13px; border-radius: 13px; background: #fff; font-weight: 900; font-size: 17px; box-shadow: 0 4px 0 rgba(0, 0, 0, .06); z-index: 3; }
+.zone .lbl i { font-style: normal; color: #C0392B; }
+.eyes { position: absolute; left: 50%; top: -28px; width: 74px; height: 42px; margin-left: -37px; z-index: 2; pointer-events: none; }
+.eye { position: absolute; top: 0; width: 34px; height: 38px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 3px var(--ez); overflow: hidden; transition: height .15s, top .15s; }
+.eye.l { left: 2px; } .eye.r { right: 2px; }
+.pup { position: absolute; left: 50%; top: 50%; width: 12px; height: 17px; margin: -8px 0 0 -6px; border-radius: 50%; background: #171C29; transition: transform .08s linear; }
+.pup::after { content: ''; position: absolute; left: 2px; top: 3px; width: 5px; height: 5px; border-radius: 50%; background: #fff; }
+.lid { position: absolute; left: -2px; right: -2px; top: -2px; height: 0; background: var(--ez); transition: height .14s ease; }
+.zone.head .eyes { --ez: #FFE17B; } .zone.bdy .eyes { --ez: #8DE6C2; }
+.zone.over { transform: scale(1.04); }
+.zone.over .eye { height: 42px; top: -3px; }
+.zone.yum .lid { height: 70%; border-radius: 0 0 50% 50%; }
+.zone.squint .lid { height: 46%; }
+.zone.sleepy .lid { height: 58%; }
+.feet { position: absolute; left: 22%; right: 22%; bottom: -9px; height: 18px; z-index: -1; display: flex; justify-content: space-between; }
+.feet i { width: 44px; height: 18px; border-radius: 0 0 22px 22px; background: var(--fz); }
+.zone.head .feet { --fz: #F2C44C; } .zone.bdy .feet { --fz: #8AE0BC; }
+
+.tray { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; margin-top: 6px; min-height: 84px; align-content: flex-start; }
+.it { position: relative; padding: 9px 14px; border-radius: 14px; background: #fff; border: 2px solid #65BC8F; font-weight: 900; font-size: 15px; cursor: grab; touch-action: none;
+  box-shadow: 0 4px 0 #CFE9DA; will-change: transform; z-index: 1; }
+.it.code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-weight: 700; font-size: 13px; }
+.it.code em { font-style: normal; color: #C0392B; }
+.it.sel { box-shadow: 0 0 0 3px #94D3FB, 0 4px 0 #74B9E8; }
+.it.drag { z-index: 50; cursor: grabbing; box-shadow: 0 16px 22px rgba(22, 32, 56, .22); }
+.it.in { padding: 6px 10px; font-size: 13px; border-width: 1.5px; box-shadow: none; cursor: default; }
+.it.in.code { font-size: 11.5px; }
+.zzz { position: absolute; font-weight: 900; color: #8C93A6; pointer-events: none; animation: zz 2.2s ease-out forwards; z-index: 5; }
+@keyframes zz { from { transform: translate(0, 0) scale(.6); opacity: 0; } 20% { opacity: 1; } to { transform: translate(18px, -46px) scale(1.2); opacity: 0; } }
+.fx { position: absolute; pointer-events: none; z-index: 60; }
+
+/* человечек */
+.stage2 { flex: 1; display: grid; place-items: center; }
+.man { position: relative; width: 170px; height: 200px; cursor: pointer; }
+.man svg { width: 100%; height: 100%; overflow: visible; }
+.code2 { align-self: stretch; padding: 10px 14px; border-radius: 16px; background: #FFF6CF; font: 700 15px ui-monospace, Menlo, monospace; text-align: center; }
+.code2 em { font-style: normal; color: #C0392B; }
+.ans { display: flex; gap: 10px; }
+.ans button { flex: 1; height: 54px; border: 0; border-radius: 17px; background: #fff; color: var(--ink); font: 900 17px 'Nunito', sans-serif; cursor: pointer;
+  box-shadow: 0 0 0 2px #E3E6EF, 0 5px 0 #E3E6EF; }
+.ans button.ok { background: #DDF6E5; box-shadow: 0 0 0 2px #7FD49A, 0 5px 0 #7FD49A; }
+.ans button.no { background: #FFE9E5; box-shadow: 0 0 0 2px #FF9E88, 0 5px 0 #FF9E88; }
+.msg { min-height: 40px; text-align: center; font-weight: 900; font-size: 15px; }
+.msg.ok { color: #1E7A3A; } .msg.no { color: #C0392B; }
+@media (prefers-reduced-motion: reduce) { .dots i.cur { animation: none; } }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Оживление урока 17 без смены стиля</h1>
+  <p>Включите звук. Слева перетаскивайте кусочки в head и body (или нажмите кусочек, потом зону). Справа отвечайте на вопрос, водите мышью или пальцем над человечком, нажмите на него. Подождите 8 секунд, ничего не делая.</p>
+  <button class="sound" id="snd">🔊 Звук: выкл</button>
+</div>
+<div class="row">
+  <div class="col"><h2>Экран 11: живые зоны</h2><div class="phone" id="P1"></div>
+    <p class="hint">Глаза следят за кусочком. Над верной зоной она тянется навстречу, на место — «ам!» и жмурится от удовольствия. Неверную зону кусочек не устраивает: морщится и отпихивает. Всё мнётся от касания, в конце праздник.</p></div>
+  <div class="col"><h2>Человечек и Коди реагируют</h2><div class="phone" id="P2"></div>
+    <p class="hint">Глаза следят за пальцем. Верно — прыжок, руки вверх, звёзды и звон. Неверно — огорчается, Коди сочувствует. Долго без действий — зевает и засыпает (тут же пришла бы жёлтая подсказка).</p></div>
+</div>
+<script>
+// ── Звук: синтез на месте ──
+let AC = null, soundOn = false;
+const sndBtn = document.getElementById('snd');
+sndBtn.onclick = () => { soundOn = !soundOn; if (soundOn && !AC) AC = new (window.AudioContext || window.webkitAudioContext)(); sndBtn.textContent = soundOn ? '🔊 Звук: вкл' : '🔊 Звук: выкл'; };
+function env(node, t0, a, d, peak) { const g = AC.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(peak, t0 + a); g.gain.exponentialRampToValueAtTime(.0001, t0 + a + d); node.connect(g); g.connect(AC.destination); }
+function noise(dur) { const b = AC.createBuffer(1, AC.sampleRate * dur, AC.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; const s = AC.createBufferSource(); s.buffer = b; return s; }
+const tone = (type, f0, f1, t, dur, vol) => { const o = AC.createOscillator(); o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur * .8); env(o, t, .008, dur, vol); o.start(t); o.stop(t + dur + .05); };
+const SFX = {
+  pick() { const t = AC.currentTime; tone('triangle', 500, 900, t, .1, .1); },
+  puff() { const t = AC.currentTime, n = noise(.2), f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(1000, t); f.frequency.exponentialRampToValueAtTime(250, t + .15); n.connect(f); env(f, t, .01, .15, .35); n.start(t); },
+  plop() { const t = AC.currentTime; tone('sine', 380, 90, t, .16, .45); },
+  yum() { const t = AC.currentTime; tone('sine', 300, 120, t, .12, .35); tone('sine', 300, 120, t + .13, .12, .3); },
+  ding() { const t = AC.currentTime; tone('sine', 880, 880, t, .35, .2); tone('sine', 1320, 1320, t + .09, .45, .17); },
+  boop() { const t = AC.currentTime; const o = AC.createOscillator(), f = AC.createBiquadFilter(); o.type = 'square'; f.type = 'lowpass'; f.frequency.value = 700; o.frequency.setValueAtTime(260, t); o.frequency.exponentialRampToValueAtTime(150, t + .25); o.connect(f); env(f, t, .01, .28, .12); o.start(t); o.stop(t + .35); },
+  yay() { const t = AC.currentTime; [523, 659, 784, 1046].forEach((f, k) => tone('triangle', f, f, t + k * .08, .22, .13)); },
+  yawn() { const t = AC.currentTime; tone('sine', 420, 190, t, .9, .08); },
+  giggle() { const t = AC.currentTime; [0, .09, .18].forEach((d) => tone('triangle', 900, 1200, t + d, .07, .08)); }
+};
+const play = (k) => { if (soundOn && AC) SFX[k](); };
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstChild; };
+// упругость: вещь мнётся и отпружинивает
+const squash = (el, k = 1) => reduce || el.animate([{ transform: 'scale(1)' }, { transform: `scale(${1 + .12 * k}, ${1 - .16 * k})` }, { transform: `scale(${1 - .06 * k}, ${1 + .08 * k})` }, { transform: 'scale(1)' }], { duration: 420, easing: 'ease-out' });
+// праздник: клубки и звёзды из точки
+const C = ['#FFD563', '#77DCB8', '#FF8D7D', '#8CCBF5', '#F4A6CB'];
+function burst(phone, x, y, n = 14, big = 1) {
+  if (reduce) return;
+  for (let i = 0; i < n; i++) {
+    const a = Math.PI * 2 * i / n + Math.random() * .4, d = (50 + Math.random() * 60) * big, s = 7 + Math.random() * 7;
+    const f = h(`<div class="fx" style="left:${x - s / 2}px;top:${y - s / 2}px;width:${s}px;height:${s}px;border-radius:${i % 3 ? '50%' : '3px'};background:${C[i % 5]}"></div>`);
+    phone.appendChild(f);
+    f.animate([{ transform: 'translate(0,0) scale(.3)', opacity: 1 }, { transform: `translate(${Math.cos(a) * d}px, ${Math.sin(a) * d - 20}px) scale(1) rotate(200deg)`, opacity: 1, offset: .6 }, { transform: `translate(${Math.cos(a) * d * 1.1}px, ${Math.sin(a) * d + 60}px) scale(.8) rotate(320deg)`, opacity: 0 }], { duration: 1100, easing: 'cubic-bezier(.2,.8,.4,1)' }).onfinish = () => f.remove();
+  }
+}
+const local = (phone, r) => { const p = phone.getBoundingClientRect(); return { x: r.left - p.left + r.width / 2, y: r.top - p.top + r.height / 2 }; };
+function kodiOf(phone) {
+  const k = phone.querySelector('.kodi'), eyes = k.querySelectorAll('.e');
+  let t = 0;
+  return {
+    mood(m, ms = 1400) { k.className = 'kodi ' + m; clearTimeout(t); squash(k, .6); t = setTimeout(() => (k.className = 'kodi'), ms); },
+    look(dx) { eyes.forEach((e) => (e.style.transform = `translateX(${Math.max(-3, Math.min(3, dx * 3))}px)`)); }
+  };
+}
+const head = (chip, n) => `<div class="hd"><div class="dots">${Array.from({ length: 17 }, (_, i) => `<i class="${i < n ? 'on' : i === n ? 'cur' : ''}"></i>`).join('')}</div>
+  <div class="bar"><span class="chip">${chip}</span><div class="kodi"><div class="scr"><i class="e l"></i><i class="e r"></i><i class="m"></i></div></div><span class="ib">💡</span><span class="ib">⏸</span></div></div>`;
+const foot = () => `<div class="ft"><button class="back">←</button><button class="go">Davom etish</button></div>`;
+
+// ── 1. Экран 11: живые зоны ──
+(function () {
+  const P = document.getElementById('P1');
+  P.innerHTML = head('✎ Bo‘laklarni joylang', 10) + `<div class="body">
+    <div class="ask"><b class="cnt">0/4</b>Bo‘lakni head yoki body ichiga olib boring</div>
+    <div class="zone head" data-z="head"><div class="eyes"><div class="eye l"><i class="pup"></i><i class="lid"></i></div><div class="eye r"><i class="pup"></i><i class="lid"></i></div></div><span class="lbl"><i>&lt;</i>head<i>&gt;</i></span><div class="feet"><i></i><i></i></div></div>
+    <div class="zone bdy" data-z="body"><div class="eyes"><div class="eye l"><i class="pup"></i><i class="lid"></i></div><div class="eye r"><i class="pup"></i><i class="lid"></i></div></div><span class="lbl"><i>&lt;</i>body<i>&gt;</i></span><div class="feet"><i></i><i></i></div></div>
+    <div class="tray">
+      <div class="it code" data-z="head"><em>&lt;</em>title<em>&gt;</em>Mening saytim<em>&lt;/</em>title<em>&gt;</em></div>
+      <div class="it" data-z="body">Salom, dunyo!</div><div class="it" data-z="body">🖼 rasm</div><div class="it" data-z="body">O‘ynash</div>
+    </div></div>` + foot();
+  const kodi = kodiOf(P), zones = [...P.querySelectorAll('.zone')], go = P.querySelector('.go'), cnt = P.querySelector('.cnt');
+  let placed = 0, sel = null, idleT = 0, sleeping = false;
+  // глаза зон смотрят на точку (кусочек в руке или палец)
+  function lookAt(x, y) {
+    zones.forEach((z) => z.querySelectorAll('.eye').forEach((e) => {
+      const r = e.getBoundingClientRect(), dx = x - (r.left + r.width / 2), dy = y - (r.top + r.height / 2), d = Math.hypot(dx, dy) || 1, m = Math.min(8, d / 14);
+      e.firstChild.style.transform = `translate(${dx / d * m}px, ${dy / d * m}px)`;
+    }));
+    const p = P.getBoundingClientRect(); kodi.look((x - p.left) / p.width * 2 - 1);
+  }
+  function wake() {
+    clearTimeout(idleT);
+    if (sleeping) { sleeping = false; zones.forEach((z) => z.classList.remove('sleepy')); }
+    if (placed < 4) idleT = setTimeout(sleep, 8000);
+  }
+  function sleep() {
+    sleeping = true; play('yawn');
+    zones.forEach((z, i) => setTimeout(() => { z.classList.add('sleepy'); const r = local(P, z.querySelector('.eyes').getBoundingClientRect()); const s = h(`<div class="zzz" style="left:${r.x + 30}px;top:${r.y - 20}px">z</div>`); P.appendChild(s); setTimeout(() => s.remove(), 2300); }, i * 500));
+  }
+  const zoneAt = (x, y) => zones.find((z) => { const r = z.getBoundingClientRect(); return x > r.left && x < r.right && y > r.top - 20 && y < r.bottom; });
+  function place(it, z) {
+    if (it.dataset.z !== z.dataset.z) {           // не та зона: морщится и отпихивает
+      play('boop'); kodi.mood('sad', 1200);
+      z.classList.add('squint'); setTimeout(() => z.classList.remove('squint'), 700);
+      reduce || z.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-7px)' }, { transform: 'translateX(6px)' }, { transform: 'translateX(-3px)' }, { transform: 'none' }], { duration: 380 });
+      return false;
+    }
+    const a = it.getBoundingClientRect();
+    it.classList.remove('sel', 'drag'); it.classList.add('in'); it.style.transform = '';
+    z.appendChild(it);
+    const b = it.getBoundingClientRect();
+    if (!reduce) it.animate([{ transform: `translate(${a.left - b.left}px, ${a.top - b.top}px) scale(1.15)` }, { transform: 'translate(0,0) scale(1.18,.8)', offset: .75 }, { transform: 'scale(.95,1.06)', offset: .88 }, { transform: 'none' }], { duration: 480, easing: 'cubic-bezier(.4,0,.3,1)' });
+    setTimeout(() => {
+      play('yum'); z.classList.add('yum'); squash(z, .5); setTimeout(() => z.classList.remove('yum'), 650);
+      const r = local(P, it.getBoundingClientRect()); burst(P, r.x, r.y, 8, .6);
+    }, 380);
+    placed++; cnt.textContent = placed + '/4'; squash(cnt.parentNode, .3); kodi.mood('happy');
+    if (placed === 4) setTimeout(() => {
+      play('yay'); P.querySelector('.ask').innerHTML = 'Hammasi joy-joyida! 🎉';
+      const r = local(P, go.getBoundingClientRect()); burst(P, r.x, r.y - 20, 22, 1.3);
+      go.classList.add('ready'); squash(go, 1); kodi.mood('happy', 2500);
+    }, 650);
+    return true;
+  }
+  // перетаскивание с наклоном по скорости; короткое нажатие — выбор
+  P.querySelectorAll('.tray .it').forEach((it) => {
+    it.addEventListener('pointerdown', (e) => {
+      if (it.classList.contains('in')) return;
+      wake(); play('pick'); squash(it, .5);
+      const sx = e.clientX, sy = e.clientY; let lx = sx, moved = false, tilt = 0;
+      it.setPointerCapture(e.pointerId);
+      const move = (ev) => {
+        const dx = ev.clientX - sx, dy = ev.clientY - sy;
+        if (!moved && Math.hypot(dx, dy) < 6) return;
+        moved = true; it.classList.add('drag');
+        tilt = tilt * .7 + (ev.clientX - lx) * .9; lx = ev.clientX;
+        it.style.transform = `translate(${dx}px, ${dy}px) rotate(${Math.max(-18, Math.min(18, tilt))}deg) scale(1.08)`;
+        lookAt(ev.clientX, ev.clientY);
+        const z = zoneAt(ev.clientX, ev.clientY); zones.forEach((q) => q.classList.toggle('over', q === z));
+      };
+      const up = (ev) => {
+        it.removeEventListener('pointermove', move); it.removeEventListener('pointerup', up);
+        zones.forEach((q) => q.classList.remove('over'));
+        if (!moved) { P.querySelectorAll('.it.sel').forEach((q) => q !== it && q.classList.remove('sel')); it.classList.toggle('sel'); sel = it.classList.contains('sel') ? it : null; return; }
+        const z = zoneAt(ev.clientX, ev.clientY);
+        if (z && place(it, z)) return;
+        // назад в лоток с пружинкой
+        const m = /translate\(([-\d.]+)px, ([-\d.]+)px\)/.exec(it.style.transform) || [0, 0, 0];
+        it.classList.remove('drag'); it.style.transform = '';
+        reduce || it.animate([{ transform: `translate(${m[1]}px, ${m[2]}px) rotate(${tilt}deg)` }, { transform: 'translate(0,0) scale(.92,1.08)', offset: .7 }, { transform: 'none' }], { duration: 500, easing: 'cubic-bezier(.3,1.4,.5,1)' });
+        play('puff');
+      };
+      it.addEventListener('pointermove', move); it.addEventListener('pointerup', up);
+    });
+  });
+  zones.forEach((z) => z.addEventListener('click', () => { wake(); if (sel && !sel.classList.contains('in')) { if (place(sel, z)) sel = null; } else { play('puff'); squash(z, .4); } }));
+  P.addEventListener('pointermove', (e) => { if (!P.querySelector('.it.drag')) lookAt(e.clientX, e.clientY); });
+  P.addEventListener('pointerdown', wake);
+  P.querySelectorAll('.ft button, .ib').forEach((b) => b.addEventListener('pointerdown', () => { play('puff'); squash(b, .6); }));
+  wake();
+})();
+
+// ── 2. Человечек и Коди ──
+(function () {
+  const P = document.getElementById('P2');
+  const Q = [
+    { code: '<em>&lt;</em>title<em>&gt;</em>Futbol<em>&lt;/</em>title<em>&gt;</em>', ok: 0 },
+    { code: '<em>&lt;</em>body<em>&gt;</em>Salom!<em>&lt;/</em>body<em>&gt;</em>', ok: 1 }
+  ];
+  P.innerHTML = head('🎮 Yorliqmi yoki oyna?', 7) + `<div class="body">
+    <div class="ask">So‘z qayerda chiqadi: yorliqdami yoki oynada?</div>
+    <div class="stage2"><div class="man"><svg viewBox="0 0 170 200">
+      <defs><filter id="fz" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="4"/><feDisplacementMap in="SourceGraphic" scale="4"/></filter><clipPath id="ceL"><ellipse cx="66" cy="54" rx="15" ry="17"/></clipPath><clipPath id="ceR"><ellipse cx="104" cy="54" rx="15" ry="17"/></clipPath></defs>
+      <ellipse class="shadow" cx="85" cy="192" rx="44" ry="6" fill="rgba(22,32,56,.14)"/>
+      <g class="all">
+        <g filter="url(#fz)"><rect x="56" y="168" width="22" height="20" rx="10" fill="#77DCB8"/><rect x="92" y="168" width="22" height="20" rx="10" fill="#77DCB8"/></g>
+        <g class="armL" style="transform-origin:50px 126px"><ellipse cx="38" cy="132" rx="14" ry="12" fill="#F5F1E5" filter="url(#fz)"/></g>
+        <g class="armR" style="transform-origin:120px 126px"><ellipse cx="132" cy="132" rx="14" ry="12" fill="#F5F1E5" filter="url(#fz)"/></g>
+        <rect x="46" y="104" width="78" height="70" rx="28" fill="#77DCB8" filter="url(#fz)"/>
+        <g class="hd2"><rect x="30" y="8" width="110" height="104" rx="46" fill="#FFD563" filter="url(#fz)"/>
+          <g class="eyeL"><ellipse cx="66" cy="54" rx="15" ry="17" fill="#fff"/><g class="pl"><ellipse cx="66" cy="56" rx="7" ry="9" fill="#171C29"/><circle cx="63" cy="52" r="2.6" fill="#fff"/></g><rect class="lidL" x="49" y="35" width="34" height="0" fill="#F2C44C" clip-path="url(#ceL)"/></g>
+          <g class="eyeR"><ellipse cx="104" cy="54" rx="15" ry="17" fill="#fff"/><g class="pr"><ellipse cx="104" cy="56" rx="7" ry="9" fill="#171C29"/><circle cx="101" cy="52" r="2.6" fill="#fff"/></g><rect class="lidR" x="87" y="35" width="34" height="0" fill="#F2C44C" clip-path="url(#ceR)"/></g>
+          <path class="mouth" d="M72 84 Q85 94 98 84" stroke="#171C29" stroke-width="4" fill="none" stroke-linecap="round"/>
+          <ellipse cx="52" cy="80" rx="8" ry="5" fill="#FF9E88" opacity=".55"/><ellipse cx="118" cy="80" rx="8" ry="5" fill="#FF9E88" opacity=".55"/></g>
+      </g></svg></div></div>
+    <div class="code2"></div>
+    <div class="ans"><button data-a="0">Yorliqda</button><button data-a="1">Oynada</button></div>
+    <div class="msg"></div></div>` + foot();
+  const kodi = kodiOf(P), man = P.querySelector('.man'), all = man.querySelector('.all'), msg = P.querySelector('.msg'), code = P.querySelector('.code2');
+  const pl = man.querySelector('.pl'), pr = man.querySelector('.pr'), mouth = man.querySelector('.mouth'), lids = [man.querySelector('.lidL'), man.querySelector('.lidR')];
+  const armL = man.querySelector('.armL'), armR = man.querySelector('.armR');
+  let qi = 0, busy = false, idleT = 0, sleeping = false;
+  const MOUTH = { smile: 'M72 84 Q85 94 98 84', sad: 'M72 90 Q85 80 98 90', open: 'M72 82 Q85 104 98 82', yawn: 'M78 82 Q85 104 92 82 Q85 76 78 82' };
+  const setLid = (v) => lids.forEach((l) => l.setAttribute('height', v));
+  function show() { code.innerHTML = Q[qi].code; P.querySelectorAll('.ans button').forEach((b) => (b.className = '')); msg.textContent = ''; msg.className = 'msg'; }
+  function lookAt(x, y) {
+    const r = man.getBoundingClientRect(), dx = x - (r.left + r.width * .5), dy = y - (r.top + r.height * .27), d = Math.hypot(dx, dy) || 1, m = Math.min(5, d / 20);
+    const t = `translate(${dx / d * m}px, ${dy / d * m}px)`; pl.style.transform = pr.style.transform = t;
+    const p = P.getBoundingClientRect(); kodi.look((x - p.left) / p.width * 2 - 1);
+  }
+  // моргание
+  setInterval(() => { if (sleeping) return; setLid(34); setTimeout(() => !sleeping && setLid(0), 130); }, 3800);
+  // лёгкое покачивание — живёт и без касаний
+  if (!reduce) all.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-3px)' }, { transform: 'translateY(0)' }], { duration: 2400, iterations: Infinity, easing: 'ease-in-out' });
+  function wake() { clearTimeout(idleT); if (sleeping) { sleeping = false; setLid(0); mouth.setAttribute('d', MOUTH.smile); squash(man, .5); } idleT = setTimeout(sleep, 8000); }
+  function sleep() {
+    sleeping = true; play('yawn'); mouth.setAttribute('d', MOUTH.yawn); setLid(14);
+    setTimeout(() => { if (!sleeping) return; setLid(34); mouth.setAttribute('d', MOUTH.smile); }, 1100);
+    const zz = () => { if (!sleeping) return; const r = local(P, man.getBoundingClientRect()); const s = h(`<div class="zzz" style="left:${r.x + 40}px;top:${r.y - 70}px;font-size:18px">z</div>`); P.appendChild(s); setTimeout(() => s.remove(), 2300); setTimeout(zz, 1100); };
+    setTimeout(zz, 1200);
+  }
+  function answer(b) {
+    if (busy) return; wake();
+    const ok = +b.dataset.a === Q[qi].ok; squash(b, .7);
+    if (ok) {
+      busy = true; b.className = 'ok'; play('ding'); kodi.mood('happy', 2000);
+      msg.className = 'msg ok'; msg.textContent = 'Zo‘r! To‘g‘ri topdingiz.';
+      mouth.setAttribute('d', MOUTH.open);
+      if (!reduce) {
+        all.animate([{ transform: 'translateY(0) scale(1)' }, { transform: 'translateY(4px) scale(1.08,.9)', offset: .15 }, { transform: 'translateY(-42px) scale(.94,1.08)', offset: .5 }, { transform: 'translateY(2px) scale(1.06,.94)', offset: .85 }, { transform: 'none' }], { duration: 760, easing: 'ease-out' });
+        armL.animate([{ transform: 'rotate(0)' }, { transform: 'rotate(60deg)', offset: .4 }, { transform: 'rotate(45deg)', offset: .7 }, { transform: 'rotate(0)' }], { duration: 900 });
+        armR.animate([{ transform: 'rotate(0)' }, { transform: 'rotate(-60deg)', offset: .4 }, { transform: 'rotate(-45deg)', offset: .7 }, { transform: 'rotate(0)' }], { duration: 900 });
+      }
+      const r = local(P, man.getBoundingClientRect()); setTimeout(() => burst(P, r.x, r.y - 30, 18, 1.1), 300);
+      setTimeout(() => { mouth.setAttribute('d', MOUTH.smile); qi = (qi + 1) % Q.length; show(); busy = false; }, 1700);
+    } else {
+      b.className = 'no'; play('boop'); kodi.mood('sad', 1500);
+      msg.className = 'msg no'; msg.textContent = 'Yana bir qarang: qaysi teg ichida?';
+      mouth.setAttribute('d', MOUTH.sad); setLid(10);
+      reduce || all.animate([{ transform: 'rotate(0)' }, { transform: 'translateY(6px) rotate(-4deg)', offset: .3 }, { transform: 'translateY(6px) rotate(3deg)', offset: .6 }, { transform: 'none' }], { duration: 800, easing: 'ease-in-out' });
+      setTimeout(() => { mouth.setAttribute('d', MOUTH.smile); setLid(0); b.className = ''; }, 1400);
+    }
+  }
+  P.querySelectorAll('.ans button').forEach((b) => b.addEventListener('click', () => answer(b)));
+  man.addEventListener('pointerdown', () => { wake(); play('giggle'); mouth.setAttribute('d', MOUTH.open); setLid(20); squash(man, 1); setTimeout(() => { mouth.setAttribute('d', MOUTH.smile); setLid(0); }, 500); });
+  P.addEventListener('pointermove', (e) => { if (!sleeping) lookAt(e.clientX, e.clientY); });
+  P.addEventListener('pointerdown', (e) => { wake(); lookAt(e.clientX, e.clientY); });
+  P.querySelectorAll('.ft button, .ib').forEach((b) => b.addEventListener('pointerdown', () => { play('puff'); squash(b, .6); }));
+  show(); wake();
+})();
+</script>
+</body>
+</html>

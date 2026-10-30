@@ -19,7 +19,8 @@ export default defineConfig({
     chunkSizeWarningLimit: 4000,
     rollupOptions: {
       // demo-mir — проба «живого мира» урока 17 (заказчик открывает её на Vercel по тому же пути).
-      input: { main: r('./index.html'), player: r('./player.html'), 'demo-mir': r('./tools/problemitas17/demo/mir.html') },
+      input: { main: r('./index.html'), player: r('./player.html'), 'demo-mir': r('./tools/problemitas17/demo/mir.html'),
+        'demo-zhivoy': r('./tools/problemitas17/demo/zhivoy.html') },
     },
   },
 });
