@@ -1,0 +1,421 @@
+/* ── ОБЛИК «KODI PLAYGROUND» (тестовый урок 17, 30.10.2026) ─────────────────────
+   Стилистика образца заказчика (kodi-html-code.zip): тёплый белый фон, Nunito,
+   мягкие карточки и плитки с «нажимной» тенью снизу, палитра коралл / голубой /
+   жёлтый / мятный / розовый, браузер — как Chrome в Windows (блок в конце файла),
+   код — на жёлтой панели, зоны head / body — живые, с глазами и ножками, движение
+   спокойное (покачивание, моргание, мягкое появление снизу). Шапка и низ — рамка B
+   урока 16 (b16.css), здесь не трогаются. Бумаги нет нигде: ни рваных краёв, ни
+   фактуры, ни наклонов, ни шороха. Шрифт Nunito (SIL OFL) встроен урезанным. */
+/*@P17_FONTS@*/
+:root { --kz-piece: #FFF3CE; }
+.p17 { --p17-ink: #162038; --p17-muted: #758099; --p17-coral: #FF6957; --p17-blue: #3EAFF3; --p17-yellow: #FFD563;
+  --p17-mint: #77DCB8; --p17-pink: #E964A1; --p17-paper: #FFFDF9; --p17-line: #ECEEF3;
+  --p17-font: 'Nunito', 'Manrope', system-ui, sans-serif; }
+
+/* Фон экрана — тёплый белый; листа нет, вещи стоят прямо на фоне. */
+.b-stage.p17 .stage-content { background: var(--p17-paper); }
+.p17 .p17-sheet { position: relative; }
+.p17 .p17-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.p17 .kz-sheet-body { position: relative; z-index: 1; }
+
+/* Вырезка → мягкая деталь: без рваного края и фактуры, скруглённая, чуть объёмная. */
+.p17 .kz-cut { filter: drop-shadow(0 8px 12px rgba(59, 59, 74, .08)); }
+.p17 .kz-cut.is-hl { filter: drop-shadow(0 0 0 3px #fff) drop-shadow(0 0 10px var(--hl, #FF6957)) drop-shadow(0 8px 12px rgba(59, 59, 74, .1)); }
+.p17 .kz-cut-in { clip-path: none !important; -webkit-clip-path: none !important; border-radius: 18px;
+  box-shadow: inset 0 3px 3px rgba(255, 255, 255, .6), inset 0 -8px 8px rgba(0, 0, 0, .06); }
+.p17 .kz-cut-in::after, .p17 .kz-cut-in::before { display: none; }
+.p17 .kz-cut-ct { position: absolute; inset: 0; display: block; border-radius: inherit; overflow: hidden; }
+.p17 .kz-boil > .kz-cut-in { animation: none; }
+.p17 .kz-cut:not(.p17-part), .p17 .kz-zone-item, .p17 .kz-label-paper, .p17 .kz-man-name span, .p17 .kz-line, .p17 .kz-scrap,
+.p17 .kz-btn, .p17 .kz-ask { rotate: 0deg !important; }
+
+/* ── ПЛЮШЕВЫЙ ЧЕЛОВЕЧЕК (PaperMan в p17-skin.jsx) ─────────────────────────────
+   Поле 390 × 465: части сходятся точно в любом месте экрана. Человечек мягко
+   покачивается, моргает, поглядывает; крышка головы открывается — под ней капсула. */
+.p17 .kz-manbox { container-type: size; }
+.p17 .kz-man.p17-man { inset: auto; left: 50%; top: 50%; translate: -50% -50%; width: min(100cqw, 100cqh * 390 / 465); aspect-ratio: 390 / 465;
+  animation: p17Bob 4.5s ease-in-out infinite; }
+.p17 .kz-man::after { content: ''; position: absolute; left: 13%; right: 14%; bottom: 0; height: 7.5%; z-index: -1;
+  background: radial-gradient(closest-side, rgba(124, 141, 158, .26), rgba(124, 141, 158, 0)); }
+.p17 .kz-man > .p17-part { filter: drop-shadow(0 10px 12px rgba(59, 59, 74, .07)); }
+.p17 .kz-man > .p17-part.is-hl { filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 14px var(--hl)) drop-shadow(0 8px 10px rgba(59, 59, 74, .1)); }
+.p17 .kz-man > .p17-part > .kz-cut-in { display: none; }
+.p17 .kz-man > .p17-part > .kz-cut-ct { overflow: visible; }
+.p17 .kz-man > .p17-title { z-index: 3; }
+.p17 .kz-man > .p17-title > .kz-cut-ct { overflow: hidden; }
+.p17 .p17-art { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; display: block; }
+.p17 .p17-title .p17-art { overflow: hidden; }
+.p17 .p17-blink { transform-box: fill-box; transform-origin: center; animation: p17Blink 6.2s infinite; }
+.p17 .p17-look { animation: p17Look 8s ease-in-out infinite; }
+/* Закрытая голова — просто пушистая круглая голова, крышки не видно (заказчик, 30.10.2026: «голова
+   очень странная» — крышка лежала вторым ярусом, «тостом»). Открытая — крышка поднимается из
+   головы и наклоняется, под ней капсула с названием, как в образце. */
+.p17 .p17-lid { transform-origin: 185px 92px; transform: translate(0, 70px) rotate(18deg); opacity: 0; transition: transform .6s cubic-bezier(.2, .7, .2, 1), opacity .25s ease; }
+.p17 .p17-lid.is-open { transform: translate(-22px, -26px) rotate(-12deg); opacity: 1; }
+.p17 .p17-capsule { animation: p17Hop .6s ease-out; }
+.p17 .kz-man > .p17-arm, .p17 .kz-man > .p17-leg { animation: p17Sway 5s ease-in-out infinite; }
+.p17 .kz-man.is-spot > .p17-part:not(.is-hl) { opacity: .3; }
+.p17 .kz-man > .kz-cut { transition: opacity .3s ease, scale .3s ease; }
+.p17 .kz-wave-r { animation: p17Wave 1.6s ease-in-out infinite; transform-origin: 3% 79%; }
+.p17 .kz-wave-l { animation: p17WaveL 2.4s ease-in-out infinite; transform-origin: 83% 79%; }
+@keyframes p17Bob { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-7px) rotate(1deg); } }
+@keyframes p17Blink { 0%, 43%, 47%, 100% { transform: scaleY(1); } 45% { transform: scaleY(.08); } }
+@keyframes p17Look { 0%, 30%, 100% { transform: none; } 38%, 55% { transform: translate(-3px, -1px); } 63%, 80% { transform: translate(3px, 1px); } }
+@keyframes p17Hop { 50% { translate: 0 -13px; } }
+@keyframes p17Sway { 0%, 100% { rotate: -1deg; } 50% { rotate: 1deg; } }
+@keyframes p17Wave { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(10deg); } }
+@keyframes p17WaveL { 0%, 100% { transform: none; } 50% { transform: rotate(5deg); } }
+/* Название внутри головы (экран 1) — розовая капсула в самой голове (P17Head). */
+.p17 .kz-man-name { display: none; }
+
+/* Рамка html — мягкие коралловые полосы. */
+.p17 .kz-stagebox > .kz-cut > .kz-cut-in { border-radius: 999px; box-shadow: inset 0 2px 2px rgba(255, 255, 255, .5), inset 0 -3px 3px rgba(0, 0, 0, .08); }
+.p17 .kz-stagebox > .kz-cut { filter: drop-shadow(0 4px 6px rgba(255, 105, 87, .25)); }
+
+/* Бирки-теги — белые плитки с нажимной тенью; на рамке html — коралловые. */
+.p17 .kz-label-tape { display: none; }
+.p17 .kz-label-paper { clip-path: none; filter: none; border-radius: 16px; padding: 6px 15px 7px; background: #fff;
+  border: 2px solid #EEF0F4; box-shadow: 0 5px 0 #E9ECF2, 0 8px 16px rgba(39, 59, 82, .06);
+  font-family: var(--p17-font); font-weight: 900; }
+.p17 .kz-frame-lbl-top .kz-label-paper, .p17 .kz-frame-lbl-bot .kz-label-paper, .p17 .kz-label.kz-col-lbl-html .kz-label-paper {
+  background: var(--p17-coral); border-color: var(--p17-coral); box-shadow: 0 5px 0 #E75545; }
+.p17 .kz-frame-lbl-top .kz-tk-b, .p17 .kz-frame-lbl-top .kz-tk-n, .p17 .kz-frame-lbl-bot .kz-tk-b, .p17 .kz-frame-lbl-bot .kz-tk-n,
+.p17 .kz-label.kz-col-lbl-html .kz-tk-b, .p17 .kz-label.kz-col-lbl-html .kz-tk-n { color: #fff; }
+.p17 .kz-label.kz-col-lbl-head .kz-label-paper { background: #FFF0B8; border-color: #FFF0B8; box-shadow: 0 5px 0 #F0D98A; }
+.p17 .kz-label.kz-col-lbl-body .kz-label-paper { background: #DDF8EA; border-color: #DDF8EA; box-shadow: 0 5px 0 #B5E6CD; }
+.p17 .kz-label.is-on .kz-label-paper { background: #FFF3CE; }
+.p17 .kz-tk-b { color: var(--p17-coral); }
+.p17 .kz-tk-n, .p17 .kz-line .kz-txt { color: var(--p17-ink); }
+.p17 .kz-label.is-spot::after { border-radius: 999px; rotate: 0deg; inset: -8px -12px; border: 3px solid var(--p17-coral);
+  box-shadow: 0 0 0 6px rgba(255, 105, 87, .15); animation: p17RingIn .45s cubic-bezier(.2, .7, .2, 1) both; }
+
+/* Код — на жёлтой панели, как в образце; строки — мягкие, без полосок. */
+.p17 .kz-code { background: #FFF3CE; border-radius: 17px; padding: 10px 10px; font-family: 'SFMono-Regular', Consolas, 'JetBrains Mono', monospace; font-weight: 700; }
+.p17 .kz-line { clip-path: none; filter: none; border-radius: 10px; background: transparent; box-shadow: none; }
+.p17 .kz-line.is-gap { background: rgba(255, 255, 255, .7); }
+.p17 .kz-line.is-mark, .p17 .kz-line.is-hl { background: #fff; box-shadow: 0 0 0 2px #FFD563; }
+.p17 .kz-line.is-sel { background: #FFE3F0; box-shadow: 0 0 0 2px #EFAFD0; }
+.p17 .kz-line.is-cur { background: rgba(255, 255, 255, .85); box-shadow: 0 0 0 2px #FFD563; }
+.p17 .kz-line.kz-tap:not(:disabled):hover { background: rgba(255, 255, 255, .6); }
+/* Строка, которую читает браузер или о которой говорит Коди (экраны 2 и 12), — цветом своей части. */
+.p17 .kz-line.is-read, .p17 .kz-line.is-say { --sc: #FF6957; background: var(--sc); color: #fff; filter: none; box-shadow: 0 4px 0 rgba(0, 0, 0, .12); z-index: 1; }
+.p17 .kz-line.is-say-head { --sc: #FFC53D; }
+.p17 .kz-line.is-say-body { --sc: #58BA97; }
+.p17 .kz-line.is-read .kz-tk-n, .p17 .kz-line.is-say .kz-tk-n, .p17 .kz-line.is-read .kz-txt, .p17 .kz-line.is-say .kz-txt { color: #fff; }
+.p17 .kz-line.is-read .kz-tk-b, .p17 .kz-line.is-say .kz-tk-b { color: #FFF3CE; }
+.p17 .kz-line.is-say-head .kz-tk-n, .p17 .kz-line.is-say-head .kz-txt { color: var(--p17-ink); }
+.p17 .kz-line.is-say-head .kz-tk-b { color: #B4361A; }
+.p17 .kz-line .tk-input, .p17 .kz-line .kz-write .tk-input { background: #fff; border: 1.5px solid #EFAFD0; border-radius: 7px; color: #DB428D; }
+.p17 .kz-line .kz-write .tk-input { border-style: dashed; border-color: var(--p17-coral); }
+.p17 .kz-move-b { clip-path: none !important; filter: none; border-radius: 9px; background: #fff; border: 1.5px solid #E9EBF3; box-shadow: 0 3px 0 #EEF0F5; }
+
+/* Строка задания — Nunito, белая плашка с тонкой рамкой. */
+.p17 .kz-ask-wrap { filter: none; }
+.p17 .kz-ask { clip-path: none; filter: none; border-radius: 18px; background: #fff; color: var(--p17-ink); padding: 8px 16px 9px;
+  font: 900 clamp(15px, 2.1dvh, 19px)/1.25 var(--p17-font); letter-spacing: -.2px;
+  border: 1.5px solid var(--p17-line); box-shadow: 0 4px 0 #F1F2F7; }
+.p17 .kz-ask-n { border-radius: 999px; background: #E8F2FF; color: var(--p17-ink); font-family: var(--p17-font); font-weight: 900; }
+
+/* Кнопки — нажимные, как в образце. */
+.p17 .kz-btn { clip-path: none; filter: none; border-radius: 17px; font-family: var(--p17-font); font-weight: 900; background: var(--p17-coral); color: #fff;
+  box-shadow: 0 5px 0 #E75545; transition: transform .18s, box-shadow .18s, background .18s; }
+.p17 .kz-btn:not(:disabled):active { transform: translateY(3px); box-shadow: 0 2px 0 #E75545; }
+.p17 .kz-btn.is-coral { background: var(--p17-coral); }
+.p17 .kz-btn.is-teal, .p17 .kz-btn.is-ok { background: #35B56B; box-shadow: 0 5px 0 #268454; }
+.p17 .kz-btn.is-ghost { background: #fff; color: var(--p17-ink); border: 1.5px solid #DFE3ED; box-shadow: 0 4px 0 #E7EAF1; }
+.p17 .kz-btn.is-sel { background: #E6F6FF; color: var(--p17-ink); box-shadow: 0 0 0 3px #94D3FB, 0 4px 0 #74B9E8; }
+.p17 .kz-btn:disabled { background: #E4E7EE; color: #9BA3B4; box-shadow: 0 4px 0 #D3D8E2; opacity: 1; }
+.p17 .kz-btn.kz-call:not(:disabled) { animation: kzCall 1.2s ease-in-out infinite; }
+
+/* Плитки в лотке и за пальцем — белые, с нажимной тенью. */
+.p17 .kz-scrap, .p17 .kz-ghost-in, .p17 .kz-hand-ghost { clip-path: none !important; filter: none; border-radius: 17px; background: #fff; color: var(--p17-ink);
+  border: 2px solid #EEF0F4; box-shadow: 0 5px 0 #E9ECF2, 0 8px 16px rgba(39, 59, 82, .06); font-family: var(--p17-font); font-weight: 900; rotate: 0deg; }
+.p17 .kz-pool .kz-scrap, .p17 .kz-scrap.kz-scrap-tag, .p17 .kz-scrap-code { font-family: 'SFMono-Regular', Consolas, 'JetBrains Mono', monospace; }
+.p17 .kz-scrap:not(:disabled):hover { border-color: #C9D7EF; transform: translateY(-3px); }
+.p17 .kz-scrap.is-sel { border-color: #4EAFF0; box-shadow: 0 0 0 3px #D4EEFF, 0 4px 0 #74B9E8; translate: 0 -2px; }
+.p17 .kz-scrap.is-lifted { background: transparent; border-style: dashed; box-shadow: none; color: transparent; }
+.p17 .kz-ghost { filter: drop-shadow(0 14px 22px rgba(38, 59, 85, .2)); }
+.p17 .kz-ghost.is-back { transition-timing-function: cubic-bezier(.2, .7, .2, 1) !important; }
+
+/* Браузер — светлый, с точками-светофором и жёлтой вкладкой. Страница — честная, как была. */
+.p17 .kz-cut.kz-br-frame > .kz-cut-in { background: #F3F5FA !important; border-radius: 22px; box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 3px #E1E5EB; }
+.p17 .kz-cut.kz-br-frame { filter: drop-shadow(0 8px 0 #E1E5EC) drop-shadow(0 14px 18px rgba(41, 58, 74, .07)); }
+.p17 .kz-br-bar { padding-left: 2.5%; }
+.p17 .kz-br-bar::before { content: ''; flex: none; align-self: center; width: 40px; height: 10px; margin: 2px 6px 0 2px;
+  background: radial-gradient(circle 5px at 5px 5px, #FF8D7D 96%, transparent), radial-gradient(circle 5px at 20px 5px, #FFD05C 96%, transparent),
+    radial-gradient(circle 5px at 35px 5px, #8FD7A0 96%, transparent); }
+.p17 .kz-br-win { display: none; }
+.p17 .kz-br-tab { clip-path: none; border-radius: 12px 12px 0 0; background: #FFF1BB; color: var(--p17-ink); font-family: var(--p17-font); font-weight: 900; box-shadow: inset 0 1px 0 #fff; }
+.p17 .kz-br-tab.is-hl, .p17 .kz-br.is-spot-tab .kz-br-tab { background: #FFD563; box-shadow: 0 0 0 3px #fff, 0 0 0 6px rgba(255, 213, 99, .55); }
+.p17 .kz-br-fav { border-radius: 4px; rotate: 0deg; background: var(--p17-coral); }
+.p17 .kz-br-x::before, .p17 .kz-br-x::after { background: #8D8A7E; }
+.p17 .kz-br-plus::before, .p17 .kz-br-plus::after { background: #8D96A9; }
+.p17 .kz-cut.kz-br-tool-bg > .kz-cut-in { background: transparent !important; box-shadow: none; }
+.p17 .kz-cut.kz-br-tool-bg { filter: none; }
+.p17 .kz-br-url { background: #fff; color: #9BA2B1; }
+.p17 .kz-br-arrows i { border-color: #9BA2B1; }
+.p17 .kz-br-lock { background: #8FD7A0; border-radius: 50%; }
+.p17 .kz-cut.kz-br-paper > .kz-cut-in { background: #fff !important; border-radius: 15px; box-shadow: none; }
+.p17 .kz-cut.kz-br-paper { filter: none; }
+.p17 .kz-br.is-spot-page .kz-cut.kz-br-paper > .kz-cut-in { background: #EFFBF5 !important; }
+.p17 .kz-br.is-spot-page .kz-cut.kz-br-paper { filter: drop-shadow(0 0 0 #58BA97) drop-shadow(0 0 4px #58BA97) drop-shadow(0 10px 14px rgba(41, 58, 74, .15)); }
+.p17 .kz-br.is-hl-page .kz-br-page { outline-color: #58BA97; }
+/* Содержимое страницы: строки — серые, картинка — пейзаж с холмом и солнцем, кнопка — коралловая. */
+.p17 .kz-cut.kz-bit-line > .kz-cut-in { background: #C9D0DC !important; box-shadow: none; border-radius: 999px; }
+.p17 .kz-cut.kz-bit-pic > .kz-cut-in { background: #E8F6F7 !important; box-shadow: none; border-radius: 12px; }
+.p17 .kz-pic-sun { background: #FFDB70; }
+.p17 .kz-pic-mnt { left: -6%; right: -6%; bottom: -14%; height: 62%; background: #83D2AB; clip-path: ellipse(60% 50% at 40% 100%); }
+.p17 .kz-cut.kz-bit-btn > .kz-cut-in { background: var(--p17-coral) !important; border-radius: 9px; }
+.p17 .kz-bit-btn span { font-family: var(--p17-font); font-weight: 900; }
+.p17 .kz-mini-pic { background-color: #E8F6F7; background-image: radial-gradient(ellipse 70% 60% at 40% 110%, #83D2AB 60%, transparent 61%); border-radius: 4px; }
+
+/* Круг «от руки» вокруг вкладки → мягкое кольцо. */
+.p17 .kz-ring { border: 3px solid var(--rc, #FF6957); border-radius: 999px; box-shadow: 0 0 0 6px rgba(255, 105, 87, .15);
+  animation: p17RingIn .45s cubic-bezier(.2, .7, .2, 1) both; }
+.p17 .kz-ring path { display: none; }
+@keyframes p17RingIn { 0% { transform: scale(.6); opacity: 0; } 100% { transform: none; opacity: 1; } }
+
+/* «?» на месте нижнего края рамки (экран 4). */
+.p17 .kz-frame-miss { border-radius: 999px; border-color: #FF9B8D; background: repeating-linear-gradient(-45deg, rgba(255, 105, 87, .12) 0 6px, transparent 6px 12px); }
+.p17 .kz-frame-miss .kz-frame-miss-q { clip-path: none; border-radius: 999px; background: #fff; color: var(--p17-coral); box-shadow: 0 3px 0 #F1F2F7; font-family: var(--p17-font); font-weight: 900; }
+
+/* Места для бирок (экран 5) — пунктирные гнёзда. */
+.p17 .kz-slot-dash { border-radius: 16px; rotate: 0deg; border: 2px dashed rgba(196, 163, 70, .55); background: rgba(255, 253, 249, .85); }
+.p17 .kz-slot.is-hover .kz-slot-dash, .p17 .kz-scene.is-dragging .kz-slot:not(.is-full) .kz-slot-dash { border-color: var(--p17-coral); background: #FFF0EC; }
+
+/* Зоны head / body (экран 11) — живые: жёлтая и мятная, с глазами сверху и ножками снизу. */
+.p17 .kz-zone { overflow: visible; margin-top: 30px; }
+.p17 .kz-zone .kz-cut.kz-zone-cut { filter: none; }
+.p17 .kz-zone .kz-cut.kz-zone-cut > .kz-cut-in { border-radius: 40px; }
+.p17 .kz-zone[data-place="head"] .kz-cut.kz-zone-cut > .kz-cut-in { background: #FFDA6D !important; box-shadow: inset 0 0 0 11px #FFD35F, inset 0 3px 3px rgba(255, 255, 255, .6), inset 0 -9px 6px rgba(217, 166, 50, .2); }
+.p17 .kz-zone[data-place="body"] .kz-cut.kz-zone-cut > .kz-cut-in { background: #DBF9EB !important; box-shadow: inset 0 0 0 11px #93E7C7, inset 0 6px 5px rgba(255, 255, 255, .7), inset 0 -10px 7px rgba(86, 186, 149, .2); }
+.p17 .kz-zone::before { content: ''; position: absolute; left: 50%; top: -27px; z-index: 2; width: 72px; height: 40px; translate: -50% 0; pointer-events: none;
+  background:
+    radial-gradient(circle 2.6px at 18px 12px, #fff 96%, transparent), radial-gradient(circle 2.6px at 54px 12px, #fff 96%, transparent),
+    radial-gradient(ellipse 6px 9px at 19px 20px, #171C29 96%, transparent), radial-gradient(ellipse 6px 9px at 55px 20px, #171C29 96%, transparent),
+    radial-gradient(ellipse 17px 19px at 18px 20px, #fff 82%, var(--ez, #FFE17B) 84% 96%, transparent),
+    radial-gradient(ellipse 17px 19px at 54px 20px, #fff 82%, var(--ez, #FFE17B) 84% 96%, transparent);
+  animation: p17ZoneBlink 5.6s infinite; }
+.p17 .kz-zone[data-place="body"]::before { --ez: #8DE6C2; animation-delay: 1.4s; }
+.p17 .kz-zone::after { content: ''; position: absolute; left: 16%; right: 16%; bottom: -8px; height: 20px; z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse 22px 10px at 22px 10px, var(--fz, #FFD460) 96%, transparent), radial-gradient(ellipse 22px 10px at calc(100% - 22px) 10px, var(--fz, #FFD460) 96%, transparent); }
+.p17 .kz-zone[data-place="body"]::after { --fz: #8AE0BC; }
+.p17 .kz-zone.is-hover .kz-cut, .p17 .kz-zone.is-led .kz-cut { filter: drop-shadow(0 0 0 4px #FF9E88) drop-shadow(0 10px 18px rgba(248, 127, 84, .2)); }
+.p17 .kz-zone.is-hover { transform: translateY(-4px); }
+@keyframes p17ZoneBlink { 0%, 44%, 48%, 100% { transform: scaleY(1); } 46% { transform: scaleY(.1); } }
+.p17 .kz-zone-item { filter: drop-shadow(0 3px 5px rgba(113, 139, 96, .12)); }
+.p17 .kz-zone-item-in { clip-path: none !important; border-radius: 12px; background: #fff; border: 1.5px solid #65BC8F; font-family: var(--p17-font); font-weight: 900; }
+
+/* Итог: роли, плашка «следующий урок», подписи. */
+.p17 .kz-role { clip-path: none !important; border-radius: 15px; background: #fff; border: 1.5px solid var(--p17-line); box-shadow: 0 4px 0 #F1F2F7; font-family: var(--p17-font); font-weight: 800; }
+.p17 .kz-role i { border-radius: 50%; }
+.p17 .kz-role.is-on { background: #FFF3CE; border-color: #FFE29A; }
+.p17 .kz-next { clip-path: none !important; border-radius: 18px; background: #E8F2FF; color: var(--p17-ink); font-family: var(--p17-font); font-weight: 800; box-shadow: 0 4px 0 #D6E6FB; }
+.p17 .kz-next b { color: #2B7FC4; }
+.p17 .kz-msg { font-family: var(--p17-font); font-weight: 800; color: var(--p17-muted); }
+.p17 .kz-move-tip-k { background: #fff; border: 1.5px solid #E9EBF3; box-shadow: 0 2px 0 #EEF0F5; }
+.p17 .kz-move-tip.is-on { color: #DB4A3A; }
+.p17 .kz-tg-strip { clip-path: none !important; filter: none; border-radius: 22px; background: #FFF3CE; box-shadow: 0 6px 0 #F2E3B0; }
+/* Коллаж страницы (экраны 12 и 17): html — коралл, head — жёлтый, body — мятный. */
+.p17 .kz-collage .kz-cut.kz-col-html > .kz-cut-in { background: #FFB3A8 !important; }
+.p17 .kz-collage .kz-cut.kz-col-head > .kz-cut-in { background: #FFE07A !important; }
+.p17 .kz-collage .kz-cut.kz-col-body > .kz-cut-in { background: #91E4BF !important; }
+.p17 .kz-col-text { color: var(--p17-ink); font-family: var(--p17-font); font-weight: 900; }
+.p17 .kz-col-title .kz-tag { background: rgba(255, 255, 255, .8); border-radius: 6px; }
+
+/* Куски, летящие в человечка (экран 1) и из тела в окно (экран 8), — мягкие. */
+.p17 .kz-morph-p { border-radius: 18px; filter: drop-shadow(0 8px 12px rgba(59, 59, 74, .12)); }
+.p17 .kz-morph-lines i { border-radius: 999px; background: #C9D0DC; }
+.p17 .kz-morph-lines b { border-radius: 8px; background: #E8F6F7; }
+.p17 .kz-morph-t { font-family: var(--p17-font); font-weight: 900; }
+
+/* Рука-показ в заданиях — белая варежка. */
+.p17 .kz-hand { filter: drop-shadow(0 8px 12px rgba(38, 59, 85, .2)); transition-timing-function: cubic-bezier(.45, 0, .2, 1) !important; }
+.p17 .kz-hand svg { overflow: visible; }
+.p17 .kz-hand svg path { fill: url(#p17gMitten); stroke: #B9C4BB; stroke-width: 1.6; }
+.p17 .kz-hand.is-tap .kz-hand-ring::after { border-width: 3px; border-color: var(--p17-coral); }
+
+/* Браузер крупнее (заказчик, 30.10.2026: «браузер маленький»). */
+.p17 .kz-sheet .kz-col > .kz-br:not(.is-short) { --brh: 27dvh; }
+.p17 .kz-sheet .kz-s9 .kz-br, .p17 .kz-sheet .kz-s6-col .kz-br { --brh: 30dvh; }
+.p17 .kz-sheet .kz-s1-page .kz-br, .p17 .kz-sheet .kz-col.kz-s1-page > .kz-br:not(.is-short) { --brh: 56dvh; }
+@media (max-width: 759px) {
+  .p17 .kz-sheet .kz-br { max-width: 100%; }
+  .p17 .kz-sheet .kz-col > .kz-br:not(.is-short) { --brh: 27dvh; }
+  .p17 .kz-sheet .kz-s1-page .kz-br, .p17 .kz-sheet .kz-col.kz-s1-page > .kz-br:not(.is-short) { --brh: 44dvh; }
+  .p17 .kz-scene > .kz-stagebox.is-br { width: min(96%, 46dvh * 1.33); }
+  .p17 .kz-scene.is-tight > .kz-stagebox.is-br { width: min(92%, 36dvh * 1.33); }
+  .p17 .kz-code { padding: 6px 6px; }
+  .p17 .kz-zone { margin-top: 26px; }
+}
+@media (min-width: 760px) {
+  .p17 .kz-sheet .kz-s6 > .kz-col > .kz-br, .p17 .kz-sheet .kz-s9 > .kz-col > .kz-br, .p17 .kz-sheet .kz-scene-col > .kz-col > .kz-br:not(.is-short) { --brh: 46dvh; }
+  .p17 .kz-sheet .kz-s14 > .kz-col > .kz-br, .p17 .kz-sheet .kz-q1 > .kz-col > .kz-br { --brh: 50dvh; }
+}
+
+/* ── ДВИЖЕНИЕ — спокойное, как в образце: мягкое появление снизу, «поп», тряска. ── */
+.p17 .kz-a-drop, .p17 .kz-a-rise, .p17 .kz-a-left, .p17 .kz-a-right, .p17 .kz-line.is-new { animation-name: p17Enter; animation-duration: .45s; animation-timing-function: cubic-bezier(.2, .7, .2, 1); }
+.p17 .kz-a-pop, .p17 .kz-a-stamp { animation-name: p17PopIn; animation-duration: .35s; animation-timing-function: ease-out; }
+.p17 .kz-a-out { animation-name: p17Out; animation-duration: .4s; animation-timing-function: ease-in; }
+.p17 .kz-a-shake { animation-name: p17Shake; animation-duration: .4s; animation-timing-function: ease; }
+@keyframes p17Enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes p17PopIn { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
+@keyframes p17Out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-14px) scale(.9); } }
+@keyframes p17Shake { 20%, 60% { transform: translateX(-7px); } 40%, 80% { transform: translateX(7px); } }
+.p17 .kz-man > .kz-cut, .p17 .kz-stagebox .kz-brbox, .p17 .kz-br-tab, .p17 .kz-br-tool, .p17 .kz-br-page, .p17 .kz-br-bar { transition-timing-function: ease !important; }
+
+/* ПЕРЕХОД МЕЖДУ ЭКРАНАМИ «КЛУБКИ ШЕРСТИ» — в p17-trans.jsx (анимации — Web Animations: вещи
+   сматываются в клубки и укатываются, новые прикатываются и разматываются). */
+
+@media (prefers-reduced-motion: reduce) {
+  .p17 .kz-man.p17-man, .p17 .p17-blink, .p17 .p17-look, .p17 .p17-capsule, .p17 .kz-man > .p17-arm, .p17 .kz-man > .p17-leg,
+  .p17 .kz-wave-l, .p17 .kz-wave-r, .p17 .kz-zone::before { animation: none; }
+  .p17 .p17-lid { transition: none; }
+}
+
+/* ── ЧИТАЕМОСТЬ (заказчик, 30.10.2026: «где неудобно читать — исправь цвета») ─────────
+   Замер контраста по WCAG на всех экранах: текст — не ниже 4,5:1 (крупный — 3:1).
+   Яркий коралл #FF6957 остаётся украшением (рамка, точки, значки); где на коралле текст —
+   глубокий коралл #D63F31 (белый на нём 4,55). Скобки тегов — #C0392B (4,9 на жёлтом коде).
+   Мятный под белым текстом — #26805F; «верно» — #23874F. Мелкий серый — темнее. */
+.p17 { --p17-coral-t: #D63F31; --p17-coral-edge: #A92E22; --p17-red-t: #C0392B; --p17-muted: #5F6880; }
+.p17 .kz-tk-b { color: var(--p17-red-t); }
+/* Кнопки на коралле. */
+.p17 .kz-btn, .p17 .kz-btn.is-coral { background: var(--p17-coral-t); box-shadow: 0 5px 0 var(--p17-coral-edge); }
+.p17 .kz-btn:not(:disabled):active { box-shadow: 0 2px 0 var(--p17-coral-edge); }
+.p17 .kz-btn.is-teal, .p17 .kz-btn.is-ok { background: #23874F; box-shadow: 0 5px 0 #17633A; }
+.p17 .kz-btn.is-ghost { background: #fff; color: var(--p17-ink); }
+/* Неактивная кнопка (пока Коди говорит) — текст читается: варианты ответа видно и во время речи. */
+.p17 .kz-btn:disabled, .p17 .kz-btn.is-ghost:disabled { background: #F1F3F7; color: var(--p17-muted); border: 1.5px solid #E6E9F0; box-shadow: 0 3px 0 #E2E5EC; }
+/* Бирки html на рамке и в коллаже — глубокий коралл. */
+.p17 .kz-frame-lbl-top .kz-label-paper, .p17 .kz-frame-lbl-bot .kz-label-paper, .p17 .kz-label.kz-col-lbl-html .kz-label-paper {
+  background: var(--p17-coral-t); border-color: var(--p17-coral-t); box-shadow: 0 5px 0 var(--p17-coral-edge); }
+/* Подсвеченная строка кода: html — глубокий коралл, body — тёмная мята, head — жёлтая с тёмным текстом. */
+.p17 .kz-line.is-read, .p17 .kz-line.is-say { --sc: var(--p17-coral-t); }
+.p17 .kz-line.is-say-body { --sc: #26805F; }
+.p17 .kz-line.is-read .kz-tk-b, .p17 .kz-line.is-say .kz-tk-b { color: #fff; }
+.p17 .kz-line.is-say-head .kz-tk-b { color: var(--p17-red-t); }
+/* Экран 16: закрывающий </title> — тёмная плашка со светлым текстом. */
+.p17 .kz-q2-close .kz-tag { background: var(--p17-ink); border-radius: 7px; padding: 0 .18em; }
+.p17 .kz-q2-close .kz-tk-n { color: #fff; }
+.p17 .kz-q2-close .kz-tk-b { color: #FFB3A8; }
+/* Браузер: адрес и имя файла — темнее и чуть крупнее; кнопка «O‘ynash» на странице — глубокий коралл. */
+.p17 .kz-br-url { color: #6B7488; font-size: clamp(11.5px, 1.5dvh, 13px); }
+.p17 .kz-br-tab-t.is-file { color: #5F5848; }
+.p17 .kz-br-x::before, .p17 .kz-br-x::after { background: #6E6A5E; }
+.p17 .kz-cut.kz-bit-btn > .kz-cut-in { background: var(--p17-coral-t) !important; }
+/* Код: многоточие, поле ввода, подсказка в пустом поле. */
+.p17 .kz-line .kz-dim { color: #6F6656; }
+.p17 .kz-line .tk-input, .p17 .kz-line .kz-write .tk-input { color: #B42C6F; }
+.p17 .kz-line .kz-write .tk-input::placeholder, .p17 .kz-line .tk-input::placeholder { color: #7C7466; }
+/* «?» на рамке, подписи, «следующий урок». */
+.p17 .kz-frame-miss .kz-frame-miss-q { color: var(--p17-red-t); }
+.p17 .kz-msg { color: var(--p17-muted); }
+.p17 .kz-move-tip.is-on { color: var(--p17-red-t); }
+.p17 .kz-next b { color: #1F6AAE; }
+/* Мелкий текст на телефоне — крупнее: название на вкладке (на нём весь смысл урока), кнопка на
+   странице, код на экранах 2 и 12, подписи коллажа (было 10–12,5 px). */
+@media (max-width: 759px) {
+  .p17 .kz-br-tab { font-size: 13px; }
+  .p17 .kz-bit-btn span { font-size: 11.5px; }
+  .p17 .kz-s12 .kz-code, .p17 .kz-rd .kz-code { font-size: 13px; }
+  .p17 .kz-col-title { font-size: 12.5px; }
+  .p17 .kz-collage .kz-label-paper { font-size: 12.5px; }
+}
+/* Запас высоты на низком телефоне (360 × 640) и на ноутбуке 1280 × 720. */
+@media (max-width: 759px) and (max-height: 680px) {
+  .p17 .kz-rd .kz-code { font-size: 12.5px; padding: 3px 6px; }
+  .p17 .kz-roles { gap: 5px; }
+  .p17 .kz-role { padding-top: 5px; padding-bottom: 5px; }
+}
+@media (min-width: 760px) {
+  .p17 .kz-sheet .kz-s6 > .kz-col > .kz-br { --brh: 43dvh; }
+}
+
+/* ── БРАУЗЕР — КАК CHROME В WINDOWS (заказчик, 30.10.2026) ──────────────────────────
+   Светлая тема Chrome: серая полоса вкладок, белая активная вкладка со «скатами» внизу,
+   кнопки окна «— □ ✕» справа, белая панель со стрелками и адресной строкой-«таблеткой»,
+   шрифт Windows (Segoe UI). Без точек-светофора macOS. Подсветка вкладки на заданиях — прежняя. */
+.p17 .kz-br { --chr-strip: #DEE1E6; --chr-ink: #202124; --chr-icon: #5F6368; --chr-omni: #F1F3F4;
+  --chr-font: 'Segoe UI', 'Segoe UI Variable', system-ui, -apple-system, Roboto, sans-serif; }
+.p17 .kz-cut.kz-br-frame > .kz-cut-in { background: var(--chr-strip) !important; border-radius: 10px; box-shadow: inset 0 0 0 1px #C7CBD1; }
+.p17 .kz-cut.kz-br-frame { filter: drop-shadow(0 12px 22px rgba(0, 0, 0, .14)) drop-shadow(0 2px 4px rgba(0, 0, 0, .08)); }
+.p17 .kz-br-bar { padding-left: 2%; gap: 4px; }
+.p17 .kz-br-bar::before { content: none; display: none; }
+/* Вкладка: белая, верхние углы скруглены, внизу — вогнутые «скаты» в полосу вкладок. */
+.p17 .kz-br-tab { --tabc: #FFFFFF; position: relative; background: var(--tabc); border-radius: 8px 8px 0 0; box-shadow: none;
+  color: var(--chr-ink); font-family: var(--chr-font); font-weight: 500; padding: 0 10px 0 9px; overflow: visible; }
+.p17 .kz-br-tab::before, .p17 .kz-br-tab::after { content: ''; position: absolute; bottom: 0; width: 8px; height: 8px; pointer-events: none; }
+.p17 .kz-br-tab::before { left: -8px; background: radial-gradient(circle at 0 0, transparent 7.6px, var(--tabc) 8px); }
+.p17 .kz-br-tab::after { right: -8px; background: radial-gradient(circle at 100% 0, transparent 7.6px, var(--tabc) 8px); }
+.p17 .kz-br-tab.is-hl, .p17 .kz-br.is-spot-tab .kz-br-tab { --tabc: #FFD563; box-shadow: none; }
+.p17 .kz-br-tab-t { overflow: hidden; }
+.p17 .kz-br-tab-t.is-file { color: #5F6368; font-style: normal; }
+.p17 .kz-br-fav { border-radius: 3px; }
+.p17 .kz-br-x::before, .p17 .kz-br-x::after { background: var(--chr-icon); }
+.p17 .kz-br-plus::before, .p17 .kz-br-plus::after { background: var(--chr-icon); }
+/* Кнопки окна Windows справа: свернуть, развернуть, закрыть — тонкими тёмными линиями. */
+.p17 .kz-br-win { display: flex; align-self: stretch; align-items: center; margin-top: 0; padding-right: 2.5%; gap: clamp(12px, 2.2vw, 22px); }
+.p17 .kz-br-win i { opacity: 1; }
+.p17 .kz-w-min::before { background: var(--chr-ink); height: 1.2px; }
+.p17 .kz-w-max { border: 1.2px solid var(--chr-ink) !important; border-radius: 1px; }
+.p17 .kz-w-close::before, .p17 .kz-w-close::after { background: var(--chr-ink); width: 1.2px; }
+/* Панель инструментов — белая, сливается с активной вкладкой; стрелки и адрес — серые значки Chrome. */
+.p17 .kz-cut.kz-br-tool-bg > .kz-cut-in { background: #FFFFFF !important; border-radius: 0; box-shadow: inset 0 -1px 0 #DADCE0; }
+.p17 .kz-br-arrows i { border-color: var(--chr-icon); opacity: .9; }
+.p17 .kz-ar-r { opacity: .35 !important; }
+.p17 .kz-br-url { background: var(--chr-omni); color: var(--chr-ink); font-family: var(--chr-font); font-weight: 400; border-radius: 999px; }
+.p17 .kz-br-lock { width: 9px; height: 9px; border-radius: 50%; background: transparent; box-shadow: inset 0 0 0 1.6px var(--chr-icon); }
+.p17 .kz-br-url.is-hl { background: #FFF1BB; box-shadow: 0 0 0 2px #FFD563; }
+/* Страница — белая, сразу под панелью, нижние углы окна скруглены. */
+.p17 .kz-cut.kz-br-paper > .kz-cut-in { background: #FFFFFF !important; border-radius: 0 0 6px 6px; box-shadow: none; }
+.p17 .kz-morph-p.is-name .kz-morph-t { color: #74284C; }
+/* Коллаж страницы (экраны 2, 12, 17): бирки компактные — садятся на край строки и не закрывают
+   текст; на телефоне коллаж крупнее (заказчик, 30.10.2026: «всё как будто прижимается»). */
+.p17 .kz-collage .kz-label-paper, .p17 .kz-label.kz-col-lbl-html .kz-label-paper, .p17 .kz-label.kz-col-lbl-head .kz-label-paper,
+.p17 .kz-label.kz-col-lbl-body .kz-label-paper { padding: 2px 9px 3px; border-width: 1.5px; border-radius: 10px; font-size: 12px; }
+.p17 .kz-collage .kz-label-paper { box-shadow: 0 3px 0 #E9ECF2; }
+.p17 .kz-label.kz-col-lbl-html .kz-label-paper { box-shadow: 0 3px 0 var(--p17-coral-edge); }
+.p17 .kz-label.kz-col-lbl-head .kz-label-paper { box-shadow: 0 3px 0 #F0D98A; }
+.p17 .kz-label.kz-col-lbl-body .kz-label-paper { box-shadow: 0 3px 0 #B5E6CD; }
+.p17 .kz-collage .kz-col-in { gap: 9%; }
+@media (max-width: 759px) {
+  .p17 .kz-s12 .kz-collage, .p17 .kz-rd .kz-collage { width: min(100%, 290px, 36dvh); }
+  .p17 .kz-collage .kz-label-paper { font-size: 11.5px; }
+}
+
+/* Экран 8 (body) на телефоне: человечку — своё место над браузером, браузер и код компактнее
+   (заказчик, 30.10.2026: «многовато текста, для человечка мало пространства»). */
+@media (max-width: 759px) {
+  .p17 .kz-scene.kz-s9 { gap: 6px; }
+  .p17 .kz-scene.kz-s9 > .kz-stagebox { flex: 0 0 auto; height: auto; width: min(48vw, 24.5dvh); }
+  .p17 .kz-scene.kz-s9 > .kz-stagebox .kz-manbox { inset: 4% 8% 2% 8%; }
+  .p17 .kz-sheet .kz-s9 > .kz-col > .kz-br:not(.is-short) { --brh: 23dvh; max-width: min(100%, calc(var(--brh) * 1.52)); align-self: center; width: 100%; }
+  .p17 .kz-s9 .kz-col { gap: 6px; }
+  .p17 .kz-s9 .kz-code { padding-top: 3px; padding-bottom: 3px; }
+  .p17 .kz-s9 .kz-br-tab-t { font-size: 11.5px; letter-spacing: -.1px; }
+  .p17 .kz-s9 .kz-br-tab { max-width: 68%; padding: 0 8px; gap: 5px; }
+  .p17 .kz-s9 .kz-br-win { gap: 8px; padding-right: 2%; }
+}
+/* Бирка body — на самом теле, а не на лице человечка. */
+.p17 .kz-label.kz-s9-lbl.is-man { translate: -50% 25%; scale: .85; }
+@media (max-width: 759px) and (max-height: 600px) {
+  .p17 .kz-scene.kz-s9 > .kz-stagebox { width: min(42vw, 21dvh); }
+  .p17 .kz-sheet .kz-s9 > .kz-col > .kz-br:not(.is-short) { --brh: 21dvh; }
+}
+
+/* Экран 11 (head / body) на телефоне: зоны одна под другой, а не рядом
+   (заказчик, 30.10.2026: «сделать сверху вниз») — сверху голова head, под ней тело body. */
+@media (max-width: 759px) {
+  .p17 .kz-zones { grid-template-columns: 1fr; gap: 10px; }
+  .p17 .kz-sheet-body > .kz-tray { gap: 6px; }
+  .p17 .kz-zones .kz-zone { min-height: clamp(66px, 11.5dvh, 110px); margin-top: 24px; }
+  .p17 .kz-zones .kz-zone-in { gap: 5px; padding: 6px 10px; }
+  .p17 .kz-zones .kz-zone::after { left: 28%; right: 28%; }
+  /* Бирки head / body — в левом верхнем углу зоны (заказчик, 30.10.2026, по скриншоту). */
+  .p17 .kz-zones .kz-zone-in > .kz-label { align-self: flex-start; margin: -22px 0 0 4px; }
+}
+@media (max-width: 759px) and (max-height: 600px) {
+  .p17 .kz-zones .kz-zone { margin-top: 22px; }
+  .p17 .kz-zones { gap: 8px; }
+}

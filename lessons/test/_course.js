@@ -36,5 +36,7 @@ export default {
       topics: ['html', 'head', 'title', 'body'] },
     { n: 16, slug: 'b-oyin', title: 'Урок 1 «Бумажная страница» в рамке дизайна «B · O‘yin» (шапка, низ, панели результата; 28.10.2026)',
       topics: ['html', 'head', 'title', 'body', 'дизайн B · O‘yin'] },
+    { n: 17, slug: 'problemitas', title: 'Урок 1 в стилистике «Kodi playground»: плюшевый человечек, мягкие карточки, Nunito; тексты, шапка и низ — как в 16 (30.10.2026)',
+      topics: ['html', 'head', 'title', 'body', 'стиль Kodi playground'] },
   ],
 };
