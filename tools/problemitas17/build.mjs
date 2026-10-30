@@ -42,14 +42,15 @@ for (const f of readdirSync(L1)) {
     s = must(s, "borderRadius: pc.round ? (fly ? (pc.fade ? '6px' : '50%') : '6px 6px 0 0') : null,", "borderRadius: fly ? (pc.fade ? '12px' : '999px') : '14px',", 'morph radius');
     s = must(s, "const st = fly ? 'steps(9, end)' : 'steps(2, end)';", "const st = fly ? 'cubic-bezier(.5, 0, .2, 1.18)' : 'ease-out';", 'morph timing');
     // Экран 1, браузер → человечек: куски берут цвета нового браузера (как Chrome в Windows: серая
-    // полоса, белая панель и вкладка) и летят в настоящие контуры частей плюшевого человечка
+    // полоса, белая панель и вкладка) и летят в настоящие контуры частей человечка-школьника
     // (p17MorphBox в p17-skin.jsx), а не в их прямоугольники с запасом; вкладка с названием —
     // розовой капсулой туда, где она покажется под крышкой головы.
-    s = must(s, "{ k: 'legL', c0: KZ.ink, c: KZ.ink,", "{ k: 'legL', c0: '#DEE1E6', c: '#77DCB8',", 'morph legL');
-    s = must(s, "{ k: 'legR', c0: KZ.ink, c: KZ.ink,", "{ k: 'legR', c0: '#DEE1E6', c: '#77DCB8',", 'morph legR');
-    s = must(s, "{ k: 'armL', c0: '#E6DCC6', c: KZ.ink,", "{ k: 'armL', c0: '#FFFFFF', c: '#F5F1E5',", 'morph armL');
-    s = must(s, "{ k: 'armR', c0: '#E6DCC6', c: KZ.ink,", "{ k: 'armR', c0: '#FFFFFF', c: '#F5F1E5',", 'morph armR');
-    s = must(s, "{ k: 'head', c0: KZ.ink, c: KZ.face,", "{ k: 'head', c0: '#DEE1E6', c: KZ.face,", 'morph head');
+    s = must(s, "{ k: 'legL', c0: KZ.ink, c: KZ.ink,", "{ k: 'legL', c0: '#DEE1E6', c: '#C6B18D',", 'morph legL');
+    s = must(s, "{ k: 'legR', c0: KZ.ink, c: KZ.ink,", "{ k: 'legR', c0: '#DEE1E6', c: '#C6B18D',", 'morph legR');
+    s = must(s, "{ k: 'armL', c0: '#E6DCC6', c: KZ.ink,", "{ k: 'armL', c0: '#FFFFFF', c: '#7C90D9',", 'morph armL');
+    s = must(s, "{ k: 'armR', c0: '#E6DCC6', c: KZ.ink,", "{ k: 'armR', c0: '#FFFFFF', c: '#7C90D9',", 'morph armR');
+    s = must(s, "{ k: 'head', c0: KZ.ink, c: KZ.face,", "{ k: 'head', c0: '#DEE1E6', c: '#F1B48D',", 'morph head');
+    s = must(s, "{ k: 'body', c0: KZ.cream, c: KZ.teal,", "{ k: 'body', c0: KZ.cream, c: '#6F84CD',", 'morph body');
     s = must(s, "{ k: 'name', c0: '#E6DCC6', c: '#E6DCC6',", "{ k: 'name', c0: '#FFFFFF', c: '#F7A3CB',", 'morph name');
     s = must(s, "const to = (el) => ({ x: M.left - S.left + el.offsetLeft, y: M.top - S.top + el.offsetTop, w: el.offsetWidth, h: el.offsetHeight,",
       "const to = (el) => p17MorphBox(el, { x: M.left - S.left + el.offsetLeft, y: M.top - S.top + el.offsetTop, w: el.offsetWidth, h: el.offsetHeight,", 'morph to');
@@ -63,6 +64,9 @@ for (const f of readdirSync(L1)) {
     // Экран 8 (body): в строке на листе — коротко, длинную фразу Коди говорит голосом
     // (заказчик, 30.10.2026: «многовато текста, для человечка мало места»).
     s = must(s, '<KzAsk text={out ? c.done : c.ask} />', '<KzAsk text={out ? P17_S9_DONE : c.ask} />', 's9 ask');
+    // Бирка body на человечке — посреди живота (верх тела спрятан под головой), а не у рта.
+    s = must(s, 'setLbl({ body: { x: m.B.left - m.S.left + m.B.width / 2, y: m.B.top - m.S.top },',
+      'setLbl({ body: { x: m.B.left - m.S.left + m.B.width / 2, y: m.B.top - m.S.top + m.B.height * 0.48 },', 's9 body label');
   }
   if (f === 'kollazh-kit.jsx') {
     // Как в уроке 16 (tools/bdizayn16/build.mjs).

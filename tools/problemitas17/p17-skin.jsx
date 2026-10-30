@@ -1,62 +1,25 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «KODI PLAYGROUND» (тестовый урок 17, 30.10.2026) — по стилистике образца
 // заказчика (kodi-html-code.zip): тёплый белый фон, мягкие карточки с «нажимной»
-// тенью, Nunito, палитра коралл / голубой / жёлтый / мятный / розовый, плюшевые
-// персонажи, у которых мех — тысячи коротких векторных штрихов, глаза-эллипсы с
-// бликами. Персонаж урока свой (голова — head, тело — body), нарисован по тем же
-// приёмам.
+// тенью, Nunito, палитра коралл / голубой / жёлтый / мятный / розовый. Персонаж урока —
+// человечек-школьник по образцу заказчика (mascot.html, 30.10.2026; голова — head, тело — body).
 //   · Sheet — без бумаги: тёплый фон экрана, вещи стоят прямо на нём;
-//   · PaperMan — плюшевый человечек: жёлтая голова-«кастрюлька» с крышкой (head),
-//     под крышкой — розовая капсула с названием (title), мятное тело (body), мятные
-//     ручки с белыми варежками и ножки. Части и метки — те же, что ждут экраны;
-//   · градиенты — один раз на страницу (P17Defs в листе).
+//   · PaperMan — человечек-школьник по образцу заказчика (mascot.html): голова (head),
+//     из которой выпрыгивает капсула с названием (title), синий свитшот (body),
+//     руки, брюки и кеды. Части и метки — те же, что ждут экраны;
+//   · градиенты капсулы и руки-показа — один раз на страницу (P17Defs в листе).
 // ─────────────────────────────────────────────────────────────────────────────
 let _p17Scr = 0;   // номер экрана — ставит StageB при отрисовке (см. build.mjs)
 // Экран 8 (body), строка на листе после показа: коротко, полную фразу Коди говорит голосом.
 const P17_S9_DONE = L3('Oynadagi hamma narsa body ichida turadi.', 'Всё, что видно в окне, живёт внутри body.', 'Everything in the window lives inside body.');
 const p17Tone = () => ({});
 
-// МЕХ — короткие кривые внутри скруглённого прямоугольника (и по его неровному краю).
-// Тот же приём, что в образце; результат кэшируется.
-const _p17Fur = new Map();
-function p17Rand(seed) {
-  let v = seed >>> 0;
-  return () => { v = (Math.imul(1664525, v) + 1013904223) >>> 0; return v / 4294967296; };
-}
-function p17Fur(x, y, w, h, r, seed, colors, count) {
-  const key = [x, y, w, h, r, seed, count, colors.join()].join(':');
-  if (_p17Fur.has(key)) return _p17Fur.get(key);
-  const rand = p17Rand(seed);
-  const layers = ['', '', ''];
-  for (let n = 0; n < count; n += 1) {
-    const px = x + rand() * w, py = y + rand() * h;
-    const qx = Math.abs(px - x - w / 2) - (w / 2 - r), qy = Math.abs(py - y - h / 2) - (h / 2 - r);
-    const dist = Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r;
-    if (dist > 1.4) continue;
-    const a = Math.atan2((py - y - h * 0.35) / h, (px - x - w / 2) / w) + (rand() - 0.5) * 1.5;
-    const len = 1.5 + rand() * 4.4;
-    const dx = Math.cos(a) * len, dy = Math.sin(a) * len;
-    layers[n % 3] += 'M' + px.toFixed(1) + ' ' + py.toFixed(1) + 'q' + (dx * 0.7 + 0.8).toFixed(1) + ' ' + (dy * 0.4 - 0.6).toFixed(1) + ' ' + dx.toFixed(1) + ' ' + dy.toFixed(1);
-  }
-  const out = layers.map((d, i) => ({ d, c: colors[i], w: i === 2 ? 0.7 : 0.85, o: i === 2 ? 0.65 : 0.43 }));
-  _p17Fur.set(key, out);
-  return out;
-}
-const P17FurPaths = ({ fur }) => fur.map((f, i) => <path key={i} d={f.d} fill="none" stroke={f.c} strokeWidth={f.w} strokeLinecap="round" opacity={f.o} />);
-const P17_YEL = ['#ffe991', '#e8ad22', '#fff1b1'];
-
 function P17Defs() {
   return (
     <svg className="p17-defs" width="0" height="0" aria-hidden="true" focusable="false">
       <defs>
-        <radialGradient id="p17gEye" cx="35%" cy="25%" r="80%"><stop offset="0" stopColor="#fff" /><stop offset=".7" stopColor="#f8fbff" /><stop offset="1" stopColor="#b7c8d7" /></radialGradient>
-        <radialGradient id="p17gPupil" cx="25%" cy="20%"><stop offset="0" stopColor="#424353" /><stop offset=".45" stopColor="#141926" /><stop offset="1" stopColor="#070c16" /></radialGradient>
-        <radialGradient id="p17gYellow" cx="30%" cy="18%" r="85%"><stop offset="0" stopColor="#ffeb91" /><stop offset=".5" stopColor="#ffd257" /><stop offset=".85" stopColor="#edb334" /><stop offset="1" stopColor="#dca02b" /></radialGradient>
-        <radialGradient id="p17gMint" cx="30%" cy="15%" r="100%"><stop offset="0" stopColor="#d5ffe8" /><stop offset=".32" stopColor="#91e4bf" /><stop offset=".7" stopColor="#58ba97" /><stop offset="1" stopColor="#338c78" /></radialGradient>
-        <linearGradient id="p17gLimb" x2="1" y2=".3"><stop offset="0" stopColor="#95e9c3" /><stop offset=".6" stopColor="#58ba97" /><stop offset="1" stopColor="#3b947d" /></linearGradient>
         <radialGradient id="p17gMitten" cx="30%" cy="25%"><stop offset="0" stopColor="#fffef7" /><stop offset=".6" stopColor="#f5f1e5" /><stop offset="1" stopColor="#c8d3c9" /></radialGradient>
         <linearGradient id="p17gPink" x2=".3" y2="1"><stop offset="0" stopColor="#ffd2e9" /><stop offset=".4" stopColor="#f7a3cb" /><stop offset="1" stopColor="#d95996" /></linearGradient>
-        <linearGradient id="p17gInside" x2="0" y2="1"><stop offset="0" stopColor="#b47422" /><stop offset="1" stopColor="#e5a83d" /></linearGradient>
       </defs>
     </svg>
   );
@@ -71,38 +34,36 @@ function Sheet({ children, cls }) {
   );
 }
 
-// ── ПЛЮШЕВЫЙ ЧЕЛОВЕЧЕК ───────────────────────────────────────────────────────
-// Рисунок — в поле 390 × 465; каждая часть — своя вырезка с SVG, у которой viewBox —
-// её же кусок этого поля, поэтому части сходятся точно. Порядок частей (экран 1
-// летит в них кусками страницы, экраны 6 и 8 ищут [aria-label]): ноги, руки, тело,
-// капсула с названием, голова.
-const P17_W = 390, P17_H = 465;
+// ── ЧЕЛОВЕЧЕК-ШКОЛЬНИК (заказчик, 30.10.2026: «вот тут есть человечек — берём его вместо
+// нашего», файл mascot.html) ────────────────────────────────────────────────────────────
+// Рисунок образца — HTML + CSS в поле 400 × 530 px — перенесён как есть (классы m-… в p17.css).
+// Части урока — голова (волосы, уши, лицо), тело (свитшот, шея, брюки сверху), руки, ноги с
+// кедами — каждая показывает своё окно этого поля: .p17m — всё поле, сдвинутое на начало части
+// и уменьшенное до размера человечка (--k = ширина человечка / 400). Так части сходятся точно
+// при любом размере, а экраны находят их по тем же меткам (head, body, title).
+// Голова «открывается» — над ней загорается свет с искорками и выпрыгивает капсула с названием
+// (волосы-крышку пробовали — заказчик: «максимально кринжово»).
+// Машет правой рукой (wave) — поднятая рука образца; иначе обе руки опущены, правая — зеркало левой.
+// Поле человечка — 400 × 570: рисунок образца (400 × 530) стоит внизу, сверху запас 40 px —
+// под приподнятые волосы и капсулу с названием, чтобы они не наезжали на строку задания.
+const P17_W = 400, P17_OY = 40, P17_H = 530 + P17_OY;
 const p17Box = (x0, y0, x1, y1) => ({
-  x: (x0 / P17_W) * 100, y: (y0 / P17_H) * 100, w: ((x1 - x0) / P17_W) * 100, h: ((y1 - y0) / P17_H) * 100,
+  x0, y0, x: (x0 / P17_W) * 100, y: ((y0 + P17_OY) / P17_H) * 100, w: ((x1 - x0) / P17_W) * 100, h: ((y1 - y0) / P17_H) * 100,
   vb: x0 + ' ' + y0 + ' ' + (x1 - x0) + ' ' + (y1 - y0)
 });
 const P17B = {
-  legL: p17Box(100, 365, 185, 450), legR: p17Box(200, 365, 285, 450),
-  armL: p17Box(25, 228, 130, 336), armR: p17Box(260, 228, 365, 336),
-  body: p17Box(100, 250, 280, 400), title: p17Box(70, -40, 320, 130), head: p17Box(66, 0, 309, 292)
+  legL: p17Box(85, 340, 200, 525), legR: p17Box(205, 340, 310, 525),
+  armL: p17Box(95, 195, 165, 395), armR: p17Box(244, 195, 314, 395),
+  body: p17Box(130, 160, 280, 385), title: p17Box(80, -95, 330, 95), head: p17Box(95, -65, 300, 200)
 };
 const P17Art = ({ b, children }) => (
   <svg className="p17-art" viewBox={b.vb} preserveAspectRatio="none" aria-hidden="true">{children}</svg>
 );
-const P17Eyes = () => (
-  <g className="p17-eyes" transform="translate(185 207) scale(1.13)">
-    <g className="p17-blink">
-      <ellipse cx="-20" cy="0" rx="19" ry="25" fill="url(#p17gEye)" stroke="#fff" strokeWidth="1.5" />
-      <ellipse cx="20" cy="0" rx="19" ry="25" fill="url(#p17gEye)" stroke="#fff" strokeWidth="1.5" />
-      <g className="p17-look">
-        <ellipse cx="-17" cy="2" rx="11.5" ry="17" fill="url(#p17gPupil)" /><ellipse cx="23" cy="2" rx="11.5" ry="17" fill="url(#p17gPupil)" />
-        <ellipse cx="-20" cy="-5" rx="4.8" ry="6.2" fill="#fff" /><ellipse cx="20" cy="-5" rx="4.8" ry="6.2" fill="#fff" />
-        <circle cx="-12" cy="9" r="2" fill="#b1d4ed" opacity=".7" /><circle cx="28" cy="9" r="2" fill="#b1d4ed" opacity=".7" />
-      </g>
-    </g>
-  </g>
+// Окно поля образца для одной части.
+const P17M = ({ b, mood, children }) => (
+  <div className="p17m" data-mood={mood} style={{ left: 'calc(var(--k, .5) * ' + -b.x0 + 'px)', top: 'calc(var(--k, .5) * ' + -b.y0 + 'px)' }}>{children}</div>
 );
-// Розовая капсула с надписью — под крышкой головы (название страницы).
+// Розовая капсула с надписью — название страницы (из открытой головы).
 function P17Capsule({ text }) {
   const t = String(text || '');
   const fs = t.length > 9 ? 17 : t.length > 6 ? 21 : 26;
@@ -115,85 +76,60 @@ function P17Capsule({ text }) {
     </g>
   );
 }
-function P17Head({ open, name }) {
-  const head = p17Fur(83, 137, 207, 145, 68, 83, P17_YEL, 3100);
-  const cap = p17Fur(87, 59, 200, 64, 31, 56, ['#ffe991', '#edbc36', '#fff1b1'], 1600);
+function P17Head({ open, name, happy }) {
   return (
-    <P17Art b={P17B.head}>
-      {/* Обод и тёмное «нутро» — только у открытой головы: у закрытой их не видно. */}
-      {open ? <ellipse cx="186" cy="152" rx="101" ry="44" fill="url(#p17gYellow)" /> : null}
-      {open ? <ellipse cx="187" cy="147" rx="88" ry="32" fill="url(#p17gInside)" /> : null}
-      {open && name ? <P17Capsule text={name} /> : null}
-      <g className={'p17-lid' + (open ? ' is-open' : '')}>
-        <g transform="rotate(-18 185 92)">
-          <rect x="87" y="59" width="200" height="64" rx="31" fill="url(#p17gYellow)" />
-          <P17FurPaths fur={cap} />
-          <path d="M106 105q82-12 164 0" stroke="#bc8430" strokeWidth="7" strokeLinecap="round" fill="none" opacity=".5" />
-        </g>
-      </g>
-      <rect x="83" y="137" width="207" height="145" rx="68" fill="url(#p17gYellow)" />
-      <P17FurPaths fur={head} />
-      <path d="M118 164q16-12 32-6m66 0q16-6 30 7" fill="none" stroke="#d89d28" strokeWidth="6" strokeLinecap="round" />
-      <P17Eyes />
-      <ellipse cx="119" cy="236" rx="13" ry="7" fill="#f9b878" opacity=".55" /><ellipse cx="254" cy="236" rx="13" ry="7" fill="#f9b878" opacity=".55" />
-      <g className="p17-mouth"><path d="M173 241q14 9 27-2q0 22-14 22q-12-1-13-20" fill="#634120" /><path d="M180 257q6-9 13-1q-6 5-13 1" fill="#f0947a" /></g>
-    </P17Art>
+    <P17M b={P17B.head} mood={happy ? 'happy' : 'hello'}>
+      <div className="m-hair-back" /><div className="m-ear m-left" /><div className="m-ear m-right" />
+      <div className="m-face">
+        <div className="m-brow m-left" /><div className="m-brow m-right" /><div className="m-eye m-left" /><div className="m-eye m-right" />
+        <div className="m-nose" /><div className="m-mouth" />
+      </div>
+      {/* Голова «открыта» — над ней свет и искорки, название выпрыгивает из головы (волосы на месте). */}
+      {open ? <><div className="m-glow" /><i className="m-spark m-s1">✦</i><i className="m-spark m-s2">✦</i></> : null}
+      <div className={'p17-lid' + (open ? ' is-open' : '')}><div className="m-tuft" /><div className="m-hair" /><div className="m-hair-shine" /></div>
+      {open && name ? <svg className="m-cap" viewBox="139 88 103 77"><P17Capsule text={name} /></svg> : null}
+    </P17M>
   );
 }
 function P17Body({ bits }) {
   return (
-    <P17Art b={P17B.body}>
-      <path d="M117 263q70-18 143 0q17 55 5 108q-7 23-30 23h-91q-29 0-34-26q-9-52 7-105Z" fill="url(#p17gMint)" stroke="#67bda2" strokeWidth="1.5" />
-      <path d="M124 284q11-9 26-8" fill="none" stroke="#e3fff0" strokeWidth="9" strokeLinecap="round" opacity=".65" />
-      <path d="M251 292q10 43 2 65" fill="none" stroke="#d1ffe5" strokeWidth="3" strokeLinecap="round" opacity=".35" />
-      {bits ? (
-        <g className="p17-bits">
-          {/* Нашивки: строки текста, картинка, кнопка — то, что видно на странице. */}
-          <rect x="132" y="300" width="56" height="9" rx="4.5" fill="#fff" opacity=".95" />
-          <rect x="132" y="316" width="44" height="7" rx="3.5" fill="#fff" opacity=".85" />
-          <rect x="132" y="330" width="34" height="7" rx="3.5" fill="#fff" opacity=".85" />
-          <rect x="198" y="296" width="52" height="40" rx="9" fill="#e8f6f7" stroke="#fff" strokeWidth="2.5" />
-          <path d="M200 334q12-16 26-6q10-10 22 0v4q0 2-2 2h-44Z" fill="#83d2ab" />
-          <circle cx="238" cy="306" r="5" fill="#ffdb70" />
-          <rect x="198" y="348" width="52" height="15" rx="7.5" fill="#ff6957" />
-        </g>
-      ) : null}
-    </P17Art>
+    <P17M b={P17B.body}>
+      <div className="m-hips" />
+      <div className="m-torso">
+        <div className="m-collar" />
+        {bits ? (
+          // Принт на груди — страница: строки текста, картинка, кнопка (то, что видно в окне).
+          <svg className="m-print p17-bits" viewBox="0 0 74 54" aria-hidden="true">
+            <rect x="1" y="1" width="72" height="52" rx="10" fill="#f6f6fb" stroke="#e8e9db" strokeWidth="2" />
+            <rect x="8" y="9" width="24" height="5" rx="2.5" fill="#c3cbd8" /><rect x="8" y="18" width="19" height="5" rx="2.5" fill="#c3cbd8" />
+            <rect x="8" y="27" width="14" height="5" rx="2.5" fill="#c3cbd8" />
+            <rect x="40" y="8" width="26" height="22" rx="4" fill="#e3f4f5" /><path d="M40 27q7-8 13-4q6-5 13 0v3H40Z" fill="#83d2ab" />
+            <circle cx="60" cy="14" r="3.2" fill="#ffd257" /><rect x="10" y="38" width="54" height="8" rx="4" fill="#ff6957" />
+          </svg>
+        ) : <div className="m-badge" />}
+        <div className="m-seam" /><div className="m-hem" />
+      </div>
+      <div className="m-neck" />
+    </P17M>
   );
 }
-function P17Arm({ r }) {
+const P17HandL = () => <div className="m-hand m-left"><i className="m-finger" /><i className="m-finger" /><i className="m-finger" /><i className="m-finger" /></div>;
+function P17Arm({ r, wave }) {
+  if (!r) return <P17M b={P17B.armL}><div className="m-sleeve m-left" /><div className="m-cuff m-left" /><P17HandL /></P17M>;
   return (
-    <P17Art b={r ? P17B.armR : P17B.armL}>
-      {r ? (
-        <>
-          <path d="M263 313q36-4 48-36" stroke="url(#p17gLimb)" strokeWidth="31" strokeLinecap="round" fill="none" />
-          <g transform="rotate(28 315 271)"><ellipse cx="315" cy="271" rx="21" ry="28" fill="url(#p17gMitten)" /><ellipse cx="300" cy="273" rx="10" ry="15" fill="url(#p17gMitten)" /></g>
-        </>
-      ) : (
-        <>
-          <path d="M112 313q-39-1-50-35" stroke="url(#p17gLimb)" strokeWidth="31" strokeLinecap="round" fill="none" />
-          <g transform="rotate(-28 58 271)"><ellipse cx="58" cy="271" rx="21" ry="28" fill="url(#p17gMitten)" /><ellipse cx="74" cy="273" rx="10" ry="15" fill="url(#p17gMitten)" /></g>
-        </>
-      )}
-    </P17Art>
+    <P17M b={P17B.armR}>
+      {wave ? (
+        <div className="m-wave-arm">
+          <div className="m-sleeve m-right" /><div className="m-forearm m-right" /><div className="m-cuff m-right" />
+          <div className="m-hand m-right"><i className="m-finger" /><i className="m-finger" /><i className="m-finger" /><i className="m-finger" /><i className="m-thumb" /><i className="m-palm-line" /></div>
+        </div>
+      ) : <div className="m-mirror"><div className="m-sleeve m-left" /><div className="m-cuff m-left" /><P17HandL /></div>}
+    </P17M>
   );
 }
 function P17Leg({ r }) {
-  return (
-    <P17Art b={r ? P17B.legR : P17B.legL}>
-      {r ? (
-        <>
-          <path d="M236 377v37" stroke="url(#p17gLimb)" strokeWidth="45" strokeLinecap="round" />
-          <path d="M219 409q18-16 43 0l11 18q2 13-15 14h-39q-18-1-16-13Z" fill="url(#p17gMint)" />
-        </>
-      ) : (
-        <>
-          <path d="M144 377v37" stroke="url(#p17gLimb)" strokeWidth="45" strokeLinecap="round" />
-          <path d="M115 409q18-16 45 0l10 18q2 13-15 14h-39q-18-1-16-13Z" fill="url(#p17gMint)" />
-        </>
-      )}
-    </P17Art>
-  );
+  const side = r ? ' m-right' : ' m-left';
+  return <P17M b={r ? P17B.legR : P17B.legL}><div className={'m-sock' + side} /><div className={'m-leg' + side} /><div className={'m-shoe' + side} /></P17M>;
 }
 
 function PaperMan({ build = 7, out, headOpen, hl, spot, bits, nameIn, onHead, onBody, onTitle, titleText, titleGone, anim = true, wave }) {
@@ -202,29 +138,41 @@ function PaperMan({ build = 7, out, headOpen, hl, spot, bits, nameIn, onHead, on
   const NONE = 'transparent';
   const at = (b) => ({ x: b.x, y: b.y, w: b.w, h: b.h });
   const showTitle = titleText && !titleGone;
+  // Масштаб поля образца: ширина человечка / 400 (части рисуются в пикселях образца).
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const set = () => { if (el.offsetWidth) el.style.setProperty('--k', String(el.offsetWidth / P17_W)); };
+    set();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   return (
-    <div className={'kz-man p17-man' + (spot && hl ? ' is-spot' : '')}>
+    <div ref={ref} className={'kz-man p17-man' + (spot && hl ? ' is-spot' : '')}>
       {has('legL') ? <Cut c={NONE} cls="p17-part p17-leg" seed={41} {...at(P17B.legL)} {...A('rise', 0.1)}><P17Leg /></Cut> : null}
       {has('legR') ? <Cut c={NONE} cls="p17-part p17-leg is-r" seed={42} {...at(P17B.legR)} {...A('rise', 0.2)}><P17Leg r /></Cut> : null}
-      {has('armL') ? <Cut c={NONE} cls={'p17-part p17-arm' + (wave ? ' kz-wave-l' : '')} seed={43} {...at(P17B.armL)} {...A('left', 0)}><P17Arm /></Cut> : null}
-      {has('armR') ? <Cut c={NONE} cls={'p17-part p17-arm is-r' + (wave ? ' kz-wave-r' : '')} seed={44} {...at(P17B.armR)} {...A('right', 0.08)}><P17Arm r /></Cut> : null}
+      {has('armL') ? <Cut c={NONE} cls="p17-part p17-arm" seed={43} {...at(P17B.armL)} {...A('left', 0)}><P17Arm /></Cut> : null}
+      {has('armR') ? <Cut c={NONE} cls="p17-part p17-arm is-r" seed={44} {...at(P17B.armR)} {...A('right', 0.08)}><P17Arm r wave={wave} /></Cut> : null}
       {has('body') ? (
-        <Cut c={NONE} cls="p17-part p17-body" seed={45} {...at(P17B.body)} {...A('drop', 0)} hl={hl === 'body'} hlc="#58ba97"
+        <Cut c={NONE} cls="p17-part p17-body" seed={45} {...at(P17B.body)} {...A('drop', 0)} hl={hl === 'body'} hlc="#637cd1"
           onClick={onBody} label="body"><P17Body bits={bits} /></Cut>
       ) : null}
       {showTitle ? (
         // Капсула с названием (экран 6): торчит из открытой головы; её можно нажать — она летит на вкладку.
         <Cut c={NONE} cls="p17-part kz-man-title p17-title" seed={46} {...at(P17B.title)} anim="pop" onClick={onTitle} label="title">
           <P17Art b={P17B.title}>
-            {/* Над открытой головой — вдвое крупнее, чтобы капсулу было видно и легко нажать. */}
-            <g transform="translate(195 50) scale(1.85) translate(-190.5 -126.5)"><P17Capsule text={titleText} /></g>
+            {/* Над открытой головой — крупно, чтобы капсулу было видно и легко нажать пальцем. */}
+            <g transform="translate(205 0) scale(2.3) translate(-190.5 -126.5)"><P17Capsule text={titleText} /></g>
           </P17Art>
         </Cut>
       ) : null}
       {has('head') ? (
         <Cut c={NONE} cls="p17-part p17-head" seed={47} {...at(P17B.head)} {...A('drop', 0.18)} hl={hl === 'head'} hlc="#f0b52a"
           onClick={onHead} label="head">
-          <P17Head open={!!headOpen || !!nameIn || !!showTitle} name={nameIn} />
+          <P17Head open={!!headOpen || !!nameIn || !!showTitle} name={nameIn} happy={!!wave} />
         </Cut>
       ) : null}
     </div>
@@ -232,22 +180,23 @@ function PaperMan({ build = 7, out, headOpen, hl, spot, bits, nameIn, onHead, on
 }
 
 // Экран 1, браузер → человечек: куда летят куски браузера — настоящие контуры частей
-// (доли от вырезки части в поле 390 × 465), а не их прямоугольники с запасом под крышку и мех.
+// (доли от окна части в поле 400 × 530), а не их прямоугольники с запасом под волосы и взмах.
 const P17_MORPH = {
-  head: [17 / 243, 137 / 292, 207 / 243, 145 / 292], body: [8 / 180, 8 / 150, 164 / 180, 136 / 150],
-  armL: [9 / 105, 15 / 108, 52 / 105, 56 / 108], armR: [31 / 105, 15 / 108, 52 / 105, 56 / 108], leg: [2 / 85, 0, 72 / 85, 76 / 85]
+  head: [40 / 205, 83 / 265, 143 / 205, 165 / 265], body: [6 / 150, 28 / 225, 137 / 150, 159 / 225],
+  armL: [10 / 70, 6 / 200, 52 / 70, 191 / 200], armR: [8 / 70, 6 / 200, 52 / 70, 191 / 200],
+  legL: [6 / 115, 14 / 185, 100 / 115, 167 / 185], legR: [5 / 105, 14 / 185, 94 / 105, 167 / 185]
 };
 function p17MorphBox(el, b) {
-  const c = el.classList;
+  const c = el.classList, r = c.contains('is-r');
   const f = c.contains('p17-head') ? P17_MORPH.head : c.contains('p17-body') ? P17_MORPH.body
-    : c.contains('p17-arm') ? (c.contains('is-r') ? P17_MORPH.armR : P17_MORPH.armL) : c.contains('p17-leg') ? P17_MORPH.leg : null;
+    : c.contains('p17-arm') ? (r ? P17_MORPH.armR : P17_MORPH.armL) : c.contains('p17-leg') ? (r ? P17_MORPH.legR : P17_MORPH.legL) : null;
   if (!f) return b;
   return { x: b.x + b.w * f[0], y: b.y + b.h * f[1], w: b.w * f[2], h: b.h * f[3], r: 0 };
 }
-// Вкладка с названием влетает розовой капсулой — туда, где капсула покажется под крышкой головы.
+// Вкладка с названием влетает розовой капсулой — туда, где капсула покажется над открытой головой.
 function p17NameBox(headEl, o) {
   const x = o.x + headEl.offsetLeft, y = o.y + headEl.offsetTop, w = headEl.offsetWidth, h = headEl.offsetHeight;
-  return { x: x + (w * (139 - 66)) / 243, y: y + (h * 88) / 292, w: (w * 103) / 243, h: (h * 77) / 292, r: -8 };
+  return { x: x + (w * (154 - 95)) / 205, y: y + (h * (-34 + 65)) / 265, w: (w * 103) / 205, h: (h * 77) / 265, r: -8 };
 }
 
 // Полёт капсулы с названием на вкладку (экран 6): подскок, дуга, по пути уменьшается до размера

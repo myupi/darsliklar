@@ -8543,62 +8543,25 @@ if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБЛИК «KODI PLAYGROUND» (тестовый урок 17, 30.10.2026) — по стилистике образца
 // заказчика (kodi-html-code.zip): тёплый белый фон, мягкие карточки с «нажимной»
-// тенью, Nunito, палитра коралл / голубой / жёлтый / мятный / розовый, плюшевые
-// персонажи, у которых мех — тысячи коротких векторных штрихов, глаза-эллипсы с
-// бликами. Персонаж урока свой (голова — head, тело — body), нарисован по тем же
-// приёмам.
+// тенью, Nunito, палитра коралл / голубой / жёлтый / мятный / розовый. Персонаж урока —
+// человечек-школьник по образцу заказчика (mascot.html, 30.10.2026; голова — head, тело — body).
 //   · Sheet — без бумаги: тёплый фон экрана, вещи стоят прямо на нём;
-//   · PaperMan — плюшевый человечек: жёлтая голова-«кастрюлька» с крышкой (head),
-//     под крышкой — розовая капсула с названием (title), мятное тело (body), мятные
-//     ручки с белыми варежками и ножки. Части и метки — те же, что ждут экраны;
-//   · градиенты — один раз на страницу (P17Defs в листе).
+//   · PaperMan — человечек-школьник по образцу заказчика (mascot.html): голова (head),
+//     из которой выпрыгивает капсула с названием (title), синий свитшот (body),
+//     руки, брюки и кеды. Части и метки — те же, что ждут экраны;
+//   · градиенты капсулы и руки-показа — один раз на страницу (P17Defs в листе).
 // ─────────────────────────────────────────────────────────────────────────────
 let _p17Scr = 0;   // номер экрана — ставит StageB при отрисовке (см. build.mjs)
 // Экран 8 (body), строка на листе после показа: коротко, полную фразу Коди говорит голосом.
 const P17_S9_DONE = L3('Oynadagi hamma narsa body ichida turadi.', 'Всё, что видно в окне, живёт внутри body.', 'Everything in the window lives inside body.');
 const p17Tone = () => ({});
 
-// МЕХ — короткие кривые внутри скруглённого прямоугольника (и по его неровному краю).
-// Тот же приём, что в образце; результат кэшируется.
-const _p17Fur = new Map();
-function p17Rand(seed) {
-  let v = seed >>> 0;
-  return () => { v = (Math.imul(1664525, v) + 1013904223) >>> 0; return v / 4294967296; };
-}
-function p17Fur(x, y, w, h, r, seed, colors, count) {
-  const key = [x, y, w, h, r, seed, count, colors.join()].join(':');
-  if (_p17Fur.has(key)) return _p17Fur.get(key);
-  const rand = p17Rand(seed);
-  const layers = ['', '', ''];
-  for (let n = 0; n < count; n += 1) {
-    const px = x + rand() * w, py = y + rand() * h;
-    const qx = Math.abs(px - x - w / 2) - (w / 2 - r), qy = Math.abs(py - y - h / 2) - (h / 2 - r);
-    const dist = Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r;
-    if (dist > 1.4) continue;
-    const a = Math.atan2((py - y - h * 0.35) / h, (px - x - w / 2) / w) + (rand() - 0.5) * 1.5;
-    const len = 1.5 + rand() * 4.4;
-    const dx = Math.cos(a) * len, dy = Math.sin(a) * len;
-    layers[n % 3] += 'M' + px.toFixed(1) + ' ' + py.toFixed(1) + 'q' + (dx * 0.7 + 0.8).toFixed(1) + ' ' + (dy * 0.4 - 0.6).toFixed(1) + ' ' + dx.toFixed(1) + ' ' + dy.toFixed(1);
-  }
-  const out = layers.map((d, i) => ({ d, c: colors[i], w: i === 2 ? 0.7 : 0.85, o: i === 2 ? 0.65 : 0.43 }));
-  _p17Fur.set(key, out);
-  return out;
-}
-const P17FurPaths = ({ fur }) => fur.map((f, i) => <path key={i} d={f.d} fill="none" stroke={f.c} strokeWidth={f.w} strokeLinecap="round" opacity={f.o} />);
-const P17_YEL = ['#ffe991', '#e8ad22', '#fff1b1'];
-
 function P17Defs() {
   return (
     <svg className="p17-defs" width="0" height="0" aria-hidden="true" focusable="false">
       <defs>
-        <radialGradient id="p17gEye" cx="35%" cy="25%" r="80%"><stop offset="0" stopColor="#fff" /><stop offset=".7" stopColor="#f8fbff" /><stop offset="1" stopColor="#b7c8d7" /></radialGradient>
-        <radialGradient id="p17gPupil" cx="25%" cy="20%"><stop offset="0" stopColor="#424353" /><stop offset=".45" stopColor="#141926" /><stop offset="1" stopColor="#070c16" /></radialGradient>
-        <radialGradient id="p17gYellow" cx="30%" cy="18%" r="85%"><stop offset="0" stopColor="#ffeb91" /><stop offset=".5" stopColor="#ffd257" /><stop offset=".85" stopColor="#edb334" /><stop offset="1" stopColor="#dca02b" /></radialGradient>
-        <radialGradient id="p17gMint" cx="30%" cy="15%" r="100%"><stop offset="0" stopColor="#d5ffe8" /><stop offset=".32" stopColor="#91e4bf" /><stop offset=".7" stopColor="#58ba97" /><stop offset="1" stopColor="#338c78" /></radialGradient>
-        <linearGradient id="p17gLimb" x2="1" y2=".3"><stop offset="0" stopColor="#95e9c3" /><stop offset=".6" stopColor="#58ba97" /><stop offset="1" stopColor="#3b947d" /></linearGradient>
         <radialGradient id="p17gMitten" cx="30%" cy="25%"><stop offset="0" stopColor="#fffef7" /><stop offset=".6" stopColor="#f5f1e5" /><stop offset="1" stopColor="#c8d3c9" /></radialGradient>
         <linearGradient id="p17gPink" x2=".3" y2="1"><stop offset="0" stopColor="#ffd2e9" /><stop offset=".4" stopColor="#f7a3cb" /><stop offset="1" stopColor="#d95996" /></linearGradient>
-        <linearGradient id="p17gInside" x2="0" y2="1"><stop offset="0" stopColor="#b47422" /><stop offset="1" stopColor="#e5a83d" /></linearGradient>
       </defs>
     </svg>
   );
@@ -8613,38 +8576,36 @@ function Sheet({ children, cls }) {
   );
 }
 
-// ── ПЛЮШЕВЫЙ ЧЕЛОВЕЧЕК ───────────────────────────────────────────────────────
-// Рисунок — в поле 390 × 465; каждая часть — своя вырезка с SVG, у которой viewBox —
-// её же кусок этого поля, поэтому части сходятся точно. Порядок частей (экран 1
-// летит в них кусками страницы, экраны 6 и 8 ищут [aria-label]): ноги, руки, тело,
-// капсула с названием, голова.
-const P17_W = 390, P17_H = 465;
+// ── ЧЕЛОВЕЧЕК-ШКОЛЬНИК (заказчик, 30.10.2026: «вот тут есть человечек — берём его вместо
+// нашего», файл mascot.html) ────────────────────────────────────────────────────────────
+// Рисунок образца — HTML + CSS в поле 400 × 530 px — перенесён как есть (классы m-… в p17.css).
+// Части урока — голова (волосы, уши, лицо), тело (свитшот, шея, брюки сверху), руки, ноги с
+// кедами — каждая показывает своё окно этого поля: .p17m — всё поле, сдвинутое на начало части
+// и уменьшенное до размера человечка (--k = ширина человечка / 400). Так части сходятся точно
+// при любом размере, а экраны находят их по тем же меткам (head, body, title).
+// Голова «открывается» — над ней загорается свет с искорками и выпрыгивает капсула с названием
+// (волосы-крышку пробовали — заказчик: «максимально кринжово»).
+// Машет правой рукой (wave) — поднятая рука образца; иначе обе руки опущены, правая — зеркало левой.
+// Поле человечка — 400 × 570: рисунок образца (400 × 530) стоит внизу, сверху запас 40 px —
+// под приподнятые волосы и капсулу с названием, чтобы они не наезжали на строку задания.
+const P17_W = 400, P17_OY = 40, P17_H = 530 + P17_OY;
 const p17Box = (x0, y0, x1, y1) => ({
-  x: (x0 / P17_W) * 100, y: (y0 / P17_H) * 100, w: ((x1 - x0) / P17_W) * 100, h: ((y1 - y0) / P17_H) * 100,
+  x0, y0, x: (x0 / P17_W) * 100, y: ((y0 + P17_OY) / P17_H) * 100, w: ((x1 - x0) / P17_W) * 100, h: ((y1 - y0) / P17_H) * 100,
   vb: x0 + ' ' + y0 + ' ' + (x1 - x0) + ' ' + (y1 - y0)
 });
 const P17B = {
-  legL: p17Box(100, 365, 185, 450), legR: p17Box(200, 365, 285, 450),
-  armL: p17Box(25, 228, 130, 336), armR: p17Box(260, 228, 365, 336),
-  body: p17Box(100, 250, 280, 400), title: p17Box(70, -40, 320, 130), head: p17Box(66, 0, 309, 292)
+  legL: p17Box(85, 340, 200, 525), legR: p17Box(205, 340, 310, 525),
+  armL: p17Box(95, 195, 165, 395), armR: p17Box(244, 195, 314, 395),
+  body: p17Box(130, 160, 280, 385), title: p17Box(80, -95, 330, 95), head: p17Box(95, -65, 300, 200)
 };
 const P17Art = ({ b, children }) => (
   <svg className="p17-art" viewBox={b.vb} preserveAspectRatio="none" aria-hidden="true">{children}</svg>
 );
-const P17Eyes = () => (
-  <g className="p17-eyes" transform="translate(185 207) scale(1.13)">
-    <g className="p17-blink">
-      <ellipse cx="-20" cy="0" rx="19" ry="25" fill="url(#p17gEye)" stroke="#fff" strokeWidth="1.5" />
-      <ellipse cx="20" cy="0" rx="19" ry="25" fill="url(#p17gEye)" stroke="#fff" strokeWidth="1.5" />
-      <g className="p17-look">
-        <ellipse cx="-17" cy="2" rx="11.5" ry="17" fill="url(#p17gPupil)" /><ellipse cx="23" cy="2" rx="11.5" ry="17" fill="url(#p17gPupil)" />
-        <ellipse cx="-20" cy="-5" rx="4.8" ry="6.2" fill="#fff" /><ellipse cx="20" cy="-5" rx="4.8" ry="6.2" fill="#fff" />
-        <circle cx="-12" cy="9" r="2" fill="#b1d4ed" opacity=".7" /><circle cx="28" cy="9" r="2" fill="#b1d4ed" opacity=".7" />
-      </g>
-    </g>
-  </g>
+// Окно поля образца для одной части.
+const P17M = ({ b, mood, children }) => (
+  <div className="p17m" data-mood={mood} style={{ left: 'calc(var(--k, .5) * ' + -b.x0 + 'px)', top: 'calc(var(--k, .5) * ' + -b.y0 + 'px)' }}>{children}</div>
 );
-// Розовая капсула с надписью — под крышкой головы (название страницы).
+// Розовая капсула с надписью — название страницы (из открытой головы).
 function P17Capsule({ text }) {
   const t = String(text || '');
   const fs = t.length > 9 ? 17 : t.length > 6 ? 21 : 26;
@@ -8657,85 +8618,60 @@ function P17Capsule({ text }) {
     </g>
   );
 }
-function P17Head({ open, name }) {
-  const head = p17Fur(83, 137, 207, 145, 68, 83, P17_YEL, 3100);
-  const cap = p17Fur(87, 59, 200, 64, 31, 56, ['#ffe991', '#edbc36', '#fff1b1'], 1600);
+function P17Head({ open, name, happy }) {
   return (
-    <P17Art b={P17B.head}>
-      {/* Обод и тёмное «нутро» — только у открытой головы: у закрытой их не видно. */}
-      {open ? <ellipse cx="186" cy="152" rx="101" ry="44" fill="url(#p17gYellow)" /> : null}
-      {open ? <ellipse cx="187" cy="147" rx="88" ry="32" fill="url(#p17gInside)" /> : null}
-      {open && name ? <P17Capsule text={name} /> : null}
-      <g className={'p17-lid' + (open ? ' is-open' : '')}>
-        <g transform="rotate(-18 185 92)">
-          <rect x="87" y="59" width="200" height="64" rx="31" fill="url(#p17gYellow)" />
-          <P17FurPaths fur={cap} />
-          <path d="M106 105q82-12 164 0" stroke="#bc8430" strokeWidth="7" strokeLinecap="round" fill="none" opacity=".5" />
-        </g>
-      </g>
-      <rect x="83" y="137" width="207" height="145" rx="68" fill="url(#p17gYellow)" />
-      <P17FurPaths fur={head} />
-      <path d="M118 164q16-12 32-6m66 0q16-6 30 7" fill="none" stroke="#d89d28" strokeWidth="6" strokeLinecap="round" />
-      <P17Eyes />
-      <ellipse cx="119" cy="236" rx="13" ry="7" fill="#f9b878" opacity=".55" /><ellipse cx="254" cy="236" rx="13" ry="7" fill="#f9b878" opacity=".55" />
-      <g className="p17-mouth"><path d="M173 241q14 9 27-2q0 22-14 22q-12-1-13-20" fill="#634120" /><path d="M180 257q6-9 13-1q-6 5-13 1" fill="#f0947a" /></g>
-    </P17Art>
+    <P17M b={P17B.head} mood={happy ? 'happy' : 'hello'}>
+      <div className="m-hair-back" /><div className="m-ear m-left" /><div className="m-ear m-right" />
+      <div className="m-face">
+        <div className="m-brow m-left" /><div className="m-brow m-right" /><div className="m-eye m-left" /><div className="m-eye m-right" />
+        <div className="m-nose" /><div className="m-mouth" />
+      </div>
+      {/* Голова «открыта» — над ней свет и искорки, название выпрыгивает из головы (волосы на месте). */}
+      {open ? <><div className="m-glow" /><i className="m-spark m-s1">✦</i><i className="m-spark m-s2">✦</i></> : null}
+      <div className={'p17-lid' + (open ? ' is-open' : '')}><div className="m-tuft" /><div className="m-hair" /><div className="m-hair-shine" /></div>
+      {open && name ? <svg className="m-cap" viewBox="139 88 103 77"><P17Capsule text={name} /></svg> : null}
+    </P17M>
   );
 }
 function P17Body({ bits }) {
   return (
-    <P17Art b={P17B.body}>
-      <path d="M117 263q70-18 143 0q17 55 5 108q-7 23-30 23h-91q-29 0-34-26q-9-52 7-105Z" fill="url(#p17gMint)" stroke="#67bda2" strokeWidth="1.5" />
-      <path d="M124 284q11-9 26-8" fill="none" stroke="#e3fff0" strokeWidth="9" strokeLinecap="round" opacity=".65" />
-      <path d="M251 292q10 43 2 65" fill="none" stroke="#d1ffe5" strokeWidth="3" strokeLinecap="round" opacity=".35" />
-      {bits ? (
-        <g className="p17-bits">
-          {/* Нашивки: строки текста, картинка, кнопка — то, что видно на странице. */}
-          <rect x="132" y="300" width="56" height="9" rx="4.5" fill="#fff" opacity=".95" />
-          <rect x="132" y="316" width="44" height="7" rx="3.5" fill="#fff" opacity=".85" />
-          <rect x="132" y="330" width="34" height="7" rx="3.5" fill="#fff" opacity=".85" />
-          <rect x="198" y="296" width="52" height="40" rx="9" fill="#e8f6f7" stroke="#fff" strokeWidth="2.5" />
-          <path d="M200 334q12-16 26-6q10-10 22 0v4q0 2-2 2h-44Z" fill="#83d2ab" />
-          <circle cx="238" cy="306" r="5" fill="#ffdb70" />
-          <rect x="198" y="348" width="52" height="15" rx="7.5" fill="#ff6957" />
-        </g>
-      ) : null}
-    </P17Art>
+    <P17M b={P17B.body}>
+      <div className="m-hips" />
+      <div className="m-torso">
+        <div className="m-collar" />
+        {bits ? (
+          // Принт на груди — страница: строки текста, картинка, кнопка (то, что видно в окне).
+          <svg className="m-print p17-bits" viewBox="0 0 74 54" aria-hidden="true">
+            <rect x="1" y="1" width="72" height="52" rx="10" fill="#f6f6fb" stroke="#e8e9db" strokeWidth="2" />
+            <rect x="8" y="9" width="24" height="5" rx="2.5" fill="#c3cbd8" /><rect x="8" y="18" width="19" height="5" rx="2.5" fill="#c3cbd8" />
+            <rect x="8" y="27" width="14" height="5" rx="2.5" fill="#c3cbd8" />
+            <rect x="40" y="8" width="26" height="22" rx="4" fill="#e3f4f5" /><path d="M40 27q7-8 13-4q6-5 13 0v3H40Z" fill="#83d2ab" />
+            <circle cx="60" cy="14" r="3.2" fill="#ffd257" /><rect x="10" y="38" width="54" height="8" rx="4" fill="#ff6957" />
+          </svg>
+        ) : <div className="m-badge" />}
+        <div className="m-seam" /><div className="m-hem" />
+      </div>
+      <div className="m-neck" />
+    </P17M>
   );
 }
-function P17Arm({ r }) {
+const P17HandL = () => <div className="m-hand m-left"><i className="m-finger" /><i className="m-finger" /><i className="m-finger" /><i className="m-finger" /></div>;
+function P17Arm({ r, wave }) {
+  if (!r) return <P17M b={P17B.armL}><div className="m-sleeve m-left" /><div className="m-cuff m-left" /><P17HandL /></P17M>;
   return (
-    <P17Art b={r ? P17B.armR : P17B.armL}>
-      {r ? (
-        <>
-          <path d="M263 313q36-4 48-36" stroke="url(#p17gLimb)" strokeWidth="31" strokeLinecap="round" fill="none" />
-          <g transform="rotate(28 315 271)"><ellipse cx="315" cy="271" rx="21" ry="28" fill="url(#p17gMitten)" /><ellipse cx="300" cy="273" rx="10" ry="15" fill="url(#p17gMitten)" /></g>
-        </>
-      ) : (
-        <>
-          <path d="M112 313q-39-1-50-35" stroke="url(#p17gLimb)" strokeWidth="31" strokeLinecap="round" fill="none" />
-          <g transform="rotate(-28 58 271)"><ellipse cx="58" cy="271" rx="21" ry="28" fill="url(#p17gMitten)" /><ellipse cx="74" cy="273" rx="10" ry="15" fill="url(#p17gMitten)" /></g>
-        </>
-      )}
-    </P17Art>
+    <P17M b={P17B.armR}>
+      {wave ? (
+        <div className="m-wave-arm">
+          <div className="m-sleeve m-right" /><div className="m-forearm m-right" /><div className="m-cuff m-right" />
+          <div className="m-hand m-right"><i className="m-finger" /><i className="m-finger" /><i className="m-finger" /><i className="m-finger" /><i className="m-thumb" /><i className="m-palm-line" /></div>
+        </div>
+      ) : <div className="m-mirror"><div className="m-sleeve m-left" /><div className="m-cuff m-left" /><P17HandL /></div>}
+    </P17M>
   );
 }
 function P17Leg({ r }) {
-  return (
-    <P17Art b={r ? P17B.legR : P17B.legL}>
-      {r ? (
-        <>
-          <path d="M236 377v37" stroke="url(#p17gLimb)" strokeWidth="45" strokeLinecap="round" />
-          <path d="M219 409q18-16 43 0l11 18q2 13-15 14h-39q-18-1-16-13Z" fill="url(#p17gMint)" />
-        </>
-      ) : (
-        <>
-          <path d="M144 377v37" stroke="url(#p17gLimb)" strokeWidth="45" strokeLinecap="round" />
-          <path d="M115 409q18-16 45 0l10 18q2 13-15 14h-39q-18-1-16-13Z" fill="url(#p17gMint)" />
-        </>
-      )}
-    </P17Art>
-  );
+  const side = r ? ' m-right' : ' m-left';
+  return <P17M b={r ? P17B.legR : P17B.legL}><div className={'m-sock' + side} /><div className={'m-leg' + side} /><div className={'m-shoe' + side} /></P17M>;
 }
 
 function PaperMan({ build = 7, out, headOpen, hl, spot, bits, nameIn, onHead, onBody, onTitle, titleText, titleGone, anim = true, wave }) {
@@ -8744,29 +8680,41 @@ function PaperMan({ build = 7, out, headOpen, hl, spot, bits, nameIn, onHead, on
   const NONE = 'transparent';
   const at = (b) => ({ x: b.x, y: b.y, w: b.w, h: b.h });
   const showTitle = titleText && !titleGone;
+  // Масштаб поля образца: ширина человечка / 400 (части рисуются в пикселях образца).
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const set = () => { if (el.offsetWidth) el.style.setProperty('--k', String(el.offsetWidth / P17_W)); };
+    set();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   return (
-    <div className={'kz-man p17-man' + (spot && hl ? ' is-spot' : '')}>
+    <div ref={ref} className={'kz-man p17-man' + (spot && hl ? ' is-spot' : '')}>
       {has('legL') ? <Cut c={NONE} cls="p17-part p17-leg" seed={41} {...at(P17B.legL)} {...A('rise', 0.1)}><P17Leg /></Cut> : null}
       {has('legR') ? <Cut c={NONE} cls="p17-part p17-leg is-r" seed={42} {...at(P17B.legR)} {...A('rise', 0.2)}><P17Leg r /></Cut> : null}
-      {has('armL') ? <Cut c={NONE} cls={'p17-part p17-arm' + (wave ? ' kz-wave-l' : '')} seed={43} {...at(P17B.armL)} {...A('left', 0)}><P17Arm /></Cut> : null}
-      {has('armR') ? <Cut c={NONE} cls={'p17-part p17-arm is-r' + (wave ? ' kz-wave-r' : '')} seed={44} {...at(P17B.armR)} {...A('right', 0.08)}><P17Arm r /></Cut> : null}
+      {has('armL') ? <Cut c={NONE} cls="p17-part p17-arm" seed={43} {...at(P17B.armL)} {...A('left', 0)}><P17Arm /></Cut> : null}
+      {has('armR') ? <Cut c={NONE} cls="p17-part p17-arm is-r" seed={44} {...at(P17B.armR)} {...A('right', 0.08)}><P17Arm r wave={wave} /></Cut> : null}
       {has('body') ? (
-        <Cut c={NONE} cls="p17-part p17-body" seed={45} {...at(P17B.body)} {...A('drop', 0)} hl={hl === 'body'} hlc="#58ba97"
+        <Cut c={NONE} cls="p17-part p17-body" seed={45} {...at(P17B.body)} {...A('drop', 0)} hl={hl === 'body'} hlc="#637cd1"
           onClick={onBody} label="body"><P17Body bits={bits} /></Cut>
       ) : null}
       {showTitle ? (
         // Капсула с названием (экран 6): торчит из открытой головы; её можно нажать — она летит на вкладку.
         <Cut c={NONE} cls="p17-part kz-man-title p17-title" seed={46} {...at(P17B.title)} anim="pop" onClick={onTitle} label="title">
           <P17Art b={P17B.title}>
-            {/* Над открытой головой — вдвое крупнее, чтобы капсулу было видно и легко нажать. */}
-            <g transform="translate(195 50) scale(1.85) translate(-190.5 -126.5)"><P17Capsule text={titleText} /></g>
+            {/* Над открытой головой — крупно, чтобы капсулу было видно и легко нажать пальцем. */}
+            <g transform="translate(205 0) scale(2.3) translate(-190.5 -126.5)"><P17Capsule text={titleText} /></g>
           </P17Art>
         </Cut>
       ) : null}
       {has('head') ? (
         <Cut c={NONE} cls="p17-part p17-head" seed={47} {...at(P17B.head)} {...A('drop', 0.18)} hl={hl === 'head'} hlc="#f0b52a"
           onClick={onHead} label="head">
-          <P17Head open={!!headOpen || !!nameIn || !!showTitle} name={nameIn} />
+          <P17Head open={!!headOpen || !!nameIn || !!showTitle} name={nameIn} happy={!!wave} />
         </Cut>
       ) : null}
     </div>
@@ -8774,22 +8722,23 @@ function PaperMan({ build = 7, out, headOpen, hl, spot, bits, nameIn, onHead, on
 }
 
 // Экран 1, браузер → человечек: куда летят куски браузера — настоящие контуры частей
-// (доли от вырезки части в поле 390 × 465), а не их прямоугольники с запасом под крышку и мех.
+// (доли от окна части в поле 400 × 530), а не их прямоугольники с запасом под волосы и взмах.
 const P17_MORPH = {
-  head: [17 / 243, 137 / 292, 207 / 243, 145 / 292], body: [8 / 180, 8 / 150, 164 / 180, 136 / 150],
-  armL: [9 / 105, 15 / 108, 52 / 105, 56 / 108], armR: [31 / 105, 15 / 108, 52 / 105, 56 / 108], leg: [2 / 85, 0, 72 / 85, 76 / 85]
+  head: [40 / 205, 83 / 265, 143 / 205, 165 / 265], body: [6 / 150, 28 / 225, 137 / 150, 159 / 225],
+  armL: [10 / 70, 6 / 200, 52 / 70, 191 / 200], armR: [8 / 70, 6 / 200, 52 / 70, 191 / 200],
+  legL: [6 / 115, 14 / 185, 100 / 115, 167 / 185], legR: [5 / 105, 14 / 185, 94 / 105, 167 / 185]
 };
 function p17MorphBox(el, b) {
-  const c = el.classList;
+  const c = el.classList, r = c.contains('is-r');
   const f = c.contains('p17-head') ? P17_MORPH.head : c.contains('p17-body') ? P17_MORPH.body
-    : c.contains('p17-arm') ? (c.contains('is-r') ? P17_MORPH.armR : P17_MORPH.armL) : c.contains('p17-leg') ? P17_MORPH.leg : null;
+    : c.contains('p17-arm') ? (r ? P17_MORPH.armR : P17_MORPH.armL) : c.contains('p17-leg') ? (r ? P17_MORPH.legR : P17_MORPH.legL) : null;
   if (!f) return b;
   return { x: b.x + b.w * f[0], y: b.y + b.h * f[1], w: b.w * f[2], h: b.h * f[3], r: 0 };
 }
-// Вкладка с названием влетает розовой капсулой — туда, где капсула покажется под крышкой головы.
+// Вкладка с названием влетает розовой капсулой — туда, где капсула покажется над открытой головой.
 function p17NameBox(headEl, o) {
   const x = o.x + headEl.offsetLeft, y = o.y + headEl.offsetTop, w = headEl.offsetWidth, h = headEl.offsetHeight;
-  return { x: x + (w * (139 - 66)) / 243, y: y + (h * 88) / 292, w: (w * 103) / 243, h: (h * 77) / 292, r: -8 };
+  return { x: x + (w * (154 - 95)) / 205, y: y + (h * (-34 + 65)) / 265, w: (w * 103) / 205, h: (h * 77) / 265, r: -8 };
 }
 
 // Полёт капсулы с названием на вкладку (экран 6): подскок, дуга, по пути уменьшается до размера
@@ -9822,13 +9771,13 @@ function S1({ p }) {
     const sideH = B.bottom - Bar.bottom;
     const head = to(part('head'));
     setPieces([
-      { k: 'legL', c0: '#DEE1E6', c: '#77DCB8', seed: 41, from: { x: B.left - S.left, y: Bar.bottom - S.top, w: Math.max(6, W.left - B.left), h: sideH, r: 0 }, apart: [-12, 4, -5], to: to(limbs[0]), dl: 0.05 },
-      { k: 'legR', c0: '#DEE1E6', c: '#77DCB8', seed: 42, from: { x: W.right - S.left, y: Bar.bottom - S.top, w: Math.max(6, B.right - W.right), h: sideH, r: 0 }, apart: [12, 4, 5], to: to(limbs[1]), dl: 0.1 },
-      { k: 'armL', c0: '#FFFFFF', c: '#F5F1E5', seed: 43, from: { x: B.left - S.left, y: Tool.top - S.top, w: half, h: Tool.height, r: 0 }, apart: [-10, -6, -6], to: to(limbs[2]), dl: 0.16 },
-      { k: 'armR', c0: '#FFFFFF', c: '#F5F1E5', seed: 44, from: { x: B.left - S.left + half, y: Tool.top - S.top, w: half, h: Tool.height, r: 0 }, apart: [10, -6, 6], to: to(limbs[3]), dl: 0.2 },
-      { k: 'body', c0: KZ.cream, c: KZ.teal, seed: 45, lines: true, from: { x: W.left - S.left, y: Tool.bottom - S.top, w: W.width, h: W.bottom - Tool.bottom, r: 0 }, apart: [0, 8, 1.5], to: to(part('body')), dl: 0 },
+      { k: 'legL', c0: '#DEE1E6', c: '#C6B18D', seed: 41, from: { x: B.left - S.left, y: Bar.bottom - S.top, w: Math.max(6, W.left - B.left), h: sideH, r: 0 }, apart: [-12, 4, -5], to: to(limbs[0]), dl: 0.05 },
+      { k: 'legR', c0: '#DEE1E6', c: '#C6B18D', seed: 42, from: { x: W.right - S.left, y: Bar.bottom - S.top, w: Math.max(6, B.right - W.right), h: sideH, r: 0 }, apart: [12, 4, 5], to: to(limbs[1]), dl: 0.1 },
+      { k: 'armL', c0: '#FFFFFF', c: '#7C90D9', seed: 43, from: { x: B.left - S.left, y: Tool.top - S.top, w: half, h: Tool.height, r: 0 }, apart: [-10, -6, -6], to: to(limbs[2]), dl: 0.16 },
+      { k: 'armR', c0: '#FFFFFF', c: '#7C90D9', seed: 44, from: { x: B.left - S.left + half, y: Tool.top - S.top, w: half, h: Tool.height, r: 0 }, apart: [10, -6, 6], to: to(limbs[3]), dl: 0.2 },
+      { k: 'body', c0: KZ.cream, c: '#6F84CD', seed: 45, lines: true, from: { x: W.left - S.left, y: Tool.bottom - S.top, w: W.width, h: W.bottom - Tool.bottom, r: 0 }, apart: [0, 8, 1.5], to: to(part('body')), dl: 0 },
       // Голова — из всей верхней полосы браузера (не из одной вкладки).
-      { k: 'head', c0: '#DEE1E6', c: KZ.face, round: true, from: { x: B.left - S.left, y: B.top - S.top, w: B.width, h: Bar.bottom - B.top, r: 0 }, apart: [0, -16, -4], to: head, dl: 0.24 },
+      { k: 'head', c0: '#DEE1E6', c: '#F1B48D', round: true, from: { x: B.left - S.left, y: B.top - S.top, w: B.width, h: Bar.bottom - B.top, r: 0 }, apart: [0, -16, -4], to: head, dl: 0.24 },
       // Вкладка с названием влетает внутрь головы и прячется в ней: название — одно из сведений, которые хранит голова.
       { k: 'name', c0: '#FFFFFF', c: '#F7A3CB', round: true, text: pick(UI.mySite), fade: true, from: box(T), apart: [-4, -26, -7],
         to: p17NameBox(part('head'), { x: M.left - S.left, y: M.top - S.top }), dl: 0.34 }
@@ -10491,7 +10440,7 @@ function S9({ p }) {
     if (phase !== 'out' && phase !== 'measure') return;
     const m = measure();
     if (!m) return;
-    setLbl({ body: { x: m.B.left - m.S.left + m.B.width / 2, y: m.B.top - m.S.top }, win: { x: m.W.right - m.S.left - 8, y: m.W.top - m.S.top } });
+    setLbl({ body: { x: m.B.left - m.S.left + m.B.width / 2, y: m.B.top - m.S.top + m.B.height * 0.48 }, win: { x: m.W.right - m.S.left - 8, y: m.W.top - m.S.top } });
     if (phase !== 'measure') return;
     const sc = sceneRef.current;
     const q = (sel) => Array.prototype.slice.call(sc.querySelectorAll('.kz-s9-ghost ' + sel));
@@ -13415,44 +13364,131 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .p17 .kz-cut:not(.p17-part), .p17 .kz-zone-item, .p17 .kz-label-paper, .p17 .kz-man-name span, .p17 .kz-line, .p17 .kz-scrap,
 .p17 .kz-btn, .p17 .kz-ask { rotate: 0deg !important; }
 
-/* ── ПЛЮШЕВЫЙ ЧЕЛОВЕЧЕК (PaperMan в p17-skin.jsx) ─────────────────────────────
-   Поле 390 × 465: части сходятся точно в любом месте экрана. Человечек мягко
-   покачивается, моргает, поглядывает; крышка головы открывается — под ней капсула. */
+/* ── ЧЕЛОВЕЧЕК-ШКОЛЬНИК (PaperMan в p17-skin.jsx; заказчик, 30.10.2026: «вот тут есть человечек —
+   берём его вместо нашего», файл mascot.html) ─────────────────────────────────────────────
+   Рисунок образца — HTML + CSS в поле 400 × 530 px (у человечка сверху ещё 40 px запаса) — перенесён как есть, классы с приставкой m-
+   (правила ниже, после разметки частей). Каждая часть урока показывает своё окно поля: .p17m —
+   всё поле, сдвинутое на начало части и уменьшенное до размера человечка (--k ставит PaperMan).
+   Голова «открывается» — волосы приподнимаются крышкой, под ними свет и капсула с названием. */
 .p17 .kz-manbox { container-type: size; }
-.p17 .kz-man.p17-man { inset: auto; left: 50%; top: 50%; translate: -50% -50%; width: min(100cqw, 100cqh * 390 / 465); aspect-ratio: 390 / 465;
-  animation: p17Bob 4.5s ease-in-out infinite; }
-.p17 .kz-man::after { content: ''; position: absolute; left: 13%; right: 14%; bottom: 0; height: 7.5%; z-index: -1;
-  background: radial-gradient(closest-side, rgba(124, 141, 158, .26), rgba(124, 141, 158, 0)); }
-.p17 .kz-man > .p17-part { filter: drop-shadow(0 10px 12px rgba(59, 59, 74, .07)); }
-.p17 .kz-man > .p17-part.is-hl { filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 14px var(--hl)) drop-shadow(0 8px 10px rgba(59, 59, 74, .1)); }
+.p17 .kz-man.p17-man { inset: auto; left: 50%; top: 50%; translate: -50% -50%; width: min(100cqw, 100cqh * 400 / 570); aspect-ratio: 400 / 570;
+  transform-origin: 50% 95%; animation: p17Bob 5s ease-in-out infinite; }
+.p17 .kz-man::after { content: ''; position: absolute; left: 22%; right: 20%; bottom: 0; height: 5%; z-index: -1;
+  background: radial-gradient(closest-side, rgba(121, 123, 92, .24), rgba(121, 123, 92, 0)); }
+.p17 .kz-man > .p17-part { filter: none; }
+/* Подсветка части (экран 8 — тело, экран 6 — голова): мягкое свечение по контуру, без затемнения
+   остального — человечек остаётся целым (заказчик, 30.10.2026: «тело выглядит как отдельный элемент»). */
+.p17 .kz-man > .p17-part.is-hl { animation: p17HlPulse 1.6s ease-in-out infinite; }
+@keyframes p17HlPulse { 0%, 100% { filter: drop-shadow(0 0 2px rgba(255, 255, 255, .9)) drop-shadow(0 0 6px var(--hl)); } 50% { filter: drop-shadow(0 0 2px rgba(255, 255, 255, .9)) drop-shadow(0 0 13px var(--hl)); } }
 .p17 .kz-man > .p17-part > .kz-cut-in { display: none; }
 .p17 .kz-man > .p17-part > .kz-cut-ct { overflow: visible; }
 .p17 .kz-man > .p17-title { z-index: 3; }
 .p17 .kz-man > .p17-title > .kz-cut-ct { overflow: hidden; }
 .p17 .p17-art { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; display: block; }
 .p17 .p17-title .p17-art { overflow: hidden; }
-.p17 .p17-blink { transform-box: fill-box; transform-origin: center; animation: p17Blink 6.2s infinite; }
-.p17 .p17-look { animation: p17Look 8s ease-in-out infinite; }
-/* Закрытая голова — просто пушистая круглая голова, крышки не видно (заказчик, 30.10.2026: «голова
-   очень странная» — крышка лежала вторым ярусом, «тостом»). Открытая — крышка поднимается из
-   головы и наклоняется, под ней капсула с названием, как в образце. */
-.p17 .p17-lid { transform-origin: 185px 92px; transform: translate(0, 70px) rotate(18deg); opacity: 0; transition: transform .6s cubic-bezier(.2, .7, .2, 1), opacity .25s ease; }
-.p17 .p17-lid.is-open { transform: translate(-22px, -26px) rotate(-12deg); opacity: 1; }
-.p17 .p17-capsule { animation: p17Hop .6s ease-out; }
-.p17 .kz-man > .p17-arm, .p17 .kz-man > .p17-leg { animation: p17Sway 5s ease-in-out infinite; }
-.p17 .kz-man.is-spot > .p17-part:not(.is-hl) { opacity: .3; }
+.p17 .p17m { position: absolute; width: 400px; height: 530px; transform: scale(var(--k, .5)); transform-origin: 0 0; isolation: isolate; pointer-events: none; }
+.p17 .p17m .p17-lid { position: absolute; left: 0; top: 0; width: 400px; height: 530px; z-index: 10; }
+/* «Открытая» голова: волосы на месте, над головой — тёплый свет и искорки, капсула выпрыгивает из головы. */
+.p17 .p17m .m-glow { position: absolute; z-index: 9; left: 118px; top: -34px; width: 176px; height: 110px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 246, 200, .95), rgba(255, 228, 150, .55) 55%, rgba(255, 228, 150, 0)); animation: p17Glow 1.6s ease-in-out infinite; }
+.p17 .p17m .m-spark { position: absolute; z-index: 13; font-style: normal; line-height: 1; color: #F2B33D; font-size: 28px; animation: p17Twinkle 1.4s ease-in-out infinite; }
+.p17 .p17m .m-spark.m-s1 { left: 118px; top: -6px; }
+.p17 .p17m .m-spark.m-s2 { left: 272px; top: 14px; font-size: 19px; color: #6FA8E8; animation-delay: .5s; }
+.p17 .p17m .m-cap { position: absolute; z-index: 12; left: 154px; top: -34px; width: 103px; height: 77px; overflow: visible; animation: p17CapUp .6s cubic-bezier(.3, 1.5, .5, 1); }
+.p17 .kz-man > .p17-title { animation: p17CapUp .6s cubic-bezier(.3, 1.5, .5, 1); transform-origin: 50% 100%; }
+@keyframes p17CapUp { from { opacity: 0; transform: translateY(40%) scale(.3); } 40% { opacity: 1; } to { opacity: 1; transform: none; } }
+@keyframes p17Twinkle { 0%, 100% { opacity: .35; transform: scale(.7) rotate(0deg); } 50% { opacity: 1; transform: scale(1.1) rotate(20deg); } }
+.p17 .p17m .m-mirror { position: absolute; left: 0; top: 0; width: 409px; height: 530px; transform: scaleX(-1); transform-origin: 204.5px 0; }
+.p17 .p17m .m-print { position: absolute; left: 32px; top: 42px; width: 74px; height: 54px; }
+.p17 .kz-man.p17-man.is-spot > .kz-cut.p17-part { opacity: 1; scale: 1; }
 .p17 .kz-man > .kz-cut { transition: opacity .3s ease, scale .3s ease; }
-.p17 .kz-wave-r { animation: p17Wave 1.6s ease-in-out infinite; transform-origin: 3% 79%; }
-.p17 .kz-wave-l { animation: p17WaveL 2.4s ease-in-out infinite; transform-origin: 83% 79%; }
-@keyframes p17Bob { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-7px) rotate(1deg); } }
-@keyframes p17Blink { 0%, 43%, 47%, 100% { transform: scaleY(1); } 45% { transform: scaleY(.08); } }
-@keyframes p17Look { 0%, 30%, 100% { transform: none; } 38%, 55% { transform: translate(-3px, -1px); } 63%, 80% { transform: translate(3px, 1px); } }
+/* Взмах — у самой поднятой руки образца (.m-wave-arm); бумажные взмахи частей урока выключены. */
+.p17 .kz-man > .p17-part.kz-wave-l, .p17 .kz-man > .p17-part.kz-wave-r { animation: none; }
+@keyframes p17Bob { 0%, 100% { transform: translateY(0) rotate(-.6deg); } 50% { transform: translateY(-3px) rotate(.6deg); } }
 @keyframes p17Hop { 50% { translate: 0 -13px; } }
-@keyframes p17Sway { 0%, 100% { rotate: -1deg; } 50% { rotate: 1deg; } }
-@keyframes p17Wave { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(10deg); } }
-@keyframes p17WaveL { 0%, 100% { transform: none; } 50% { transform: rotate(5deg); } }
-/* Название внутри головы (экран 1) — розовая капсула в самой голове (P17Head). */
+@keyframes p17Glow { 0%, 100% { opacity: .75; } 50% { opacity: 1; } }
 .p17 .kz-man-name { display: none; }
+/* Рисунок образца (mascot.html), правила как есть; .person → .p17m, классы — с приставкой m-. */
+.p17m .m-neck{position:absolute;z-index:4;left:190px;top:165px;width:32px;height:36px;border-radius:0 0 15px 15px;background:linear-gradient(#d99a76 0%,#efb38d 66%,#f1b891);box-shadow:inset -2px 0 2px #ce8b6820}
+.p17m .m-ear{position:absolute;z-index:6;top:108px;width:26px;height:34px;border-radius:50%;background:linear-gradient(100deg,#efad88,#f5c29c);box-shadow:inset 2px 0 2px #fbd6b0}
+.p17m .m-ear:after{content:'';position:absolute;inset:9px 7px 8px;border:2px solid #d89173;border-bottom:0;border-radius:50%}
+.p17m .m-ear.m-left{left:135px;transform:rotate(-9deg)}
+.p17m .m-ear.m-right{left:252px;transform:rotate(9deg)}
+.p17m .m-face{position:absolute;z-index:8;left:150px;top:48px;width:113px;height:135px;border-radius:43% 45% 45% 45% / 38% 38% 52% 52%;background:radial-gradient(ellipse at 31% 26%,#ffdbb6 0,transparent 58%),linear-gradient(100deg,#f6c6a2,#f1b48d 76%,#e6a47e);box-shadow:inset -4px -2px 5px #c9825b20;transform:rotate(-5deg)}
+.p17m .m-face:before{content:'';position:absolute;width:18px;height:13px;border-radius:50%;background:radial-gradient(ellipse,#e98e7970,transparent 70%);left:11px;top:88px}
+.p17m .m-face:after{content:'';position:absolute;width:22px;height:14px;border-radius:50%;background:radial-gradient(ellipse,#e98e7980,transparent 70%);right:5px;top:88px}
+.p17m .m-brow{position:absolute;top:49px;width:19px;height:8px;border-top:4px solid #584039;border-radius:50%;transform:rotate(-10deg)}
+.p17m .m-brow.m-left{left:20px}
+.p17m .m-brow.m-right{right:15px;transform:rotate(6deg)}
+.p17m .m-eye{position:absolute;top:65px;width:11px;height:16px;border-radius:50%;background:#3b3330;box-shadow:0 1px 0 #ffe6cc;animation:p17mBlink 5.6s infinite;transform-origin:center}
+.p17m .m-eye.m-left{left:26px}
+.p17m .m-eye.m-right{right:21px}
+.p17m .m-eye:after{content:'';position:absolute;width:3px;height:4px;border-radius:50%;background:#fff5dd;top:3px;left:2px}
+.p17m .m-nose{position:absolute;width:15px;height:19px;top:73px;left:53px;transform:rotate(-7deg);border-radius:30% 30% 50% 50%;background:linear-gradient(110deg,#f7c19a,#e4a07c);border-bottom:2px solid #d58d6e80;box-shadow:2px 1px 1px #d68e6b12}
+.p17m .m-mouth{position:absolute;top:100px;left:41px;width:30px;height:15px;border-radius:3px 3px 20px 20px;background:#914c43;overflow:hidden;transform:rotate(-4deg)}
+.p17m .m-mouth:before{content:'';position:absolute;top:0;width:100%;height:4px;background:#fff3d9;border-radius:0 0 3px 3px}
+.p17m .m-mouth:after{content:'';position:absolute;width:16px;height:7px;background:#d78677;bottom:-2px;left:8px;border-radius:50%}
+.p17m .m-hair-back{position:absolute;z-index:5;left:142px;top:34px;width:125px;height:115px;border-radius:44% 47% 30% 30%;background:#413532;transform:rotate(-5deg)}
+.p17m .m-hair{position:absolute;z-index:10;left:145px;top:28px;width:118px;height:53px;border-radius:50% 55% 30% 20%;background:linear-gradient(140deg,#665047,#453632 70%);transform:rotate(-10deg);box-shadow:inset 0 3px 3px #8b675b26}
+.p17m .m-hair:before{content:'';position:absolute;width:82px;height:42px;left:-10px;top:21px;background:linear-gradient(140deg,#5e4941,#453632);border-radius:10% 20% 85% 15%;transform:rotate(-19deg)}
+.p17m .m-hair:after{content:'';position:absolute;width:29px;height:53px;right:-1px;top:24px;background:linear-gradient(90deg,#4b3a34,#3b302d);border-radius:20% 55% 30% 90%;transform:rotate(-7deg)}
+.p17m .m-tuft{position:absolute;z-index:9;left:176px;top:18px;width:68px;height:40px;background:#584239;border-radius:90% 5% 0 0;transform:rotate(-16deg)}
+.p17m .m-tuft:after{content:'';position:absolute;width:35px;height:23px;left:-17px;top:4px;background:#624b40;border-radius:90% 5% 0 0;transform:rotate(-15deg)}
+.p17m .m-hair-shine{position:absolute;z-index:11;left:164px;top:42px;width:40px;height:11px;border-top:2px solid #99726350;border-radius:50%;transform:rotate(-22deg)}
+.p17m .m-torso{position:absolute;z-index:3;left:136px;top:188px;width:137px;height:159px;border-radius:33px 37px 22px 20px;background:radial-gradient(ellipse at 25% 15%,#8d9de5,transparent 65%),linear-gradient(100deg,#7c90d9,#6075bf 90%);transform:none;box-shadow:inset -7px 0 10px #3d51912b}
+.p17m .m-collar{position:absolute;width:48px;height:24px;left:46px;top:-1px;background:#ebe5ce;border-radius:2px 2px 50% 50%;box-shadow:0 3px 0 #5369b350}
+.p17m .m-hem{position:absolute;bottom:0;left:4px;right:3px;height:17px;background:linear-gradient(90deg,#667dc4,#5d72b7);border-radius:0 0 18px 18px;border-top:1px solid #5368af55}
+.p17m .m-seam{position:absolute;width:28px;height:10px;border-top:2px solid #475eaa40;border-radius:50%;bottom:29px;right:9px;transform:rotate(-30deg)}
+.p17m .m-badge{position:absolute;top:45px;right:20px;width:27px;height:27px;background:#e8e9db;border-radius:9px;transform:rotate(7deg);box-shadow:0 2px 0 #4f63a430;display:grid;place-items:center;font:800 11px 'Trebuchet MS',sans-serif;color:#677aba}
+.p17m .m-badge:before{content:'</>'}
+.p17m .m-sleeve.m-left{position:absolute;z-index:2;left:110px;top:201px;width:47px;height:148px;border-radius:28px 25px 12px 12px;background:linear-gradient(100deg,#8497de,#6d84cb);transform:rotate(5deg);transform-origin:50% 10%;box-shadow:inset 5px 0 7px #9aafe62b}
+.p17m .m-sleeve.m-left:after{content:"";position:absolute;left:6px;top:88px;width:22px;height:8px;border-top:1px solid #566bb338;border-radius:50%;transform:rotate(-12deg)}
+.p17m .m-cuff.m-left{position:absolute;z-index:6;left:105px;top:337px;width:35px;height:16px;background:linear-gradient(90deg,#6278ba,#566caf);border-radius:3px 3px 5px 5px;transform:rotate(-3deg)}
+.p17m .m-hand.m-left{position:absolute;z-index:5;left:109px;top:349px;width:26px;height:25px;border-radius:5px 5px 9px 9px;background:linear-gradient(100deg,#ffd1ac,#e9aa83);transform:rotate(-5deg);transform-origin:50% 0;box-shadow:inset -2px 0 2px #d6926d22}
+.p17m .m-hand.m-left:before{content:'';position:absolute;left:20px;top:3px;width:10px;height:22px;border-radius:6px;background:linear-gradient(100deg,#f9c7a1,#eeb08b);transform:rotate(-18deg);box-shadow:-1px 1px 0 #d9997644}
+.p17m .m-hand.m-left:after{content:'';position:absolute;left:8px;top:10px;width:10px;height:7px;border-right:1px solid #d9997666;border-radius:50%;transform:rotate(-15deg)}
+.p17m .m-hand.m-left .m-finger{top:18px;bottom:auto;width:7px;border-radius:0 0 5px 5px;border:0;border-right:1px solid #d9997650;background:linear-gradient(100deg,#f9c7a0,#efb38c);transform:none}
+.p17m .m-hand.m-left .m-finger:nth-child(1){left:0;height:14px}
+.p17m .m-hand.m-left .m-finger:nth-child(2){left:6px;height:18px}
+.p17m .m-hand.m-left .m-finger:nth-child(3){left:12px;height:17px}
+.p17m .m-hand.m-left .m-finger:nth-child(4){left:18px;height:12px}
+.p17m .m-wave-arm{position:absolute;z-index:2;left:254px;top:167px;width:95px;height:92px;transform-origin:5px 73px;animation:p17mWave 4s ease-in-out infinite}
+.p17m .m-sleeve.m-right{position:absolute;left:-5px;top:36px;width:77px;height:47px;border-radius:25px;background:linear-gradient(180deg,#8396db,#5b72b9);transform:rotate(-35deg);box-shadow:inset 0 -4px 5px #455d9e30}
+.p17m .m-forearm.m-right{position:absolute;left:48px;top:-9px;width:36px;height:73px;border-radius:20px;background:linear-gradient(90deg,#8297db,#9aa9e5);transform:rotate(20deg)}
+.p17m .m-cuff.m-right{position:absolute;left:65px;top:-12px;width:35px;height:16px;border-radius:4px;background:#5e74b7;transform:rotate(20deg)}
+.p17m .m-hand.m-right{position:absolute;z-index:1;left:72px;top:-50px;width:30px;height:43px;border-radius:11px 12px 12px 13px;background:linear-gradient(90deg,#f8c7a3,#e8a480);transform:rotate(20deg);box-shadow:inset -2px 0 2px #d38f6b33}
+.p17m .m-finger{position:absolute;width:8px;background:linear-gradient(90deg,#ffd5af,#efb28b);border-radius:7px 7px 0 0;border-right:1px solid #d8967050;bottom:29px}
+.p17m .m-finger:nth-child(1){left:0;height:22px;transform:rotate(-8deg)}
+.p17m .m-finger:nth-child(2){left:7px;height:30px}
+.p17m .m-finger:nth-child(3){left:14px;height:27px;transform:rotate(4deg)}
+.p17m .m-finger:nth-child(4){left:21px;height:20px;transform:rotate(9deg)}
+.p17m .m-thumb{position:absolute;left:-10px;top:10px;width:13px;height:27px;background:linear-gradient(90deg,#f8c6a0,#edb08a);border-radius:8px 8px 4px 12px;transform:rotate(-28deg)}
+.p17m .m-palm-line{position:absolute;left:8px;top:19px;width:14px;height:8px;border-top:1px solid #cf8e7070;border-radius:50%;transform:rotate(-20deg)}
+.p17m .m-hips{position:absolute;z-index:1;left:141px;top:326px;width:122px;height:54px;background:linear-gradient(90deg,#c6b18d,#b39c78);border-radius:10px 10px 22px 22px;transform:rotate(-2deg)}
+.p17m .m-leg{position:absolute;z-index:1;top:354px;width:52px;height:132px;border-radius:10px 10px 15px 13px;background:linear-gradient(90deg,#ceba95,#b8a17b);box-shadow:inset -5px 0 6px #8c795b15}
+.p17m .m-leg.m-left{left:139px;transform:rotate(6deg);transform-origin:50% 0}
+.p17m .m-leg.m-right{left:210px;transform:rotate(-7deg);transform-origin:50% 0;background:linear-gradient(90deg,#baa580,#cfba94)}
+.p17m .m-leg:before{content:'';position:absolute;bottom:0;left:0;right:0;height:14px;background:#ae9672;border-top:1px solid #d5c09c;border-radius:0 0 9px 9px}
+.p17m .m-leg:after{content:'';position:absolute;top:58px;left:10px;width:24px;height:12px;border-top:2px solid #9d896743;border-radius:50%;transform:rotate(-10deg)}
+.p17m .m-sock{position:absolute;z-index:0;top:474px;width:30px;height:24px;background:#ece7d6}
+.p17m .m-sock.m-left{left:130px;transform:rotate(5deg)}
+.p17m .m-sock.m-right{left:232px;transform:rotate(-5deg)}
+.p17m .m-shoe{position:absolute;z-index:4;top:485px;width:83px;height:36px;background:linear-gradient(#53616b,#354550);border-radius:18px 14px 10px 15px;box-shadow:inset 0 -7px 0 #eee8d7,inset 0 -9px 0 #a3a29b}
+.p17m .m-shoe.m-left{left:91px;transform:rotate(-5deg);border-radius:28px 12px 10px 15px}
+.p17m .m-shoe.m-right{left:221px;transform:rotate(5deg);border-radius:12px 28px 15px 10px}
+.p17m .m-shoe:before{content:'';position:absolute;top:7px;left:37px;width:21px;height:3px;border-radius:2px;background:#d1d6ce;box-shadow:0 6px 0 #d1d6ce;transform:rotate(-9deg)}
+.p17m .m-shoe.m-right:before{left:20px;transform:rotate(9deg)}
+.p17m .m-shoe:after{content:'';position:absolute;width:20px;height:7px;left:9px;bottom:11px;border-radius:50%;background:#7f8d9340}
+.p17m[data-mood=think] .m-brow.m-right{top:43px;transform:rotate(-12deg)}
+.p17m[data-mood=think] .m-eye{translate:2px -2px}
+.p17m[data-mood=think] .m-mouth{width:15px;height:6px;top:104px;left:52px;background:none;border-bottom:2px solid #9c6050;border-radius:50%}
+.p17m[data-mood=think] .m-mouth:before,.p17m[data-mood=think] .m-mouth:after{display:none}
+.p17m[data-mood=think] .m-face{transform:rotate(2deg)}
+.p17m[data-mood=happy] .m-eye{height:8px;top:69px;background:none;border-top:3px solid #49352c;border-radius:50%;animation:none}
+.p17m[data-mood=happy] .m-eye:after{display:none}
+.p17m[data-mood=happy] .m-mouth{width:34px;height:20px;left:39px;top:97px}
+.p17m[data-mood=happy] .m-brow{translate:0 -4px}
+@keyframes p17mWave{0%,25%,70%,100%{transform:rotate(0)}33%,49%,65%{transform:rotate(-9deg)}41%,57%{transform:rotate(7deg)}}@keyframes p17mBlink{0%,39%,43%,100%{scale:1 1}41%{scale:1 .1}}
 
 /* Рамка html — мягкие коралловые полосы. */
 .p17 .kz-stagebox > .kz-cut > .kz-cut-in { border-radius: 999px; box-shadow: inset 0 2px 2px rgba(255, 255, 255, .5), inset 0 -3px 3px rgba(0, 0, 0, .08); }
@@ -13654,7 +13690,7 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
    сматываются в клубки и укатываются, новые прикатываются и разматываются). */
 
 @media (prefers-reduced-motion: reduce) {
-  .p17 .kz-man.p17-man, .p17 .p17-blink, .p17 .p17-look, .p17 .p17-capsule, .p17 .kz-man > .p17-arm, .p17 .kz-man > .p17-leg,
+  .p17 .kz-man.p17-man, .p17 .p17m *, .p17 .p17m .m-cap,
   .p17 .kz-wave-l, .p17 .kz-wave-r, .p17 .kz-zone::before { animation: none; }
   .p17 .p17-lid { transition: none; }
 }
@@ -13676,6 +13712,11 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 /* Бирки html на рамке и в коллаже — глубокий коралл. */
 .p17 .kz-frame-lbl-top .kz-label-paper, .p17 .kz-frame-lbl-bot .kz-label-paper, .p17 .kz-label.kz-col-lbl-html .kz-label-paper {
   background: var(--p17-coral-t); border-color: var(--p17-coral-t); box-shadow: 0 5px 0 var(--p17-coral-edge); }
+/* Включённая бирка (is-on) не светлеет до кремовой: у бирок html белый текст на коралле — на креме он пропадал
+   (заказчик, 30.10.2026, экран 3); бирки head / body тоже держат свой цвет. */
+.p17 .kz-label.is-on.kz-frame-lbl-top .kz-label-paper, .p17 .kz-label.is-on.kz-frame-lbl-bot .kz-label-paper, .p17 .kz-label.is-on.kz-col-lbl-html .kz-label-paper { background: var(--p17-coral-t); }
+.p17 .kz-label.is-on.kz-col-lbl-head .kz-label-paper { background: #FFF0B8; }
+.p17 .kz-label.is-on.kz-col-lbl-body .kz-label-paper { background: #DDF8EA; }
 /* Подсвеченная строка кода: html — глубокий коралл, body — тёмная мята, head — жёлтая с тёмным текстом. */
 .p17 .kz-line.is-read, .p17 .kz-line.is-say { --sc: var(--p17-coral-t); }
 .p17 .kz-line.is-say-body { --sc: #26805F; }
@@ -13783,8 +13824,8 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .p17 .kz-s9 .kz-br-tab { max-width: 68%; padding: 0 8px; gap: 5px; }
   .p17 .kz-s9 .kz-br-win { gap: 8px; padding-right: 2%; }
 }
-/* Бирка body — на самом теле, а не на лице человечка. */
-.p17 .kz-label.kz-s9-lbl.is-man { translate: -50% 25%; scale: .85; }
+/* Бирка body — посреди живота человечка (точку даёт сборка), а не на лице. */
+.p17 .kz-label.kz-s9-lbl.is-man { translate: -50% -50%; scale: .85; }
 @media (max-width: 759px) and (max-height: 600px) {
   .p17 .kz-scene.kz-s9 > .kz-stagebox { width: min(42vw, 21dvh); }
   .p17 .kz-sheet .kz-s9 > .kz-col > .kz-br:not(.is-short) { --brh: 21dvh; }
@@ -13804,6 +13845,34 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 @media (max-width: 759px) and (max-height: 600px) {
   .p17 .kz-zones .kz-zone { margin-top: 22px; }
   .p17 .kz-zones { gap: 8px; }
+}
+
+/* Экран 6 (head) на телефоне: человечка нажимают (голова, капсула с названием) — ему своё место
+   над браузером, браузер и код компактнее (как экран 8). */
+@media (max-width: 759px) {
+  .p17 .kz-scene.kz-s6 { gap: 6px; }
+  .p17 .kz-scene.kz-s6 > .kz-stagebox { flex: 0 0 auto; height: auto; width: min(44vw, 22dvh); }
+  .p17 .kz-scene.kz-s6 > .kz-stagebox .kz-manbox { inset: 6% 6% 1% 6%; }
+  .p17 .kz-sheet .kz-s6 > .kz-col > .kz-br:not(.is-short) { --brh: 20dvh; max-width: min(100%, calc(var(--brh) * 1.52)); align-self: center; width: 100%; }
+  .p17 .kz-s6 .kz-col { gap: 6px; }
+  .p17 .kz-s6 .kz-code { padding-top: 3px; padding-bottom: 3px; }
+  .p17 .kz-s6 .kz-br-tab-t { font-size: 11.5px; letter-spacing: -.1px; }
+  .p17 .kz-s6 .kz-br-tab { max-width: 68%; padding: 0 8px; gap: 5px; }
+  .p17 .kz-s6 .kz-br-win { gap: 8px; padding-right: 2%; }
+}
+
+/* Экран 1, браузер → человечек (заказчик, 30.10.2026: «пересбор странно выглядит»): куски браузера
+   летят к частям, и по пути человечек проявляется на их месте, а куски тают — перетекают в него,
+   а не застывают цветными «таблетками» и не сменяются им рывком. Рука, которой он машет,
+   поднимается от плеча. */
+.p17 .kz-s1.is-morph .kz-s1-man.is-ghost { visibility: visible; animation: p17GhostIn .6s ease-out .6s both; }
+.p17 .kz-s1.is-morph .kz-morph-p.is-fly { animation: p17PieceOut .5s ease-in .5s forwards; }
+@keyframes p17GhostIn { from { opacity: 0; scale: .96; } to { opacity: 1; scale: 1; } }
+@keyframes p17PieceOut { to { opacity: 0; scale: .7; } }
+.p17 .p17m .m-wave-arm { animation: p17mRaise .55s cubic-bezier(.3, 1.4, .5, 1), p17mWave 4s ease-in-out .55s infinite; }
+@keyframes p17mRaise { from { transform: rotate(105deg); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .p17 .kz-s1.is-morph .kz-s1-man.is-ghost, .p17 .kz-s1.is-morph .kz-morph-p.is-fly, .p17 .kz-man > .p17-title, .p17 .kz-man > .p17-part.is-hl { animation: none; }
 }
 /* Урок 1 (заказчик, 27.10.2026: «окно браузера маленькое»): на ноутбуке браузер на
    экранах 6–10, 14 и 15 крупнее — место вокруг было пустым; текст в окне крупнее вместе
