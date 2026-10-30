@@ -18,7 +18,8 @@ export default defineConfig({
     // Файлы уроков большие (до 600 КБ) — это нормально, не предупреждаем.
     chunkSizeWarningLimit: 4000,
     rollupOptions: {
-      input: { main: r('./index.html'), player: r('./player.html') },
+      // demo-mir — проба «живого мира» урока 17 (заказчик открывает её на Vercel по тому же пути).
+      input: { main: r('./index.html'), player: r('./player.html'), 'demo-mir': r('./tools/problemitas17/demo/mir.html') },
     },
   },
 });
