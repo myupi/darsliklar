@@ -13979,9 +13979,12 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .p17.b-stage:has(.b-sheet) .kz-sheet .kz-col > .kz-br:not(.is-short) { max-width: min(100%, calc(var(--brh) * 1.52)); align-self: center; width: 100%; }
   .p17.b-stage:has(.b-sheet) .kz-sheet .kz-col > .kz-br.is-short { max-width: min(100%, calc(16dvh * 2.16)); align-self: center; width: 100%; }
 }
-/* Бирки html на рамке (экраны 3–5) — на самой рамке, не на вкладке браузера и не на кнопке «O‘ynash». */
-.p17 .kz-frame-lbl-top { top: -9%; left: -3%; }
-.p17 .kz-frame-lbl-bot { bottom: -10%; right: -3%; }
+/* Бирки html на рамке (экраны 3–5) на телефоне — на самой рамке, не на вкладке браузера и не на кнопке «O‘ynash»
+   (на ноутбуке браузер в рамке крупнее, бирки и так их не закрывают). */
+@media (max-width: 759px) {
+  .p17 .kz-frame-lbl-top { top: -9%; left: -3%; }
+  .p17 .kz-frame-lbl-bot { bottom: -10%; right: -3%; }
+}
 /* Бирка body на окне (экран 8) — в нижнем левом углу страницы (точку даёт сборка). */
 .p17 .kz-label.kz-s9-lbl.is-win { translate: 0 -100%; scale: .8; transform-origin: 0 100%; }
 /* Урок 1 (заказчик, 27.10.2026: «окно браузера маленькое»): на ноутбуке браузер на
