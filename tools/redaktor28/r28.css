@@ -1,0 +1,442 @@
+/* ── ОБЛИК «РЕДАКТОР» (тестовый урок 28, 02.11.2026) ─────────────────────────────────
+   Герой экрана — код и его результат. Рабочая область — как среда разработчика: светлый стол
+   в точечной сетке, код — в тёмном редакторе с номерами строк и подсветкой синтаксиса как в
+   VS Code, браузер — настоящий Chrome, подсветка — как у инспектора DevTools (голубая заливка
+   с рамкой). Оболочка (шапка, низ, панели «Barakalla!», ошибки и подсказки) — игровая, но
+   плоская: без «нажимных» теней, системный шрифт. Движение короткое (0,2–0,35 с), без пружинок.
+   Части документа: html — оранжевый HTML5, head — фиолетовый, body — бирюзовый.
+   02.11.2026 (заказчик: «синий вообще не подходит, основной цвет — оранжевый»): все акценты (кнопки,
+   выделение, подсветка, текущая строка редактора) — оранжевый CoddyCamp #FA4F28 / #D53A17; синими
+   остались только имена тегов в тёмном редакторе — это подсветка синтаксиса, как в VS Code.
+   Лежит поверх p17.css (оттуда — только раскладка экранов на телефоне и снятие бумаги).
+   02.11.2026: шапка и низ с панелями результата — по дизайну уроков CoddyCamp LMS (блок в конце). */
+/*@R28_FONTS@*/
+.r28 {
+  --r-bg: #F4F5F7; --r-dot: #D5DAE1; --r-panel: #FFFFFF; --r-line: #E2E8F0; --r-edge: #CBD5E1;
+  --r-ink: #0F172A; --r-ink2: #334155; --r-muted: #64748B;
+  --r-html: #E44D26; --r-html-t: #C2410C; --r-head: #7C5CFA; --r-head-t: #6D28D9; --r-body: #0FA38E; --r-body-t: #0F766E;
+  --r-pri: #FA4F28; --r-pri-d: #D53A17;
+  --r-insp: rgba(250, 79, 40, .14); --r-insp-edge: #FA4F28;
+  --r-ed: #1E1E1E; --r-ed2: #252526; --r-ed-ln: #6E7681; --r-ed-tx: #D4D4D4; --r-ed-tag: #569CD6; --r-ed-br: #808080; --r-ed-sel: #264F78;
+  --r-font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --r-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  --p17-font: var(--r-font); --p17-ink: var(--r-ink); --p17-muted: var(--r-muted); --p17-coral: var(--r-html); --p17-coral-t: var(--r-html-t);
+  --p17-red-t: var(--r-html-t);
+}
+
+/* ── РАМКА: токены B — синий акцент, системный шрифт, плоские кнопки ─────────────── */
+.r28.b-stage {
+  --b-ink: #0F172A; --b-ink2: #334155; --b-ink3: #64748B; --b-line: #E2E8F0; --b-edge: #CBD5E1; --b-track: #E2E8F0;
+  --b-pri: #FA4F28; --b-pri-edge: #D53A17; --b-pri-soft: #FFEDE5; --b-pri-text: #D53A17; --b-pri-ring: #FFD3C6;
+  --b-hint: #F59E0B; --b-hint-edge: #D97706; --b-hint-soft: #FFFBEB; --b-hint-text: #92400E;
+  --b-err: #DC2626; --b-err-edge: #B91C1C; --b-err-soft: #FEF2F2; --b-err-text: #B91C1C;
+  --b-tip: #F59E0B; --b-tip-edge: #D97706; --b-tip-soft: #FFFBEB; --b-tip-text: #92400E;
+  --b-acc: #7C5CFA; --b-acc-edge: #6D28D9; --b-acc-soft: #EDE9FE; --b-acc-text: #5B21B6;
+  --b-ok: #16A34A; --b-ok-edge: #15803D; --b-ok-soft: #F0FDF4; --b-ok-text: #15803D;
+  --b-off-bg: #EEF1F5; --b-off-edge: #E2E8F0; --b-off-text: #94A3B8;
+  --b-ease: cubic-bezier(.2, .7, .2, 1);
+  --b-font: var(--r-font);
+}
+.r28.b-stage .stage-header.b-head { border-bottom: 1px solid var(--b-line); }
+.r28 .b-prog { gap: 3px; }
+.r28 .b-prog i { height: 6px; border-radius: 3px; }
+.r28 .b-prog i.is-cur { box-shadow: none; background: linear-gradient(90deg, var(--b-pri) 55%, #FDBA74); }
+.r28 .b-count { font: 600 14px/1 var(--r-mono); }
+.r28.b-stage .b-head .ctl-btn { border: 1px solid var(--b-line); border-radius: 10px; box-shadow: none; }
+.r28.b-stage .b-head .ctl-btn:active { transform: none; border-bottom-width: 1px; background: #F1F5F9; }
+.r28.b-stage .b-head .ctl-btn.is-exit { border: none; }
+.r28 .b-chip { border-radius: 6px; font: 600 13px/1 var(--r-mono); letter-spacing: -.2px; text-transform: lowercase; }
+.r28.b-stage .stage-nav { border-top: 1px solid var(--b-line); }
+.r28.b-stage .stage-nav .btn-accent, .r28.b-stage .stage-nav .btn-ghost, .r28 .b-btn-hint {
+  border-width: 1px; border-bottom-width: 1px; border-radius: 10px; font-weight: 600; font-size: 17px; height: 50px; min-height: 50px; }
+.r28.b-stage .stage-nav .btn-accent:not(:disabled):hover { background: var(--b-pri-edge); }
+.r28.b-stage .stage-nav .btn-accent:not(:disabled):active, .r28.b-stage .stage-nav .btn-ghost:active, .r28 .b-btn-hint:active {
+  transform: scale(.98); border-bottom-width: 1px; }
+.r28 .b-sheet { border-top-width: 2px !important; }
+.r28 .b-sheet-ic { width: 40px; height: 40px; border-radius: 10px; }
+.r28 .b-sheet-tx b { font-size: 20px; font-weight: 700; letter-spacing: -.3px; }
+.r28 .b-sheet-tx p { font-size: 16px; color: var(--r-ink2); }
+@media (max-width: 759px) {
+  .r28 .b-prog i { height: 5px; }
+  .r28.b-stage .b-head .ctl-btn { border-bottom-width: 1px; border-radius: 9px; }
+  .r28.b-stage .stage-nav .btn-accent, .r28.b-stage .stage-nav .btn-ghost, .r28 .b-btn-hint { height: 48px; min-height: 48px; font-size: 17px; }
+  .r28 .b-sheet { border-radius: 14px 14px 0 0; }
+  .r28 .b-sheet-ic { width: 30px; height: 30px; border-radius: 8px; }
+  .r28 .b-sheet-tx b { font-size: 18px; line-height: 30px; }
+  .r28 .b-sheet-tx p { font-size: 14.5px; }
+}
+/* Вещь, которую просят нажать (экраны 3 и 6), — не прыгает, а обведена пульсирующей рамкой. */
+.r28 .b16-tapme { animation: r28Tap 1.4s ease-in-out infinite; }
+.r28 .kz-man .b16-tapme { filter: none; }
+@keyframes r28Tap { 0%, 100% { outline: 2px solid rgba(250, 79, 40, .0); outline-offset: 2px; } 50% { outline: 2px solid rgba(250, 79, 40, .9); outline-offset: 5px; } }
+
+/* ── СТОЛ ─────────────────────────────────────────────────────────────────────── */
+.r28.b-stage .stage-content { background-color: var(--r-bg);
+  background-image: radial-gradient(circle, var(--r-dot) 1px, transparent 1.4px); background-size: 20px 20px; background-position: -10px -10px; }
+.r28 .kz-sheet { position: relative; }
+.r28 .kz-sheet, .r28 .kz-sheet button, .r28 .kz-sheet input, .r28 .kz-sheet textarea { font-family: var(--r-font); }
+.r28 .kz-deco { display: none; }
+
+/* ── ДЕТАЛИ: плоские, с тонкой рамкой; никаких наклонов и «нажимных» теней ─────────── */
+.r28 .kz-cut { filter: none; }
+.r28 .kz-cut-in { border-radius: 8px; box-shadow: none; }
+.r28 .kz-cut.is-hl { filter: none; }
+.r28 .kz-cut.is-hl > .kz-cut-in { box-shadow: 0 0 0 2px var(--r-insp-edge); }
+
+/* Строка задания — карточка с синей полосой слева, как заметка в задаче. */
+.r28 .kz-ask { border-radius: 10px; background: var(--r-panel); color: var(--r-ink); border: 1px solid var(--r-line);
+  box-shadow: inset 3px 0 0 var(--r-pri), 0 1px 2px rgba(15, 23, 42, .05); padding: 8px 14px 8px 16px;
+  font: 600 clamp(15px, 2.1dvh, 18px)/1.3 var(--r-font); letter-spacing: -.1px; }
+.r28 .kz-ask-n { border-radius: 5px; background: #FFF1EC; color: var(--r-pri-d); font: 600 12px/20px var(--r-mono); }
+
+/* Кнопки на листе — плоские, синие; второстепенные — белые с рамкой. */
+.r28 .kz-btn { border-radius: 8px; font: 600 16px/1.2 var(--r-font); background: var(--r-pri); color: #fff; box-shadow: none; border: 1px solid var(--r-pri-d);
+  transition: background .15s, transform .1s; }
+.r28 .kz-btn, .r28 .kz-btn.is-coral { background: var(--r-pri); box-shadow: none; }
+.r28 .kz-btn:not(:disabled):hover { background: var(--r-pri-d); }
+.r28 .kz-btn:not(:disabled):active { transform: scale(.98); box-shadow: none; }
+.r28 .kz-btn.is-teal, .r28 .kz-btn.is-ok { background: #16A34A; border-color: #15803D; box-shadow: none; }
+.r28 .kz-btn.is-ghost { background: #fff; color: var(--r-ink); border: 1px solid var(--r-edge); box-shadow: none; }
+.r28 .kz-btn.is-ghost:not(:disabled):hover { background: #F8FAFC; }
+.r28 .kz-btn.is-sel { background: #FFF1EC; color: var(--r-ink); border-color: var(--r-pri); box-shadow: 0 0 0 3px #FFD3C6; }
+.r28 .kz-btn:disabled, .r28 .kz-btn.is-ghost:disabled { background: #F1F5F9; color: var(--r-muted); border: 1px solid var(--r-line); box-shadow: none; }
+
+/* Теги вне редактора: имя — синее, скобки — серые (как в редакторе, только на светлом). */
+.r28 .kz-tk-b { color: #D53A17; }
+.r28 .kz-tk-n { color: #1E1B39; }
+.r28 .kz-tag, .r28 .kz-label-paper, .r28 .kz-scrap-tag, .r28 .kz-scrap-code { font-family: var(--r-mono); }
+
+/* Бирки-теги — токены: белые, тонкая рамка, моноширинный шрифт. На рамке html — оранжевые. */
+.r28 .kz-label-paper { border-radius: 6px; padding: 3px 10px 4px; background: #fff; border: 1px solid var(--r-edge);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .08); font: 600 clamp(15px, 2.6dvh, 21px)/1.2 var(--r-mono); }
+.r28 .kz-frame-lbl-top .kz-label-paper, .r28 .kz-frame-lbl-bot .kz-label-paper, .r28 .kz-label.kz-col-lbl-html .kz-label-paper,
+.r28 .kz-label.is-on.kz-frame-lbl-top .kz-label-paper, .r28 .kz-label.is-on.kz-frame-lbl-bot .kz-label-paper, .r28 .kz-label.is-on.kz-col-lbl-html .kz-label-paper {
+  background: var(--r-html-t); border-color: var(--r-html-t); box-shadow: 0 1px 2px rgba(15, 23, 42, .15); }
+.r28 .kz-frame-lbl-top .kz-tk-b, .r28 .kz-frame-lbl-bot .kz-tk-b, .r28 .kz-label.kz-col-lbl-html .kz-tk-b { color: #FED7C3; }
+.r28 .kz-label.kz-col-lbl-head .kz-label-paper, .r28 .kz-label.is-on.kz-col-lbl-head .kz-label-paper { background: #EDE9FE; border-color: #C4B5FD; box-shadow: none; }
+.r28 .kz-label.kz-col-lbl-head .kz-tk-n { color: var(--r-head-t); }
+.r28 .kz-label.kz-col-lbl-body .kz-label-paper, .r28 .kz-label.is-on.kz-col-lbl-body .kz-label-paper { background: #CCFBF1; border-color: #5EEAD4; box-shadow: none; }
+.r28 .kz-label.kz-col-lbl-body .kz-tk-n { color: var(--r-body-t); }
+.r28 .kz-label.is-on .kz-label-paper { background: #FFF1EC; }
+.r28 .kz-label.is-spot::after { border-radius: 8px; inset: -6px -8px; border: 2px solid var(--r-insp-edge); background: var(--r-insp);
+  box-shadow: none; z-index: -1; animation: r28Pop .2s ease-out both; }
+.r28 .kz-collage .kz-label-paper, .r28 .kz-label.kz-col-lbl-html .kz-label-paper, .r28 .kz-label.kz-col-lbl-head .kz-label-paper,
+.r28 .kz-label.kz-col-lbl-body .kz-label-paper { padding: 1px 7px 2px; border-radius: 5px; font-size: 12px; box-shadow: none; }
+
+/* ── РЕДАКТОР КОДА: тёмная тема VS Code, вкладка файла, номера строк, подсветка синтаксиса ── */
+.r28 .kz-code { background: var(--r-ed); border-radius: 10px; padding: 0 0 8px; gap: 0; counter-reset: r28ln;
+  font: 500 clamp(13.5px, 1.9dvh, 16px)/1.5 var(--r-mono); color: var(--r-ed-tx); overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .12), 0 8px 24px rgba(15, 23, 42, .12); }
+.r28 .kz-code::before { content: 'index.html'; display: block; flex: none; align-self: stretch; margin-bottom: 6px; padding: 6px 12px 6px 30px;
+  background: var(--r-ed2) linear-gradient(var(--r-ed), var(--r-ed)) no-repeat 0 0 / 116px 100%; color: #CCCCCC;
+  font: 500 12px/18px var(--r-font); box-shadow: inset 0 -1px 0 #333;
+  -webkit-mask: none; position: relative; }
+.r28 .kz-code::after { content: ''; position: absolute; left: 12px; top: 11px; width: 10px; height: 10px; border-radius: 2px; background: var(--r-html); }
+.r28 .kz-line { min-height: 0; padding: 1px 12px 1px calc(3.1em + var(--d, 0) * 1.25em); border-radius: 0; background: transparent; box-shadow: none;
+  color: var(--r-ed-tx); font: inherit; }
+.r28 .kz-line::before { counter-increment: r28ln; content: counter(r28ln); position: absolute; left: 0; width: 2.2em; text-align: right;
+  color: var(--r-ed-ln); font: inherit; pointer-events: none; }
+.r28 .kz-line .kz-tk-b { color: var(--r-ed-br); }
+.r28 .kz-line .kz-tk-n { color: var(--r-ed-tag); }
+.r28 .kz-line .kz-txt { color: var(--r-ed-tx); font-family: var(--r-mono); font-weight: 500; }
+.r28 .kz-line .kz-dim { color: #6A9955; font-family: var(--r-mono); font-weight: 500; }
+.r28 .kz-line.is-gap { background: rgba(255, 255, 255, .04); }
+.r28 .kz-line.is-mark, .r28 .kz-line.is-hl, .r28 .kz-line.is-cur { background: #2A2D2E; box-shadow: inset 2px 0 0 #FA4F28; }
+.r28 .kz-line.is-sel { background: var(--r-ed-sel); box-shadow: none; }
+.r28 .kz-line.kz-tap { color: var(--r-ed-tx); }
+.r28 .kz-line.kz-tap:not(:disabled):hover { background: #2A2D2E; }
+/* Строка, которую читает браузер или о которой говорит Коди, — фон и полоса цвета её части. */
+.r28 .kz-line.is-read, .r28 .kz-line.is-say { --sc: var(--r-html); background: color-mix(in srgb, var(--sc) 26%, transparent);
+  box-shadow: inset 3px 0 0 var(--sc); color: var(--r-ed-tx); }
+.r28 .kz-line.is-say-head { --sc: var(--r-head); }
+.r28 .kz-line.is-say-body { --sc: var(--r-body); }
+.r28 .kz-line.is-read .kz-tk-n, .r28 .kz-line.is-say .kz-tk-n, .r28 .kz-line.is-say-head .kz-tk-n { color: #9CDCFE; }
+.r28 .kz-line.is-read .kz-tk-b, .r28 .kz-line.is-say .kz-tk-b, .r28 .kz-line.is-say-head .kz-tk-b { color: #B5B5B5; }
+.r28 .kz-line.is-read .kz-txt, .r28 .kz-line.is-say .kz-txt, .r28 .kz-line.is-say-head .kz-txt { color: #FFFFFF; }
+.r28 .kz-line.kz-sweep::after { background: #FA4F28; }
+/* Поле ввода в строке — как поле редактора: тёмное, синяя рамка в фокусе, курсор-черта. */
+.r28 .kz-line .tk-input, .r28 .kz-line .kz-write .tk-input { background: #2D2D30; color: #CE9178; border: 1px solid #3C3C3C; border-radius: 4px;
+  font: 500 16px/1.3 var(--r-mono); }
+.r28 .kz-line .tk-input:focus, .r28 .kz-line .kz-write .tk-input:focus { background: #1E1E1E; border: 1px solid #FA4F28; }
+.r28 .kz-line .kz-write .tk-input { border-style: dashed; border-color: #FA4F28; }
+.r28 .kz-line .kz-write .tk-input::placeholder, .r28 .kz-line .tk-input::placeholder { color: #8A8A8A; font: italic 500 14px var(--r-font); }
+.r28 .kz-caret { background: #AEAFAD; }
+.r28 .kz-dash { border-color: rgba(255, 255, 255, .25); }
+.r28 .kz-move-b { border-radius: 4px; background: #333; border: 1px solid #444; box-shadow: none; color: #CCC; }
+.r28 .kz-move-tip-k { background: #fff; border: 1px solid var(--r-edge); box-shadow: none; }
+.r28 .kz-q2-close .kz-tag { background: #264F78; border-radius: 3px; }
+.r28 .kz-q2-close .kz-tk-n { color: #fff; }
+.r28 .kz-q2-close .kz-tk-b { color: #CCC; }
+
+/* Плитки-токены в лотке и за пальцем. */
+.r28 .kz-scrap, .r28 .kz-ghost-in, .r28 .kz-hand-ghost { border-radius: 8px; background: #fff; color: var(--r-ink); border: 1px solid var(--r-edge);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .08); font: 600 15px/1.25 var(--r-font); }
+.r28 .kz-pool .kz-scrap, .r28 .kz-scrap.kz-scrap-tag, .r28 .kz-scrap-code { font-family: var(--r-mono); }
+.r28 .kz-scrap:not(:disabled):hover { border-color: #94A3B8; transform: translateY(-1px); }
+.r28 .kz-scrap.is-sel { border-color: var(--r-pri); box-shadow: 0 0 0 3px #FFD3C6; translate: 0 -1px; }
+.r28 .kz-scrap.is-lifted { background: transparent; border: 1px dashed var(--r-edge); box-shadow: none; }
+.r28 .kz-ghost { filter: drop-shadow(0 10px 18px rgba(15, 23, 42, .18)); }
+.r28 .kz-slot-dash { border-radius: 8px; border: 1.5px dashed #94A3B8; background: rgba(255, 255, 255, .8); }
+.r28 .kz-slot.is-hover .kz-slot-dash, .r28 .kz-scene.is-dragging .kz-slot:not(.is-full) .kz-slot-dash { border-color: var(--r-pri); background: #FFF1EC; }
+
+/* ── БРАУЗЕР: Chrome как есть; подсветка — заливкой инспектора DevTools ──────────── */
+.r28 .kz-cut.kz-br-frame { filter: drop-shadow(0 1px 1px rgba(15, 23, 42, .1)) drop-shadow(0 10px 22px rgba(15, 23, 42, .12)); }
+.r28 .kz-cut.kz-br-frame > .kz-cut-in { border-radius: 10px; }
+.r28 .kz-br-tab.is-hl, .r28 .kz-br.is-spot-tab .kz-br-tab { --tabc: #FFE3D9; box-shadow: inset 0 0 0 1.5px var(--r-insp-edge); }
+.r28 .kz-br-fav { background: var(--r-html); border-radius: 3px; }
+.r28 .kz-br-url.is-hl { background: #FFF1EC; box-shadow: 0 0 0 1.5px var(--r-insp-edge); }
+.r28 .kz-br.is-spot-page .kz-cut.kz-br-paper > .kz-cut-in { background: #FFF6F2 !important; box-shadow: inset 0 0 0 2px var(--r-insp-edge); }
+.r28 .kz-br.is-spot-page .kz-cut.kz-br-paper { filter: none; }
+.r28 .kz-br.is-hl-page .kz-br-page { outline-color: var(--r-insp-edge); }
+.r28 .kz-cut.kz-bit-line > .kz-cut-in { background: #CBD5E1 !important; border-radius: 3px; }
+.r28 .kz-cut.kz-bit-pic > .kz-cut-in { background: #FFEDE5 !important; border-radius: 4px; }
+.r28 .kz-pic-sun { background: #FBBF24; }
+.r28 .kz-pic-mnt { background: #FB923C; }
+.r28 .kz-cut.kz-bit-btn > .kz-cut-in { background: var(--r-pri) !important; border-radius: 6px; }
+.r28 .kz-bit-btn span { font-family: var(--r-font); font-weight: 600; }
+.r28 .kz-mini-pic { background-color: #FFEDE5; background-image: radial-gradient(ellipse 70% 60% at 40% 110%, #FB923C 60%, transparent 61%); }
+/* Кольцо вокруг вещи → прямоугольник инспектора. */
+.r28 .kz-ring { border: 2px solid var(--r-insp-edge); border-radius: 6px; background: var(--r-insp); box-shadow: none; animation: r28Pop .2s ease-out both; }
+
+/* Рамка html вокруг браузера — тонкие оранжевые линии; пропавший край — пунктир. */
+.r28 .kz-stagebox > .kz-cut > .kz-cut-in { background: var(--r-html) !important; border-radius: 3px; box-shadow: none; }
+.r28 .kz-stagebox > .kz-cut { filter: none; }
+.r28 .kz-frame-miss { border-radius: 4px; border: 2px dashed var(--r-html); background: rgba(228, 77, 38, .06); }
+.r28 .kz-frame-miss .kz-frame-miss-q { border-radius: 5px; background: #fff; color: var(--r-html-t); box-shadow: 0 0 0 1px var(--r-edge); font: 700 15px var(--r-mono); }
+
+/* Зоны head / body (экран 11) — панели как в инспекторе: заголовок-тег и тонированное поле. */
+.r28 .kz-zone::before, .r28 .kz-zone::after { display: none; }
+.r28 .kz-zone { margin-top: 8px; }
+.r28 .kz-zone .kz-cut.kz-zone-cut > .kz-cut-in { border-radius: 10px; }
+.r28 .kz-zone[data-place="head"] .kz-cut.kz-zone-cut > .kz-cut-in { background: #F5F3FF !important; box-shadow: inset 0 0 0 1.5px #C4B5FD; }
+.r28 .kz-zone[data-place="body"] .kz-cut.kz-zone-cut > .kz-cut-in { background: #F0FDFA !important; box-shadow: inset 0 0 0 1.5px #5EEAD4; }
+.r28 .kz-zone.is-hover .kz-cut, .r28 .kz-zone.is-led .kz-cut { filter: none; }
+.r28 .kz-zone.is-hover .kz-cut-in, .r28 .kz-zone.is-led .kz-cut-in { box-shadow: inset 0 0 0 2px var(--r-pri) !important; }
+.r28 .kz-zone.is-hover { transform: none; }
+.r28 .kz-zone-item { filter: none; }
+.r28 .kz-zone-item-in { border-radius: 6px; background: #fff; border: 1px solid var(--r-edge); font: 600 14px var(--r-font); }
+@media (max-width: 759px) { .r28 .kz-zones .kz-zone { margin-top: 18px; } }
+
+/* Коллаж страницы (экраны 2, 12, 17) — блоки-схема, как разметка в инспекторе. */
+.r28 .kz-collage .kz-cut.kz-col-html > .kz-cut-in { background: #FFEDD5 !important; box-shadow: inset 0 0 0 1.5px #FDBA74; }
+.r28 .kz-collage .kz-cut.kz-col-head > .kz-cut-in { background: #EDE9FE !important; box-shadow: inset 0 0 0 1.5px #C4B5FD; }
+.r28 .kz-collage .kz-cut.kz-col-body > .kz-cut-in { background: #CCFBF1 !important; box-shadow: inset 0 0 0 1.5px #5EEAD4; }
+.r28 .kz-col-text { color: var(--r-ink); font-family: var(--r-font); font-weight: 700; }
+.r28 .kz-col-title .kz-tag { background: rgba(255, 255, 255, .85); border-radius: 4px; }
+
+/* Итог: роли, «следующий урок». */
+.r28 .kz-role { border-radius: 8px; background: #fff; border: 1px solid var(--r-line); box-shadow: none; font-family: var(--r-font); font-weight: 600; }
+.r28 .kz-role.is-on { background: #FFF1EC; border-color: #FDBA74; }
+.r28 .kz-next { border-radius: 10px; background: var(--r-ink); color: #E2E8F0; box-shadow: none; font-family: var(--r-font); font-weight: 600; }
+.r28 .kz-next b { color: #FDBA74; }
+.r28 .kz-msg { font-family: var(--r-font); font-weight: 600; color: var(--r-muted); }
+.r28 .kz-tg-strip { border-radius: 10px; background: #fff; box-shadow: 0 0 0 1px var(--r-line); }
+
+/* Куски, летящие в героя (экран 1) и из тела в окно (экран 8). */
+.r28 .kz-morph-p { border-radius: 8px; filter: drop-shadow(0 4px 8px rgba(15, 23, 42, .12)); }
+.r28 .kz-morph-lines i { border-radius: 3px; background: #CBD5E1; }
+.r28 .kz-morph-lines b { border-radius: 4px; background: #FFEDE5; }
+.r28 .kz-morph-t, .r28 .kz-morph-p.is-name .kz-morph-t { font-family: var(--r-font); font-weight: 700; color: var(--r-ink); }
+
+/* Рука-показ в заданиях — курсор-стрелка не рисуется отдельно: рука набора, но плоская и белая. */
+.r28 .kz-hand { filter: drop-shadow(0 4px 8px rgba(15, 23, 42, .25)); }
+.r28 .kz-hand svg path { fill: #fff; stroke: var(--r-ink); stroke-width: 1.4; }
+.r28 .kz-hand.is-tap .kz-hand-ring::after { border-width: 2px; border-color: var(--r-pri); }
+
+/* ── ГЕРОЙ ─────────────────────────────────────────────────────────────────────── */
+.r28 .kz-man.p17-man { animation: none; }
+.r28 .kz-man::after { left: 26%; right: 24%; height: 3%; background: radial-gradient(closest-side, rgba(15, 23, 42, .18), rgba(15, 23, 42, 0)); }
+.r28 .r28-open { animation: r28Fade .25s ease-out both; }
+.r28 .kz-man > .p17-title { animation: r28Up .25s cubic-bezier(.2, .7, .2, 1); }
+.r28 .p17k-raise { transform-box: view-box; animation: r28Raise .3s cubic-bezier(.2, .7, .2, 1); }
+.r28 .r28-wave { transform-box: view-box; animation: r28Wave 1.2s ease-in-out .3s infinite; }
+@keyframes r28Raise { from { transform: rotate(70deg); } to { transform: none; } }
+@keyframes r28Wave { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(10deg); } }
+/* Название части — подсказкой инспектора DevTools: тёмная плашка, тег моноширинным. */
+.r28 .p17-call.r28-tip { padding: 4px 9px 5px; border-radius: 6px; border: none; background: var(--r-ink); color: #F8FAFC;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, .25); font: 600 clamp(13px, 2.2dvh, 17px)/1.2 var(--r-mono); animation: r28Pop .18s ease-out; }
+.r28 .p17-call.r28-tip i { color: #94A3B8; font-style: normal; }
+.r28 .p17-call.r28-tip b { color: #FDBA74; font-weight: 600; }
+.r28 .p17-call.r28-tip.is-body b { color: #5EEAD4; }
+.r28 .p17-call.r28-tip.is-head b { color: #C4B5FD; }
+.r28 .p17-call.r28-tip::before { left: -7px; border-width: 6px; border-right-width: 7px; border-right-color: var(--r-ink); filter: none; }
+/* Бирка body на герое (экран 8) — с хвостиком тёмного цвета нет: бирка светлая, хвостик — в цвет рамки. */
+.r28 .kz-label.kz-s9-lbl.is-man .kz-label-paper::before { border-right-color: var(--r-edge); filter: none; }
+
+/* ── ДВИЖЕНИЕ — короткое, без пружинок: появление 0,2 с, лесенка вдвое плотнее ───── */
+.r28 .kz-a-drop, .r28 .kz-a-rise, .r28 .kz-a-left, .r28 .kz-a-right, .r28 .kz-line.is-new {
+  animation-name: r28In; animation-duration: .22s; animation-timing-function: cubic-bezier(.2, .7, .2, 1); animation-delay: calc(var(--dl, 0s) * .5); }
+.r28 .kz-a-pop, .r28 .kz-a-stamp { animation-name: r28Pop; animation-duration: .2s; animation-timing-function: ease-out; animation-delay: calc(var(--dl, 0s) * .5); }
+.r28 .kz-a-out { animation-name: r28Out; animation-duration: .25s; animation-timing-function: ease-in; }
+.r28 .kz-a-shake { animation-name: r28Shake; animation-duration: .3s; animation-timing-function: ease; }
+.r28 .kz-demo-on { animation: r28Insp .3s ease-out both !important; }
+@keyframes r28In { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+@keyframes r28Pop { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes r28Out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-8px); } }
+@keyframes r28Shake { 25% { transform: translateX(-4px); } 50% { transform: translateX(4px); } 75% { transform: translateX(-2px); } }
+@keyframes r28Fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes r28Up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes r28Insp { from { box-shadow: 0 0 0 0 rgba(250, 79, 40, .0); } to { box-shadow: 0 0 0 3px rgba(250, 79, 40, .55); } }
+@media (prefers-reduced-motion: reduce) {
+  .r28 .r28-wave, .r28 .p17k-raise, .r28 .b16-tapme { animation: none; }
+}
+
+/* ── ПРАВКИ ПОСЛЕ ПЕРВОГО ПРОСМОТРА ─────────────────────────────────────────────── */
+/* Стрелки «как читает браузер» (экран 2) — тонкие синие, без пульса. */
+.r28 .kz-rd-arr path { stroke: var(--r-pri); stroke-width: 2.5; }
+.r28 .kz-rd-arr.is-on { animation: none; }
+/* Строка, которую сейчас читает браузер, — текущая строка редактора (синяя полоса), а не цвет части. */
+.r28 .kz-line.is-read:not(.is-say) { --sc: #FA4F28; background: rgba(250, 79, 40, .16); }
+/* Ярлык раздела — системным шрифтом, как есть. */
+.r28 .b-chip { font: 600 13px/1 var(--r-font); text-transform: none; letter-spacing: 0; }
+/* «Назад» на телефоне — квадрат со стрелкой, без подписи. */
+@media (max-width: 759px) {
+  .r28.b-stage .stage-nav .btn-ghost { width: 48px; flex: 0 0 48px; padding: 0; font-size: 0; }
+}
+/* Рамка html вокруг браузера — как подсветка отступа в DevTools: полупрозрачная оранжевая полоса
+   с тонкой линией, а не толстая цветная планка. */
+.r28 .kz-stagebox > .kz-cut > .kz-cut-in { background: rgba(228, 77, 38, .2) !important; box-shadow: inset 0 0 0 1.5px var(--r-html); border-radius: 2px; }
+/* Итог: точки ролей — цветами частей (html, head, title внутри head, body). */
+.r28 .kz-role:nth-child(1) { --c: var(--r-html) !important; }
+.r28 .kz-role:nth-child(2), .r28 .kz-role:nth-child(3) { --c: var(--r-head) !important; }
+.r28 .kz-role:nth-child(4) { --c: var(--r-body) !important; }
+.r28 .kz-morph-p { border-radius: 8px !important; }
+/* Низкий телефон (360 × 640): редактор плотнее — вкладка файла ниже, строки теснее. */
+@media (max-height: 680px) {
+  .r28 .kz-code { line-height: 1.34; }
+  .r28 .kz-code::before { padding: 3px 10px 3px 27px; margin-bottom: 3px; font-size: 11px; }
+  .r28 .kz-code::after { top: 7px; width: 9px; height: 9px; }
+}
+/* Клавиши набора тега и «Проверить» (экраны 4, 14) — плоские клавиши; «Проверить» — синяя. */
+.r28 .keys .key-b { border-radius: 8px; border: 1px solid var(--r-edge); box-shadow: 0 1px 0 var(--r-edge); background: #fff; color: var(--r-ink);
+  font-family: var(--r-mono); font-weight: 600; }
+.r28 .keys .key-b:not(:disabled):active { transform: translateY(1px); box-shadow: none; }
+.r28 .keys .key-b.key-go { font-family: var(--r-font); background: var(--r-pri); border-color: var(--r-pri-d); color: #fff; box-shadow: none; }
+.r28 .keys .key-b.key-go:disabled { background: #F1F5F9; border-color: var(--r-line); color: var(--r-muted); }
+
+
+/* ══ CODDYCAMP LMS — ТОЛЬКО ШАПКА И НИЗ (заказчик, 02.11.2026: «верх и низ экрана берём из дизайна уроков
+   CoddyCamp»; затем: «внутренний контент верни как было, хедер и футер оставляем»). Источник —
+   CODDY_CAMP_DESIGN_SYSTEM.md v4 и макеты: Inter, оранжевый #FA4F28 с нижней гранью #D53A17, сегментный
+   прогресс, голубой ярлык раздела, «← Orqaga» с толстым низом, панели «Barakalla!» / «Maslahat».
+   Содержимое экрана — облик «Редактор» выше, его не трогаем. ═══════════════════════════════════════ */
+.r28 {
+  --cc-font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --cc-primary: #FA4F28; --cc-primary-edge: #D53A17; --cc-ink: #000000; --cc-ink2: #1E1B39;
+  --cc-surface: #FBFBFB; --cc-line: #E9E7EF; --cc-track: #F2F2F2;
+  --cc-ok: #10B981; --cc-ok-panel: #0CD678; --cc-ok-cta: #09B163; --cc-ok-edge: #078A4D;
+  --cc-bad-panel: #D80000; --cc-bad-edge: #A50000;
+  --cc-chip-bg: #E1F5FF; --cc-chip: #009BE7; --cc-tip: #FFE641; --cc-tip-edge: #DFC200;
+}
+.r28.b-stage { --b-font: var(--cc-font); --b-pri: var(--cc-primary); --b-pri-edge: var(--cc-primary-edge); --b-ink: var(--cc-ink); --b-line: var(--cc-line); }
+.r28 .b-head, .r28 .stage-nav { font-family: var(--cc-font); }
+
+/* Шапка в одну строку: «‹» · ярлык раздела · счётчик «3/17» · лампочка и пауза · Коди; ниже — сегменты прогресса. */
+.r28.b-stage .stage-header.b-head.cc-head { border-bottom: none; background: #FFFFFF; padding-bottom: 0; }
+.r28 .cc-row2 { display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 6px 0 8px; }
+.r28 .cc-left { display: flex; flex: none; }
+.r28 .cc-left:empty { display: none; }
+.r28 .cc-row2 .b-exit { margin-left: -8px; color: var(--cc-ink); }
+.r28 .cc-row2 > .b-chip, .r28 .cc-row2 > span:not(.cc-left):not(.cc-count) { margin-right: auto; min-width: 0; }
+.r28 .b-chip, .r28 .b-chip.is-show, .r28 .b-chip.is-task { background: var(--cc-chip-bg); color: var(--cc-chip); border-radius: 999px; padding: 7px 14px;
+  font: 600 14px/1 var(--cc-font); text-transform: none; letter-spacing: 0; gap: 8px; }
+.r28 .cc-count { display: inline; flex: none; font: 600 16px/1 var(--cc-font); color: var(--cc-ink); letter-spacing: 0; }
+.r28 .cc-count i { font-style: normal; color: #A9A6B8; }
+.r28 .cc-row2 .b-side { display: flex; flex: none; align-items: center; gap: 2px; }
+.r28.b-stage .cc-row2 .ctl-btn { width: 38px; height: 38px; border: none; border-radius: 12px; background: transparent; box-shadow: none; color: var(--cc-ink2); }
+.r28.b-stage .cc-row2 .ctl-btn:hover { background: var(--cc-surface); }
+.r28.b-stage .cc-row2 .ctl-btn.is-paused { background: var(--cc-primary); color: #fff; }
+.r28 .cc-row2 > :last-child { flex: none; }
+.r28 .cc-row3 { padding-bottom: 12px; }
+.r28 .b-prog { gap: 4px; padding: 0; }
+.r28 .b-prog i { height: 8px; border-radius: 999px; background: var(--cc-track); }
+.r28 .b-prog i.is-done, .r28 .b-prog i.is-cur { background: var(--cc-primary); box-shadow: none; }
+@media (max-width: 759px) {
+  .r28 .cc-row2 { gap: 6px; min-height: 46px; padding: 4px 0 6px; }
+  .r28 .b-chip { padding: 6px 11px; font-size: 13px; gap: 6px; }
+  .r28 .cc-count { font-size: 15px; }
+  .r28.b-stage .cc-row2 .ctl-btn { width: 34px; height: 34px; }
+  .r28 .cc-row3 { padding-bottom: 8px; }
+}
+
+/* Низ: «← Orqaga» — белая с толстым низом, основная — оранжевая с нижней гранью. */
+.r28.b-stage .stage-nav { border-top: 1px solid var(--cc-line); background: #FFFFFF; }
+.r28.b-stage .stage-nav .btn-accent, .r28.b-stage .stage-nav .btn-ghost, .r28 .b-btn-hint {
+  height: 52px; min-height: 52px; border-radius: 12px; font: 600 17px/1 var(--cc-font); border: none; transform: none; }
+.r28.b-stage .stage-nav .btn-accent { background: var(--cc-primary); color: #fff; box-shadow: inset 0 -3px 0 var(--cc-primary-edge); }
+.r28.b-stage .stage-nav .btn-accent:not(:disabled):hover { background: #F2461F; }
+.r28.b-stage .stage-nav .btn-accent:disabled { background: var(--cc-track); color: #B4B2BE; box-shadow: none; }
+.r28.b-stage .stage-nav .btn-ghost { background: #fff; color: var(--cc-ink); border: 2px solid var(--cc-line); border-bottom-width: 4px; box-shadow: none; padding: 0 20px; }
+.r28.b-stage .stage-nav .btn-accent:not(:disabled):active { transform: translateY(1px); box-shadow: inset 0 -1px 0 var(--cc-primary-edge); }
+.r28.b-stage .stage-nav .btn-ghost:active { transform: translateY(1px); border-bottom-width: 2px; }
+@media (min-width: 760px) {
+  .r28.b-stage .stage-nav .btn-accent, .r28.b-stage .stage-nav .btn-ghost, .r28 .b-btn-hint { height: 56px; min-height: 56px; font-size: 18px; border-radius: 14px; }
+}
+@media (max-width: 759px) {
+  .r28.b-stage .stage-nav .btn-ghost { width: auto; flex: 0 0 auto; padding: 0 16px; font-size: 16px; }
+  .r28.b-stage .stage-nav .btn-ghost::before { margin: 0 6px 0 0; width: 18px; height: 18px; }
+  .r28.b-stage .stage-nav .btn-accent, .r28.b-stage .stage-nav .btn-ghost, .r28 .b-btn-hint { height: 48px; min-height: 48px; font-size: 16px; }
+}
+
+/* Панели результата. Верно — зелёная («Barakalla!»), причина ошибки — красная, подсказка лампочки — жёлтая. */
+.r28 .b-sheet { border-top-width: 2px !important; }
+.r28 .b-sheet.is-ok { background: linear-gradient(180deg, #F1FDF7, #DDF7EA) !important; border-top-color: var(--cc-ok-panel) !important; }
+.r28 .b-sheet.is-ok .b-sheet-ic { background: var(--cc-ok); color: #fff; border-radius: 50%; }
+.r28 .b-sheet.is-ok .b-sheet-tx b { color: #0B9A64; }
+.r28 .b-sheet.is-ok .btn-accent:not(:disabled) { background: var(--cc-ok-cta); box-shadow: inset 0 -3px 0 var(--cc-ok-edge); }
+.r28 .b-sheet.is-hint.is-err { background: linear-gradient(180deg, #FFF3F3, #FCE1E1) !important; border-top-color: var(--cc-bad-panel) !important; }
+.r28 .b-sheet.is-err .b-sheet-ic { background: var(--cc-bad-panel); color: #fff; border-radius: 50%; }
+.r28 .b-sheet.is-err .b-sheet-tx b { color: var(--cc-bad-panel); }
+.r28 .b-sheet.is-err .b-btn-hint { background: var(--cc-bad-panel); color: #fff; box-shadow: inset 0 -3px 0 var(--cc-bad-edge); }
+.r28 .b-sheet.is-hint.is-tip { background: linear-gradient(180deg, #FFFDF0, #FFF6C7) !important; border-top-color: var(--cc-tip-edge) !important; }
+.r28 .b-sheet.is-tip .b-sheet-ic { background: var(--cc-tip); color: var(--cc-ink); border-radius: 50%; }
+.r28 .b-sheet.is-tip .b-sheet-tx b { color: #8A6D00; }
+.r28 .b-sheet.is-tip .b-btn-hint { background: var(--cc-tip); color: var(--cc-ink); box-shadow: inset 0 -3px 0 var(--cc-tip-edge); }
+.r28 .b-sheet-tx b { font: 600 20px/1.2 var(--cc-font); }
+.r28 .b-sheet-tx p { font: 400 15px/1.4 var(--cc-font); color: #2A2A35; }
+.r28 .b-sheet-ic { width: 32px; height: 32px; }
+.r28 .b-sheet-ic svg { width: 18px; height: 18px; }
+@media (max-width: 759px) { .r28 .b-sheet { border-radius: 16px 16px 0 0; } .r28 .b-sheet-tx b { font-size: 18px; line-height: 32px; } .r28 .b-sheet-tx p { font-size: 14px; } }
+@media (max-width: 759px) { .r28 .cc-row2 { padding-top: 8px; } }
+/* Набранное в поле редактора — цветами самого редактора (заказчик, 02.11.2026: «слова оранжевые — сделай
+   как в редакторе»): обычный текст — светло-серый, как текст в строках, набираемый тег — синий, как теги. */
+.r28 .kz-line .tk-input, .r28 .kz-line .kz-write .tk-input { color: var(--r-ed-tx); caret-color: #AEAFAD; }
+.r28 .kz-line .tk-input.kz-tag-in, .r28 .kz-line .kz-write .tk-input.kz-tag-in { color: var(--r-ed-tag); }
+/* Поле в строке — без цветной рамки (заказчик: «инпуты внутри редактора горят оранжевым — странно»):
+   чуть светлее фона редактора, тонкая серая рамка (у пустого поля «пиши здесь» — пунктиром), в фокусе — светлее. */
+.r28 .kz-line .tk-input, .r28 .kz-line .kz-write .tk-input { background: rgba(255, 255, 255, .06); border: 1px solid #3C3C3C; box-shadow: none; }
+.r28 .kz-line .kz-write .tk-input { border: 1px dashed #5A5A5A; }
+.r28 .kz-line .tk-input:focus, .r28 .kz-line .kz-write .tk-input:focus { background: rgba(255, 255, 255, .09); border: 1px solid #6E6E6E; outline: none; }
+/* Поле — как в настоящем редакторе: никакой рамки и «коробки», пишут прямо в строке; строка с полем —
+   «текущая строка» VS Code (чуть светлее, тонкая рамка), подсказка — серым курсивом, курсор мигает.
+   Оранжевую полосу у текущей строки убрали. */
+.r28 .kz-line .tk-input, .r28 .kz-line .kz-write .tk-input, .r28 .kz-line .tk-input:focus, .r28 .kz-line .kz-write .tk-input:focus {
+  background: transparent; border: none; border-radius: 0; box-shadow: none; outline: none; padding-left: 2px; padding-right: 2px; }
+.r28 .kz-line:has(.tk-input) { background: #262626; box-shadow: inset 0 0 0 1px #333333; }
+.r28 .kz-line:has(.tk-input:focus) { background: #2A2A2A; box-shadow: inset 0 0 0 1px #3A3A3A; }
+.r28 .kz-line.is-mark, .r28 .kz-line.is-hl, .r28 .kz-line.is-cur { background: #262626; box-shadow: inset 0 0 0 1px #333333; }
+.r28 .kz-line .kz-write .tk-input::placeholder, .r28 .kz-line .tk-input::placeholder { color: #6B6B6B; font: italic 500 14px var(--r-mono); }
+.r28 .kz-line .kz-write .tk-input:placeholder-shown { padding-left: 10px; }
+.r28 .kz-caret { left: 3px; background: #AEAFAD; width: 2px; }
+/* Подсказка бездействия у поля — не оранжевое свечение, а мягко «дышащая» текущая строка. */
+.r28 .kz-gap-led .tk-input { animation: none; }
+.r28 .kz-line:has(.kz-gap-led .tk-input), .r28 .kz-gap-led.kz-line:has(.tk-input) { animation: r28LineBreath 1.4s ease-in-out infinite; }
+@keyframes r28LineBreath { 0%, 100% { background: #262626; } 50% { background: #333333; } }
+@media (prefers-reduced-motion: reduce) { .r28 .kz-line:has(.tk-input) { animation: none !important; } }
+/* Белая щель над низом: у полосы Коди (speaker-wrap, сам Коди в ней — поверх) был нижний отступ 9 px
+   белого цвета между полем урока и низом. Отступ убран. */
+.r28.b-stage .speaker-wrap { padding-top: 0; padding-bottom: 0; }
+/* Экран 14 «Текст попал на вкладку» на низком телефоне (360 × 640): браузер, код и плитки не помещались —
+   браузер заезжал на строку задания, плитки — на код. Браузер ниже, код плотнее. (Проверка «от и до», 02.11.2026.) */
+@media (max-width: 759px) and (max-height: 700px) {
+  /* Браузер — пониже, но во всю ширину (вкладка с текстом — главное на экране, её не обрезать). */
+  .r28 .kz-sheet .kz-s14 > .kz-col > .kz-br, .r28 .kz-sheet .kz-s14 > .kz-col > .kz-br:not(.is-short) { aspect-ratio: 16 / 7; max-width: 100%; align-self: center; width: 100%; }
+  .r28 .kz-s14 { gap: 6px; }
+  .r28 .kz-s14 .kz-code { line-height: 1.24; }
+  .r28 .kz-s14 .kz-code::before { margin-bottom: 1px; }
+}
+/* Открытая клавиатура телефона (экраны 7 и 9 — своё название и привет): редактор вылезал на 4–27 px.
+   Пока клавиатура открыта, у редактора нет вкладки файла, строки плотнее. */
+.is-kbd .r28 .kz-code { padding-bottom: 4px; line-height: 1.25; box-shadow: none; }
+.is-kbd .r28 .kz-code::before, .is-kbd .r28 .kz-code::after { display: none; }
+.is-kbd .r28 .kz-line .tk-input { font-size: 16px; line-height: 1.2; padding-top: 0; padding-bottom: 0; }
