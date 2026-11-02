@@ -1,8 +1,11 @@
+// СГЕНЕРИРОВАНО tools/problemitas17/build.mjs из tools/kollazh/ и tools/bdizayn16/ — не править руками.
 // =============================================================================
-// КУРС «HTML» · Модуль 1 «Основы разметки» · Урок 1 — «Структура HTML-документа»
-// («Бумажная страница», ЭТАЛОН КУРСА с 22.10.2026). Дети 10–14, проходят сами.
-// Один самодостаточный JSX: канон курса (до пометки «УРОК») + урок.
-// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/kollazh/kollazh.src.jsx lessons/html/01-struktura-dokumenta.jsx
+// Прежний урок 1 «Бумажная страница» (эталон курса 22.10–02.11.2026; теперь тестовый 18).
+// Урок 1 курса и эталон с 02.11.2026 — облик «Kodi playground» (tools/problemitas17/build.mjs),
+// он собирается из этого исходника и бумажного набора (tools/kollazh/), поэтому META здесь —
+// урока 1 курса (lessonId html-01-struktura-dokumenta), и набор отсюда не удалять.
+// Сборка тестового 18: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/kollazh/kollazh.src.jsx lessons/test/18-struktura-dokumenta.jsx
+// и в собранном файле lessonId — test-18-struktura-dokumenta (чтобы не делить прогресс с уроком 1 курса).
 // (звук бумаги: node tools/kollazh/paper-data.mjs → kollazh-paper-data.jsx, потом сборка).
 // =============================================================================
 // =============================================================================
@@ -7257,6 +7260,331 @@ const C = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// РЕПЛИКИ УРОКА 16 (заказчик, 28.10.2026): русский и английский — по
+// «urok-01-repliki-v2.md» (версия 2), узбекский — по «urok-01-uz.md» (3-я версия,
+// разговорный стиль). Подменяют тексты урока 1 (C и UI из tools/kollazh/kollazh.src.jsx)
+// при сборке; урок 1 курса не меняется. Строки задания, которых нет в файлах
+// заказчика (новые «Нажми…» на экранах 3 и 6), написаны по их смыслу.
+// Знаки < и > в речи — в кавычках «<», «>»: так движок произносит их названия.
+// ─────────────────────────────────────────────────────────────────────────────
+function b16Merge(dst, src) {
+  Object.keys(src).forEach((k) => {
+    const v = src[k];
+    const deep = v && typeof v === 'object' && !Array.isArray(v) && !('ru' in v) && dst[k] && typeof dst[k] === 'object' && !Array.isArray(dst[k]);
+    if (deep) b16Merge(dst[k], v); else dst[k] = v;
+  });
+}
+
+b16Merge(UI, {
+  tab: L3('Yorliq', 'Вкладка', 'Tab'),
+  noTags: L3('Bu yerga faqat so‘z yozing, burchakli qavslar kerak emas.', 'Здесь пиши только слова, без угловых скобок.', 'Only words here, no angle brackets.'),
+  next: L3('Veb-sahifamizga katta sarlavha va xatboshilar qo‘shishni o‘rganamiz', 'Добавим большой заголовок и абзацы', 'Adding a big heading and paragraphs')
+});
+
+b16Merge(C, {
+  s1: {
+    say: L3('Hammaga salom! Mening ismim Kodi. Hozir sizlarga bitta veb-sahifani ko‘rsataman. Nimaga deysizmi? Buni dars davomida bilib olasiz!',
+      'Привет! Я Коди. Смотри, это веб-страница.',
+      'Hi! I’m Kodi. Look, here’s a web page.'),
+    sayTab: L3('Tepadagi mana bu kichkina joyni ko‘ryapsizmi? Bu yorliq deyiladi. Unga sahifaning nomi yozib qo‘yilgan.',
+      'Видишь маленькую полоску сверху? Это вкладка. На ней написано название страницы.',
+      'See the little strip at the top? That’s the tab. It shows the page name.'),
+    sayGo: L3('Endi bir narsani tasavvur qiling: shu sahifa odam bo‘lib qolsa, qanaqa bo‘larkin? Qani, ko‘ramiz! «Aylantirish» tugmasini bosing.',
+      'А если бы страница была человеком, какой бы она была? Давай проверим! Нажми «Превратить».',
+      'If a web page were a person, what would it look like? Let’s find out! Tap “Transform”.'),
+    magic: L3('Voy-voy, qarang! Sahifa jonlanib, odamchaga aylanib qoldi!',
+      'Ого! Страница ожила и стала человечком!',
+      'Whoa! The page came alive and turned into a paper buddy!'),
+    magicHead: L3('Sezdingizmi? Sahifaning nomi endi uning boshida turibdi. Chunki boshda sahifa haqidagi ma’lumotlar saqlanadi.',
+      'Смотри: название страницы спряталось у него в голове. В голове хранится информация о странице.',
+      'Look: the page name went into its head. The head keeps information about the page.'),
+    magicWin: L3('Tanasi-chi? U sahifada ko‘rinib turgan narsalardan yasalgan: matndan, rasmdan va tugmadan.',
+      'А тело собрано из того, что видно на странице: из текста, картинки и кнопки.',
+      'And the body is made of what you see on the page: text, a picture and a button.'),
+    done: L3('Bugun siz ham o‘zingizning sahifangizni yasaysiz: unga nom qo‘yasiz, salom ham yozasiz. Lekin oldin kod degani qanaqa bo‘lishini ko‘rib olamiz.',
+      'Сегодня ты сделаешь свою страницу: придумаешь ей название и напишешь приветствие. Но сначала посмотрим, как выглядит код.',
+      'Today you’ll make your own page: you’ll name it and write a greeting. But first, let’s see what code looks like.'),
+    askLook: L3('Qarang: brauzer yorlig‘i', 'Смотри: вкладка браузера', 'Look: the browser tab'),
+    askDone: L3('Boshda — sahifa haqida ma’lumot, tanada — ko‘rinadigan narsalar',
+      'В голове — информация о странице, в теле — то, что видно',
+      'The head keeps page info, the body is what you see')
+  },
+  rd: {
+    say: L3('Mana, bu kod. Brauzer sahifani aynan shundan yig‘adi. Qani, qanday o‘qishini kuzatib turing!',
+      'Это код. По нему браузер собирает страницу. Смотри, как он его читает!',
+      'This is code. The browser builds the page from it. Watch how it reads it!'),
+    read1: L3('Sezdingizmi? Brauzer kodni xuddi biz kitob o‘qigandek o‘qiyapti.',
+      'Заметил? Браузер читает код так же, как ты читаешь книжку.',
+      'Did you notice? The browser reads code the way you read a book.'),
+    read2: L3('Har bir qatorni chapdan o‘ngga qarab o‘qiydi.', 'Каждую строчку — слева направо.', 'Each line from left to right.'),
+    read3: L3('Qatorlarni esa tepadan pastga, bittalab o‘qiydi.', 'А строчки — сверху вниз, одну за другой.', 'And the lines from top to bottom, one after another.'),
+    done: L3('Brauzer kodni oxirigacha o‘qib chiqdi — mana, sahifa ham tayyor! Endi bu kodda nimalar yozilganini birga ko‘rib chiqamiz.',
+      'Строчка за строчкой — и страница готова! Сейчас разберёмся, что написано в этом коде.',
+      'Line by line, and the page is ready! Now let’s find out what this code says.')
+  },
+  s3: {
+    say: L3('Ramkaga bir qarang-chi: unda ikkita yozuv bor. Tepadagisini bosib ko‘ring.',
+      'Посмотри на рамку: на ней две надписи. Нажми на верхнюю.',
+      'Look at the frame: it has two labels. Tap the top one.'),
+    br: L3('Mana bu «<» va «>» belgilarini ko‘ryapsizmi? Ularni burchakli qavslar deyishadi.',
+      'Видишь знаки «<» и «>»? Это угловые скобки.',
+      'See these two marks: “<” and “>”? They’re called angle brackets.'),
+    nm: L3('Ularning o‘rtasida html degan so‘z turibdi. Bu tegning nomi.', 'Между ними слово html. Это имя тега.', 'Between them is the word html. That’s the tag’s name.'),
+    sayTag: L3('Mana shu yozuv butunligicha teg deyiladi. Brauzer tegni sahifada ko‘rsatmaydi, faqat o‘qiydi.',
+      'Скобки и имя вместе — это тег. Тег — подсказка для браузера. Браузер не показывает тег на странице, а только читает его.',
+      'The brackets and the name together make a tag. A tag is a note for the browser. The browser doesn’t show tags on the page, it just reads them.'),
+    top: L3('Bunisi ochuvchi html tegi. U brauzerga «Sahifa shu yerdan boshlanadi», deb aytadi. Endi pastdagisini bosing.',
+      'Это открывающий тег html. Он говорит браузеру: «Здесь страница начинается». Теперь нажми на нижнюю надпись.',
+      'This is the opening html tag. It tells the browser: “The page starts here.” Now tap the bottom label.'),
+    bottom: L3('Farqini sezdingizmi? Bunda birinchi qavsdan keyin qiya chiziq bor. Bu yopuvchi html tegi. U «Sahifa shu yerda tugaydi», deydi.',
+      'Видишь разницу? Сразу после первой скобки стоит косая черта. Это закрывающий тег html. Он говорит: «Здесь страница заканчивается».',
+      'See the difference? Right after the first bracket there’s a slash. This is the closing html tag. It says: “The page ends here.”'),
+    pair: L3('Demak, ochuvchi teg boshlaydi, yopuvchi teg tugatadi. Sahifadagi hamma narsa shu ikkalasining o‘rtasida turadi.',
+      'Открывающий тег — начало, закрывающий — конец. Всё, что есть на странице, стоит между ними.',
+      'Opening tag: the start. Closing tag: the end. Everything on the page goes between them.'),
+    done: L3('Sizga bir sir aytaymi? Bu ramkani tushunarli bo‘lsin deb o‘zimiz chizdik. Haqiqiy brauzerda uni ko‘rmaysiz.',
+      'Маленький секрет: рамку мы нарисовали, чтобы было понятнее. В настоящем браузере её нет.',
+      'A little secret: we drew the frame to make things clearer. A real browser doesn’t have it.'),
+    ask: L3('Tepadagi yozuvni bosing', 'Нажми на верхнюю надпись', 'Tap the top label'),
+    askBot: L3('Pastdagi yozuvni bosing', 'Нажми на нижнюю надпись', 'Tap the bottom label')
+  },
+  s4: {
+    say: L3('Voy, ramkaning pastki cheti qayoqqa ketdi? Kodda yopuvchi html tegi yo‘q ekan. Uni bo‘sh qatorga yozing-da, «Tekshirish»ni bosing.',
+      'Ой, у рамки пропал нижний край! В коде не хватает закрывающего тега html. Напиши его в пустой строке и нажми «Проверить».',
+      'Oops, the frame’s bottom edge is gone! The code is missing the closing html tag. Type it in the empty line and tap “Check”.'),
+    msgs: {
+      needSlash: L3('Oz qoldi! Bu ochuvchi teg-ku. Yopuvchi tegda html so‘zidan oldin qiya chiziq bo‘ladi.',
+        'Почти! Это открывающий тег. В закрывающем перед словом html стоит косая черта.',
+        'Almost! That’s the opening tag. The closing tag has a slash before html.'),
+      needLt: L3('Boshi tushib qolibdi: teg doim «<» qavsi bilan boshlanadi.', 'Не хватает начала: тег начинается со скобки «<».', 'The start is missing: a tag begins with “<”.'),
+      needGt: L3('Oxiri tushib qolibdi: teg doim «>» qavsi bilan tugaydi.', 'Не хватает конца: тег заканчивается скобкой «>».', 'The end is missing: a tag ends with “>”.'),
+      wrongName: L3('Teg ichidagi so‘zga qarang-chi: bu yerga html yozilishi kerak.', 'Посмотри на слово внутри тега: здесь нужно html.', 'Check the word inside the tag: you need html here.'),
+      generic: L3('Nimadir chalkashib ketdi. Tepadagi teg bilan solishtirib ko‘ring: qavs, qiya chiziq, html, qavs.',
+        'Что-то перепуталось. Сравни с верхним тегом: скобка, косая черта, html, скобка.',
+        'Something’s mixed up. Compare it with the top tag: bracket, slash, html, bracket.')
+    },
+    hints: [L3('Ramkaning tepasidagi tegga qarang. Pastdagisi unga juda o‘xshaydi.', 'Посмотри на верхний тег на рамке. Нижний очень на него похож.', 'Look at the top tag on the frame. The bottom one looks very similar.'),
+      L3('Yopuvchi teg ham xuddi o‘sha, faqat qiya chizig‘i bor.', 'Закрывающий тег — тот же самый, только с косой чертой.', 'The closing tag is the same tag, just with a slash.'),
+      L3('Tugmalarni ketma-ket bosing: qavs, qiya chiziq, html, keyin yana qavs.', 'Нажимай кнопки по порядку: скобка, косая черта, html и снова скобка.', 'Tap the buttons in order: bracket, slash, html, and bracket again.')],
+    ok: L3('Zo‘r! Ramka yopildi. Endi butun sahifa ikkita html tegining o‘rtasida.', 'Есть! Рамка закрылась. Теперь вся страница стоит между двумя тегами html.', 'Yes! The frame is closed. Now the whole page is between the two html tags.')
+  },
+  s5: {
+    say: L3('Endi navbat sizga! Ramkaga ikkita teg kerak: biri tepaga, biri pastga. Faqat ehtiyot bo‘ling: pastdagi uchta tegdan bittasi ortiqcha.',
+      'Теперь сам! Рамке нужны два тега: сверху и снизу. Осторожно: один из трёх тегов внизу — лишний.',
+      'Your turn! The frame needs two tags: one on top, one at the bottom. Careful: one of the three tags below is extra.'),
+    sayHow: L3('Tegni ushlab, joyiga olib boring. Yoki oldin tegni, keyin joyni bosing.', 'Перетащи тег на место. Или нажми тег, а потом место.', 'Drag a tag into place. Or tap a tag, then the place.'),
+    top: L3('Oz qoldi! Tepada sahifa boshlanadi, shuning uchun bu yerga qiya chiziqsiz ochuvchi teg kerak.',
+      'Почти! Сверху страница начинается. Здесь нужен открывающий тег — без косой черты.',
+      'Almost! The page starts at the top, so it needs the opening tag, without a slash.'),
+    bottom: L3('Hechqisi yo‘q! Pastda sahifa tugaydi, bu yerga qiya chiziqli yopuvchi teg kerak.',
+      'Ничего страшного! Снизу страница заканчивается. Здесь нужен закрывающий тег — с косой чертой.',
+      'No worries! The page ends at the bottom, so it needs the closing tag, with a slash.'),
+    back: L3('Ana, tuzoq shu yerda ekan! Bu chiziq teskari tomonga qiyshaygan. Yopuvchi tegda chiziq o‘ngga qarab qiyshaygan bo‘ladi.',
+      'Вот она, ловушка! Эта черта наклонена не в ту сторону. В закрывающем теге черта наклонена вправо.',
+      'There’s the trap! This slash leans the wrong way. In a closing tag it leans to the right.'),
+    pickFirst: L3('Oldin tegni tanlang.', 'Сначала выбери тег.', 'Pick a tag first.'),
+    hints: [L3('Qaysi teg sahifani boshlaydi-yu, qaysi biri tugatadi?', 'Какой тег начинает страницу, а какой заканчивает?', 'Which tag starts the page, and which one ends it?'),
+      L3('Tepaga qiya chiziqsiz teg, pastga qiya chiziqli teg qo‘yiladi.', 'Сверху — тег без косой черты. Снизу — тег с косой чертой.', 'Top: the tag without a slash. Bottom: the tag with a slash.'),
+      L3('Yonib turgan tegni yonib turgan joyga olib boring.', 'Перетащи светящийся тег на светящееся место.', 'Drag the glowing tag to the glowing place.')],
+    ok: L3('Barakalla, ikkala teg ham joyida! Teskari chiziqli teg esa ortiqcha edi.', 'Отлично, оба тега на месте! А тег с неправильной чертой был лишним.', 'Great, both tags are in place! The one with the wrong slash was extra.'),
+    ask: L3('Tegni joyiga olib boring', 'Перетащи тег на место', 'Drag a tag into place')
+  },
+  s6: {
+    say: L3('html ichida ikkita qism yashaydi. Birinchisining nomi head, inglizchada «bosh» degani. Odamchaning boshi xuddi shu head.',
+      'Внутри html есть две части. Первая называется head — по-английски «голова». Голова человечка — это и есть head.',
+      'There are two parts inside html. The first is called head. The buddy’s head stands for it.'),
+    sayInfo: L3('head ichida sahifa haqidagi ma’lumotlar turadi. Pastdagi katta joy — brauzer oynasiga qarang: u yerda ular ko‘rinmaydi. Qani, boshni bosib, ichida nima borligini ko‘ring.',
+      'В head лежит информация о странице. В окне браузера, в этой большой части внизу, её не видно. Нажми на голову и посмотри, что там.',
+      'head holds information about the page. You can’t see it in the browser window, this big area below. Tap the head and see what’s inside.'),
+    opened: L3('Ana, ichida nima ekan: sahifaning nomi! U title tegining ichiga yoziladi. Endi nom yozilgan qog‘ozchani bosing.',
+      'Вот что внутри: название страницы! Его пишут в теге title. Нажми на бумажку с названием.',
+      'Here’s what’s inside: the page name! It goes in the title tag. Tap the paper with the name.'),
+    flew: L3('Nom uchib, yorliqqa o‘tib oldi! Brauzer title tegidagi matnni mana shu yerda, tepada ko‘rsatadi. Oynada esa u yo‘q.',
+      'Название перелетело на вкладку! Вот где браузер показывает текст из title: наверху, на вкладке. А в окне его нет.',
+      'The name flew to the tab! That’s where the browser shows the text from title: up on the tab. It’s not in the window.'),
+    inHead: L3('Endi kodga qarang: tepada ochuvchi head tegi, pastda yopuvchi head tegi turibdi.', 'Теперь посмотри на код: сверху открывающий тег head, снизу закрывающий.', 'Now look at the code: the opening head tag is at the top, the closing one at the bottom.'),
+    done: L3('title qatori ularning o‘rtasida. Demak, title head ichida yashaydi.', 'Строка title стоит между ними. Значит, title живёт внутри head.', 'The title line sits between them. So title lives inside head.'),
+    askLook: L3('Qarang: odamchaning boshi', 'Смотри: голова человечка', 'Watch: the buddy’s head'),
+    ask: L3('Odamchaning boshini bosing', 'Нажми на голову человечка', 'Tap the buddy’s head'),
+    askCard: L3('Nom yozilgan qog‘ozchani bosing', 'Нажми на бумажку с названием', 'Tap the paper with the name'),
+    askDone: L3('title head ichida yashaydi', 'title живёт внутри head', 'title lives inside head')
+  },
+  s7: {
+    say: L3('Endi eng qiziq joyiga keldik: sahifangizga o‘zingiz nom qo‘ying! Uni title teglarining o‘rtasiga yozing, masalan, «Futbol». Nom shu zahoti yorliqda chiqadi. Keyin «Tayyor»ni bosing.',
+      'А теперь самое интересное: придумай название для своей страницы! Напиши его между тегами title, например «Футбол». Название сразу появится на вкладке. Потом нажми «Готово».',
+      'Now the fun part: come up with a name for your page! Type it between the title tags, for example “Football”. It’ll show up on the tab right away. Then tap “Done”.'),
+    noTags: L3('Bu yerga faqat so‘z yozing, burchakli qavslar kerak emas.', 'Здесь пиши только слова, без угловых скобок.', 'Only words here, no angle brackets.'),
+    hints: [L3('Nom qayerga yoziladi? Kodga qarang: u yerda bo‘sh joy bor.', 'Куда пишется название? Посмотри на код: там есть пустое место.', 'Where does the name go? Look at the code: there’s an empty spot.'),
+      L3('Nom ikkita title tegining o‘rtasiga yoziladi.', 'Название пишут между двумя тегами title.', 'The name goes between the two title tags.'),
+      L3('Ikkita title tegi o‘rtasidagi bo‘sh joyni bosing, nom yozing va «Tayyor»ni bosing.', 'Нажми на пустое место между тегами title, напиши название и нажми «Готово».', 'Tap the empty spot between the title tags, type a name and tap “Done”.')],
+    ok: L3('Zo‘r! Endi yorliqda sahifangizning nomi turibdi.', 'Класс! Теперь на вкладке название твоей страницы.', 'Cool! Now your page name is on the tab.'),
+    eyebrow: L3('Yorliqdagi nom', 'Название на вкладке', 'The name on the tab')
+  },
+  s9: {
+    say: L3('Nom tayyor. Endi sahifaning o‘zini to‘ldiramiz! html ichidagi ikkinchi qismning nomi body, inglizchada «tana» degani. Qani, odamchaning tanasidan nima uchib chiqarkin?',
+      'Название готово. Теперь заполним саму страницу! Вторая часть внутри html — body, по-английски «тело». Смотри, что вылетит из тела человечка!',
+      'The name is ready. Now let’s fill the page itself! The second part inside html is body. Watch what flies out of the buddy’s body!'),
+    out: L3('Voy, qarang! Matn, rasm, tugma — hammasi tanadan uchib chiqib, to‘ppa-to‘g‘ri oynaga tushdi.',
+      'Вот это да! Текст, картинка и кнопка вылетели из тела прямо в окно.',
+      'Wow! The text, the picture and the button flew out of the body right into the window.'),
+    done: L3('Oynada nima ko‘rinsa — matnmi, rasmmi, tugmami — hammasi body ichida turadi. Bugun body ichiga matn yozamiz, rasm bilan tugmani keyingi darslarda qo‘shamiz.',
+      'Всё, что видно в окне, — текст, картинки, кнопки — живёт внутри body. Сегодня мы напишем в body текст, а картинки и кнопки добавим на следующих уроках.',
+      'Everything you see in the window, text, pictures, buttons, lives inside body. Today we’ll write text in body; pictures and buttons come in later lessons.')
+  },
+  s10: {
+    say: L3('Endi body teglarining o‘rtasiga «Salom» so‘zini yozing.', 'Теперь напиши приветствие между тегами body. Например, «Привет!».', 'Now type a greeting between the body tags. For example, “Hello!”.'),
+    sayWin: L3('U shu zahoti oynada paydo bo‘ladi. Keyin «Tayyor»ni bosing.', 'Оно сразу появится в окне. Потом нажми «Готово».', 'It’ll show up in the window right away. Then tap “Done”.'),
+    noTags: L3('Bu yerga faqat so‘z yozing, burchakli qavslar kerak emas.', 'Здесь пиши только слова, без угловых скобок.', 'Only words here, no angle brackets.'),
+    hints: [L3('Oyna uchun matn qayerga yoziladi? Kodga qarang.', 'Куда пишется текст для окна? Посмотри на код.', 'Where does the text for the window go? Look at the code.'),
+      L3('Matn ikkita body tegining o‘rtasiga yoziladi.', 'Текст пишут между двумя тегами body.', 'The text goes between the two body tags.'),
+      L3('Ikkita body tegi o‘rtasidagi bo‘sh joyni bosing, matn yozing va «Tayyor»ni bosing.', 'Нажми на пустое место между тегами body, напиши текст и нажми «Готово».', 'Tap the empty spot between the body tags, type your text and tap “Done”.')],
+    ok: L3('Ajoyib! Salomingiz oynada turibdi.', 'Отлично! Твоё приветствие уже в окне.', 'Great! Your greeting is in the window.')
+  },
+  s8: {
+    eyebrow: L3('Yorliqmi yoki oyna?', 'Вкладка или окно?', 'Tab or window?'),
+    say: L3('Endi bir o‘yin o‘ynaymiz: siz brauzersiz! Kod qatoriga qarab, so‘z qayerda chiqishini toping: yorliqdami yoki oynada?',
+      'А теперь игра: ты — браузер! Смотри на строку кода и решай, где появится слово: на вкладке или в окне?',
+      'Now a game: you’re the browser! Look at the line of code and decide where the word will show: on the tab or in the window?'),
+    rounds: [
+      { kind: 'title', word: L3('Kosmos', 'Космос', 'Space'), extra: L3('Musiqa', 'Музыка', 'Music'), want: 'tab' },
+      { kind: 'body', word: L3('Kosmos', 'Космос', 'Space'), extra: L3('Musiqa', 'Музыка', 'Music'), want: 'win' },
+      { kind: 'title', word: L3('Juma kuni final!', 'Финал в пятницу!', 'The final is on Friday!'), extra: L3('Bugun konsert!', 'Сегодня концерт!', 'Concert today!'), want: 'tab' }
+    ],
+    askTitle: L3('title tegida «{w}» deb yozilgan. Qani, u qayerda chiqadi?', 'В title написано «{w}». Где оно появится?', 'title says “{w}”. Where will it show up?'),
+    askBody: L3('Endi body tegida «{w}» deb yozilgan. Bu safar qayerda chiqadi?', 'А теперь в body написано «{w}». Где оно появится?', 'Now body says “{w}”. Where will it show up?'),
+    ok: {
+      title: L3('To‘ppa-to‘g‘ri! title tegidagi so‘z yorliqqa chiqdi.', 'Верно! Слово из title — на вкладке.', 'Right! The word from title is on the tab.'),
+      body: L3('Topdingiz! body tegidagi so‘z oynaga chiqdi.', 'В точку! Слово из body — в окне.', 'Spot on! The word from body is in the window.')
+    },
+    miss: {
+      title: L3('Hechqisi yo‘q! So‘z title tegida turgan edi, shuning uchun yorliqqa chiqdi.', 'Ничего страшного! Слово стоит в title, поэтому оно на вкладке.', 'No worries! The word is in title, so it’s on the tab.'),
+      body: L3('Bu safar adashdingiz! So‘z body tegida turgan edi, shuning uchun oynaga chiqdi.', 'Почти! Слово стоит в body, поэтому оно в окне.', 'Almost! The word is in body, so it’s in the window.')
+    },
+    more: L3('Keling, yana bittasini ko‘ramiz.', 'Давай ещё один пример.', 'Let’s try one more.'),
+    hints: [L3('So‘z qaysi teglarning o‘rtasida turibdi?', 'Между какими тегами стоит слово?', 'Which tags is the word between?'),
+      L3('title tegidagi matn yorliqda, body tegidagi matn oynada ko‘rinadi.', 'Текст из title видно на вкладке, текст из body — в окне.', 'Text from title shows on the tab, text from body in the window.'),
+      L3('Teg nomini o‘qing: title bo‘lsa «Yorliq»ni, body bo‘lsa «Oyna»ni bosing.', 'Прочитай имя тега: title — жми «Вкладка», body — жми «Окно».', 'Read the tag name: for title tap “Tab”, for body tap “Window”.')],
+    done: L3('Mana, o‘yin tugadi! Esingizda bo‘lsin: title tegidagi matn yorliqda, body tegidagi matn oynada chiqadi.',
+      'Вот и всё! Запомни: текст из title — на вкладке, текст из body — в окне.',
+      'That’s it! Remember: text from title goes on the tab, text from body in the window.')
+  },
+  s11: {
+    say: L3('Keling, endi hammasini joy-joyiga qo‘yamiz! Har bir bo‘lakning o‘z uyi bor. Qani, toping-chi: uyi head ichidami yoki body ichidami? Bo‘lakni olib boring yoki oldin bo‘lakni, keyin kerakli qismni bosing.',
+      'Наведём порядок! Куда положить каждую вырезку: в head или в body? Перетащи её. Или нажми вырезку, а потом нужную часть.',
+      'Let’s tidy up! Where does each cut-out go: in head or in body? Drag it. Or tap a cut-out, then the right part.'),
+    items: [
+      { id: 'name', want: 'head', why: L3('Qarang: bu title qatori-ku. title esa head ichida yashaydi, demak, uning joyi head.', 'Смотри: это строка title. А title живёт внутри head. Значит, её место в head.', 'Look: this is the title line. title lives inside head, so this goes in head.') },
+      { id: 'hello', want: 'body', why: L3('Yo‘q, bunisining uyi boshqa joyda! Salomingiz oynada ko‘rinadi-ku, demak, u body ichida yashaydi.', 'Почти! Твоё приветствие видно в окне. Значит, оно в body.', 'Almost! Your greeting shows in the window, so it goes in body.') },
+      { id: 'pic', want: 'body', why: L3('Hechqisi yo‘q! Rasmni oynada ko‘ramiz-ku, demak, u body ichida.', 'Ничего страшного! Картинку мы видим в окне. Значит, она в body.', 'No worries! We see the picture in the window, so it goes in body.') },
+      { id: 'btn', want: 'body', why: L3('O‘ylab ko‘ring-chi: tugmani qayerda bosamiz? Oynada! Demak, u body ichida.', 'Подумай: где мы нажимаем кнопку? В окне! Значит, она в body.', 'Think: where do we press the button? In the window! So it goes in body.') }
+    ],
+    pickFirst: L3('Oldin bo‘lakni tanlang.', 'Сначала выбери вырезку.', 'Pick a cut-out first.'),
+    hints: [L3('O‘ylab ko‘ring: bu narsa brauzer oynasida ko‘rinadimi?', 'Подумай: эту вещь видно в окне браузера?', 'Think: can you see this in the browser window?'),
+      L3('Oynada ko‘rinadigan hamma narsa body ichida. title qatori esa head ichida.', 'Всё, что видно в окне, — в body. Строка title — в head.', 'Everything you see in the window goes in body. The title line goes in head.'),
+      L3('Yonib turgan bo‘lakni yonib turgan joyga olib boring.', 'Перетащи светящуюся вырезку в светящееся место.', 'Drag the glowing cut-out to the glowing place.')],
+    ok: L3('Hammasi joy-joyida! title head ichida, salom, rasm va tugma esa body ichida.', 'Порядок! title — в head, а приветствие, картинка и кнопка — в body.', 'All sorted! title is in head; the greeting, the picture and the button are in body.'),
+    ask: L3('Bo‘lakni head yoki body ichiga olib boring', 'Перетащи вырезку в head или в body', 'Drag a cut-out into head or body')
+  },
+  s12: {
+    say: L3('Endi siz hamma qismlarni bilasiz. Keling, brauzer sizning kodingizni qanday o‘qishini yana bir marta ko‘ramiz va har bir qatorni tushunib olamiz.',
+      'Теперь ты знаешь все части. Давай ещё раз посмотрим, как браузер читает твой код, и разберём каждую строчку.',
+      'Now you know all the parts. Let’s watch the browser read your code once more and go through each line.'),
+    order5: L3('Mana bu joyi muhim: oldin head yopiladi, keyin body ochiladi. Ular bir-birining ichida emas, ketma-ket turadi.',
+      'Важный момент: сначала head закрывается, и только потом открывается body. Они стоят друг за другом, а не друг в друге.',
+      'Important: head closes first, and only then body opens. They go one after the other, not one inside the other.'),
+    tapSay: L3('Yana bir marta eshitmoqchimisiz? Kod qatorini yoki o‘ngdagi qismni bosing, men aytib beraman.', 'Хочешь послушать ещё раз? Нажми на строку кода или на часть справа.', 'Want to hear it again? Tap a code line or a part on the right.'),
+    parts: {
+      doc: L3('Birinchi qator — <!DOCTYPE html>. U brauzerga «Bu HTML sahifa», deb aytadi. Uning jufti yo‘q, shuning uchun uni yopish shart emas.',
+        'Первая строка — <!DOCTYPE html>. Она говорит браузеру: «Это HTML-страница». Пары у неё нет, закрывать её не нужно.',
+        'The first line is <!DOCTYPE html>. It tells the browser: “This is an HTML page.” It has no pair, so you don’t close it.'),
+      html: L3('html tegi butun sahifani quchoqlab turadi. head ham, body ham uning ichida.', 'Тег html обнимает всю страницу. Внутри него — head и body.', 'The html tag hugs the whole page. Inside it are head and body.'),
+      head: L3('Mana bu head, sahifaning «boshi». Bu yerda sahifa haqidagi ma’lumotlar turadi.', 'Это head, «голова» страницы. Здесь хранится информация о странице.', 'This is head, the page’s “head”. It keeps information about the page.'),
+      title: L3('head ichida title bor, unda sahifaning nomi yozilgan. Brauzer shu nomni yorliqda ko‘rsatadi.', 'Внутри head — title с названием страницы. Это название браузер показывает на вкладке.', 'Inside head is title, with the page name. The browser shows that name on the tab.'),
+      body: L3('Mana bu body, sahifaning «tanasi». Oynada ko‘rinadigan hamma narsa shu yerda.', 'Это body, «тело» страницы. Здесь всё, что видно в окне.', 'This is body, the page’s “body”. Everything you see in the window is here.'),
+      text: L3('Mana, sizning salomingiz! U body ichida, shuning uchun oynada ko‘rinyapti.', 'А вот и твоё приветствие! Оно внутри body, поэтому его видно в окне.', 'And here’s your greeting! It’s inside body, so it shows in the window.')
+    }
+  },
+  s13: {
+    say: L3('Mana, eng qiziq joyi keldi: endi butun kodni o‘zingiz yig‘asiz! Birinchi qatorni men qo‘yib qo‘ydim, qolgani sizdan. Qatorchani bossangiz, o‘zi keyingi bo‘sh joyga borib tushadi.',
+      'А теперь главное испытание: собери весь код сам! Первая строка уже стоит. Нажми на полоску — она встанет в следующую пустую строку.',
+      'Now the big challenge: build the whole code yourself! The first line is already there. Tap a strip, and it goes into the next empty line.'),
+    sayMove: L3('Tartibni adashtirib qo‘ysangiz, qo‘rqmang: qatorchalarni o‘qchalar bilan tepaga yoki pastga suring. Hammasi tayyor bo‘lsa, «Tekshirish»ni bosing.',
+      'Ошибся с порядком — не беда: двигай полоски стрелками вверх и вниз. Когда всё готово, нажми «Проверить».',
+      'Mixed up the order? No problem: move strips up and down with the arrows. When it’s all set, tap “Check”.'),
+    rules: {
+      html: L3('DOCTYPE qatoridan keyin darrov ochuvchi html tegi keladi. Yopuvchi html tegi esa eng oxirida turadi.', 'Сразу после DOCTYPE идёт открывающий тег html. А закрывающий html — в самом конце.', 'The opening html tag comes right after DOCTYPE. The closing html tag goes at the very end.'),
+      pair: L3('Yopuvchi teg doim o‘zining ochuvchi tegidan keyin keladi.', 'Закрывающий тег стоит после своего открывающего.', 'A closing tag comes after its opening tag.'),
+      order: L3('Oldin head keladi, keyin body.', 'Сначала идёт head, потом body.', 'head comes first, then body.'),
+      headClose: L3('Oldin head tegini yoping, keyin body tegini oching.', 'Сначала закрой head, потом открывай body.', 'Close head first, then open body.'),
+      title: L3('title head ichida turishi kerak.', 'title должен стоять внутри head.', 'title must be inside head.'),
+      text: L3('Salom body ichida turishi kerak.', 'Приветствие должно стоять внутри body.', 'The greeting must be inside body.')
+    },
+    hints: [L3('DOCTYPE qatoridan keyin qaysi teg keladi, eng oxirida-chi?', 'Какой тег идёт сразу после DOCTYPE, а какой стоит в самом конце?', 'Which tag comes right after DOCTYPE, and which one goes at the very end?'),
+      L3('html ichida oldin title bilan head, keyin salom bilan body keladi.', 'Внутри html сначала head с title, потом body с приветствием.', 'Inside html: first head with title, then body with the greeting.'),
+      L3('Belgilangan qatorlardan birini bosing, keyin boshqasini. Ular joyini almashtiradi.', 'Нажми одну отмеченную полоску, потом другую — они поменяются местами.', 'Tap one marked strip, then the other: they’ll swap places.')],
+    ok: L3('Qoyil! Kod to‘g‘ri yig‘ildi. Nom head ichida, salom body ichida.', 'Супер, код собран верно! Название — в head, приветствие — в body.', 'Awesome, the code is right! The name is in head, the greeting is in body.')
+  },
+  s14: {
+    eyebrow: L3('Matn yorliqqa chiqib ketdi', 'Текст попал на вкладку', 'Text on the tab'),
+    say: L3('Voy, nimadir buzilib qolibdi! Sahifadagi hamma matn yorliqqa chiqib ketibdi, oyna bo‘m-bo‘sh. title qatorida bitta teg yetishmayapti.',
+      'Ой, что-то сломалось! Весь текст страницы уехал на вкладку, а окно пустое. В строке title не хватает одного тега.',
+      'Uh-oh, something broke! All the page text went onto the tab, and the window is empty. One tag is missing in the title line.'),
+    sayHow: L3('Keling, birga tuzatamiz! Kerakli tegni bo‘sh joyga olib boring yoki ustiga bir bosing.', 'Починим? Перетащи нужный тег в пустое место или просто нажми на него.', 'Shall we fix it? Drag the right tag into the empty spot, or just tap it.'),
+    why: {
+      '<title>': L3('Yo‘q, bu ochuvchi teg-ku! title allaqachon ochilgan, endi uni yopadigan teg kerak.', 'Почти! Это открывающий тег, а title уже открыт. Теперь его нужно закрыть.', 'Almost! That’s an opening tag, and title is already open. Now it needs to close.'),
+      '</head>': L3('Shoshilmang! head keyinroq yopiladi. Oldin nom tugashi kerak, ya’ni title tegini yopamiz.', 'Не спеши! head закроется чуть позже. Сначала нужно закончить название — закрыть title.', 'Not so fast! head closes a bit later. First the name has to end, so close title.')
+    },
+    hints: [L3('Qaysi teg ochilgan-u, lekin yopilmagan?', 'Какой тег открыт, но не закрыт?', 'Which tag is open but not closed?'),
+      L3('title ochilgan. Uni yopadigan teg kerak.', 'title открыт. Нужен тег, который его закроет.', 'title is open. You need the tag that closes it.'),
+      L3('Qiya chiziqli title tegini bo‘sh joyga qo‘ying.', 'Поставь в пустое место тег title с косой чертой.', 'Put the title tag with a slash into the empty spot.')],
+    ok: L3('Mana, tuzaldi! Nom yorliqda, salom oynada. Yopuvchi title tegi brauzerga nom qayerda tugashini ko‘rsatib berdi.',
+      'Починили! Название на вкладке, приветствие в окне. Закрывающий тег title показал браузеру, где кончается название.',
+      'Fixed it! The name is on the tab, the greeting is in the window. The closing title tag showed the browser where the name ends.'),
+    ask: L3('Yetishmayotgan tegni bo‘sh joyga olib boring', 'Перетащи недостающий тег в пустое место', 'Drag the missing tag into the empty place')
+  },
+  q1: {
+    eyebrow: L3('Yorliq va oyna', 'Вкладка и окно', 'Tab and window'),
+    say: L3('Endi o‘zingizni sinab ko‘ring! Mana yangi sahifa. Yorliqda «Robotlar», oynada esa «Salom!» chiqishi kerak. Har bir so‘zni koddagi o‘z joyiga olib boring.',
+      'Теперь проверь себя! Вот новая страница. На вкладке должно быть «Роботы», а в окне — «Привет!». Перетащи каждую фразу на её место в коде.',
+      'Now test yourself! Here’s a new page. The tab should say “Robots”, and the window “Hello!”. Drag each phrase to its place in the code.'),
+    toWin: L3('Qarang: «{w}» oynaga tushib qoldi. body tegidagi matn oynada chiqadi, yorliq uchun esa title kerak.', 'Смотри: «{w}» попало в окно. Всё, что в body, видно в окне. А для вкладки нужен title.', 'Look: “{w}” landed in the window. Whatever is in body shows in the window. The tab needs title.'),
+    toTab: L3('Qarang: «{w}» yorliqqa chiqib qoldi. title tegidagi matn yorliqda chiqadi, oyna uchun esa body kerak.', 'Смотри: «{w}» попало на вкладку. Всё, что в title, видно на вкладке. А для окна нужен body.', 'Look: “{w}” landed on the tab. Whatever is in title shows on the tab. The window needs body.'),
+    pickFirst: L3('Oldin so‘zni tanlang.', 'Сначала выбери фразу.', 'Pick a phrase first.'),
+    hints: [L3('Yorliqdagi matn qaysi tegga yoziladi?', 'В какой тег пишут текст для вкладки?', 'Which tag holds the text for the tab?'),
+      L3('Yorliq uchun title, oyna uchun body.', 'Для вкладки — title, для окна — body.', 'For the tab: title. For the window: body.'),
+      L3('Yonib turgan so‘zni yonib turgan joyga olib boring.', 'Перетащи светящуюся фразу в светящееся место.', 'Drag the glowing phrase to the glowing place.')],
+    ok: L3('Juda zo‘r! «Robotlar» title tegida, shuning uchun yorliqda. «Salom!» body tegida, shuning uchun oynada.', 'Идеально! «Роботы» стоит в title — поэтому на вкладке. «Привет!» стоит в body — поэтому в окне.', 'Perfect! “Robots” is in title, so it’s on the tab. “Hello!” is in body, so it’s in the window.'),
+    ask: L3('Har bir so‘zni o‘z joyiga olib boring', 'Перетащи каждую фразу на её место', 'Drag each phrase into its place')
+  },
+  q2: {
+    eyebrow: L3('</title> nimaga kerak?', 'Зачем нужен </title>?', 'Why </title>?'),
+    say: L3('Va oxirgi savol. Sizningcha, yopuvchi title tegi nimaga kerak? Javobni tanlang.', 'И последний вопрос. Как думаешь, зачем нужен закрывающий тег title? Выбери ответ.', 'And the last question. What do you think: why do we need the closing title tag? Pick an answer.'),
+    opts: [
+      { id: 'win', t: L3('Nomni oynada ko‘rsatadi', 'Показывает название в окне', 'Shows the name in the window'),
+        why: L3('Unday emas: yopuvchi teg sahifada ko‘rinmaydi, oynaga ham hech narsa chiqarmaydi.', 'Не совсем: закрывающий тег на странице не виден и ничего не выводит в окно.', 'Not quite: a closing tag doesn’t show on the page and doesn’t put anything in the window.') },
+      { id: 'end', right: true, t: L3('Nom qayerda tugashini ko‘rsatadi', 'Показывает, где кончается название', 'Shows where the name ends') },
+      { id: 'page', t: L3('Sahifa qayerda tugashini ko‘rsatadi', 'Показывает, где кончается страница', 'Shows where the page ends'),
+        why: L3('Unday emas: sahifa qayerda tugashini yopuvchi html tegi ko‘rsatadi. Yopuvchi title tegi faqat title tegini yopadi.', 'Не совсем: где кончается страница, показывает закрывающий тег html. А закрывающий title закрывает только title.', 'Not quite: the closing html tag shows where the page ends. The closing title tag only closes title.') }
+    ],
+    hints: [L3('Matn yorliqqa chiqib ketgan sahifa esingizdami? U yerda qaysi teg yetishmagan edi?', 'Вспомни страницу, где весь текст уехал на вкладку. Какого тега там не хватало?', 'Remember the page where all the text ended up on the tab. Which tag was missing there?'),
+      L3('Qiya chiziqli teg o‘z qismini yopadi. title ichida nima turadi?', 'Тег с косой чертой закрывает свою часть. Что стоит внутри title?', 'A tag with a slash closes its own part. What’s inside title?'),
+      L3('Yopuvchi title tegi sahifa nomini tugatadi.', 'Закрывающий тег title заканчивает название страницы.', 'The closing title tag ends the page name.')],
+    ok: L3('Xuddi shunday! U nom qayerda tugashini ko‘rsatadi. U bo‘lmasa, sahifadagi hamma matn yorliqqa chiqib ketadi.', 'Точно! Он показывает, где кончается название. Без него весь текст страницы уезжает на вкладку.', 'Exactly! It shows where the name ends. Without it, all the page text ends up on the tab.')
+  },
+  s15: {
+    say: [
+      { text: L3('Mana, sizning birinchi sahifangiz!', 'Вот она, твоя первая страница!', 'Here it is, your very first page!'), k: null },
+      { text: L3('Esingizdami? Teg — bu burchakli qavs ichidagi so‘z. Brauzer uni ko‘rsatmaydi, faqat o‘qiydi.', 'Помнишь? Тег — это слово в угловых скобках. Браузер его не показывает, а только читает.', 'Remember? A tag is a word in angle brackets. The browser doesn’t show it, it just reads it.'), k: null },
+      { text: L3('html butun sahifani o‘rab turadi: head ham, body ham uning ichida.', 'html обнимает всю страницу: и head, и body — внутри него.', 'html wraps the whole page: both head and body are inside it.'), k: 'html' },
+      { text: L3('head sahifa haqidagi ma’lumotlarni saqlaydi.', 'head хранит информацию о странице.', 'head keeps information about the page.'), k: 'head' },
+      { text: L3('title head ichida yashaydi. Unga sahifa nomi yoziladi, brauzer esa shu nomni yorliqda ko‘rsatadi.', 'title живёт внутри head. В нём пишут название страницы, а браузер показывает его на вкладке.', 'title lives inside head. It holds the page name, and the browser shows that name on the tab.'), k: 'title' },
+      { text: L3('Oynada nima ko‘rinsa, hammasi body ichida turadi.', 'Всё, что видно в окне, живёт внутри body.', 'Everything you see in the window lives inside body.'), k: 'body' },
+      { text: L3('Barakalla! Birinchi HTML sahifangiz tayyor. Endi siz haqiqiy veb-dasturchi bo‘lishga bir qadam yaqinlashdingiz!', 'Ура! Твоя первая HTML-страница готова. Ты на шаг ближе к тому, чтобы стать настоящим веб-разработчиком!', 'Hooray! Your first HTML page is ready. You’re one step closer to becoming a real web developer!'), k: null }
+    ]
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ТЕГИ ВСЛУХ — SpokenTags (как в уроке 1, словарь дополнен тегами урока)
 // На экране тег пишется точно (h1, </p>), а сервис озвучки прочёл бы латиницу
 // посреди узбекской или русской фразы как попало. Перед отправкой в озвучку
@@ -7965,9 +8293,635 @@ function GoalCard({ goal, n, total, done, doneText }) {
 Object.assign(SPOKEN, { br: 1, nm: 1, inHead: 1, sayWin: 1, pair: 1, read1: 1, read2: 1, read3: 1, magic: 1, magicHead: 1, magicWin: 1, sayTab: 1, sayGo: 1, sayInfo: 1, sayTag: 1, sayHow: 1, sayMove: 1, why: 1, opts: 1, rules: 1, miss: 1, askTitle: 1, askBody: 1, toWin: 1, toTab: 1, tapSay: 1, parts: 1, order5: 1, top: 1, bottom: 1, msgs: 1, opened: 1, flew: 1, out: 1, back: 1, items: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { id: 1, want: 1 }, opts: { t: 1, id: 1, right: 1 } });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// РАМКА «B · O'YIN» (тестовый урок 16, 28.10.2026; заказчик: «оставив стилистику
+// первого урока, внедрить этот дизайн — верхняя часть, нижняя часть и прочее»).
+// Источник — гайд Junior IT Academy «B · O'yin» (B-variant-dizayn-stilistikasi.md).
+// Содержимое экранов — урок 1 без изменений (бумажный лист, человечек, браузер);
+// новая только рамка вокруг:
+//   · шапка: закрыть ✕ · сегментный прогресс (сделано — гранат, текущий — с кольцом)
+//     · счётчик «6/17» · Коди, лампочка, пауза — «нажимные» кнопки;
+//   · ярлык раздела во втором ряду шапки: объяснение — фиолетовый с книжкой,
+//     задание — гранатовый с карандашом;
+//   · низ: «Назад» — белая кнопка, «Дальше» — гранатовая, у обеих толстый нижний
+//     край (2/2/5/2), при нажатии кнопка «опускается»;
+//   · после решённого задания низ становится зелёной панелью «Barakalla!» с
+//     объяснением (тот же текст, что был в строке задания) и зелёной «Дальше»;
+//   · причина ошибки — красная панель снизу, подсказка лампочки и бездействия — жёлтая «Maslahat»
+//     с кнопкой «Qayta urinish» (закрыть); строка задания на листе остаётся заданием.
+// Экраны рисуют StageB вместо Stage канона (замена при сборке, build.mjs).
+// ─────────────────────────────────────────────────────────────────────────────
+let _bAskSet = null;   // KzAsk сообщает рамке текст задания и подсказку (build.mjs)
+
+const B_UI = {
+  ok: L3('Barakalla!', 'Молодец!', 'Well done!'),
+  hint: L3('Maslahat', 'Подсказка', 'Hint'),
+  retry: L3('Qayta urinish', 'Попробовать ещё', 'Try again'),
+  err: L3('Yana bir qarang', 'Посмотри ещё раз', 'Take another look'),
+  gotIt: L3('Tushunarli', 'Понятно', 'Got it'),
+  close: L3('Darsdan chiqish', 'Выйти из урока', 'Leave the lesson'),
+  show: L3('Tushuntirish', 'Объяснение', 'Explanation'),
+  task: L3('Mashq', 'Задание', 'Practice')
+};
+
+// Значки Lucide (обводка, круглые концы).
+const BIco = ({ d, size = 20, w = 2.5 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w}
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>
+);
+const B_ICO = {
+  x: <><path d="M18 6 6 18" /><path d="m6 6 12 12" /></>,
+  check: <path d="M20 6 9 17l-5-5" />,
+  alert: <><circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" /></>,
+  bulb: <><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" /><path d="M9 18h6" /><path d="M10 22h4" /></>,
+  book: <><path d="M12 7v14" /><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" /></>,
+  pencil: <><path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z" /><path d="m15 5 4 4" /></>
+};
+
+// Задание или объяснение — по коду экрана (SHOW и HOOK — показ, финал — вывод).
+const bIsTask = (i, total) => {
+  const s = typeof SCREENS !== 'undefined' ? SCREENS[i] : null;
+  return !!s && s.code !== 'SHOW' && s.code !== 'HOOK' && i < total - 1;
+};
+
+const BExit = () => {
+  const pick = usePick();
+  const audio = useAudio();
+  const page = usePage();
+  if (!page || !page.exit) return null;
+  const label = pick(B_UI.close);
+  return (
+    <button type="button" className="ctl-btn is-exit b-exit" onClick={() => { sfx('tap', audio && audio.on); page.exit(); }}
+      title={label} aria-label={label}><BIco d={B_ICO.x} size={24} w={2.4} /></button>
+  );
+};
+
+const BProgress = ({ screen, total }) => (
+  <div className="b-prog" role="progressbar" aria-valuemin={1} aria-valuemax={total} aria-valuenow={screen + 1}>
+    {Array.from({ length: total }).map((_, k) => (
+      <i key={k} className={k < screen ? 'is-done' : k === screen ? 'is-cur' : ''} />
+    ))}
+  </div>
+);
+
+// Нажали лампочку или ученик долго не действует — нужна подсказка: текст прошлой ошибки
+// уступает ей место (иначе закрытая красная панель прятала и жёлтую подсказку).
+function useTipClears(clear) {
+  const pulse = useHintPulse();
+  const p0 = useRef(pulse);
+  useEffect(() => { if (pulse !== p0.current) { p0.current = pulse; clear(null); } }, [pulse]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+const StageB = ({ children, eyebrow, screen, total, nav, speaker, overlay, heroFixed, done, hideSpeaker, hint, voiceTop }) => {
+  const pick = usePick();
+  _p17Scr = screen || 0;
+  const speaking = useSayBusy();
+  useEffect(() => { _hintText = hint || null; return () => { _hintText = null; }; }, [hint]);
+  const idle = useIdleCoach(!!nav, speaking);
+  const [ask, setAsk] = useState({ text: '', hint: '', err: false });
+  useLayoutEffect(() => { _bAskSet = setAsk; return () => { if (_bAskSet === setAsk) _bAskSet = null; }; }, []);
+  const [shut, setShut] = useState('');
+  const task = bIsTask(screen, total);
+  const okSheet = task && !!done && !!nav;
+  const hintSheet = !okSheet && !!nav && !!ask.hint && ask.hint !== shut;
+  const sheet = okSheet ? 'ok' : hintSheet ? 'hint' : '';
+  return (
+    <div style={p17Tone(screen)} className={'stage b-stage p17' + (heroFixed ? ' stage-hero-fixed' : '') + (hideSpeaker ? ' stage-bare' : '') + (voiceTop ? ' stage-voicetop' : '')
+      + (speaking ? ' is-speaking' : '') + (idle ? ' is-idle is-idle-' + idle : '') + (sheet ? ' has-sheet is-sheet-' + sheet : '')}>
+      <div className="stage-header b-head">
+        {/* Два ряда (заказчик, 28.10.2026: кнопки — не в одной строке со страницами):
+            сверху — страницы и счётчик, ниже — ярлык раздела и Коди, лампочка, пауза. */}
+        <div className="limit b-head-row">
+          <BExit />
+          <BProgress screen={screen} total={total} />
+          <span className="b-count counter">{String(screen + 1).padStart(2, '0')}/{String(total).padStart(2, '0')}</span>
+        </div>
+        <div className="limit b-head-row2">
+          {eyebrow ? (
+            <div className={'b-chip ' + (task ? 'is-task' : 'is-show')}>
+              <BIco d={task ? B_ICO.pencil : B_ICO.book} size={16} w={2.4} /><span className="b-chip-t">{pick(eyebrow)}</span>
+            </div>
+          ) : <span />}
+          <div className="chrome-side b-side">
+            {speaker && !hideSpeaker ? <VoiceDot pose={speaker.pose} /> : null}
+            {nav && <HintChromeBtn />}
+            {nav && <PauseBtn done={done} />}
+          </div>
+        </div>
+      </div>
+      {speaker && (
+        <div className="speaker-wrap"><div className="limit"><PersonaBubble {...speaker} /></div></div>
+      )}
+      <div className={'stage-content' + (speaker ? ' has-speaker' : '')}>
+        <div className="limit stack stagger">
+          {children}
+        </div>
+      </div>
+      {nav && sheet === 'ok' ? (
+        <div className="stage-nav b-sheet is-ok" role="status">
+          <div className="limit b-sheet-in">
+            <span className="b-sheet-ic"><BIco d={B_ICO.check} size={28} w={3} /></span>
+            <div className="b-sheet-tx"><b>{pick(B_UI.ok)}</b>{ask.text ? <p>{ask.text}</p> : null}</div>
+            <div className="navrow b-sheet-nav">{nav}</div>
+          </div>
+        </div>
+      ) : nav && sheet === 'hint' ? (
+        // Причина ошибки — красная панель; подсказка лампочки или бездействия — жёлтая (заказчик, 29.10.2026).
+        <div className={'stage-nav b-sheet is-hint ' + (ask.err ? 'is-err' : 'is-tip')} role="status">
+          <div className="limit b-sheet-in">
+            <span className="b-sheet-ic"><BIco d={ask.err ? B_ICO.alert : B_ICO.bulb} size={26} w={2.6} /></span>
+            <div className="b-sheet-tx"><b>{pick(ask.err ? B_UI.err : B_UI.hint)}</b><p>{ask.hint}</p></div>
+            <div className="navrow b-sheet-nav">
+              <button type="button" className="b-btn-hint" onClick={() => setShut(ask.hint)}>{pick(ask.err ? B_UI.retry : B_UI.gotIt)}</button>
+            </div>
+          </div>
+        </div>
+      ) : nav ? (
+        <div className="stage-nav b-foot"><div className="limit navrow">{nav}</div></div>
+      ) : null}
+      {overlay}
+    </div>
+  );
+};
+
+// ── Реплики v2 (28.10.2026) ─────────────────────────────────────────────────
+Object.assign(SPOKEN, { more: 1 });
+
+// Варианты ответа в случайном порядке, верный — не первым.
+function b16Shuffle(list) {
+  const a = list.slice();
+  for (let i = a.length - 1; i > 0; i -= 1) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; }
+  if (a[0] && a[0].right && a.length > 1) a.push(a.shift());
+  return a;
+}
+
+// Показ урока 1 (useKzDemo) + шаг «нажми сам» (заказчик, v2: на экранах 3 и 6 ученик
+// нажимает бирку, голову, бумажку): { tap: 'ключ', el: () => вещь, act }. Пока шаг ждёт,
+// вещь мягко пульсирует; экран зовёт demo.tap('ключ') по нажатию.
+function useB16Demo({ steps, run: run0, spoken, sayNow, say }) {
+  const runRef = useRef(run0);
+  const run = runRef.current;
+  const [idx, setIdx] = useState(-1);
+  const [wait, setWait] = useState(null);
+  const ran = useRef(-1);
+  const tm = useRef([]);
+  const audio = useAudio();
+  const pausedRef = useRef(false);
+  pausedRef.current = !!(audio && audio.paused);
+  useEffect(() => () => tm.current.forEach(clearTimeout), []);
+  const later = (ms, f) => {
+    const go = () => { if (pausedRef.current) { tm.current.push(setTimeout(go, 300)); return; } f(); };
+    tm.current.push(setTimeout(go, ms));
+  };
+  const next = (i) => setIdx((v) => (v === i ? i + 1 : v));
+  const lookAt = (el, i, act) => {
+    const done = () => { if (act) act(); next(i); };
+    if (!el || !el.classList || reduceMotion()) { done(); return; }
+    el.classList.add('kz-demo-on');
+    later(560, done);
+    later(900, () => el.classList.remove('kz-demo-on'));
+  };
+  useEffect(() => {
+    if (!run) return;
+    if (idx === -1) { if (spoken) setIdx(0); return; }
+    const st = steps[idx];
+    if (!st) return;
+    if (ran.current !== idx) {
+      if (st.tap && !spoken) return;   // просьба нажать — когда Коди договорил
+      ran.current = idx;
+      const i = idx;
+      if (st.say) { sayNow(st.say[0].text, st.say[0].pose); st.say.slice(1).forEach((l) => say(l.text, l.pose)); return; }
+      if (st.tap) { setWait({ key: st.tap, i }); return; }
+      if (st.look) { later(200, () => lookAt(st.look(), i, st.act)); return; }
+      if (st.wait) { if (st.act) st.act(); later(st.wait, () => next(i)); return; }
+      if (st.act) st.act();
+      next(i);
+      return;
+    }
+    if (st.say && spoken) next(idx);
+  }, [idx, spoken, run]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!wait) return undefined;
+    const st = steps[wait.i];
+    const el = st && st.el ? st.el() : null;
+    if (el && el.classList) el.classList.add('b16-tapme');
+    return () => { if (el && el.classList) el.classList.remove('b16-tapme'); };
+  }, [wait]); // eslint-disable-line react-hooks/exhaustive-deps
+  const tap = (key) => {
+    if (!wait || wait.key !== key) return false;
+    const st = steps[wait.i];
+    const i = wait.i;
+    setWait(null);
+    if (st.act) st.act();
+    next(i);
+    return true;
+  };
+  return { idx, done: !run || idx >= steps.length, step: Math.max(0, Math.min(idx, steps.length)), waiting: wait ? wait.key : null, tap };
+}
+
+// Английские слова в узбекской и русской речи — по-английски (заказчик, 28.10.2026:
+// «слово tag и все теги читались на английском»). Сервис понимает пометки языка в
+// квадратных скобках (как [O'zbekcha tallaffuz] в начале реплики и теги эмоций):
+// перед английскими словами ставим [English pronunciation], сразу после — пометку
+// языка урока. Узбекское окончание («tag-i») идёт уже после неё.
+const B16_BACK = { uz: "[O'zbekcha tallaffuz]", ru: '[Русское произношение]' };
+const B16_EN = '(?:tag|HTML|html|head|title|body|doctype|DOCTYPE|H (?:one|two|three|four|five|six))';
+const B16_EN_RE = new RegExp("(^|[^A-Za-z'‘’ʻʼ-])(" + B16_EN + '(?:\\s+' + B16_EN + ')*)(-[A-Za-z]+)?(?![A-Za-z])', 'g');
+function b16EnWords(s, lang) {
+  const back = B16_BACK[lang];
+  if (!back) return s;
+  return String(s).replace(B16_EN_RE, (all, pre, words, suf) => pre + '[English pronunciation] ' + words + ' ' + back + (suf || ''));
+}
+// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл
+// бы их вслух — для него они убираются.
+if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function' && !window.__b16Utt) {
+  const BaseUtt = window.SpeechSynthesisUtterance;
+  window.__b16Utt = true;
+  window.SpeechSynthesisUtterance = function B16Utterance(t) {
+    return new BaseUtt(String(t == null ? '' : t).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,!?;:-])/g, '$1').trim());
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ОБЛИК «KODI PLAYGROUND» (тестовый урок 17, 30.10.2026) — по стилистике образца
+// заказчика (kodi-html-code.zip): тёплый белый фон, мягкие карточки с «нажимной»
+// тенью, Nunito, палитра коралл / голубой / жёлтый / мятный / розовый. Персонаж урока —
+// своя героиня в манере референсов заказчика (31.10.2026; голова — head, тело — body).
+//   · Sheet — без бумаги: тёплый фон экрана, вещи стоят прямо на нём;
+//   · PaperMan — своя героиня в манере референсов заказчика (31.10.2026): голова (head), из
+//     которой выпрыгивает капсула с названием (title), кофта и мятный комбинезон (body), руки,
+//     штанины и кеды. Части и метки — те же, что ждут экраны;
+//   · градиенты человечка, капсулы и руки-показа — один раз на страницу (P17Defs в листе).
+// ─────────────────────────────────────────────────────────────────────────────
+let _p17Scr = 0;   // номер экрана — ставит StageB при отрисовке (см. build.mjs)
+// Экран 8 (body), строка на листе после показа: коротко, полную фразу Коди говорит голосом.
+const P17_S9_DONE = L3('Oynadagi hamma narsa body ichida turadi.', 'Всё, что видно в окне, живёт внутри body.', 'Everything in the window lives inside body.');
+const p17Tone = () => ({});
+
+function P17Defs() {
+  return (
+    <svg className="p17-defs" width="0" height="0" aria-hidden="true" focusable="false">
+      <defs>
+        <radialGradient id="p17gMitten" cx="30%" cy="25%"><stop offset="0" stopColor="#fffef7" /><stop offset=".6" stopColor="#f5f1e5" /><stop offset="1" stopColor="#c8d3c9" /></radialGradient>
+        {/* Градиенты героини: кожа, волосы, кофта, комбинезон; румянец; свет над открытой головой. */}
+        <linearGradient id="p17k-skin" x2=".25" y2="1"><stop offset="0" stopColor="#F2C29C" /><stop offset="1" stopColor="#D9976E" /></linearGradient>
+        <linearGradient id="p17k-hair" x2=".25" y2="1"><stop offset="0" stopColor="#7A4630" /><stop offset="1" stopColor="#4A2618" /></linearGradient>
+        <linearGradient id="p17k-shirt" x2=".25" y2="1"><stop offset="0" stopColor="#FF9F8E" /><stop offset="1" stopColor="#F06F5A" /></linearGradient>
+        <linearGradient id="p17k-over" x2=".25" y2="1"><stop offset="0" stopColor="#8EE0C0" /><stop offset="1" stopColor="#4FB08E" /></linearGradient>
+        <radialGradient id="p17kCheek"><stop offset="0" stopColor="#FF6F7D" stopOpacity=".55" /><stop offset="1" stopColor="#FF6F7D" stopOpacity="0" /></radialGradient>
+        <radialGradient id="p17kGlow"><stop offset="0" stopColor="#FFF6C8" stopOpacity=".95" /><stop offset=".55" stopColor="#FFE496" stopOpacity=".55" /><stop offset="1" stopColor="#FFE496" stopOpacity="0" /></radialGradient>
+        <linearGradient id="p17gPink" x2=".3" y2="1"><stop offset="0" stopColor="#ffd2e9" /><stop offset=".4" stopColor="#f7a3cb" /><stop offset="1" stopColor="#d95996" /></linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+function Sheet({ children, cls }) {
+  return (
+    <div className={'kz-sheet p17-sheet' + (cls ? ' ' + cls : '')}>
+      <P17Defs />
+      <div className="kz-sheet-body">{children}</div>
+    </div>
+  );
+}
+
+// ── ГЕРОИНЯ УРОКА — СВОЙ ПЕРСОНАЖ В МАНЕРЕ РЕФЕРЕНСОВ (заказчик, 31.10.2026: «придумай своего
+// персонажа, не берём оттуда»; манера наборов «по мотивам Michel Verdu»: заливка + тонкий
+// тёмно-коричневый контур, мягкая светотень градиентом, большие живые глаза). Девочка-верстальщица:
+// два пучка-«шишки» с коралловыми резинками, чёлка, веснушки; кофта в
+// коралловую полоску, мятный комбинезон (цвет зоны body) с кармашком </> на нагруднике, жёлтые кеды.
+// Нарисована в единицах набора (земля y=400); каждая часть урока — своё окно поля 200 × 290 (y от 120),
+// поэтому части сходятся точно, а экраны находят их по меткам.
+// Голова «открывается» — над ней свет, искорки и выпрыгивает капсула с названием.
+// Машет (wave) — правая рука поднята и машет ладошкой, лицо радуется; иначе руки опущены.
+const P17_W = 200, P17_Y0 = 120, P17_H = 290;
+const p17Box = (x0, y0, x1, y1) => ({
+  x0, y0, x: (x0 / P17_W) * 100, y: ((y0 - P17_Y0) / P17_H) * 100, w: ((x1 - x0) / P17_W) * 100, h: ((y1 - y0) / P17_H) * 100,
+  vb: x0 + ' ' + y0 + ' ' + (x1 - x0) + ' ' + (y1 - y0)
+});
+const P17B = {
+  legL: p17Box(50, 296, 102, 402), legR: p17Box(98, 296, 152, 402),
+  armL: p17Box(46, 244, 90, 334), armR: p17Box(110, 244, 154, 334),
+  body: p17Box(62, 232, 138, 318), title: p17Box(36, 84, 164, 180), head: p17Box(56, 140, 144, 252)
+};
+const P17Art = ({ b, children }) => (
+  <svg className="p17-art" viewBox={b.vb} preserveAspectRatio="none" aria-hidden="true">{children}</svg>
+);
+
+// Приёмы манеры референсов: контур, сужающаяся конечность, глаз, рот, кед, кисти.
+const P17K = { ink: '#3B2A26', sw: 2.2 };
+const kInk = (w = P17K.sw) => ({ stroke: P17K.ink, strokeWidth: w, strokeLinejoin: 'round', strokeLinecap: 'round' });
+const kG = (k) => 'url(#p17k-' + k + ')';
+function kLimb(x1, y1, x2, y2, w1, w2 = w1) {
+  const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy) || 1;
+  const nx = -dy / L, ny = dx / L, r1 = w1 / 2, r2 = w2 / 2;
+  const f = (p) => p.map((v) => +v.toFixed(1)).join(' ');
+  const a = [x1 + nx * r1, y1 + ny * r1], b = [x2 + nx * r2, y2 + ny * r2], c = [x2 - nx * r2, y2 - ny * r2], d = [x1 - nx * r1, y1 - ny * r1];
+  return 'M' + f(a) + ' L' + f(b) + ' A' + r2 + ' ' + r2 + ' 0 0 0 ' + f(c) + ' L' + f(d) + ' A' + r1 + ' ' + r1 + ' 0 0 0 ' + f(a) + 'Z';
+}
+// Конечность с изгибом одной формой: общий контур, потом заливка, потом тень.
+function KLimb({ p, w, fill, shade }) {
+  const segs = p.slice(1).map((q, i) => [p[i], q, w[i], w[i + 1]]);
+  return (
+    <g>
+      {segs.map(([a, b, wa, wb], i) => <path key={'o' + i} d={kLimb(a[0], a[1], b[0], b[1], wa + P17K.sw * 2, wb + P17K.sw * 2)} fill={P17K.ink} />)}
+      {segs.map(([a, b, wa, wb], i) => <path key={'f' + i} d={kLimb(a[0], a[1], b[0], b[1], wa, wb)} fill={fill} />)}
+      {shade ? <g opacity=".35">{segs.map(([a, b, wa, wb], i) => <path key={'s' + i} d={kLimb(a[0] + wa * 0.2, a[1], b[0] + wb * 0.2, b[1], wa * 0.5, wb * 0.5)} fill={shade} />)}</g> : null}
+    </g>
+  );
+}
+// Глаз набора: белок, радужка, зрачок, блики, верхнее веко ровной дугой.
+function KEye({ x, y, rx = 9, iris = '#4A2A1A', look = [0, 0], cid }) {
+  const ry = rx * 1.18, ir = rx * 0.72, ix = x + look[0] * (rx - ir * 0.7), iy = y + look[1] * (ry - ir * 0.7), id = 'p17ke-' + cid;
+  return (
+    <g className="p17k-blink">
+      <clipPath id={id}><ellipse cx={x} cy={y} rx={rx} ry={ry} /></clipPath>
+      <ellipse cx={x} cy={y} rx={rx} ry={ry} fill="#fff" />
+      <g clipPath={'url(#' + id + ')'}>
+        <circle cx={ix} cy={iy} r={ir} fill={iris} />
+        <circle cx={ix} cy={iy} r={ir * 0.74} fill="none" stroke="#000" strokeOpacity=".18" strokeWidth={ir * 0.22} />
+        <circle cx={ix} cy={iy} r={ir * 0.48} fill="#1B1210" />
+        <circle cx={ix - ir * 0.36} cy={iy - ir * 0.4} r={ir * 0.32} fill="#fff" />
+        <circle cx={ix + ir * 0.38} cy={iy + ir * 0.36} r={ir * 0.14} fill="#fff" opacity=".85" />
+        <ellipse cx={x} cy={y - ry * 0.62} rx={rx} ry={ry * 0.45} fill="#000" opacity=".08" />
+      </g>
+      <ellipse cx={x} cy={y} rx={rx} ry={ry} fill="none" {...kInk(1.5)} />
+      <path d={'M' + (x - rx * 1.04) + ' ' + (y - ry * 0.12) + ' Q' + (x - rx * 0.75) + ' ' + (y - ry * 1.12) + ' ' + x + ' ' + (y - ry * 1.06) + ' Q' + (x + rx * 0.75) + ' ' + (y - ry * 1.12) + ' ' + (x + rx * 1.04) + ' ' + (y - ry * 0.12)} fill="none" {...kInk(P17K.sw * 1.45)} />
+    </g>
+  );
+}
+// Радостный глаз — дуга «^».
+const KJoy = ({ x, y, rx = 9 }) => <path d={'M' + (x - rx) + ' ' + (y + 3) + ' Q' + x + ' ' + (y - rx * 1.2) + ' ' + (x + rx) + ' ' + (y + 3)} fill="none" {...kInk(P17K.sw * 1.6)} />;
+// Открытая улыбка с зубами и языком (grin набора).
+function KGrin({ x, y, w = 16 }) {
+  const h = w * 0.55;
+  return (
+    <g>
+      <path d={'M' + (x - w / 2) + ' ' + y + ' Q' + x + ' ' + (y + 3) + ' ' + (x + w / 2) + ' ' + y + ' Q' + (x + w * 0.3) + ' ' + (y + h) + ' ' + x + ' ' + (y + h) + ' Q' + (x - w * 0.3) + ' ' + (y + h) + ' ' + (x - w / 2) + ' ' + y + 'Z'} fill="#5A1E22" {...kInk()} />
+      <path d={'M' + (x - w * 0.36) + ' ' + (y + 1.6) + ' Q' + x + ' ' + (y + 4) + ' ' + (x + w * 0.36) + ' ' + (y + 1.6) + ' L' + (x + w * 0.3) + ' ' + (y + h * 0.32) + ' Q' + x + ' ' + (y + h * 0.4) + ' ' + (x - w * 0.3) + ' ' + (y + h * 0.32) + 'Z'} fill="#fff" />
+      <ellipse cx={x + w * 0.05} cy={y + h * 0.78} rx={w * 0.22} ry={h * 0.2} fill="#E26A6A" />
+    </g>
+  );
+}
+// Высокий кед: пятка в x, носок в x+dir·L.
+function KHiTop({ x, y = 400, dir = 1, L = 40, H = 30, body }) {
+  return (
+    <g transform={'translate(' + x + ' ' + y + ') scale(' + dir + ' 1)'}>
+      <path d={'M1 -5 Q-3 ' + -H + ' 6 ' + (-H - 2) + ' H' + L * 0.4 + ' Q' + L * 0.47 + ' ' + -H + ' ' + L * 0.46 + ' ' + -H * 0.62 + ' Q' + L * 0.72 + ' ' + -H * 0.52 + ' ' + (L - 2) + ' -13 Q' + (L + 3) + ' -9 ' + L + ' -5Z'} fill={body} {...kInk()} />
+      <path d={'M' + L * 0.62 + ' -6 Q' + L * 0.62 + ' ' + -H * 0.45 + ' ' + (L - 2) + ' -13 Q' + (L + 3) + ' -9 ' + L + ' -5Z'} fill="#F4EEE2" {...kInk(1.6)} />
+      <path d={'M-2 -8 H' + (L + 2) + ' Q' + (L + 5) + ' -1 ' + (L - 1) + ' 0 H1 Q-4 -1 -2 -8Z'} fill="#F4EEE2" {...kInk()} />
+      <path d={'M' + L * 0.36 + ' ' + -H * 0.84 + ' l' + L * 0.14 + ' ' + H * 0.07 + ' M' + L * 0.4 + ' ' + -H * 0.64 + ' l' + L * 0.14 + ' ' + H * 0.07 + ' M' + L * 0.47 + ' ' + -H * 0.44 + ' l' + L * 0.13 + ' ' + H * 0.07} stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
+    </g>
+  );
+}
+// Опущенная расслабленная кисть: (x,y) — запястье, dir — куда смотрит большой палец.
+const KDownHand = ({ x, y, dir = 1 }) => (
+  <g transform={'translate(' + x + ' ' + y + ') scale(' + dir + ' 1)'}>
+    <path d="M-6 -2 Q-8 10 -3 15 Q3 19 7 12 Q9 4 6 -3Z" fill={kG('skin')} {...kInk(1.8)} />
+    <path d="M6 1 q5 3 2 9" fill={kG('skin')} {...kInk(1.5)} />
+    <path d="M-4 10 q4 2 7 0" fill="none" {...kInk(1)} />
+  </g>
+);
+// Раскрытая ладошка (машет): (x,y) — запястье, пальцы вверх.
+const KPalm = ({ x, y }) => (
+  <g>
+    <path d={'M' + (x - 8) + ' ' + y + ' Q' + (x - 11) + ' ' + (y - 14) + ' ' + (x - 9) + ' ' + (y - 24) + ' Q' + (x - 7) + ' ' + (y - 29) + ' ' + (x - 4) + ' ' + (y - 25) + ' L' + (x - 3) + ' ' + (y - 30) + ' Q' + (x) + ' ' + (y - 34) + ' ' + (x + 3) + ' ' + (y - 29) + ' L' + (x + 4) + ' ' + (y - 27) + ' Q' + (x + 7) + ' ' + (y - 31) + ' ' + (x + 9) + ' ' + (y - 25) + ' L' + (x + 9) + ' ' + (y - 21) + ' Q' + (x + 13) + ' ' + (y - 22) + ' ' + (x + 12) + ' ' + (y - 15) + ' Q' + (x + 10) + ' ' + (y - 4) + ' ' + (x + 6) + ' ' + y + 'Z'} fill={kG('skin')} {...kInk(1.8)} />
+    <path d={'M' + (x - 8) + ' ' + (y - 12) + ' Q' + (x - 16) + ' ' + (y - 14) + ' ' + (x - 15) + ' ' + (y - 20) + ' Q' + (x - 12) + ' ' + (y - 22) + ' ' + (x - 8) + ' ' + (y - 17)} fill={kG('skin')} {...kInk(1.6)} />
+    <path d={'M' + (x - 3) + ' ' + (y - 24) + ' v8 M' + (x + 4) + ' ' + (y - 23) + ' v7'} fill="none" {...kInk(1)} />
+  </g>
+);
+// Капсула с надписью — название страницы (из открытой головы).
+function P17Capsule({ text }) {
+  const t = String(text || '');
+  const fs = t.length > 9 ? 17 : t.length > 6 ? 21 : 26;
+  return (
+    <g className="p17-capsule" transform="rotate(-8 191 133)">
+      <rect x="139" y="88" width="103" height="77" rx="28" fill="url(#p17gPink)" stroke={P17K.ink} strokeWidth="2.6" />
+      <path d="M157 101q29-9 59-2" fill="none" stroke="#ffe2ee" strokeWidth="5" strokeLinecap="round" opacity=".8" />
+      <text x="190.5" y="128" textAnchor="middle" fontFamily="Nunito, sans-serif" fontSize={fs} fontWeight="900" fill="#74284c"
+        textLength={t.length > 9 ? 92 : undefined} lengthAdjust="spacingAndGlyphs">{t}</text>
+    </g>
+  );
+}
+// Искорка-звёздочка.
+const KSpark = ({ x, y, r = 7, c = '#F2B33D', d = 0 }) => (
+  <path className="p17k-spark" style={{ animationDelay: d + 's' }} fill={c} {...kInk(1.2)}
+    d={'M' + x + ' ' + (y - r) + ' Q' + (x + r * 0.2) + ' ' + (y - r * 0.2) + ' ' + (x + r) + ' ' + y + ' Q' + (x + r * 0.2) + ' ' + (y + r * 0.2) + ' ' + x + ' ' + (y + r) + ' Q' + (x - r * 0.2) + ' ' + (y + r * 0.2) + ' ' + (x - r) + ' ' + y + ' Q' + (x - r * 0.2) + ' ' + (y - r * 0.2) + ' ' + x + ' ' + (y - r) + 'Z'} />
+);
+
+function P17Head({ open, name, happy }) {
+  return (
+    <P17Art b={P17B.head}>
+      {open ? (
+        <g>
+          <ellipse cx="100" cy="148" rx="54" ry="26" fill="url(#p17kGlow)" className="p17k-glow" />
+          <KSpark x={56} y={150} r={7} /><KSpark x={146} y={150} r={5.5} c="#6FA8E8" d={0.5} />
+        </g>
+      ) : null}
+      {/* волосы сзади — каре вокруг лица */}
+      <path d="M63 216 Q58 172 100 166 Q142 172 137 216 Q139 238 128 247 L72 247 Q61 238 63 216Z" fill={kG('hair')} {...kInk()} />
+      {/* два пучка-«шишки» с коралловыми резинками */}
+      <circle cx={71} cy={168} r={14} fill={kG('hair')} {...kInk()} />
+      <circle cx={129} cy={168} r={14} fill={kG('hair')} {...kInk()} />
+      <path d="M64 162 q6 -6 13 -3 M122 159 q7 -3 13 3" fill="none" stroke="#9A5A3E" strokeWidth="1.8" strokeLinecap="round" />
+      <ellipse cx={79} cy={180} rx={6} ry={4} fill="#FF7A62" {...kInk(1.4)} transform="rotate(-35 79 180)" />
+      <ellipse cx={121} cy={180} rx={6} ry={4} fill="#FF7A62" {...kInk(1.4)} transform="rotate(35 121 180)" />
+      {/* лицо */}
+      <path d="M70 207 Q70 177 100 175 Q130 177 130 207 Q132 231 118 242 Q100 252 82 242 Q68 231 70 207Z" fill={kG('skin')} {...kInk()} />
+      <path d="M118 184 Q131 198 127 222 Q123 236 112 242 Q124 214 118 184Z" fill="#A0402A" opacity=".1" />
+      {/* чёлка волной */}
+      <path d="M69 208 Q65 176 100 170 Q135 176 131 208 Q126 193 113 190 Q108 199 97 193 Q86 197 80 192 Q73 198 69 208Z" fill={kG('hair')} {...kInk()} />
+      <path d="M80 182 q10 -7 22 -6 M108 179 q8 1 13 6" fill="none" stroke="#9A5A3E" strokeWidth="2" strokeLinecap="round" />
+      {happy ? <><KJoy x={88} y={210} rx={8.5} /><KJoy x={112} y={210} rx={8.5} /></>
+        : <><KEye cid="l" x={88} y={210} rx={9.2} iris="#3F7A4A" look={[0.1, 0.15]} /><KEye cid="r" x={112} y={210} rx={9.2} iris="#3F7A4A" look={[0.1, 0.15]} /></>}
+      <path d="M81 199 q7 -4 14 -1 M105 198 q7 -3 14 1" fill="none" {...kInk(2.4)} />
+      {/* веснушки, нос, улыбка */}
+      <g fill="#C97A5E"><circle cx={79} cy={222} r={1.1} /><circle cx={83} cy={225} r={1.1} /><circle cx={77} cy={226} r={1} /><circle cx={121} cy={221} r={1.1} /><circle cx={117} cy={224} r={1.1} /><circle cx={123} cy={225} r={1} /></g>
+      <path d="M98 219 q-2 5 2 6 q4 0 4 -3" fill="none" {...kInk(1.5)} />
+      {happy ? <KGrin x={100} y={230} w={19} />
+        : <path d="M91 230 Q100 238 109 230" fill="none" {...kInk(2.2)} />}
+      <circle cx={78} cy={228} r={6.5} fill="url(#p17kCheek)" /><circle cx={122} cy={227} r={6.5} fill="url(#p17kCheek)" />
+      {open && name ? <g className="p17k-cap"><g transform="translate(100 134) scale(.6) translate(-190.5 -126.5)"><P17Capsule text={name} /></g></g> : null}
+    </P17Art>
+  );
+}
+// Кофта в коралловую полоску (полоски — внутри формы).
+const P17_SHIRT = 'M72 250 Q100 241 128 250 Q136 280 132 306 H68 Q64 280 72 250Z';
+function P17Body({ bits }) {
+  return (
+    <P17Art b={P17B.body}>
+      <path d="M94 232 h12 v20 q-6 4 -12 0z" fill={kG('skin')} {...kInk()} />
+      <clipPath id="p17cShirt"><path d={P17_SHIRT} /></clipPath>
+      <path d={P17_SHIRT} fill={kG('shirt')} />
+      <g clipPath="url(#p17cShirt)" stroke="#FFE6DF" strokeWidth="3.4">
+        {[256, 266, 276, 286, 296].map((y) => <path key={y} d={'M60 ' + y + ' H140'} />)}
+      </g>
+      <path d={P17_SHIRT} fill="none" {...kInk()} />
+      <path d="M90 247 Q100 256 110 247" fill="#FFF3EE" {...kInk(1.6)} />
+      {/* комбинезон: нагрудник, лямки с пуговицами, пояс */}
+      <path d="M81 268 H119 L122 306 H78Z" fill={kG('over')} {...kInk()} />
+      <path d="M77 252 Q80 260 83 270 L89 270 Q86 258 83 250Z M123 252 Q120 260 117 270 L111 270 Q114 258 117 250Z" fill={kG('over')} {...kInk(1.6)} />
+      <circle cx={86} cy={271} r={2.6} fill="#FFD563" {...kInk(1.2)} /><circle cx={114} cy={271} r={2.6} fill="#FFD563" {...kInk(1.2)} />
+      <path d="M67 300 H133 Q135 307 133 314 H67 Q65 307 67 300Z" fill="#4FB08E" {...kInk()} />
+      <path d="M110 270 Q120 272 121 300 L116 300 Q116 280 110 270Z" fill="#2E8C6E" opacity=".25" />
+      {bits ? (
+        // Принт на нагруднике — страница: строки текста, картинка, кнопка (то, что видно в окне).
+        <g className="p17-bits">
+          <rect x="85" y="275" width="30" height="22" rx="4" fill="#FBFBF6" {...kInk(1.4)} />
+          <rect x="88" y="279" width="10" height="2.6" rx="1.3" fill="#B9C2CF" /><rect x="88" y="283" width="7" height="2.6" rx="1.3" fill="#B9C2CF" />
+          <rect x="101" y="278" width="11" height="9" rx="1.6" fill="#E3F4F5" /><path d="M101 285.5 q3 -3 5.5 -1.5 q2.5 -2.4 5.5 0 v1.6h-11z" fill="#83D2AB" />
+          <rect x="89" y="290" width="22" height="4" rx="2" fill="#FF6957" />
+        </g>
+      ) : (
+        <g>
+          <rect x="88" y="277" width="24" height="17" rx="4" fill="#A9EAD2" {...kInk(1.4)} />
+          <text x="100" y="289" textAnchor="middle" fontFamily="ui-monospace, Menlo, monospace" fontSize="8.5" fontWeight="800" fill="#1F6E55">{'</>'}</text>
+        </g>
+      )}
+    </P17Art>
+  );
+}
+// Рукав кофты: коралловый, с белой манжетой.
+const P17Sleeve = ({ p }) => <KLimb p={p} w={[20, 18, 16]} fill="#FF8D7D" shade="#D9573F" />;
+function P17Arm({ r, wave }) {
+  if (!r) {
+    return (
+      <P17Art b={P17B.armL}>
+        <P17Sleeve p={[[76, 258], [62, 286], [64, 310]]} />
+        <path d={kLimb(64, 305, 64, 313, 18, 17)} fill="#FFF3EE" {...kInk(1.6)} />
+        <KDownHand x={64} y={315} dir={-1} />
+        <path d="M78 250 Q64 255 62 274 Q72 280 84 272 Q86 259 82 250Z" fill={kG('shirt')} {...kInk()} />
+      </P17Art>
+    );
+  }
+  return (
+    <P17Art b={P17B.armR}>
+      {wave ? (
+        // Поднятая рука: плечо → локоть, предплечье и ладошка машут на локте.
+        <g className="p17k-raise" style={{ transformOrigin: '124px 256px' }}>
+          <KLimb p={[[124, 258], [152, 256]]} w={[20, 18]} fill="#FF8D7D" shade="#D9573F" />
+          <g className="p17k-wave" style={{ transformOrigin: '152px 256px' }}>
+            <KLimb p={[[152, 256], [166, 230]]} w={[18, 16]} fill="#FF8D7D" shade="#D9573F" />
+            <path d={kLimb(165, 232, 168, 224, 17, 16)} fill="#FFF3EE" {...kInk(1.6)} />
+            <KPalm x={169} y={224} />
+          </g>
+          <path d="M122 250 Q136 252 139 266 Q129 272 117 266 Q115 256 118 250Z" fill={kG('shirt')} {...kInk()} />
+        </g>
+      ) : (
+        <g>
+          <P17Sleeve p={[[124, 258], [138, 286], [136, 310]]} />
+          <path d={kLimb(136, 305, 136, 313, 18, 17)} fill="#FFF3EE" {...kInk(1.6)} />
+          <KDownHand x={136} y={315} dir={1} />
+          <path d="M122 250 Q136 255 138 274 Q128 280 116 272 Q114 259 118 250Z" fill={kG('shirt')} {...kInk()} />
+        </g>
+      )}
+    </P17Art>
+  );
+}
+// Штанина комбинезона с подвёрнутым краем и жёлтый кед.
+function P17Leg({ r }) {
+  const x0 = r ? 112 : 88, x1 = r ? 118 : 84, x2 = r ? 119 : 85;
+  return (
+    <P17Art b={r ? P17B.legR : P17B.legL}>
+      <KLimb p={[[x0, 302], [x1, 336], [x2, 360]]} w={[27, 24, 22]} fill={r ? '#66C4A2' : '#6CCBA8'} shade="#2E8C6E" />
+      <rect x={x2 - 13} y={351} width={26} height={12} rx={4} fill="#A9EAD2" {...kInk(1.8)} />
+      <path d={'M' + (x2 - 10) + ' 357 h20'} stroke="#6CCBA8" strokeWidth="1.4" />
+      <KHiTop x={r ? 111 : 93} dir={r ? 1 : -1} body="#FFD563" />
+    </P17Art>
+  );
+}
+
+// Простые слова для облачка на экране 1 (теги head и body там ещё не знакомы).
+const P17_PLAIN = { head: L3('Bosh', 'Голова', 'Head'), body: L3('Tana', 'Тело', 'Body') };
+function PaperMan({ build = 7, out, headOpen, hl, spot, bits, nameIn, onHead, onBody, onTitle, titleText, titleGone, anim = true, wave, plain }) {
+  const pick = usePick();
+  const has = (k) => MAN_PARTS.indexOf(k) < build;
+  const A = (a, d) => (out ? { anim: 'out', dl: d * 0.07 } : anim ? { anim: a, dl: d } : {});
+  const NONE = 'transparent';
+  const at = (b) => ({ x: b.x, y: b.y, w: b.w, h: b.h });
+  const showTitle = titleText && !titleGone;
+  return (
+    <div className={'kz-man p17-man' + (spot && hl ? ' is-spot' : '')}>
+      {has('legL') ? <Cut c={NONE} cls="p17-part p17-leg" seed={41} {...at(P17B.legL)} {...A('rise', 0.1)}><P17Leg /></Cut> : null}
+      {has('legR') ? <Cut c={NONE} cls="p17-part p17-leg is-r" seed={42} {...at(P17B.legR)} {...A('rise', 0.2)}><P17Leg r /></Cut> : null}
+      {has('armL') ? <Cut c={NONE} cls="p17-part p17-arm" seed={43} {...at(P17B.armL)} {...A('left', 0)}><P17Arm /></Cut> : null}
+      {has('armR') ? <Cut c={NONE} cls="p17-part p17-arm is-r" seed={44} {...at(P17B.armR)} {...A('right', 0.08)}><P17Arm r wave={wave} /></Cut> : null}
+      {has('body') ? (
+        <Cut c={NONE} cls="p17-part p17-body" seed={45} {...at(P17B.body)} {...A('drop', 0)} hl={hl === 'body'} hlc="#3E9C80"
+          onClick={onBody} label="body"><P17Body bits={bits} /></Cut>
+      ) : null}
+      {showTitle ? (
+        // Капсула с названием (экран 6): крупно над головой, чтобы легко нажать; она летит на вкладку.
+        <Cut c={NONE} cls="p17-part kz-man-title p17-title" seed={46} {...at(P17B.title)} anim="pop" onClick={onTitle} label="title">
+          <P17Art b={P17B.title}>
+            <g transform="translate(100 134) scale(1.18) translate(-190.5 -126.5)"><P17Capsule text={titleText} /></g>
+          </P17Art>
+        </Cut>
+      ) : null}
+      {/* Облачко с названием части (заказчик, 31.10.2026: «тело нигде не просвечивать, а везде облачко
+          с текстом») — сбоку от головы или тела, хвостиком к ней; подсветки частей нет. На экране 1
+          (plain) теги ещё не знакомы — в облачке простое слово, как у Коди: «bosh» / «tana». */}
+      {hl === 'head' || hl === 'body' ? (
+        <span key={hl} className={'p17-call is-' + hl} aria-hidden="true"
+          style={{ left: (hl === 'head' ? 137 : 134) / P17_W * 100 + '%', top: ((hl === 'head' ? 196 : 272) - P17_Y0) / P17_H * 100 + '%' }}>
+          {plain ? pick(P17_PLAIN[hl]) : <><i>{'<'}</i>{hl}<i>{'>'}</i></>}
+        </span>
+      ) : null}
+      {has('head') ? (
+        <Cut c={NONE} cls="p17-part p17-head" seed={47} {...at(P17B.head)} {...A('drop', 0.18)} hl={hl === 'head'} hlc="#f0b52a"
+          onClick={onHead} label="head">
+          <P17Head open={!!headOpen || !!nameIn || !!showTitle} name={nameIn} happy={!!wave} />
+        </Cut>
+      ) : null}
+    </div>
+  );
+}
+
+// Экран 1, браузер → человечек: куда летят куски браузера — настоящие контуры частей (доли от окна части).
+const P17_MORPH = {
+  head: [5 / 88, 16 / 112, 78 / 88, 90 / 112], body: [4 / 76, 8 / 86, 68 / 76, 73 / 86],
+  armL: [4 / 44, 4 / 90, 36 / 44, 78 / 90], armR: [4 / 44, 4 / 90, 36 / 44, 78 / 90],
+  legL: [3 / 52, 4 / 106, 44 / 52, 100 / 106], legR: [5 / 54, 4 / 106, 48 / 54, 100 / 106]
+};
+function p17MorphBox(el, b) {
+  const c = el.classList, r = c.contains('is-r');
+  const f = c.contains('p17-head') ? P17_MORPH.head : c.contains('p17-body') ? P17_MORPH.body
+    : c.contains('p17-arm') ? (r ? P17_MORPH.armR : P17_MORPH.armL) : c.contains('p17-leg') ? (r ? P17_MORPH.legR : P17_MORPH.legL) : null;
+  if (!f) return b;
+  return { x: b.x + b.w * f[0], y: b.y + b.h * f[1], w: b.w * f[2], h: b.h * f[3], r: 0 };
+}
+// Вкладка с названием влетает розовой капсулой — туда, где капсула покажется над открытой головой.
+function p17NameBox(headEl, o) {
+  const x = o.x + headEl.offsetLeft, y = o.y + headEl.offsetTop, w = headEl.offsetWidth, h = headEl.offsetHeight;
+  return { x: x + (w * (69 - 56)) / 88, y: y + (h * (115 - 140)) / 112, w: (w * 62) / 88, h: (h * 46) / 112, r: -8 };
+}
+
+// Полёт капсулы с названием на вкладку (экран 6): подскок, дуга, по пути уменьшается до размера
+// вкладки и тает, только когда прилетела (было: прямо, ступеньками stop-motion, тут же гасла).
+function kzFly(el, to, ms) {
+  if (!el || !to) return false;
+  const d = ms || 780;
+  const a = el.getBoundingClientRect(), b = to.getBoundingClientRect();
+  const dx = b.left + b.width / 2 - (a.left + a.width / 2), dy = b.top + b.height / 2 - (a.top + a.height / 2);
+  const k = Math.max(0.25, Math.min(b.width / a.width, b.height / a.height, 1.2));
+  const lift = Math.min(90, Math.abs(dy) * 0.35 + 40);
+  const T = (x, y) => x.toFixed(1) + 'px ' + y.toFixed(1) + 'px';
+  el.style.zIndex = '60';
+  el.style.animation = 'none';
+  el.animate([
+    { translate: T(0, 0), scale: '1', opacity: 1 },
+    { translate: T(0, -14), scale: '1.15', opacity: 1, offset: 0.18 },
+    { translate: T(dx * 0.5, dy * 0.5 - lift), scale: String(((1 + k) / 2).toFixed(3)), opacity: 1, offset: 0.55 },
+    { translate: T(dx, dy), scale: String(k.toFixed(3)), opacity: 1, offset: 0.9 },
+    { translate: T(dx, dy), scale: String((k * 0.9).toFixed(3)), opacity: 0 }
+  ], { duration: d, easing: 'cubic-bezier(.45, 0, .35, 1)', fill: 'forwards' });
+  return true;
+}
+
 // Сгенерировано tools/kollazh/paper-data.mjs из assets/paper.mp3 — не править руками.
 const PAPER_MP3 = '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';
 
+const P17_QUIET = true;
 // Шорох бумаги: звучит, пока бумажная вырезка движется (ступенчатые анимации
 // kz… и полёт частей), и стихает, как только движение кончилось. Бесконечные
 // движения (дрожь, взмах руки, огонёк) не шуршат. Выключенный звук урока
@@ -7995,6 +8949,7 @@ function paperCtx() {
 
 function paperOn() {
   clearTimeout(_pp.stopT);
+  if (P17_QUIET) return;   // урок 17: без шороха бумаги
   if (_soundOff || _pp.src) return;
   const ctx = paperCtx();
   if (!ctx || !_pp.buf) return;
@@ -8091,7 +9046,7 @@ spokenHtml = (text, lang) => {
   if (lang === 'uz') s = s.replace(/yopuvchi\s+<\s*\/\s*([a-z][a-z0-9]*)\s*>\s+teg/gi, 'yopuvchi $1 teg');
   if (lang === 'uz') s = s.replace(/<\s*\/\s*([a-z][a-z0-9]*)\s*>/gi, (all, t) => 'yopuvchi ' + t + ' tegi');
   const out = spokenHtmlL2(s, lang);
-  return lang === 'uz' ? kzTagWord(out) : out;
+  return b16EnWords(lang === 'uz' ? kzTagWord(out) : out, lang);
 };
 // Слово «teg» в узбекской речи — по-английски, как названия тегов html, head, title,
 // body (заказчик, 23.10.2026): корень уходит в сервис английским «tag», узбекское
@@ -8124,7 +9079,7 @@ function useParallax() {
   }, []);
 }
 
-const KZ = { kraft: '#D8C4A1', paper: '#EFE7D6', face: '#F2D7BC', cream: '#FBF6EA', coral: '#E0643F', mustard: '#F0B13F', teal: '#2A8C7E', ink: '#1F2A44' };
+const KZ = { kraft: '#F3F5FA', paper: '#FFFFFF', face: '#FFD563', cream: '#FFFFFF', coral: '#FF6957', mustard: '#FFD563', teal: '#77DCB8', ink: '#162038' };
 const kzRnd = (seed) => { let s = (Math.abs(seed) * 7919 + 104729) % 2147483647 || 1; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; };
 const TORN = {};
 // Рваный прямоугольник: зубцы по четырём сторонам; amp — глубина зубца в % по
@@ -8169,14 +9124,14 @@ function Cut({ c, seed = 1, n = 10, amp = 3, asp = 1, round, clip, x, y, w, h, r
     <span className={'kz-cut' + (anim ? ' kz-a-' + anim : '') + (hl ? ' is-hl' : '') + (boil ? ' kz-boil' : '') + (tap ? ' is-tap' : '') + (cls ? ' ' + cls : '')}
       style={st} onClick={onClick} role={tap ? 'button' : undefined} tabIndex={tap ? 0 : undefined} aria-label={label}
       onKeyDown={tap ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(e); } } : undefined}>
-      <span className="kz-cut-in" style={{ background: c, clipPath: cp, WebkitClipPath: cp }}>{children}</span>
+      <span className="kz-cut-in" style={{ background: c, clipPath: cp, WebkitClipPath: cp }} />{children != null && children !== false ? <span className="kz-cut-ct">{children}</span> : null}
     </span>
   );
 }
 
 // Лист на крафтовом столе + вырезки по углам (скотч, коралловый клочок, круг) —
 // они сдвигаются за пальцем на разную глубину (параллакс).
-function Sheet({ children, cls }) {
+function SheetPaper({ children, cls }) {
   const cp = torn(5, 30, 1.1, 1.6);
   return (
     <div className={'kz-sheet' + (cls ? ' ' + cls : '')}>
@@ -8191,12 +9146,14 @@ function Sheet({ children, cls }) {
 }
 
 // Строка задания — бумажная полоска; ступень подсказки встаёт на её место.
-function KzAsk({ text, hint, n }) {
+function KzAsk({ text, hint, n, err }) {
   const pick = usePick();
+  const ts = text ? pick(text) : '', hs = hint ? pick(hint) : '', er = !!(hs && err);
+  useEffect(() => { if (_bAskSet) _bAskSet({ text: ts, hint: hs, err: er }); }, [ts, hs, er]);
   return (
     <div className="kz-ask-wrap">
-      <p className={'kz-ask' + (hint ? ' is-hint' : '')} aria-live="polite">
-        {n ? <span className="kz-ask-n">{n}</span> : null}{pick(hint || text)}
+      <p className="kz-ask" aria-live="polite">
+        {n ? <span className="kz-ask-n">{n}</span> : null}{ts}
       </p>
     </div>
   );
@@ -8271,7 +9228,7 @@ const MAN_PARTS = ['body', 'head', 'armL', 'armR', 'legL', 'legR', 'face'];
 // bits — на теле видно, из чего оно собрано: строки текста, картинка и кнопка
 // страницы (хук урока 1: «тело собралось из того, что видно на странице»).
 // nameIn — внутри головы видна бумажка с названием страницы (хук: «название спряталось в голове»).
-function PaperMan({ build = 7, out, headOpen, hl, spot, bits, nameIn, onHead, onBody, onTitle, titleText, titleGone, anim = true, wave }) {
+function PaperManPaper({ build = 7, out, headOpen, hl, spot, bits, nameIn, onHead, onBody, onTitle, titleText, titleGone, anim = true, wave }) {
   const has = (k) => MAN_PARTS.indexOf(k) < build;
   const A = (a, d) => (out ? { anim: 'out', dl: d * 0.07 } : anim ? { anim: a, dl: d } : {});
   return (
@@ -8539,7 +9496,7 @@ function KzGhost({ ghost }) {
 
 // ПЕРЕЛЁТ вырезки к месту (stop-motion): ступенчато, с уменьшением до размера
 // цели; в конце гаснет. Возвращает false, если лететь нечему.
-function kzFly(el, to, ms) {
+function kzFlyPaper(el, to, ms) {
   if (!el || !to) return false;
   const d = ((ms || 780) / 1000).toFixed(2);
   const a = el.getBoundingClientRect(), b = to.getBoundingClientRect();
@@ -8745,149 +9702,164 @@ function makeArtifact(store) {
     html: ['<!DOCTYPE html>', '<html>', '  <head>', '    <title>' + escHtml(t || '') + '</title>', '  </head>', '  <body>', '    ' + escHtml(x || ''), '  </body>', '</html>'].join('\n') };
 }
 
-// ПЕРЕХОД МЕЖДУ ЭКРАНАМИ «РАЗБОР И СБОРКА». По «Дальше» / «Назад» снимается
-// неподвижная копия вырезок текущего листа; вырезки копии ступенчато (stop-motion)
-// разлетаются от центра листа наружу с поворотом. Новый экран уже на месте
-// (голос, кнопки, проверки работают как обычно), но ждёт, пока старое разлетится;
-// потом его вырезки слетаются на свои места. Вырезки, у которых есть свой влёт
-// (kz-a-drop и т. п.), влетают своим движением. При «меньше движения» — смена без
-// анимации. Шорох бумаги включается сам (kzScatter, kzAsmIn — в PAPER_ANIMS).
-const KZ_PIECES = '.kz-ask-wrap, .kz-br, .kz-line, .kz-scrap, .kz-btn, .kz-card, .kz-zone, .kz-label, .kz-slot, '
-  + '.kz-stagebox > .kz-cut, .kz-manbox .kz-cut, .kz-collage, .kz-role, .kz-next, .kz-msg, .keys, .kz-tray > *, '
-  + '.kz-piece';   // любая своя вырезка урока на этом наборе (практика: редактор, заметки, улица)
-const KZ_OUT_MS = 520;     // разлёт
-const KZ_WAIT_MS = 300;    // новый экран ждёт, пока старое разлетается
-const _kzT = { busy: 0, pending: false };
+// ПЕРЕХОД МЕЖДУ ЭКРАНАМИ «КЛУБКИ ШЕРСТИ» (тестовый урок 17, 30.10.2026; заказчик выбрал
+// из демо: «Клубки шерсти — вот этот больше всего нравится»). Вместо бумажного «разбора
+// и сборки» урока 1. Сборка кладёт этот файл на место kollazh-trans.jsx.
+//   · каждая вещь старого экрана сматывается в пушистый клубок (круг с полосками пряжи
+//     её цвета) и, крутясь, укатывается за край: по «Дальше» — вправо, по «Назад» — влево;
+//   · новые клубки прикатываются с другой стороны и разматываются в вещи с пружинкой.
+// Старый экран — неподвижная копия поверх урока (с обликом урока — классом p17), новые
+// вещи — настоящие: голос, кнопки и проверки работают как обычно. «Меньше движения» — смена без анимации.
+const P17_PIECES = '.kz-ask-wrap, .kz-scene > *, .kz-sheet-body > .kz-row, .kz-sheet-body > .kz-keys-wrap > *, .kz-sheet-body > .keys, '
+  + '.kz-sheet-body > .kz-pick, .kz-sheet-body > .kz-tray, .kz-sheet-body > .kz-build, .kz-sheet-body > .kz-msg, .kz-sheet-body > .kz-zones';
+const P17_WAIT = 300;
+const P17_YARN = ['#FFD563', '#77DCB8', '#FF8D7D', '#8CCBF5', '#F4A6CB'];
+const _p17T = { busy: 0, pending: false, dir: 1 };
 
-// Только верхние вырезки: деталь внутри другой детали летит вместе с ней.
-const kzTop = (nodes) => {
+const p17Top = (nodes) => {
   const all = Array.prototype.slice.call(nodes);
   return all.filter((el) => !all.some((o) => o !== el && o.contains(el)));
 };
-const kzRand = (a, b) => a + Math.random() * (b - a);
+const kzLiveSheet = () => Array.prototype.slice.call(document.querySelectorAll('.kz-sheet')).find((x) => !x.closest('.kz-snap')) || null;
 
-// Всё видимое на листе должно лететь, даже если его нет в KZ_PIECES (своя полоска
-// урока, пунктир, лист body, «?!»…): видимая деталь вне вырезок поднимается до
-// самого верхнего предка, в котором ещё нет вырезок, — он летит отдельной вырезкой.
-// Без этого такие вещи стояли на месте, пока всё вокруг разлеталось, или
-// появлялись рывком (заказчик, 23.10.2026: «в некоторых местах переход не работает»).
-const kzLeaf = (el) => {
-  if (/^(svg|img|canvas|textarea|input|video)$/i.test(el.tagName)) return true;
-  for (let i = 0; i < el.childNodes.length; i += 1) { const c = el.childNodes[i]; if (c.nodeType === 3 && c.textContent.trim()) return true; }
-  const cs = getComputedStyle(el);
-  return cs.backgroundImage !== 'none' || !/^(rgba\(0, 0, 0, 0\)|transparent)$/.test(cs.backgroundColor) || parseFloat(cs.borderTopWidth) > 0 || parseFloat(cs.borderBottomWidth) > 0;
-};
-function kzPiecesOf(body) {
-  const pieces = kzTop(body.querySelectorAll(KZ_PIECES));
-  const inPiece = (el) => pieces.some((p) => p === el || p.contains(el));
-  const hasPiece = (el) => pieces.some((p) => el.contains(p));
-  const extra = [];
-  body.querySelectorAll('*').forEach((el) => {
-    if (el.closest('svg') && el.tagName.toLowerCase() !== 'svg') return;
-    if (inPiece(el) || extra.some((x) => x.contains(el))) return;
-    const b = el.getBoundingClientRect();
-    if (b.width < 2 || b.height < 2 || !kzLeaf(el)) return;
-    let top = el;
-    while (top.parentElement && top.parentElement !== body && !hasPiece(top.parentElement)) top = top.parentElement;
-    extra.push(top);
+// Цвет пряжи — цвет самой вещи (если он есть), иначе — из палитры урока по порядку.
+function p17YarnColor(el, i) {
+  const bg = getComputedStyle(el).backgroundColor;
+  const m = bg && bg.match(/rgba?\(([^)]+)\)/);
+  if (m) {
+    const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number);
+    const a = p[3] == null ? 1 : p[3];
+    const light = (p[0] + p[1] + p[2]) / 3 > 238;
+    if (a > 0.6 && !light) return bg;
+  }
+  return P17_YARN[i % P17_YARN.length];
+}
+// Клубок: размер — по вещи (не больше 56 px), масштаб по осям — чтобы из прямоугольника вышел круг.
+function p17Ball(el) {
+  const r = el.getBoundingClientRect();
+  const w = Math.max(1, r.width), h = Math.max(1, r.height);
+  const s = Math.max(26, Math.min(56, Math.min(w, h) * 0.55));
+  return { r, sx: s / w, sy: s / h };
+}
+// Пряжа поверх вещи: витки-полоски и блик; видна, пока вещь — клубок.
+function p17Yarn(el, color) {
+  if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+  const y = document.createElement('span');
+  y.setAttribute('aria-hidden', 'true');
+  Object.assign(y.style, {
+    position: 'absolute', inset: '0', zIndex: '50', pointerEvents: 'none', borderRadius: 'inherit', opacity: '0',
+    backgroundColor: color,
+    backgroundImage: 'radial-gradient(circle at 34% 28%, rgba(255,255,255,.55), rgba(255,255,255,0) 46%), '
+      + 'repeating-linear-gradient(32deg, rgba(255,255,255,.4) 0 3px, rgba(0,0,0,0) 3px 8px), '
+      + 'repeating-linear-gradient(-58deg, rgba(0,0,0,.09) 0 2px, rgba(0,0,0,0) 2px 9px), '
+      + 'radial-gradient(circle at 70% 80%, rgba(0,0,0,.18), rgba(0,0,0,0) 60%)'
   });
-  return kzTop(pieces.concat(extra));
+  el.appendChild(y);
+  return y;
 }
 
-function kzSnapshotOut() {
+// Старый экран: неподвижная копия; её вещи сматываются в клубки и укатываются.
+function p17RollOut(dir) {
   const sheet = kzLiveSheet();
   const stage = document.querySelector('.stage');
   if (!sheet || !stage) return false;
   const r = sheet.getBoundingClientRect();
   const clone = sheet.cloneNode(true);
-  // Лист, скотч и вырезки по углам одинаковы на всех экранах — разлетается только содержимое.
-  // Рука-показ не летит: в снимке её нет совсем.
-  clone.querySelectorAll('.kz-sheet-wrap, .kz-deco, .kz-hand-layer').forEach((e) => e.remove());
-  // Набранный текст в полях копии (значение textarea не копируется само).
+  clone.querySelectorAll('.kz-hand-layer').forEach((e) => e.remove());
   const src = sheet.querySelectorAll('textarea'), dst = clone.querySelectorAll('textarea');
   dst.forEach((t, i) => { if (src[i]) t.value = src[i].value; });
+  // Копия лежит вне урока — ей нужен облик урока (класс p17), иначе проступал бумажный лист урока 1.
   const layer = document.createElement('div');
-  layer.className = 'kz-snap';
+  layer.className = 'kz-snap p17-snap p17';
   layer.setAttribute('aria-hidden', 'true');
   Object.assign(layer.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
   clone.style.width = '100%';
   clone.style.height = '100%';
   layer.appendChild(clone);
-  // Не в саму панель экрана: она пересоздаётся при смене экрана и унесла бы снимок.
   (stage.parentNode || document.body).appendChild(layer);
-  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-  const reach = Math.max(window.innerWidth, window.innerHeight) * 0.75;
-  const cbody = clone.querySelector('.kz-sheet-body') || clone;
-  kzPiecesOf(cbody).forEach((el, i) => {
-    if (getComputedStyle(el).display === 'inline') el.style.display = 'inline-block';
-    const b = el.getBoundingClientRect();
-    let dx = b.left + b.width / 2 - cx, dy = b.top + b.height / 2 - cy;
-    const len = Math.hypot(dx, dy) || 1;
-    dx /= len; dy /= len;
-    // Наружу от центра, чуть вверх (как вырезки, сметённые со стола), со своим разбросом.
-    el.style.setProperty('--ox', ((dx + kzRand(-0.25, 0.25)) * reach).toFixed(0) + 'px');
-    el.style.setProperty('--oy', ((dy - 0.35 + kzRand(-0.2, 0.2)) * reach).toFixed(0) + 'px');
-    el.style.setProperty('--or', kzRand(-38, 38).toFixed(0) + 'deg');
-    el.style.setProperty('--od', ((i % 7) * 0.025).toFixed(3) + 's');
-    el.classList.add('kz-out-go');
+  const W = window.innerWidth;
+  const body = clone.querySelector('.kz-sheet-body') || clone;
+  let last = 0;
+  p17Top(body.querySelectorAll(P17_PIECES)).forEach((el, i) => {
+    const b = p17Ball(el);
+    const cx = b.r.left + b.r.width / 2;
+    const tx = dir > 0 ? W - cx + 80 : -cx - 80;
+    const dl = i * 45;
+    const br = getComputedStyle(el).borderRadius || '0px';
+    el.style.overflow = 'hidden';
+    const y = p17Yarn(el, p17YarnColor(el, i));
+    // Скорость — у каждого этапа своя: сматывание плавное, качение — с разгоном.
+    const opt = { duration: 760, delay: dl, easing: 'linear', fill: 'forwards' };
+    el.animate([
+      { transform: 'none', borderRadius: br, easing: 'cubic-bezier(.3, 0, .25, 1)' },
+      { transform: 'scale(' + b.sx + ', ' + b.sy + ')', borderRadius: '50%', offset: 0.4, easing: 'cubic-bezier(.55, 0, .85, .45)' },
+      { transform: 'translateX(' + tx + 'px) rotate(' + (dir * 540) + 'deg) scale(' + b.sx + ', ' + b.sy + ')', borderRadius: '50%' }
+    ], opt);
+    y.animate([{ opacity: 0 }, { opacity: 1, offset: 0.32 }, { opacity: 1 }], opt);
+    last = Math.max(last, dl + 760);
   });
-  setTimeout(() => { if (layer.parentNode) layer.parentNode.removeChild(layer); }, KZ_OUT_MS + 260);
+  setTimeout(() => { if (layer.parentNode) layer.parentNode.removeChild(layer); }, last + 80);
   return true;
 }
 
-// Настоящий лист экрана — не копия в снимке (React ставит новый экран после слоя снимка).
-const kzLiveSheet = () => Array.prototype.slice.call(document.querySelectorAll('.kz-sheet')).find((x) => !x.closest('.kz-snap')) || null;
-
-function kzAssembleIn() {
+// Новый экран: клубки прикатываются с другой стороны и разматываются (у кого свой влёт — летят им).
+function p17RollIn(dir) {
   const sheet = kzLiveSheet();
   if (!sheet) return;
-  // Лист не проявляется заново: бумага остаётся на столе, меняются только вырезки.
-  // Встроенным стилем и навсегда: снятый позже запрет перезапустил бы проявление (вспышка).
   sheet.style.animation = 'none';
-  sheet.classList.add('kz-asm-wait');   // скрыт, свои влёты на паузе
-  setTimeout(() => {
-    const H = window.innerHeight, W = window.innerWidth;
-    let n = 0;
-    const body = sheet.querySelector('.kz-sheet-body') || sheet;
-    const ownAnim = (el) => { const cs = getComputedStyle(el); return cs.animationName !== 'none' && cs.animationIterationCount.indexOf('infinite') < 0; };
-    kzPiecesOf(body).forEach((el) => {
-      // Свой влёт есть (у неё или у предка) — пусть летит им (снимается с паузы вместе со всеми).
-      for (let e = el; e && e !== body; e = e.parentElement) if (ownAnim(e)) return;
-      if (el.closest('.kz-hand-layer')) return;
-      const fromLeft = n % 2 === 0;
-      el.style.setProperty('--ix', ((fromLeft ? -1 : 1) * kzRand(0.25, 0.55) * W).toFixed(0) + 'px');
-      el.style.setProperty('--iy', (kzRand(-0.55, -0.2) * H).toFixed(0) + 'px');
-      el.style.setProperty('--ir', kzRand(-30, 30).toFixed(0) + 'deg');
-      const dl = Math.min(0.3, n * 0.035);
-      n += 1;
-      el.style.animation = 'kzAsmIn .56s steps(1, end) ' + dl.toFixed(3) + 's both';
-      // Снять, когда сел: иначе встроенная анимация перебьёт будущие (тряску, огонёк).
-      setTimeout(() => { el.style.animation = ''; }, (0.56 + dl) * 1000 + 80);
-    });
-    sheet.classList.remove('kz-asm-wait');
-  }, KZ_WAIT_MS);
+  const body = sheet.querySelector('.kz-sheet-body') || sheet;
+  const own = (el) => { const cs = getComputedStyle(el); return cs.animationName !== 'none' && cs.animationIterationCount.indexOf('infinite') < 0; };
+  const W = window.innerWidth;
+  let n = 0;
+  p17Top(body.querySelectorAll(P17_PIECES)).forEach((el) => {
+    for (let e = el; e && e !== body; e = e.parentElement) if (own(e)) return;
+    const b = p17Ball(el);
+    const cx = b.r.left + b.r.width / 2;
+    const fx = dir > 0 ? -cx - 80 : W - cx + 80;
+    const dl = 330 + n * 60;
+    const br = getComputedStyle(el).borderRadius || '0px';
+    const keep = { overflow: el.style.overflow, position: el.style.position };
+    el.style.overflow = 'hidden';
+    const y = p17Yarn(el, p17YarnColor(el, n));
+    n += 1;
+    // Прикатывается с торможением, разматывается с пружинкой.
+    const opt = { duration: 820, delay: dl, easing: 'linear', fill: 'backwards' };
+    const a = el.animate([
+      { transform: 'translateX(' + fx + 'px) rotate(' + (-dir * 540) + 'deg) scale(' + b.sx + ', ' + b.sy + ')', borderRadius: '50%', easing: 'cubic-bezier(.15, .55, .35, 1)' },
+      { transform: 'scale(' + b.sx + ', ' + b.sy + ')', borderRadius: '50%', offset: 0.55, easing: 'cubic-bezier(.3, 0, .3, 1)' },
+      { transform: 'scale(1.05, .95)', borderRadius: '18px', offset: 0.84, easing: 'ease-out' },
+      { transform: 'none', borderRadius: br }
+    ], opt);
+    y.animate([{ opacity: 1 }, { opacity: 1, offset: 0.58 }, { opacity: 0, offset: 0.8 }, { opacity: 0 }], opt);
+    a.onfinish = a.oncancel = () => { y.remove(); el.style.overflow = keep.overflow; el.style.position = keep.position; };
+  });
 }
 
-// Обёртка навигации: снимок старого листа → смена экрана → сборка нового.
 function useKzTransition(screenKey) {
-  const go = useCallback((fn) => {
+  const go = useCallback((fn, dir) => {
     if (!fn) return fn;
     return () => {
       const now = Date.now();
-      if (now - _kzT.busy < KZ_WAIT_MS + 120) return;   // двойное нажатие не пролистывает экран
-      _kzT.busy = now;
-      if (!reduceMotion() && kzSnapshotOut()) _kzT.pending = true;
+      if (now - _p17T.busy < P17_WAIT + 120) return;   // двойное нажатие не пролистывает экран
+      _p17T.busy = now;
+      _p17T.dir = dir || 1;
+      if (!reduceMotion() && p17RollOut(_p17T.dir)) _p17T.pending = true;
       fn();
     };
   }, []);
   useLayoutEffect(() => {
-    if (!_kzT.pending) return;
-    _kzT.pending = false;
-    kzAssembleIn();
+    if (!_p17T.pending) return;
+    _p17T.pending = false;
+    p17RollIn(_p17T.dir);
   }, [screenKey]);
   return go;
 }
 
+// КОПИЯ экранов урока 1 (tools/kollazh/kollazh-screens.jsx, 28.10.2026) для тестового урока 16
+// по репликам заказчика v2: экраны 3 и 6 — ученик сам нажимает бирки, голову и бумажку;
+// экран 10 — один дополнительный раунд и «Давай ещё пример»; экран 11 — приветствие
+// ученика; экран 4 — кнопки набора загораются только на третьей ступени; экран 16 —
+// варианты в случайном порядке, верный не первым. Остальное — как в уроке 1.
 // =============================================================================
 // S1. КРЮЧОК — сначала бумажная веб-страница в браузере. Коди показывает вкладку
 // (подсвечена) и спрашивает: «А если бы страница была человеком?» (окно Коди
@@ -8948,22 +9920,22 @@ function S1({ p }) {
     const cuts = Array.prototype.slice.call(man.children);
     const part = (lbl) => cuts.find((el) => el.getAttribute('aria-label') === lbl);
     const limbs = cuts.filter((el) => !el.getAttribute('aria-label'));   // по порядку: ноги, руки
-    const to = (el) => ({ x: M.left - S.left + el.offsetLeft, y: M.top - S.top + el.offsetTop, w: el.offsetWidth, h: el.offsetHeight,
+    const to = (el) => p17MorphBox(el, { x: M.left - S.left + el.offsetLeft, y: M.top - S.top + el.offsetTop, w: el.offsetWidth, h: el.offsetHeight,
       r: parseFloat(getComputedStyle(el).getPropertyValue('--r')) || 0 });
     const half = B.width / 2;
     const sideH = B.bottom - Bar.bottom;
     const head = to(part('head'));
     setPieces([
-      { k: 'legL', c0: KZ.ink, c: KZ.ink, seed: 41, from: { x: B.left - S.left, y: Bar.bottom - S.top, w: Math.max(6, W.left - B.left), h: sideH, r: 0 }, apart: [-12, 4, -5], to: to(limbs[0]), dl: 0.05 },
-      { k: 'legR', c0: KZ.ink, c: KZ.ink, seed: 42, from: { x: W.right - S.left, y: Bar.bottom - S.top, w: Math.max(6, B.right - W.right), h: sideH, r: 0 }, apart: [12, 4, 5], to: to(limbs[1]), dl: 0.1 },
-      { k: 'armL', c0: '#E6DCC6', c: KZ.ink, seed: 43, from: { x: B.left - S.left, y: Tool.top - S.top, w: half, h: Tool.height, r: 0 }, apart: [-10, -6, -6], to: to(limbs[2]), dl: 0.16 },
-      { k: 'armR', c0: '#E6DCC6', c: KZ.ink, seed: 44, from: { x: B.left - S.left + half, y: Tool.top - S.top, w: half, h: Tool.height, r: 0 }, apart: [10, -6, 6], to: to(limbs[3]), dl: 0.2 },
-      { k: 'body', c0: KZ.cream, c: KZ.teal, seed: 45, lines: true, from: { x: W.left - S.left, y: Tool.bottom - S.top, w: W.width, h: W.bottom - Tool.bottom, r: 0 }, apart: [0, 8, 1.5], to: to(part('body')), dl: 0 },
+      { k: 'legL', c0: '#DEE1E6', c: '#6CCBA8', seed: 41, from: { x: B.left - S.left, y: Bar.bottom - S.top, w: Math.max(6, W.left - B.left), h: sideH, r: 0 }, apart: [-12, 4, -5], to: to(limbs[0]), dl: 0.05 },
+      { k: 'legR', c0: '#DEE1E6', c: '#6CCBA8', seed: 42, from: { x: W.right - S.left, y: Bar.bottom - S.top, w: Math.max(6, B.right - W.right), h: sideH, r: 0 }, apart: [12, 4, 5], to: to(limbs[1]), dl: 0.1 },
+      { k: 'armL', c0: '#FFFFFF', c: '#FF8D7D', seed: 43, from: { x: B.left - S.left, y: Tool.top - S.top, w: half, h: Tool.height, r: 0 }, apart: [-10, -6, -6], to: to(limbs[2]), dl: 0.16 },
+      { k: 'armR', c0: '#FFFFFF', c: '#FF8D7D', seed: 44, from: { x: B.left - S.left + half, y: Tool.top - S.top, w: half, h: Tool.height, r: 0 }, apart: [10, -6, 6], to: to(limbs[3]), dl: 0.2 },
+      { k: 'body', c0: KZ.cream, c: '#7FD6B6', seed: 45, lines: true, from: { x: W.left - S.left, y: Tool.bottom - S.top, w: W.width, h: W.bottom - Tool.bottom, r: 0 }, apart: [0, 8, 1.5], to: to(part('body')), dl: 0 },
       // Голова — из всей верхней полосы браузера (не из одной вкладки).
-      { k: 'head', c0: KZ.ink, c: KZ.face, round: true, from: { x: B.left - S.left, y: B.top - S.top, w: B.width, h: Bar.bottom - B.top, r: 0 }, apart: [0, -16, -4], to: head, dl: 0.24 },
+      { k: 'head', c0: '#DEE1E6', c: '#E9B48C', round: true, from: { x: B.left - S.left, y: B.top - S.top, w: B.width, h: Bar.bottom - B.top, r: 0 }, apart: [0, -16, -4], to: head, dl: 0.24 },
       // Вкладка с названием влетает внутрь головы и прячется в ней: название — одно из сведений, которые хранит голова.
-      { k: 'name', c0: '#E6DCC6', c: '#E6DCC6', round: true, text: pick(UI.mySite), fade: true, from: box(T), apart: [-4, -26, -7],
-        to: { x: head.x + head.w * 0.18, y: head.y + head.h * 0.36, w: head.w * 0.64, h: head.h * 0.26, r: -4 }, dl: 0.34 }
+      { k: 'name', c0: '#FFFFFF', c: '#F7A3CB', round: true, text: pick(UI.mySite), fade: true, from: box(T), apart: [-4, -26, -7],
+        to: p17NameBox(part('head'), { x: M.left - S.left, y: M.top - S.top }), dl: 0.34 }
     ]);
     setStage(0);
     setPhase('morph');
@@ -8981,16 +9953,16 @@ function S1({ p }) {
     const fly = stage === 2;
     const d = fly ? S1_FLY + 's' : '.22s';
     const dl = fly ? pc.dl + 's' : '0s';
-    const st = fly ? 'steps(9, end)' : 'steps(2, end)';
+    const st = fly ? 'cubic-bezier(.5, 0, .2, 1.18)' : 'ease-out';
     return {
       left: g.x + 'px', top: g.y + 'px', width: g.w + 'px', height: g.h + 'px', rotate: g.r + 'deg',
       background: fly ? pc.c : pc.c0,
-      borderRadius: pc.round ? (fly ? (pc.fade ? '6px' : '50%') : '6px 6px 0 0') : null,
+      borderRadius: fly ? (pc.fade ? '12px' : '999px') : '14px',
       opacity: pc.fade && fly ? 0 : 1,
-      clipPath: pc.round ? null : torn(pc.seed, 6, 2.5, Math.max(0.2, Math.min(5, g.w / Math.max(1, g.h)))),
+      clipPath: null,
       transition: ['left', 'top', 'width', 'height', 'rotate'].map((k) => k + ' ' + d + ' ' + st + ' ' + dl)
-        .concat(['background ' + d + ' steps(4, end) ' + dl, 'border-radius ' + d + ' steps(5, end) ' + dl])
-        .concat(pc.fade ? ['opacity .2s steps(2, end) ' + (pc.dl + S1_FLY - 0.05).toFixed(2) + 's'] : []).join(', ')
+        .concat(['background ' + d + ' cubic-bezier(.45, 0, .2, 1.1) ' + dl, 'border-radius ' + d + ' cubic-bezier(.45, 0, .2, 1.1) ' + dl])
+        .concat(pc.fade ? ['opacity .2s cubic-bezier(.45, 0, .2, 1.1) ' + (pc.dl + S1_FLY - 0.05).toFixed(2) + 's'] : []).join(', ')
     };
   };
   // Подсветка идёт за речью: до превращения — вкладка; после — голова
@@ -9003,7 +9975,7 @@ function S1({ p }) {
   const askText = phase === 'man' ? c.askDone : spoken ? c.ask : c.askLook;
   const busy = phase === 'measure' || phase === 'morph';
   return (
-    <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Sheet>
         <KzAsk text={askText} />
         <div ref={sceneRef} className={'kz-scene kz-s1 kz-s1-rev is-' + phase}>
@@ -9017,7 +9989,7 @@ function S1({ p }) {
           {phase !== 'page' ? (
             <div className={'kz-stagebox kz-s1-man' + (phase === 'man' ? '' : ' is-ghost')}>
               <div className="kz-manbox kz-manbox-free">
-                <PaperMan key={phase === 'man' ? 'm' : 'g'} anim={false} hl={hl} spot wave={phase === 'man'}
+                <PaperMan key={phase === 'man' ? 'm' : 'g'} anim={false} hl={hl} spot plain wave={phase === 'man'}
                   nameIn={headPeek ? pick(UI.mySite) : null} bits={phase === 'man'} />
               </div>
             </div>
@@ -9040,7 +10012,7 @@ function S1({ p }) {
           </div>
         ) : null}
       </Sheet>
-    </Stage>
+    </StageB>
   );
 }
 
@@ -9094,7 +10066,7 @@ function RD({ p }) {
   const arrD = t === c.read3 || t === c.read1;
   const askText = solved || read >= RD_LINES.length ? c.askDone : c.ask;
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Sheet>
         <KzAsk text={askText} />
         <div className="kz-scene kz-s12 kz-rd">
@@ -9113,7 +10085,7 @@ function RD({ p }) {
           </div>
         </div>
       </Sheet>
-    </Stage>
+    </StageB>
   );
 }
 
@@ -9144,10 +10116,10 @@ function S3({ p }) {
     : [{ text: c.say, pose: 'curious' }]);
   const boxRef = useRef(null);
   // Показ: загорается верхняя бирка — «это тег», «открывающий»; потом нижняя — «закрывающий».
-  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
-    { look: () => boxRef.current && boxRef.current.querySelector('.kz-frame-lbl-top'), act: () => { sfx('tap', true); setN(1); } },
+  const demo = useB16Demo({ run: !solved, spoken, sayNow, say, steps: [
+    { tap: 'top', el: () => boxRef.current && boxRef.current.querySelector('.kz-frame-lbl-top'), act: () => { sfx('tap', true); setN(1); } },
     { say: [{ text: c.br, pose: 'point' }, { text: c.nm, pose: 'point' }, { text: c.sayTag, pose: 'wonder' }, { text: c.top, pose: 'point' }] },
-    { look: () => boxRef.current && boxRef.current.querySelector('.kz-frame-lbl-bot'), act: () => { sfx('ok', true); setN(2); } },
+    { tap: 'bot', el: () => boxRef.current && boxRef.current.querySelector('.kz-frame-lbl-bot'), act: () => { sfx('ok', true); setN(2); } },
     { say: [{ text: c.bottom, pose: 'explain' }, { text: c.pair, pose: 'smile' }, { text: c.done, pose: 'smile' }] },
     { act: () => put({ done: true }) }
   ] });
@@ -9161,20 +10133,20 @@ function S3({ p }) {
   const spotBot = t === c.say || t === c.bottom;
   const spotting = spotTop || spotBot;
   const pairNow = t === c.pair;
-  const askText = solved || n === 2 ? c.askDone : c.ask;
+  const askText = solved || n === 2 ? c.askDone : n === 1 ? c.askBot : c.ask;
   return (
-    <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Sheet>
         <KzAsk text={askText} n={solved ? null : n + '/2'} />
         <div className="kz-scene" ref={boxRef}>
           <ManBox frame frameAnim={!solved} frameHl={t === c.done} cls={spotting ? 'is-spot' : pairNow ? 'is-pair' : ''} br={<FramedPage anim={!solved} />}
             labels={<>
-              <KzLabel t="html" cls={'kz-frame-lbl-top' + (spotTop ? ' is-spot' : '') + topPart} on={n >= 1} hl={spotTop || pairNow} />
-              <KzLabel t="html" close cls={'kz-frame-lbl-bot' + (spotBot ? ' is-spot' : '') + (t === c.bottom ? ' is-slash' : '')} on={n >= 2} hl={spotBot || pairNow} />
+              <KzLabel t="html" onClick={() => demo.tap('top')} cls={'kz-frame-lbl-top' + (spotTop ? ' is-spot' : '') + topPart} on={n >= 1} hl={spotTop || pairNow} />
+              <KzLabel t="html" close onClick={() => demo.tap('bot')} cls={'kz-frame-lbl-bot' + (spotBot ? ' is-spot' : '') + (t === c.bottom ? ' is-slash' : '')} on={n >= 2} hl={spotBot || pairNow} />
             </>} />
         </div>
       </Sheet>
-    </Stage>
+    </StageB>
   );
 }
 
@@ -9189,6 +10161,7 @@ function S4({ p }) {
   const solved = !!(rec && rec.done);
   const ty = useTagTyping({ max: 12 });
   const [msg, setMsg] = useState(null);
+  useTipClears(setMsg);
   const [okNow, setOkNow] = useState(solved);
   // Причину нельзя назвать точно (знаки не в том порядке) — опора: верхний тег на рамке
   // и кнопки набора, которые загораются по порядку < / html >.
@@ -9230,9 +10203,9 @@ function S4({ p }) {
       </span>] }
   ];
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hint)} />
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hint)} err={!!msg} />
         <div className="kz-scene is-tight">
           <ManBox frame frameSides={{ top: 1, right: 1, left: 1, bottom: okNow ? 'new' : 0 }} br={<FramedPage anim={false} />}
             labels={<>
@@ -9242,9 +10215,9 @@ function S4({ p }) {
             </>} />
           <div className="kz-col"><KzCode lines={lines} /></div>
         </div>
-        {!okNow ? <div className={'kz-keys-wrap' + (orderHint && msg ? ' kz-order-hint' : '')}><KeyRow keys={['<', '/', 'html', '>']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 4} /></div> : null}
+        {!okNow ? <div className={'kz-keys-wrap' + (lad.lv >= 3 && !okNow ? ' kz-order-hint' : '')}><KeyRow keys={['<', '/', 'html', '>']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 4} /></div> : null}
       </Sheet>
-    </Stage>
+    </StageB>
   );
 }
 
@@ -9262,6 +10235,7 @@ function S5({ p }) {
   const [slots, setSlots] = useState(solved ? { top: 'o', bot: 'c' } : { top: null, bot: null });
   const [sel, setSel] = useState(null);
   const [msg, setMsg] = useState(null);
+  useTipClears(setMsg);
   const [shake, setShake] = useState(null);
   const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.ok, pose: 'smile' }]
     : [{ text: c.say, pose: 'explain' }, { text: c.sayHow, pose: 'point' }]);
@@ -9309,9 +10283,9 @@ function S5({ p }) {
     </button>
   );
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} n={done ? null : ((slots.top ? 1 : 0) + (slots.bot ? 1 : 0)) + '/2'} />
+        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} err={!!msg} n={done ? null : ((slots.top ? 1 : 0) + (slots.bot ? 1 : 0)) + '/2'} />
         <div ref={sceneRef} className={'kz-scene is-tight' + (dnd.active || sel ? ' is-dragging' : '')}>
           <ManBox frame frameAnim={!solved} br={<FramedPage anim={!solved} />} cls="kz-s5-box"
             labels={<>{slotBtn('top', 'kz-slot-top')}{slotBtn('bot', 'kz-slot-bot')}</>} />
@@ -9336,7 +10310,7 @@ function S5({ p }) {
           targets={[() => trayRef.current && trayRef.current.querySelector('[data-id="o"]'), () => sceneRef.current && sceneRef.current.querySelector('.kz-slot-top')]} />
       </Sheet>
       <KzGhost ghost={dnd.ghost} />
-    </Stage>
+    </StageB>
   );
 }
 
@@ -9360,10 +10334,10 @@ function S6({ p }) {
     : [{ text: c.say, pose: 'explain' }, { text: c.sayInfo, pose: 'explain' }]);
   const q = (sel) => () => sceneRef.current && sceneRef.current.querySelector(sel);
   // Показ: голова загорается и открывается; карточка title загорается и летит на вкладку.
-  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
-    { look: q('.kz-man [aria-label="head"]'), act: () => { sfx('pop', true); setStep(1); } },
+  const demo = useB16Demo({ run: !solved, spoken, sayNow, say, steps: [
+    { tap: 'head', el: q('.kz-man [aria-label="head"]'), act: () => { sfx('pop', true); setStep(1); } },
     { say: [{ text: c.opened, pose: 'point' }] },
-    { look: q('.kz-man [aria-label="title"]'), act: () => {
+    { tap: 'title', el: q('.kz-man [aria-label="title"]'), act: () => {
       sfx('tap', true);
       const sc = sceneRef.current;
       if (!reduceMotion() && sc && kzFly(sc.querySelector('.kz-man [aria-label="title"]'), sc.querySelector('.kz-br-tab'), 760)) setFlying(true);
@@ -9385,17 +10359,22 @@ function S6({ p }) {
     return () => clearTimeout(tm);
   }, [speaker.text]); // eslint-disable-line react-hooks/exhaustive-deps
   const inNow = speaker.text === c.inHead;
-  const askText = step === 0 ? c.ask : step === 1 ? c.askCard : c.done;
+  const askText = step === 0 ? (demo.waiting === 'head' ? c.ask : c.askLook) : step === 1 ? c.askCard : c.askDone;
   // Подсветка за речью: голова и строки head → окно → строка title → вкладка.
   const hlHead = speaker.text === c.say;
   const hlWin = speaker.text === c.sayInfo;
   const hlTitle = speaker.text === c.opened;
   const hlAll = speaker.text === c.done;   // «строка title между ними» — title ярко, head-строки рядом
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Sheet>
         <KzAsk text={askText} n={solved ? null : step + '/2'} />
-        <div ref={sceneRef} className={'kz-scene kz-s6' + (flying ? ' is-flying' : '')}>
+        <div ref={sceneRef} className={'kz-scene kz-s6' + (flying ? ' is-flying' : '')} onClick={(e) => {
+          const t = e.target && e.target.closest ? e.target : null;
+          if (!t) return;
+          if (t.closest('.kz-man [aria-label="title"]')) demo.tap('title');
+          else if (t.closest('.kz-man [aria-label="head"]')) demo.tap('head');
+        }}>
           <ManBox man={<PaperMan anim={false} headOpen={step === 1} hl={hlHead ? 'head' : null} spot
             titleText={step === 1 ? title : null} />} cls="kz-s6-box" />
           <div className="kz-col">
@@ -9411,7 +10390,7 @@ function S6({ p }) {
           </div>
         </div>
       </Sheet>
-    </Stage>
+    </StageB>
   );
 }
 
@@ -9434,9 +10413,9 @@ function S7({ p }) {
   const confirm = () => { if (canTap && ty.ready) ty.commit(() => sayNow(c.ok, 'smile')); };
   const hint = hasTags(ty.val) ? (c.noTags || UI.noTags) : hintAt(lad.lv, c.hints);
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="kz-typed">
-        <KzAsk text={ty.solved ? c.ok : c.ask} hint={ty.solved && !hasTags(ty.val) ? null : hint} />
+        <KzAsk text={ty.solved ? c.ok : c.ask} hint={ty.solved && !hasTags(ty.val) ? null : hint} err={hasTags(ty.val)} />
         <div className="kz-scene kz-scene-col">
           <div className="kz-col">
             <PaperBrowser title={ty.shown} stamp={ty.stamp} tabHl={!ty.solved} short>
@@ -9453,7 +10432,7 @@ function S7({ p }) {
         </div>
         <ReadyBtn on={canTap && ty.ready} glow={canTap && ty.ready && !ty.solved} onClick={confirm} />
       </Sheet>
-    </Stage>
+    </StageB>
   );
 }
 
@@ -9490,6 +10469,7 @@ function S8({ p }) {
   const canGo = useAdvanceGate(solved || !queue.length, spoken);
   const lad = useKzLadder(!!queue.length);
   const misses = useRef(0);
+  const extraUsed = useRef(false);   // дополнительный раунд — не больше одного
   const stats = useRef([]);
   const round = queue[0] || null;
   const R = round ? c.rounds[round.i] : null;
@@ -9505,8 +10485,9 @@ function S8({ p }) {
     sfx(right ? 'ok' : 'soft', true);
     if (!right) { misses.current += 1; if (misses.current >= 2) lad.bump(); }
     const rest = queue.slice(1);
-    if (!right && !round.extra) rest.unshift({ i: round.i, extra: true });
-    const line = right ? c.ok[R.kind] : c.miss[R.kind];
+    let added = false;
+    if (!right && !round.extra && !extraUsed.current) { rest.unshift({ i: round.i, extra: true }); extraUsed.current = true; added = true; }
+    const line = right ? c.ok[R.kind] : added ? joinL(c.miss[R.kind], c.more) : c.miss[R.kind];
     if (!rest.length) {
       [0, 1, 2].forEach((ii) => {
         const f = stats.current.find((x) => x.i === ii && !x.extra);
@@ -9535,7 +10516,7 @@ function S8({ p }) {
   const hint = round && !ans ? hintAt(lad.lv, c.hints) : null;
   const allDone = !round && !solved;   // «title — на вкладке, body — в окне»: светятся оба места
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={round ? hintAt(Math.min(3, lad.lv + 1), c.hints) || askText : askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={round ? hintAt(Math.min(3, lad.lv + 1), c.hints) || askText : askText} nav={navOf(p, canGo)}>
       <Sheet>
         <KzAsk text={askText} hint={hint} n={round ? (doneN + 1) + '/' + (doneN + queue.length) : null} />
         <div className="kz-scene kz-scene-col">
@@ -9559,7 +10540,7 @@ function S8({ p }) {
           </div>
         ) : null}
       </Sheet>
-    </Stage>
+    </StageB>
   );
 }
 
@@ -9595,7 +10576,7 @@ function S9({ p }) {
   const land = () => { paperOff(); setPieces(null); setPhase('out'); sfx('ok', true); };
   // Показ: тело загорается — куски страницы вылетают из него в окно.
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
-    { look: () => sceneRef.current && sceneRef.current.querySelector('.kz-man [aria-label="body"]'), act: () => { sfx('pop', true); setPhase(reduceMotion() ? 'out' : 'measure'); } },
+    { look: () => null, act: () => { sfx('pop', true); setPhase(reduceMotion() ? 'out' : 'measure'); } },
     { wait: reduceMotion() ? 100 : S9_PEEK + (S9_FLY + 5 * S9_GAP + 0.4) * 1000 },
     { say: [{ text: c.out, pose: 'wonder' }, { text: c.done, pose: 'smile' }] },
     { act: () => put({ done: true }) }
@@ -9614,7 +10595,7 @@ function S9({ p }) {
     if (phase !== 'out' && phase !== 'measure') return;
     const m = measure();
     if (!m) return;
-    setLbl({ body: { x: m.B.left - m.S.left + m.B.width / 2, y: m.B.top - m.S.top }, win: { x: m.W.right - m.S.left - 8, y: m.W.top - m.S.top } });
+    setLbl({ body: { x: m.B.right - m.S.left - m.B.width * 0.05, y: m.B.top - m.S.top + m.B.height * 0.4 }, win: { x: m.W.left - m.S.left + 8, y: m.W.bottom - m.S.top - 8 } });
     if (phase !== 'measure') return;
     const sc = sceneRef.current;
     const q = (sel) => Array.prototype.slice.call(sc.querySelectorAll('.kz-s9-ghost ' + sel));
@@ -9645,19 +10626,19 @@ function S9({ p }) {
     return {
       left: g.x + 'px', top: g.y + 'px', width: g.w + 'px', height: g.h + 'px', rotate: (stage === 2 ? 0 : pc.r) + 'deg', opacity: stage ? 1 : 0,
       transition: stage === 2
-        ? ['left', 'top', 'width', 'height', 'rotate'].map((k) => k + ' ' + d + ' steps(10, end) ' + dl).join(', ')
-        : 'opacity .2s steps(2, end) ' + (pc.dl * 0.5).toFixed(2) + 's'
+        ? ['left', 'top', 'width', 'height', 'rotate'].map((k) => k + ' ' + d + ' cubic-bezier(.45, 0, .2, 1.1) ' + dl).join(', ')
+        : 'opacity .2s cubic-bezier(.45, 0, .2, 1.1) ' + (pc.dl * 0.5).toFixed(2) + 's'
     };
   };
   const out = phase === 'out';
   const going = phase === 'fly' || out;   // тело уже отдаёт содержимое: окно и код body горят
   const hello = pick(UI.hello);
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={out ? c.done : c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={out ? c.done : c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={out ? c.done : c.ask} />
+        <KzAsk text={out ? P17_S9_DONE : c.ask} />
         <div className="kz-scene kz-s9" ref={sceneRef}>
-          <ManBox man={<PaperMan anim={false} hl={speaker.text === c.say || going ? 'body' : null} spot={speaker.text === c.say} />} cls="kz-s6-box" />
+          <ManBox man={<PaperMan anim={false} />} cls="kz-s6-box" />
           <div className="kz-col">
             <PaperBrowser title={mine.title} pageHl={going}>
               {out ? <PageBits text={hello} bits />
@@ -9686,7 +10667,7 @@ function S9({ p }) {
           ) : null}
         </div>
       </Sheet>
-    </Stage>
+    </StageB>
   );
 }
 
@@ -9710,9 +10691,9 @@ function S10({ p }) {
   const confirm = () => { if (canTap && ty.ready) ty.commit(() => sayNow(c.ok, 'smile')); };
   const hint = hasTags(ty.val) ? (c.noTags || UI.noTags) : hintAt(lad.lv, c.hints);
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="kz-typed">
-        <KzAsk text={ty.solved ? c.ok : c.ask} hint={ty.solved && !hasTags(ty.val) ? null : hint} />
+        <KzAsk text={ty.solved ? c.ok : c.ask} hint={ty.solved && !hasTags(ty.val) ? null : hint} err={hasTags(ty.val)} />
         <div className="kz-scene kz-scene-col">
           <div className="kz-col">
             <PaperBrowser title={mine.title} short pageHl={speaker.text === c.sayWin} spot={speaker.text === c.sayWin ? 'page' : null}>
@@ -9727,7 +10708,7 @@ function S10({ p }) {
         </div>
         <ReadyBtn on={canTap && ty.ready} glow={canTap && ty.ready && !ty.solved} onClick={confirm} />
       </Sheet>
-    </Stage>
+    </StageB>
   );
 }
 
@@ -9745,6 +10726,7 @@ function S11({ p }) {
   const [placed, setPlaced] = useState(solved ? { name: 'head', hello: 'body', pic: 'body', btn: 'body' } : {});
   const [sel, setSel] = useState(null);
   const [msg, setMsg] = useState(null);
+  useTipClears(setMsg);
   const [shake, setShake] = useState(null);
   const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'explain' }]);
   const canTap = useCanAnswer(spoken);
@@ -9754,7 +10736,7 @@ function S11({ p }) {
   const lad = useKzLadder(!done);
   const st = useRef({ tries: 0, misses: 0 });
   const led = useIdleLed(canTap && !done, doneN * 10 + (sel ? 1 : 0));
-  const label = (id) => (id === 'name' ? mine.title : id === 'hello' ? pick(UI.hello) : id === 'pic' ? pick(UI.pic) : pick(UI.play));
+  const label = (id) => (id === 'name' ? mine.title : id === 'hello' ? mine.text : id === 'pic' ? pick(UI.pic) : pick(UI.play));
   // Имя страницы показано в теге title — по нему видно, что ему место в голове.
   const face = (id) => (id === 'name'
     ? <span className="kz-scrap-code" translate="no"><TagK t="title" />{mine.title}<TagK t="title" close /></span>
@@ -9802,9 +10784,9 @@ function S11({ p }) {
     </button>
   );
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} n={done ? null : doneN + '/4'} />
+        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} err={!!msg} n={done ? null : doneN + '/4'} />
         <div className="kz-zones">{zone('head')}{zone('body')}</div>
         <div className="kz-tray">
           {c.items.map((it, i) => {
@@ -9823,7 +10805,7 @@ function S11({ p }) {
         </div>
       </Sheet>
       <KzGhost ghost={dnd.ghost} />
-    </Stage>
+    </StageB>
   );
 }
 
@@ -9913,7 +10895,7 @@ function S12({ p }) {
       onTap: explore ? () => pickPart(LINE_PART[ln.k]) : null, led: ln.k === 'head' && ledLine });
   });
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={read < 0 ? c.ask : explore ? c.askTap : c.askDone} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={read < 0 ? c.ask : explore ? c.askTap : c.askDone} nav={navOf(p, canGo)}>
       <Sheet>
         <KzAsk text={read < 0 ? c.ask : explore ? c.askTap : c.askDone} />
         <div className={'kz-scene kz-s12' + (explore ? ' is-explore' : '')}>
@@ -9924,7 +10906,7 @@ function S12({ p }) {
           </div>
         </div>
       </Sheet>
-    </Stage>
+    </StageB>
   );
 }
 
@@ -10074,9 +11056,9 @@ function S13({ p }) {
       };
     }));
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={solved ? c.ok : res ? c.askFix : full ? c.askCheck : c.ask} hint={solved ? null : (res ? c.rules[res.rule] : hint)} n={solved || full ? null : slots.filter(Boolean).length + '/8'} />
+        <KzAsk text={solved ? c.ok : res ? c.askFix : full ? c.askCheck : c.ask} hint={solved ? null : (res ? c.rules[res.rule] : hint)} err={!!res} n={solved || full ? null : slots.filter(Boolean).length + '/8'} />
         <div className="kz-build">
           <div ref={hostRef} className="kz-code-host" onPointerDown={(e) => {
             if (!canTap || solved) return;
@@ -10105,13 +11087,13 @@ function S13({ p }) {
             {/* Подпись — про стрелки ▲ ▼ (ими меняют порядок); после ошибки она горит. */}
             {slots.some(Boolean) && !solved ? (
               <p className={'kz-msg kz-move-tip' + (res ? ' is-on' : '')}>
-                <span className="kz-move-tip-k" aria-hidden="true">▲</span><span className="kz-move-tip-k" aria-hidden="true">▼</span>{pick(res ? c.fixTip : c.moveTip)}
+                <span className="kz-move-tip-k" aria-hidden="true">▲</span><span className="kz-move-tip-k" aria-hidden="true">▼</span>{pick(c.moveTip)}
               </p>) : null}
           </div>
         </div>
       </Sheet>
       <KzGhost ghost={dnd.ghost} />
-    </Stage>
+    </StageB>
   );
 }
 
@@ -10130,6 +11112,7 @@ function S14({ p }) {
   const [off, setOff] = useState([]);
   const [okNow, setOkNow] = useState(solved);
   const [msg, setMsg] = useState(null);
+  useTipClears(setMsg);
   const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.ok, pose: 'smile' }]
     : [{ text: c.say, pose: 'wonder' }, { text: c.sayHow, pose: 'point' }]);
   const canTap = useCanAnswer(spoken);
@@ -10155,9 +11138,9 @@ function S14({ p }) {
   const gapCall = !okNow && (dnd.active || speaker.text === c.sayHow || lad.lv >= 3);
   const hint = hintAt(lad.lv, c.hints);
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hint)} />
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hint)} err={!!msg} />
         <div className="kz-scene kz-s14">
           <div className="kz-col">
             <PaperBrowser title={okNow ? mine.title : eaten} stamp={okNow ? 1 : 0} tabHl={!okNow} pageHl={okNow}>
@@ -10188,7 +11171,7 @@ function S14({ p }) {
         ) : null}
       </Sheet>
       <KzGhost ghost={dnd.ghost} />
-    </Stage>
+    </StageB>
   );
 }
 
@@ -10208,6 +11191,7 @@ function Q1({ p }) {
   const [slots, setSlots] = useState(solved ? { tab: 't', win: 'w' } : { tab: null, win: null });
   const [sel, setSel] = useState(null);
   const [msg, setMsg] = useState(null);
+  useTipClears(setMsg);
   const [shake, setShake] = useState(null);
   const [peek, setPeek] = useState(null);   // { where, id } — куда на миг попала фраза при ошибке
   const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'curious' }]);
@@ -10257,9 +11241,9 @@ function Q1({ p }) {
   const winText = slots.win ? word(slots.win) : peek && peek.where === 'win' ? word(peek.id) : '';
   const hint = hintAt(lad.lv, c.hints);
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} n={done ? null : ((slots.tab ? 1 : 0) + (slots.win ? 1 : 0)) + '/2'} />
+        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} err={!!msg} n={done ? null : ((slots.tab ? 1 : 0) + (slots.win ? 1 : 0)) + '/2'} />
         <div className={'kz-scene kz-q1' + (dnd.active || sel ? ' is-dragging' : '')}>
           <div className="kz-col">
             <PaperBrowser title={tabText} stamp={(slots.tab ? 1 : 0) + (peek && peek.where === 'tab' ? 2 : 0)} short tabHl={!!(peek && peek.where === 'tab')} pageHl={!!(peek && peek.where === 'win')}
@@ -10293,7 +11277,7 @@ function Q1({ p }) {
         ) : null}
       </Sheet>
       <KzGhost ghost={dnd.ghost} />
-    </Stage>
+    </StageB>
   );
 }
 
@@ -10306,12 +11290,14 @@ function Q2({ p }) {
   const pick = usePick();
   const log = useLog();
   const c = C.q2;
+  const [opts] = useState(() => b16Shuffle(c.opts));   // порядок перемешан, верный — не первым
   const mine = useMine();
   const [rec, put] = useRec('q2');
   const solved = !!(rec && rec.done);
   const [off, setOff] = useState([]);
   const [okNow, setOkNow] = useState(solved);
   const [msg, setMsg] = useState(null);
+  useTipClears(setMsg);
   const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'curious' }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || okNow, spoken);
@@ -10331,14 +11317,14 @@ function Q2({ p }) {
   const lit = lad.lv >= 3;
   const hint = hintAt(lad.lv, c.hints);
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet>
-        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hint)} />
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hint)} err={!!msg} />
         <div className="kz-scene kz-scene-col kz-q2">
           <div className="kz-col">
             <KzCode lines={[{ k: 't', d: 0, cls: 'kz-q2-line', parts: [T_('title'), W_(mine.title), <span key="c" className="kz-q2-close">{T_('title', true)}</span>] }]} />
             <div className="kz-quiz">
-              {c.opts.map((o) => (
+              {opts.map((o) => (
                 <button key={o.id} type="button" disabled={!canTap || okNow || off.indexOf(o.id) >= 0} onClick={() => choose(o)}
                   className={'kz-btn ' + (okNow && o.right ? 'is-ok' : off.indexOf(o.id) >= 0 ? 'is-off' : 'is-ghost') + (lit && o.right && !okNow ? ' is-led' : '')}>
                   {pick(o.t)}<Led on={led && !okNow && off.indexOf(o.id) < 0} />
@@ -10348,7 +11334,7 @@ function Q2({ p }) {
           </div>
         </div>
       </Sheet>
-    </Stage>
+    </StageB>
   );
 }
 
@@ -10366,7 +11352,7 @@ function S15({ p }) {
   useEffect(() => { const t = setTimeout(() => celebrate(), 900); return () => clearTimeout(t); }, []);
   const curK = (c.say.find((x) => x.text === speaker.text) || {}).k || null;
   return (
-    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask}
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask}
       nav={<><BackBtn onPrev={p.prev} /><NextBtn disabled={!canGo} onClick={p.finish} label={UI.finish} /></>}>
       <Sheet>
         <div className="kz-scene kz-s15">
@@ -10386,7 +11372,7 @@ function S15({ p }) {
           </div>
         </div>
       </Sheet>
-    </Stage>
+    </StageB>
   );
 }
 
@@ -10430,7 +11416,7 @@ export default function HtmlKollazh({ studentName, lang, ttsApiBase, voiceGender
   }, [cur.id, nextId, R.lang]); // eslint-disable-line react-hooks/exhaustive-deps
   // Переход «разбор и сборка» — на «Дальше» и «Назад».
   const go = useKzTransition(cur.id + ':' + R.runN);
-  const p = { screen: R.i, total: SCREENS.length, next: go(R.next), prev: R.i > 0 ? go(R.prev) : null, finish: R.finish, name: R.displayName };
+  const p = { screen: R.i, total: SCREENS.length, next: go(R.next, 1), prev: R.i > 0 ? go(R.prev, -1) : null, finish: R.finish, name: R.displayName };
   return (
     <R.Shell css={LESSON_CSS + CANON_UI_CSS}>
       <SpokenTags>
@@ -11496,7 +12482,7 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
    Стол — фон курса (как в остальных уроках, заказчик 20.10.2026; раньше был
    крафт #D8C4A1), лист — кремовая бумага с рваным краем, вырезки — цветная
    бумага с фактурой и мягкой тенью на нижний слой. Движение ступенчатое,
-   как stop-motion: keyframes по кадрам и steps(1, end). Префикс kz-. */
+   как stop-motion: keyframes по кадрам и linear. Префикс kz-. */
 /* Цвет бумажек: теги, строки кода, карточки, страница в браузере, вырезки в лотке
    (заказчик, 20.10.2026: пробуем горчицу; было #FBF6EA). Меняется здесь одним числом. */
 :root { --kz-piece: #F0B13F; }
@@ -11522,7 +12508,7 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-cut-in { position: absolute; inset: 0; display: block; overflow: hidden; }
 .kz-cut.is-hl { filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 5px var(--hl, #E0643F)) drop-shadow(0 4px 6px rgba(74, 48, 18, .2)); }
 .kz-cut.is-tap { cursor: pointer; }
-.kz-boil > .kz-cut-in { animation: kzBoil 1.26s steps(1, end) infinite; animation-delay: var(--bd, 0s); }
+.kz-boil > .kz-cut-in { animation: kzBoil 1.26s linear infinite; animation-delay: var(--bd, 0s); }
 
 /* Лист и стол */
 .kz-sheet { position: relative; flex: 1 1 auto; min-height: 0; width: 100%; display: flex; }
@@ -11538,14 +12524,14 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-par { translate: calc(var(--kzx, 0) * var(--dp, 3) * 1px) calc(var(--kzy, 0) * var(--dp, 3) * 1px); }
 
 /* Ступенчатые движения (≈12 кадров в секунду). */
-.kz-a-drop { animation: kzDrop .66s steps(1, end) both; animation-delay: var(--dl, 0s); }
-.kz-a-rise { animation: kzRise .66s steps(1, end) both; animation-delay: var(--dl, 0s); }
-.kz-a-left { animation: kzLeft .66s steps(1, end) both; animation-delay: var(--dl, 0s); }
-.kz-a-right { animation: kzRight .66s steps(1, end) both; animation-delay: var(--dl, 0s); }
-.kz-a-pop { animation: kzPop .5s steps(1, end) both; animation-delay: var(--dl, 0s); }
-.kz-a-stamp { animation: kzStamp .5s steps(1, end) both; animation-delay: var(--dl, 0s); }
-.kz-a-out { animation: kzOut .58s steps(1, end) both; animation-delay: var(--dl, 0s); pointer-events: none; }
-.kz-a-shake { animation: kzShake .5s steps(1, end) both; }
+.kz-a-drop { animation: kzDrop .66s linear both; animation-delay: var(--dl, 0s); }
+.kz-a-rise { animation: kzRise .66s linear both; animation-delay: var(--dl, 0s); }
+.kz-a-left { animation: kzLeft .66s linear both; animation-delay: var(--dl, 0s); }
+.kz-a-right { animation: kzRight .66s linear both; animation-delay: var(--dl, 0s); }
+.kz-a-pop { animation: kzPop .5s linear both; animation-delay: var(--dl, 0s); }
+.kz-a-stamp { animation: kzStamp .5s linear both; animation-delay: var(--dl, 0s); }
+.kz-a-out { animation: kzOut .58s linear both; animation-delay: var(--dl, 0s); pointer-events: none; }
+.kz-a-shake { animation: kzShake .5s linear both; }
 @keyframes kzDrop {
   0% { transform: translate(0, -160%) rotate(-16deg); } 13% { transform: translate(0, -112%) rotate(-11deg); }
   26% { transform: translate(0, -66%) rotate(-7deg); } 39% { transform: translate(0, -28%) rotate(-3deg); }
@@ -11610,7 +12596,7 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
   filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .26)); }
 .kz-line.is-read { background: #FFE4D8; }
 .kz-line.is-hl { background: #FFF1C9; }
-.kz-line.is-new { animation: kzDrop .6s steps(1, end) both; }
+.kz-line.is-new { animation: kzDrop .6s linear both; }
 .kz-line.is-mark { background: #FFF1C9; }
 .kz-line.is-gap { background: #F5EDDC; }
 .kz-line .kz-txt { font-family: 'Manrope', sans-serif; font-weight: 700; color: #1F2A44; }
@@ -11651,29 +12637,29 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-br-tab.is-hl { background: #F0B13F; box-shadow: 0 0 0 2px #FBF6EA, 0 0 10px 2px rgba(240, 177, 63, .9); }
 /* «Прожектор» (заказчик, 26.10.2026: подсветку вкладки и тела было плохо видно): пока Коди
    говорит о вкладке или окне, вещь растёт, вокруг — круг «от руки», остальное притухает. */
-.kz-br-tool, .kz-br-page, .kz-br-win, .kz-br-plus, .kz-br-bar { transition: opacity .3s steps(3, end), filter .3s steps(3, end); }
-.kz-br-tab { transform-origin: 0 100%; transition: scale .3s steps(3, end); }
+.kz-br-tool, .kz-br-page, .kz-br-win, .kz-br-plus, .kz-br-bar { transition: opacity .3s cubic-bezier(.34, 1.4, .64, 1), filter .3s cubic-bezier(.34, 1.4, .64, 1); }
+.kz-br-tab { transform-origin: 0 100%; transition: scale .3s cubic-bezier(.34, 1.4, .64, 1); }
 .kz-br.is-spot-tab .kz-br-bar { overflow: visible; z-index: 4; }
-.kz-br.is-spot-tab .kz-br-tab { z-index: 3; scale: 1.3; background: #F0B13F; animation: kzSpotTab .5s steps(5, end) both; }
+.kz-br.is-spot-tab .kz-br-tab { z-index: 3; scale: 1.3; background: #F0B13F; animation: kzSpotTab .5s cubic-bezier(.34, 1.4, .64, 1) both; }
 /* Притухает содержимое, а не бумага: лист окна остаётся светлым, иначе сквозь него темнеет рамка браузера. */
 .kz-br.is-spot-tab .kz-br-page, .kz-br.is-spot-tab .kz-br-win, .kz-br.is-spot-tab .kz-br-plus { opacity: .25; }
 .kz-br.is-spot-tab .kz-br-tool { filter: saturate(.2) opacity(.45); }
 .kz-br.is-spot-page .kz-br-tab, .kz-br.is-spot-page .kz-br-win, .kz-br.is-spot-page .kz-br-plus { opacity: .3; }
 .kz-br.is-spot-page .kz-br-tool { filter: saturate(.2) opacity(.45); }
 /* Окно в прожекторе: лист приподнимается (крупнее, длинная тень) и светится бирюзой; прямой рамки нет. */
-.kz-br.is-spot-page .kz-br-body { z-index: 3; scale: 1.07; animation: kzSpotPage .5s steps(5, end) both; }
+.kz-br.is-spot-page .kz-br-body { z-index: 3; scale: 1.07; animation: kzSpotPage .5s cubic-bezier(.34, 1.4, .64, 1) both; }
 .kz-br.is-spot-page .kz-cut.kz-br-paper { filter: drop-shadow(0 0 0 #2A8C7E) drop-shadow(0 0 3px #2A8C7E) drop-shadow(0 0 3px #2A8C7E) drop-shadow(0 12px 14px rgba(74, 48, 18, .35)); }
-.kz-br.is-spot-page .kz-cut.kz-br-paper > .kz-cut-in { background: #DDF1EC !important; transition: background .3s steps(3, end); }
+.kz-br.is-spot-page .kz-cut.kz-br-paper > .kz-cut-in { background: #DDF1EC !important; transition: background .3s cubic-bezier(.34, 1.4, .64, 1); }
 .kz-br.is-hl-page.is-spot-page .kz-br-page { outline: none; }
 @keyframes kzSpotTab { 0% { scale: 1; } 60% { scale: 1.42; } 100% { scale: 1.3; } }
 @keyframes kzSpotPage { 0% { scale: 1; } 60% { scale: 1.11; } 100% { scale: 1.07; } }
 .kz-ring { position: absolute; z-index: 6; overflow: visible; pointer-events: none; }
 .kz-ring path { fill: none; stroke: var(--rc, #E0643F); stroke-width: 4; stroke-linecap: round; vector-effect: non-scaling-stroke;
-  stroke-dasharray: 100; stroke-dashoffset: 100; animation: kzRingDraw .55s steps(8, end) .1s forwards;
+  stroke-dasharray: 100; stroke-dashoffset: 100; animation: kzRingDraw .55s cubic-bezier(.34, 1.4, .64, 1) .1s forwards;
   filter: drop-shadow(0 1px 0 rgba(74, 48, 18, .25)); }
 @keyframes kzRingDraw { to { stroke-dashoffset: 0; } }
 /* Человечек: часть, о которой речь, крупнее и ярче, остальные притухают. */
-.kz-man > .kz-cut { transition: opacity .3s steps(3, end), scale .3s steps(3, end); }
+.kz-man > .kz-cut { transition: opacity .3s cubic-bezier(.34, 1.4, .64, 1), scale .3s cubic-bezier(.34, 1.4, .64, 1); }
 .kz-man.is-spot > .kz-cut:not(.is-hl):not(.kz-man-title) { opacity: .3; }
 /* Голова в хуке: внутри видна бумажка с названием страницы. */
 .kz-man-name { position: absolute; left: 5%; right: 5%; top: 12%; height: 24%; filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .4)); }
@@ -11687,7 +12673,7 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-man-bits b { grid-column: 2; grid-row: 1 / 4; position: relative; background: #FBF6EA; border-radius: 2px; overflow: hidden; }
 .kz-man-bits b s { position: absolute; left: 12%; right: 12%; bottom: 14%; height: 45%; background: #1F2A44; clip-path: polygon(0 100%, 35% 20%, 55% 60%, 75% 35%, 100% 100%); }
 .kz-man-bits em { grid-column: 2; grid-row: 4; align-self: end; height: 32%; min-height: 8px; background: #E0643F; border-radius: 2px; }
-.kz-man.is-spot > .kz-cut.is-hl { z-index: 2; scale: 1.12; animation: kzSpotMan .5s steps(5, end) both;
+.kz-man.is-spot > .kz-cut.is-hl { z-index: 2; scale: 1.12; animation: kzSpotMan .5s cubic-bezier(.34, 1.4, .64, 1) both;
   filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 12px var(--hl, #E0643F)) drop-shadow(0 6px 8px rgba(74, 48, 18, .25)); }
 @keyframes kzSpotMan { 0% { scale: 1; } 60% { scale: 1.2; } 100% { scale: 1.12; } }
 @media (prefers-reduced-motion: reduce) {
@@ -11779,16 +12765,16 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-frame-lbl-bot { right: -2%; bottom: -5%; }
 /* s3 «Что такое тег»: «прожектор» на бирке, о которой говорит Коди, — крупнее, вокруг круг
    «от руки», браузер притухает; на «закрывающем» косая черта крупно (заказчик, 26.10.2026). */
-.kz-stagebox .kz-brbox { transition: opacity .3s steps(3, end); }
+.kz-stagebox .kz-brbox { transition: opacity .3s cubic-bezier(.34, 1.4, .64, 1); }
 .kz-stagebox.is-spot .kz-brbox { opacity: .35; }
-.kz-label.is-spot { z-index: 7; scale: 1.18; animation: kzSpotLbl .5s steps(5, end) both; }
+.kz-label.is-spot { z-index: 7; scale: 1.18; animation: kzSpotLbl .5s cubic-bezier(.34, 1.4, .64, 1) both; }
 .kz-label.is-spot::after { content: ''; position: absolute; inset: -7px -11px; border: 3px solid #E0643F; border-radius: 50%; rotate: -4deg;
-  pointer-events: none; animation: kzRingIn .45s steps(5, end) .1s both; }
+  pointer-events: none; animation: kzRingIn .45s cubic-bezier(.34, 1.4, .64, 1) .1s both; }
 /* «/ сразу после <»: на закрывающем светятся первая скобка и косая черта вместе. */
 .kz-label.is-slash .kz-tag .kz-tk-b:nth-child(-n+2) { display: inline-block; padding: 0 2px; background: #1F2A44; color: #FFB199; border-radius: 3px; scale: 1.3; }
 /* s3: «эти знаки — угловые скобки» — светятся < и >; «между ними html — название тега» — светится имя. */
 .kz-label.hl-br .kz-tag .kz-tk-b, .kz-label.hl-nm .kz-tag .kz-tk-n { display: inline-block; padding: 0 3px; background: #1F2A44; color: #FFD166; border-radius: 3px;
-  scale: 1.3; animation: kzPartOn .45s steps(4, end) both; }
+  scale: 1.3; animation: kzPartOn .45s cubic-bezier(.34, 1.4, .64, 1) both; }
 @keyframes kzPartOn { 0% { scale: 1; } 60% { scale: 1.45; } 100% { scale: 1.3; } }
 /* s4: знаки не в том порядке — кнопки набора загораются по порядку < / html >. */
 .kz-keys-wrap { display: contents; }
@@ -11843,30 +12829,30 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 /* Копия вырезки за пальцем: приподнята над столом (тень длиннее и мягче),
    чуть крупнее и наклоняется по ходу движения. На телефоне — выше пальца. */
 .kz-ghost { position: fixed; z-index: 200; pointer-events: none; transform: translate(-50%, -85%) rotate(var(--gr, 0deg)) scale(1.1);
-  filter: drop-shadow(0 3px 2px rgba(74, 48, 18, .25)) drop-shadow(0 16px 14px rgba(74, 48, 18, .3)); transition: transform .12s steps(2, end); }
+  filter: drop-shadow(0 3px 2px rgba(74, 48, 18, .25)) drop-shadow(0 16px 14px rgba(74, 48, 18, .3)); transition: transform .12s cubic-bezier(.34, 1.4, .64, 1); }
 .kz-ghost.is-touch { transform: translate(-50%, -150%) rotate(var(--gr, 0deg)) scale(1.1); }
 .kz-ghost-in { display: block; padding: 7px 16px; background: var(--kz-piece); color: #1F2A44; white-space: nowrap;
   font: 800 clamp(15px, 2.4dvh, 19px)/1.2 'JetBrains Mono', ui-monospace, monospace;
   clip-path: polygon(0 10%, 8% 0, 50% 6%, 92% 0, 100% 12%, 97% 52%, 100% 90%, 90% 100%, 50% 94%, 8% 100%, 0 88%, 3% 50%); }
 /* Не туда — копия ступенчато возвращается на стол. */
 .kz-ghost.is-back { transform: translate(-50%, -50%) rotate(0deg) scale(1); filter: drop-shadow(0 2px 2px rgba(74, 48, 18, .3));
-  transition: left .28s steps(4, end), top .28s steps(4, end), transform .28s steps(4, end), filter .28s steps(4, end); }
+  transition: left .28s cubic-bezier(.34, 1.4, .64, 1), top .28s cubic-bezier(.34, 1.4, .64, 1), transform .28s cubic-bezier(.34, 1.4, .64, 1), filter .28s cubic-bezier(.34, 1.4, .64, 1); }
 /* Взятая вырезка — пунктирный след на столе. */
 .kz-scrap.is-lifted { background: transparent; color: transparent; filter: none; outline: 2px dashed rgba(31, 42, 68, .35); outline-offset: -3px; }
 .kz-scrap.is-lifted .led { display: none; }
 /* Пока тег в руке — свободные места на рамке зовут. */
-.kz-scene.is-dragging .kz-slot:not(.is-full) .kz-slot-dash { border-color: #E0643F; animation: kzSlotCall 1s steps(1, end) infinite; }
+.kz-scene.is-dragging .kz-slot:not(.is-full) .kz-slot-dash { border-color: #E0643F; animation: kzSlotCall 1s linear infinite; }
 .kz-slot.is-hover .kz-slot-dash { scale: 1.12; border-style: solid; }
 @keyframes kzSlotCall { 0%, 100% { background: rgba(251, 246, 234, .7); } 50% { background: #FFE4D8; } }
 
 /* Рука-показ (бумажная), движется ступеньками, как вырезка. */
 .kz-hand { position: absolute; left: 0; top: 0; z-index: 40; margin: -4px 0 0 -16px; pointer-events: none;
-  transition: transform 1s steps(10, end); filter: drop-shadow(0 2px 1px rgba(74, 48, 18, .3)) drop-shadow(0 8px 8px rgba(74, 48, 18, .22)); }
-.kz-hand svg { position: relative; display: block; rotate: -8deg; transition: transform .18s steps(2, end); transform-origin: 40% 10%; }
+  transition: transform 1s cubic-bezier(.34, 1.4, .64, 1); filter: drop-shadow(0 2px 1px rgba(74, 48, 18, .3)) drop-shadow(0 8px 8px rgba(74, 48, 18, .22)); }
+.kz-hand svg { position: relative; display: block; rotate: -8deg; transition: transform .18s cubic-bezier(.34, 1.4, .64, 1); transform-origin: 40% 10%; }
 .kz-hand.is-tap svg { transform: scale(.86) translateY(3px); }
 .kz-hand-ring { position: absolute; left: 16px; top: 4px; }
 .kz-hand.is-tap .kz-hand-ring::after { content: ''; position: absolute; left: -18px; top: -18px; width: 36px; height: 36px;
-  border-radius: 50%; border: 3px solid #E0643F; animation: kzRing .5s steps(5, end) both; }
+  border-radius: 50%; border: 3px solid #E0643F; animation: kzRing .5s cubic-bezier(.34, 1.4, .64, 1) both; }
 @keyframes kzRing { from { transform: scale(.3); } to { transform: scale(1.3); border-color: rgba(224, 100, 63, 0); } }
 /* Копия тега — прямо под пальцем: палец лежит на ней, как когда несёшь вырезку. */
 .kz-hand-ghost { position: absolute; left: 16px; top: 4px; translate: -50% -55%; padding: 5px 13px; background: var(--kz-piece); color: #1F2A44; white-space: nowrap;
@@ -11916,8 +12902,8 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-smile { position: absolute; left: 41%; top: 60%; width: 20%; height: 9%; background: #E0643F; display: block;
   clip-path: polygon(0 0, 100% 0, 88% 60%, 50% 100%, 12% 60%); }
 .kz-man-title-t { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 800 clamp(11px, 1.8dvh, 15px) 'Manrope', sans-serif; color: #1F2A44; white-space: nowrap; }
-.kz-wave-l { animation: kzWaveL 1.6s steps(1, end) infinite; transform-origin: 100% 50%; }
-.kz-wave-r { animation: kzWaveR 1.6s steps(1, end) infinite; transform-origin: 0% 50%; }
+.kz-wave-l { animation: kzWaveL 1.6s linear infinite; transform-origin: 100% 50%; }
+.kz-wave-r { animation: kzWaveR 1.6s linear infinite; transform-origin: 0% 50%; }
 @keyframes kzWaveR { 0%, 100% { transform: none; } 25% { transform: rotate(-22deg); } 50% { transform: rotate(-8deg); } 75% { transform: rotate(-26deg); } }
 @keyframes kzWaveL { 0%, 100% { transform: none; } 50% { transform: rotate(6deg); } }
 
@@ -12038,16 +13024,16 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-morph-p.is-fly { filter: drop-shadow(0 3px 2px rgba(74, 48, 18, .3)) drop-shadow(0 12px 14px rgba(74, 48, 18, .2)); }
 /* Название на вкладке тает, пока вкладка становится головой; строки страницы — пока окно становится телом. */
 .kz-morph-t { position: absolute; inset: 0; display: flex; align-items: center; padding-left: 28px; font: 600 clamp(12px, 1.8dvh, 15px) 'Manrope', sans-serif;
-  color: #1F2A44; white-space: nowrap; transition: opacity .35s steps(3, end) .25s; }
+  color: #1F2A44; white-space: nowrap; transition: opacity .35s cubic-bezier(.34, 1.4, .64, 1) .25s; }
 .kz-morph-p.is-fly .kz-morph-t { opacity: 0; }
 /* Вкладка с названием влетает в голову и видна до конца полёта (хук урока 1). */
 .kz-morph-p.is-name.is-fly .kz-morph-t { opacity: 1; padding: 0 4px; justify-content: center; font-size: clamp(9px, 1.4dvh, 12px); }
-.kz-morph-lines { position: absolute; inset: 22% 14% 18%; display: flex; flex-direction: column; gap: 9%; transition: opacity .45s steps(3, end) .15s; }
+.kz-morph-lines { position: absolute; inset: 22% 14% 18%; display: flex; flex-direction: column; gap: 9%; transition: opacity .45s cubic-bezier(.34, 1.4, .64, 1) .15s; }
 .kz-morph-lines i { display: block; height: 7%; background: #1F2A44; border-radius: 1px; }
 .kz-morph-lines i:nth-child(1) { width: 46%; height: 10%; } .kz-morph-lines i:nth-child(2) { width: 70%; } .kz-morph-lines i:nth-child(3) { width: 58%; }
 .kz-morph-lines b { display: block; width: 34%; height: 30%; margin-left: auto; background: #2A8C7E; border-radius: 2px; }
 .kz-morph-p.is-fly .kz-morph-lines { opacity: 0; }
-.kz-scatter .kz-s1-man .kz-cut:not([aria-label]) { animation: kzOut .58s steps(1, end) both; animation-delay: .72s; }
+.kz-scatter .kz-s1-man .kz-cut:not([aria-label]) { animation: kzOut .58s linear both; animation-delay: .72s; }
 .kz-scatter .kz-s1-man .kz-cut:not([aria-label]):nth-child(2n) { animation-name: kzOutL; }
 @keyframes kzOutL {
   0% { transform: none; } 20% { transform: translate(-4%, -16%) rotate(-6deg); } 40% { transform: translate(-14%, -60%) rotate(-14deg); }
@@ -12071,7 +13057,7 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-scrap-code .kz-tag { font-weight: 700; }
 /* s14: пустое место в строке title — сюда кладут тег. */
 .kz-dash.kz-drop { flex: 0 0 auto; width: clamp(78px, 9em, 120px); height: 1.6em; border: 2px dashed rgba(224, 100, 63, .7); border-radius: 4px; background: rgba(251, 246, 234, .6); }
-.kz-dash.kz-drop.is-call { animation: kzSlotCall 1s steps(1, end) infinite; }
+.kz-dash.kz-drop.is-call { animation: kzSlotCall 1s linear infinite; }
 .kz-dash.kz-drop.is-hover { border-style: solid; background: #FFE4D8; scale: 1.08; }
 @media (prefers-reduced-motion: reduce) { .kz-dash.kz-drop.is-call { animation: none; } }
 
@@ -12115,16 +13101,16 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-hand-layer { position: absolute; inset: 0; z-index: 40; pointer-events: none; overflow: clip; overflow-clip-margin: 90px; }
 /* Рука показа на объяснениях: подходит к вещи за 1 с ступеньками (как у KzHand). */
 .kz-tg-in .kz-tk-b { display: inline-block; }
-.kz-tg-in .kz-tag > .kz-tk-b:first-child { animation: kzBrL .66s steps(7, end) both; }
-.kz-tg-in .kz-tag > .kz-tk-b:last-child { animation: kzBrR .66s steps(7, end) both; }
-.kz-tg-in .kz-tg-slash { animation: kzSlash .6s steps(6, end) .3s both; }
-.kz-tg-in.is-new .kz-tk-n { display: inline-block; animation: kzTgName .4s steps(4, end) .1s both; }
-.kz-tg-in .kz-tg-cap { animation: kzTgName .3s steps(3, end) .6s both; }
+.kz-tg-in .kz-tag > .kz-tk-b:first-child { animation: kzBrL .66s cubic-bezier(.34, 1.4, .64, 1) both; }
+.kz-tg-in .kz-tag > .kz-tk-b:last-child { animation: kzBrR .66s cubic-bezier(.34, 1.4, .64, 1) both; }
+.kz-tg-in .kz-tg-slash { animation: kzSlash .6s cubic-bezier(.34, 1.4, .64, 1) .3s both; }
+.kz-tg-in.is-new .kz-tk-n { display: inline-block; animation: kzTgName .4s cubic-bezier(.34, 1.4, .64, 1) .1s both; }
+.kz-tg-in .kz-tg-cap { animation: kzTgName .3s cubic-bezier(.34, 1.4, .64, 1) .6s both; }
 @keyframes kzBrL { 0% { translate: -2.2em -.7em; rotate: -35deg; opacity: 0; } 30% { opacity: 1; } 100% { translate: 0 0; rotate: 0deg; opacity: 1; } }
 @keyframes kzBrR { 0% { translate: 2.2em -.7em; rotate: 35deg; opacity: 0; } 30% { opacity: 1; } 100% { translate: 0 0; rotate: 0deg; opacity: 1; } }
 @keyframes kzSlash { 0% { translate: .2em -1.8em; rotate: 40deg; opacity: 0; } 40% { opacity: 1; } 100% { translate: 0 0; rotate: 0deg; opacity: 1; } }
 @keyframes kzTgName { 0% { opacity: 0; scale: .6; } 100% { opacity: 1; scale: 1; } }
-.kz-demo-on { animation: kzDemoOn .9s steps(6, end) both !important; transform-box: fill-box; transform-origin: center; }
+.kz-demo-on { animation: kzDemoOn .9s cubic-bezier(.34, 1.4, .64, 1) both !important; transform-box: fill-box; transform-origin: center; }
 @keyframes kzDemoOn {
   0% { filter: none; scale: 1; }
   35% { filter: drop-shadow(0 0 7px rgba(255, 196, 92, .95)) brightness(1.06); scale: 1.06; }
@@ -12163,7 +13149,7 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
    разлетаются наружу с поворотом и гаснут. */
 .kz-snap { position: fixed; z-index: 60; pointer-events: none; }
 .kz-snap, .kz-snap * { animation: none !important; transition: none !important; }
-.kz-snap .kz-out-go { animation: kzScatter .52s steps(1, end) var(--od, 0s) both !important; }
+.kz-snap .kz-out-go { animation: kzScatter .52s linear var(--od, 0s) both !important; }
 @keyframes kzScatter {
   0% { transform: none; opacity: 1; }
   14% { transform: translate(calc(var(--ox) * .03), calc(var(--oy) * .03 - 8px)) rotate(calc(var(--or) * .12)); }
@@ -12240,8 +13226,8 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 @media (max-width: 759px) { .kz-move-b { width: 27px; height: 22px; } .kz-line-row > .kz-line { padding-right: 66px; } .kz-move { right: 5px; gap: 3px; } }
 /* Перестановка, как бумажки: полоска приподнята (крупнее, длинная тень, наклон)
    и ступенчато проезжает над соседней; соседняя уезжает под ней. --dy — откуда. */
-.kz-line.kz-slide-up { position: relative; z-index: 4; animation: kzSlideUp .5s steps(1, end) both; }
-.kz-line.kz-slide-under { position: relative; z-index: 1; animation: kzSlideUnder .5s steps(1, end) both; }
+.kz-line.kz-slide-up { position: relative; z-index: 4; animation: kzSlideUp .5s linear both; }
+.kz-line.kz-slide-under { position: relative; z-index: 1; animation: kzSlideUnder .5s linear both; }
 @keyframes kzSlideUp {
   0% { transform: translateY(var(--dy)); filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .26)); }
   14% { transform: translateY(calc(var(--dy) - 3px)) scale(1.05) rotate(-1.4deg); filter: drop-shadow(0 8px 8px rgba(74, 48, 18, .35)); }
@@ -12274,7 +13260,7 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
 .kz-tg-tag .kz-tag { font: inherit; padding: 0 .1em; border-radius: 6px; transition: background .2s; }
 .kz-tg-tag.is-hl .kz-tag { background: #1F2A44; }
 .kz-tg-tag.is-hl .kz-tk-n { color: #FBF6EA; }
-.kz-tg-slash { display: inline-block; transition: scale .3s steps(3, end); }
+.kz-tg-slash { display: inline-block; transition: scale .3s cubic-bezier(.34, 1.4, .64, 1); }
 .kz-tg-slash.is-hl { scale: 1.35; color: #FFB199; }
 .kz-tg-cap { position: absolute; top: 100%; margin-top: 1px; font: 800 clamp(10px, 1.5dvh, 13px) 'Manrope', sans-serif; font-style: normal; color: #5B4300;
   letter-spacing: .02em; white-space: nowrap; }
@@ -12339,11 +13325,11 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
    дошёл, бледные; бумажные стрелки → и ↓ у кода загораются, пока Коди о них говорит. */
 .kz-line.kz-rd-wait { opacity: .38; }
 .kz-line.kz-sweep::after { content: ''; position: absolute; left: 10px; bottom: 6px; height: 4px; width: 0; border-radius: 2px; background: #FFD166; box-shadow: 0 0 6px rgba(255, 209, 102, .9);
-  animation: kzSweep .55s steps(8, end) forwards; }
-.kz-line.kz-sweep.is-slow::after { animation-duration: 1.6s; animation-timing-function: steps(14, end); }
+  animation: kzSweep .55s cubic-bezier(.34, 1.4, .64, 1) forwards; }
+.kz-line.kz-sweep.is-slow::after { animation-duration: 1.6s; animation-timing-function: cubic-bezier(.34, 1.4, .64, 1); }
 @keyframes kzSweep { to { width: calc(100% - 20px); } }
 .kz-rd-code { position: relative; padding: 18px 0 0 22px; }
-.kz-rd-arr { position: absolute; display: block; opacity: 0; transition: opacity .3s steps(3, end), scale .3s steps(3, end); pointer-events: none; z-index: 2; }
+.kz-rd-arr { position: absolute; display: block; opacity: 0; transition: opacity .3s cubic-bezier(.34, 1.4, .64, 1), scale .3s cubic-bezier(.34, 1.4, .64, 1); pointer-events: none; z-index: 2; }
 .kz-rd-arr.is-shown { opacity: .45; }
 .kz-rd-arr.is-on { opacity: 1; }
 .kz-rd-arr svg { width: 100%; height: 100%; overflow: visible; }
@@ -12351,10 +13337,658 @@ button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
   filter: drop-shadow(0 1px 0 rgba(74, 48, 18, .3)); }
 .kz-rd-arr.is-right { left: 22px; right: 4px; top: 2px; height: 13px; }
 .kz-rd-arr.is-down { left: 2px; top: 18px; bottom: 4px; width: 13px; }
-.kz-rd-arr.is-on { animation: kzArrPulse .9s steps(3, end) infinite; }
+.kz-rd-arr.is-on { animation: kzArrPulse .9s cubic-bezier(.34, 1.4, .64, 1) infinite; }
 @keyframes kzArrPulse { 0%, 100% { scale: 1; } 50% { scale: 1.08; } }
 @media (prefers-reduced-motion: reduce) { .kz-line.kz-sweep::after { animation: none; width: calc(100% - 20px); } .kz-rd-arr.is-on { animation: none; } }
 @media (max-width: 759px) { .kz-rd-code { padding: 14px 0 0 17px; } .kz-rd-arr.is-right { left: 17px; height: 10px; } .kz-rd-arr.is-down { top: 14px; width: 10px; } }
+/* ── РАМКА «B · O'YIN» (тестовый урок 16) ─────────────────────────────────────
+   Токены гайда B · O'yin. Шрифт рамки — Inter (запасной шрифт гайда: Aeonik
+   без веб-лицензии не подключаем); лист урока — шрифты урока 1. */
+.b-stage {
+  --b-ink: #1E1B39; --b-ink2: #4F4B6B; --b-ink3: #6F6B8A; --b-line: #E6E3F2; --b-edge: #D5D1E8; --b-track: #ECEAF5;
+  --b-pri: #FA4F28; --b-pri-edge: #C93A18; --b-pri-soft: #FFE8E2; --b-pri-text: #B42A10; --b-pri-ring: #FFD0C4;
+  --b-hint: #FF8B71; --b-hint-edge: #E0664B; --b-hint-soft: #FFF0EC; --b-hint-text: #A8361C;
+  --b-err: #F2555A; --b-err-edge: #C9353B; --b-err-soft: #FFECEC; --b-err-text: #B3232A;
+  --b-tip: #FFC93C; --b-tip-edge: #DDA314; --b-tip-soft: #FFF7DB; --b-tip-text: #875C00;
+  --b-acc: #6C47FF; --b-acc-edge: #5233D6; --b-acc-soft: #F0ECFF; --b-acc-text: #4B2FD0;
+  --b-ok: #2FA84F; --b-ok-edge: #23863C; --b-ok-soft: #E6F7EA; --b-ok-text: #1C6E33;
+  --b-off-bg: #ECEAF4; --b-off-edge: #DEDBEB; --b-off-text: #A9A5C0;
+  --b-ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --b-font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* Фон под листом — белый, как шапка и низ (заказчик, 28.10.2026) */
+.b-stage, .b-stage .stage-content { background: #FFFFFF; }
+html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
+
+/* Шапка: ✕ · прогресс · счётчик · Коди, лампочка, пауза — один ряд */
+.b-stage .stage-header.b-head { background: #FFFFFF; padding-top: 0; padding-bottom: 0; border-bottom: 2px solid var(--b-line); box-shadow: none; }
+.b-head-row { display: flex; align-items: center; gap: 16px; min-height: 40px; padding-top: 10px; font-family: var(--b-font); }
+.b-head-row2 { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0 10px; font-family: var(--b-font); }
+.b-prog { flex: 1 1 auto; min-width: 0; display: flex; gap: 4px; align-items: center; padding: 3px; }
+.b-prog i { flex: 1 1 0; min-width: 0; height: 12px; border-radius: 6px; background: var(--b-track); transition: background .2s ease-out; }
+.b-prog i.is-done { background: var(--b-pri); }
+.b-prog i.is-cur { background: var(--b-pri); box-shadow: 0 0 0 3px var(--b-pri-ring); }
+.b-count { flex: 0 0 auto; font: 700 17px/1 var(--b-font); color: var(--b-ink3); font-variant-numeric: tabular-nums; }
+.b-side { gap: 10px; }
+.b-stage .b-head .ctl-btn { width: 48px; height: 48px; border-radius: 16px; background: #FFFFFF; color: var(--b-ink3);
+  border: 2px solid var(--b-line); border-bottom-width: 5px; box-shadow: none; transition: transform .1s ease-out, border-bottom-width .1s ease-out; }
+.b-stage .b-head .ctl-btn:hover { color: var(--b-ink); }
+.b-stage .b-head .ctl-btn:active { transform: translateY(3px); border-bottom-width: 2px; scale: 1; }
+.b-stage .b-head .ctl-btn.is-exit { border: none; background: transparent; color: var(--b-ink3); }
+.b-stage .b-head .ctl-btn.is-paused { background: var(--b-acc); border-color: var(--b-acc-edge); color: #FFFFFF; }
+.b-stage .b-head .ctl-btn.is-replay { color: var(--b-acc-text); }
+.b-stage .b-head .ctl-hint { color: var(--b-tip-text); }
+.b-stage .b-head .ctl-btn:focus-visible, .b-stage .stage-nav button:focus-visible { outline: 3px solid var(--b-acc); outline-offset: 2px; }
+.b-stage .eyebrow { display: none; }
+
+/* Ярлык раздела — во втором ряду шапки */
+.b-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; min-width: 0;
+  font: 700 15px/1.2 var(--b-font); white-space: nowrap; flex: 0 1 auto; }
+.b-chip-t { overflow: hidden; text-overflow: ellipsis; }
+.b-chip svg { flex: none; }
+.b-chip.is-show { background: var(--b-acc-soft); color: var(--b-acc-text); }
+.b-chip.is-task { background: var(--b-pri-soft); color: var(--b-pri-text); }
+
+/* Низ: белая панель, «нажимные» кнопки 2/2/5/2 */
+.b-stage .stage-nav { background: #FFFFFF; box-shadow: none; border-top: 2px solid var(--b-line); padding-top: 14px; padding-bottom: 16px; font-family: var(--b-font); }
+.b-stage .stage-nav .btn-accent, .b-stage .stage-nav .btn-ghost, .b-btn-hint {
+  min-height: 56px; height: 56px; padding: 0 26px; border-radius: 16px; font: 700 19px/1 var(--b-font); letter-spacing: 0;
+  border: 2px solid; border-bottom-width: 5px; box-shadow: none; text-shadow: none; background-image: none; cursor: pointer;
+  transition: transform .1s ease-out, border-bottom-width .1s ease-out, background-color .12s ease-out; animation: none; }
+.b-stage .stage-nav .btn-accent { background: var(--b-pri); border-color: var(--b-pri-edge); color: #FFFFFF; min-width: 220px; }
+.b-stage .stage-nav .btn-ghost { background: #FFFFFF; border-color: var(--b-edge); color: var(--b-ink); }
+.b-stage .stage-nav .btn-accent:disabled { background: var(--b-off-bg); border-color: var(--b-off-edge); color: var(--b-off-text); cursor: default; }
+.b-stage .stage-nav .btn-accent:not(:disabled):active, .b-stage .stage-nav .btn-ghost:active, .b-btn-hint:active { transform: translateY(3px); border-bottom-width: 2px; }
+.b-stage .stage-nav .btn-ghost::before { content: ''; display: inline-block; width: 20px; height: 20px; margin-right: 8px; vertical-align: -4px; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 19-7-7 7-7'/%3E%3Cpath d='M19 12H5'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 19-7-7 7-7'/%3E%3Cpath d='M19 12H5'/%3E%3C/svg%3E") center / contain no-repeat; }
+.b-stage .navrow > .btn-ghost, .b-stage .navrow > .btn-accent { flex: 0 0 auto; }
+.b-stage .stage-nav .btn-accent.btn-ready::after, .b-stage .stage-nav .btn-accent.btn-ready::before { display: none; }
+
+/* Панели результата: «Barakalla!» и «Maslahat» снизу вместо обычного низа */
+.b-sheet { border-top-width: 3px !important; animation: bSheetIn .24s var(--b-ease) both; }
+.b-sheet.is-ok { background: var(--b-ok-soft) !important; border-top-color: var(--b-ok) !important; }
+.b-sheet.is-hint { background: var(--b-hint-soft) !important; border-top-color: var(--b-hint) !important; }
+.b-sheet-in { display: flex; align-items: center; gap: 18px; }
+.b-sheet-ic { flex: none; width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; animation: bIcIn .16s var(--b-ease) both; }
+.b-sheet.is-ok .b-sheet-ic { background: var(--b-ok); color: #FFFFFF; }
+.b-sheet.is-hint .b-sheet-ic { background: var(--b-hint); color: var(--b-ink); }
+.b-sheet-tx { flex: 1 1 auto; min-width: 0; }
+.b-sheet-tx b { display: block; font: 700 24px/1.15 var(--b-font); letter-spacing: -0.5px; }
+.b-sheet.is-ok .b-sheet-tx b { color: var(--b-ok-text); }
+.b-sheet.is-hint .b-sheet-tx b { color: var(--b-hint-text); }
+.b-sheet-tx p { margin: 4px 0 0; font: 400 17px/1.4 var(--b-font); color: var(--b-ink); }
+.b-sheet-nav { flex: 0 0 auto; }
+.b-sheet-nav > span:empty { display: none; }
+.b-sheet.is-ok .btn-accent:not(:disabled) { background: var(--b-ok); border-color: var(--b-ok-edge); }
+.b-btn-hint { background: var(--b-hint); border-color: var(--b-hint-edge); color: var(--b-ink); min-width: 200px; }
+/* Ошибка — красная панель, подсказка лампочки и бездействия — жёлтая (заказчик, 29.10.2026). */
+.b-sheet.is-hint.is-err { background: var(--b-err-soft) !important; border-top-color: var(--b-err) !important; }
+.b-sheet.is-err .b-sheet-ic { background: var(--b-err); color: #FFFFFF; }
+.b-sheet.is-err .b-sheet-tx b { color: var(--b-err-text); }
+.b-sheet.is-err .b-btn-hint { background: var(--b-err); border-color: var(--b-err-edge); color: #FFFFFF; }
+.b-sheet.is-hint.is-tip { background: var(--b-tip-soft) !important; border-top-color: var(--b-tip) !important; }
+.b-sheet.is-tip .b-sheet-ic { background: var(--b-tip); color: var(--b-ink); }
+.b-sheet.is-tip .b-sheet-tx b { color: var(--b-tip-text); }
+.b-sheet.is-tip .b-btn-hint { background: var(--b-tip); border-color: var(--b-tip-edge); color: var(--b-ink); }
+/* Пока внизу «Barakalla!», строка задания на листе не повторяет тот же текст */
+.b-stage.is-sheet-ok .kz-ask-wrap { visibility: hidden; }
+@keyframes bSheetIn { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes bIcIn { from { transform: scale(.9); } to { transform: none; } }
+
+/* Телефон: шапка в один ряд без счётчика, «Назад» — квадрат со стрелкой,
+   «Дальше» — во всю ширину; панели — с круглыми верхними углами */
+@media (max-width: 759px) {
+  .b-head-row { gap: 8px; min-height: 0; padding-top: 8px; }
+  .b-head-row2 { padding: 4px 0 6px; gap: 8px; }
+  .b-count { display: none; }
+  .b-prog { gap: 3px; }
+  .b-prog i { height: 10px; border-radius: 5px; }
+  .b-prog i.is-cur { box-shadow: 0 0 0 2px var(--b-pri-ring); }
+  .b-side { gap: 6px; }
+  .b-stage .b-head .ctl-btn { width: 38px; height: 38px; border-radius: 12px; border-bottom-width: 4px; }
+  .b-stage .b-head .ctl-btn.is-exit { width: 32px; }
+  .b-chip { padding: 5px 10px; font-size: 13px; gap: 5px; }
+  .b-chip svg { width: 14px; height: 14px; }
+  .b-stage .stage-nav { padding-top: 10px; padding-bottom: 12px; }
+  .b-stage .stage-nav .btn-accent, .b-stage .stage-nav .btn-ghost, .b-btn-hint { height: 52px; min-height: 52px; font-size: 18px; }
+  .b-stage .navrow > .btn-accent { flex: 1 1 auto; min-width: 0; }
+  .b-stage .stage-nav .btn-ghost { width: 52px; padding: 0; font-size: 0; flex: 0 0 52px; }
+  .b-stage .stage-nav .btn-ghost::before { margin: 0; width: 22px; height: 22px; vertical-align: middle; }
+  .b-sheet { border-radius: 20px 20px 0 0; padding-top: 10px !important; }
+  .b-sheet-in { flex-wrap: wrap; align-items: flex-start; gap: 8px 10px; }
+  .b-sheet-ic { width: 32px; height: 32px; }
+  .b-sheet-ic svg { width: 18px; height: 18px; }
+  .b-sheet-tx { flex: 1 1 0; }
+  .b-sheet-tx b { font-size: 19px; line-height: 32px; }
+  .b-sheet-tx p { margin-top: 0; font-size: 14.5px; line-height: 1.3; }
+  .b-sheet-nav { flex: 1 1 100%; }
+  .b-sheet-nav .btn-accent, .b-btn-hint { flex: 1 1 auto; width: 100%; }
+  .b-sheet .btn-accent, .b-sheet .btn-ghost, .b-btn-hint { height: 48px; min-height: 48px; }
+  .b-sheet .btn-ghost { width: 48px; flex: 0 0 48px; }
+  /* Вывод (s15): шапка в два ряда выше — коллаж чуть меньше */
+  .b-stage .kz-s15 .kz-collage { width: min(100%, 260px); }
+}
+.is-kbd .b-stage .stage-nav { padding-block: 4px; }
+.is-kbd .b-head-row { padding-top: 6px; }
+.is-kbd .b-head-row2 { padding: 4px 0 6px; }
+.is-kbd .b-sheet-ic { display: none; }
+.is-kbd .b-sheet-tx b { font-size: 15px; line-height: 1.2; display: inline; margin-right: 6px; }
+.is-kbd .b-sheet-tx p { display: inline; font-size: 13px; }
+.is-kbd .b-sheet .btn-accent, .is-kbd .b-btn-hint { height: 40px; min-height: 40px; font-size: 16px; }
+@media (prefers-reduced-motion: reduce) {
+  .b-sheet, .b-sheet-ic { animation: none; }
+  .b-stage .stage-nav button:active, .b-stage .b-head .ctl-btn:active { transform: none; }
+}
+
+/* Реплики v2: вещь, которую просят нажать (экраны 3 и 6), мягко пульсирует */
+.b16-tapme { cursor: pointer; pointer-events: auto !important; animation: b16Tap 1.1s ease-in-out infinite; }
+.kz-man .b16-tapme { filter: drop-shadow(0 0 6px rgba(240, 177, 63, .95)); }
+@keyframes b16Tap { 0%, 100% { scale: 1; } 50% { scale: 1.08; } }
+@media (prefers-reduced-motion: reduce) { .b16-tapme { animation: none; outline: 3px solid #F0B13F; outline-offset: 3px; } }
+/* ── ОБЛИК «KODI PLAYGROUND» (тестовый урок 17, 30.10.2026) ─────────────────────
+   Стилистика образца заказчика (kodi-html-code.zip): тёплый белый фон, Nunito,
+   мягкие карточки и плитки с «нажимной» тенью снизу, палитра коралл / голубой /
+   жёлтый / мятный / розовый, браузер — как Chrome в Windows (блок в конце файла),
+   код — на жёлтой панели, зоны head / body — живые, с глазами и ножками, движение
+   спокойное (покачивание, моргание, мягкое появление снизу). Шапка и низ — рамка B
+   урока 16 (b16.css), здесь не трогаются. Бумаги нет нигде: ни рваных краёв, ни
+   фактуры, ни наклонов, ни шороха. Шрифт Nunito (SIL OFL) встроен урезанным. */
+@font-face { font-family: 'Nunito'; font-weight: 400 700; font-display: swap; src: url(data:font/woff2;base64,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) format('woff2'); }
+@font-face { font-family: 'Nunito'; font-weight: 800 1000; font-display: swap; src: url(data:font/woff2;base64,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) format('woff2'); }
+:root { --kz-piece: #FFF3CE; }
+.p17 { --p17-ink: #162038; --p17-muted: #758099; --p17-coral: #FF6957; --p17-blue: #3EAFF3; --p17-yellow: #FFD563;
+  --p17-mint: #77DCB8; --p17-pink: #E964A1; --p17-paper: #FFFDF9; --p17-line: #ECEEF3;
+  --p17-font: 'Nunito', 'Manrope', system-ui, sans-serif; }
+
+/* Фон экрана — тёплый белый; листа нет, вещи стоят прямо на фоне. */
+.b-stage.p17 .stage-content { background: var(--p17-paper); }
+.p17 .p17-sheet { position: relative; }
+.p17 .p17-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.p17 .kz-sheet-body { position: relative; z-index: 1; }
+
+/* Вырезка → мягкая деталь: без рваного края и фактуры, скруглённая, чуть объёмная. */
+.p17 .kz-cut { filter: drop-shadow(0 8px 12px rgba(59, 59, 74, .08)); }
+.p17 .kz-cut.is-hl { filter: drop-shadow(0 0 0 3px #fff) drop-shadow(0 0 10px var(--hl, #FF6957)) drop-shadow(0 8px 12px rgba(59, 59, 74, .1)); }
+.p17 .kz-cut-in { clip-path: none !important; -webkit-clip-path: none !important; border-radius: 18px;
+  box-shadow: inset 0 3px 3px rgba(255, 255, 255, .6), inset 0 -8px 8px rgba(0, 0, 0, .06); }
+.p17 .kz-cut-in::after, .p17 .kz-cut-in::before { display: none; }
+.p17 .kz-cut-ct { position: absolute; inset: 0; display: block; border-radius: inherit; overflow: hidden; }
+.p17 .kz-boil > .kz-cut-in { animation: none; }
+.p17 .kz-cut:not(.p17-part), .p17 .kz-zone-item, .p17 .kz-label-paper, .p17 .kz-man-name span, .p17 .kz-line, .p17 .kz-scrap,
+.p17 .kz-btn, .p17 .kz-ask { rotate: 0deg !important; }
+
+/* ── ЧЕЛОВЕЧЕК-ШКОЛЬНИК В МАНЕРЕ РЕФЕРЕНСОВ (PaperMan в p17-skin.jsx; заказчик, 31.10.2026:
+   «вот референсы человечков — поменять на что-то похожее»). Рисунок — SVG в единицах набора, поле
+   200 × 290; каждая часть — своё окно поля. Голова «открывается» — свет, искорки, капсула с названием. */
+.p17 .kz-manbox { container-type: size; }
+.p17 .kz-man.p17-man { inset: auto; left: 50%; top: 50%; translate: -50% -50%; width: min(100cqw, 100cqh * 200 / 290); aspect-ratio: 200 / 290;
+  transform-origin: 50% 95%; animation: p17Bob 5s ease-in-out infinite; }
+.p17 .kz-man::after { content: ''; position: absolute; left: 24%; right: 22%; bottom: 1%; height: 5%; z-index: -1;
+  background: radial-gradient(closest-side, rgba(43, 35, 64, .22), rgba(43, 35, 64, 0)); }
+.p17 .kz-man > .p17-part { filter: none; }
+/* Части человечка не подсвечиваются (заказчик, 31.10.2026: «тело нигде не просвечивать, а везде
+   облачко с текстом»); затемнения остального тоже нет — человечек остаётся целым. */
+.p17 .kz-man > .p17-part.is-hl { animation: none; filter: none; }
+/* Вместо подсветки — облачко с названием части сбоку, хвостиком к голове или телу. */
+.p17 .p17-call { position: absolute; z-index: 6; translate: 9px -50%; padding: 4px 11px 5px; border-radius: 14px; background: #fff;
+  border: 2px solid #EEF0F4; box-shadow: 0 4px 0 #E9ECF2, 0 8px 14px rgba(39, 59, 82, .08); white-space: nowrap; pointer-events: none;
+  font: 900 clamp(13px, 2.3dvh, 19px) / 1.15 var(--p17-font); color: var(--p17-ink); animation: p17PopIn .35s ease-out; }
+.p17 .p17-call i { font-style: normal; color: var(--p17-coral-t, #D63F31); }
+.p17 .p17-call::before { content: ''; position: absolute; left: -11px; top: 50%; translate: 0 -50%;
+  border: 8px solid transparent; border-left: 0; border-right: 11px solid #fff; filter: drop-shadow(-2px 0 0 #EEF0F4); }
+.p17 .kz-man > .p17-part > .kz-cut-in { display: none; }
+.p17 .kz-man > .p17-part > .kz-cut-ct { overflow: visible; }
+.p17 .kz-man > .p17-title { z-index: 3; }
+.p17 .kz-man > .p17-title > .kz-cut-ct { overflow: hidden; }
+.p17 .p17-art { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; display: block; }
+.p17 .p17-title .p17-art { overflow: hidden; }
+/* Моргание, свет и искорки над открытой головой, капсула выпрыгивает из головы. */
+.p17 .p17k-blink { transform-box: fill-box; transform-origin: 50% 50%; animation: p17kBlink 4.6s infinite; }
+.p17 .p17k-glow { animation: p17Glow 1.6s ease-in-out infinite; }
+.p17 .p17k-spark { transform-box: fill-box; transform-origin: 50% 50%; animation: p17Twinkle 1.4s ease-in-out infinite; }
+.p17 .p17k-cap { transform-box: fill-box; transform-origin: 50% 100%; animation: p17CapUp .6s cubic-bezier(.3, 1.5, .5, 1); }
+.p17 .kz-man > .p17-title { animation: p17CapUp .6s cubic-bezier(.3, 1.5, .5, 1); transform-origin: 50% 100%; }
+/* Машет: рука поднимается от плеча, ладошка качается на локте. */
+.p17 .p17k-raise { transform-box: view-box; animation: p17kRaise .55s cubic-bezier(.3, 1.4, .5, 1); }
+.p17 .p17k-wave { transform-box: view-box; animation: p17kWave 1.1s ease-in-out .55s infinite; }
+@keyframes p17kBlink { 0%, 94%, 100% { transform: scaleY(1); } 96.5% { transform: scaleY(.08); } }
+@keyframes p17kRaise { from { transform: rotate(80deg); } to { transform: none; } }
+@keyframes p17kWave { 0%, 100% { transform: rotate(-10deg); } 50% { transform: rotate(14deg); } }
+@keyframes p17CapUp { from { opacity: 0; transform: translateY(40%) scale(.3); } 40% { opacity: 1; } to { opacity: 1; transform: none; } }
+@keyframes p17Twinkle { 0%, 100% { opacity: .35; transform: scale(.7) rotate(0deg); } 50% { opacity: 1; transform: scale(1.1) rotate(20deg); } }
+.p17 .kz-man.p17-man.is-spot > .kz-cut.p17-part { opacity: 1; scale: 1; }
+/* Названная часть не выходит наверх: иначе на экране 1 при «Tana» шея тела ложилась поверх подбородка, как язык. */
+.p17 .kz-man.p17-man.is-spot > .kz-cut.p17-part.is-hl:not(.p17-title) { z-index: auto; animation: none; }
+.p17 .kz-man > .kz-cut { transition: opacity .3s ease, scale .3s ease; }
+/* Взмах — у самой руки (.p17k-wave); бумажные взмахи частей урока выключены. */
+.p17 .kz-man > .p17-part.kz-wave-l, .p17 .kz-man > .p17-part.kz-wave-r { animation: none; }
+@keyframes p17Bob { 0%, 100% { transform: translateY(0) rotate(-.6deg); } 50% { transform: translateY(-3px) rotate(.6deg); } }
+@keyframes p17Hop { 50% { translate: 0 -13px; } }
+@keyframes p17Glow { 0%, 100% { opacity: .75; } 50% { opacity: 1; } }
+.p17 .kz-man-name { display: none; }
+
+/* Рамка html — мягкие коралловые полосы. */
+.p17 .kz-stagebox > .kz-cut > .kz-cut-in { border-radius: 999px; box-shadow: inset 0 2px 2px rgba(255, 255, 255, .5), inset 0 -3px 3px rgba(0, 0, 0, .08); }
+.p17 .kz-stagebox > .kz-cut { filter: drop-shadow(0 4px 6px rgba(255, 105, 87, .25)); }
+
+/* Бирки-теги — белые плитки с нажимной тенью; на рамке html — коралловые. */
+.p17 .kz-label-tape { display: none; }
+.p17 .kz-label-paper { clip-path: none; filter: none; border-radius: 16px; padding: 6px 15px 7px; background: #fff;
+  border: 2px solid #EEF0F4; box-shadow: 0 5px 0 #E9ECF2, 0 8px 16px rgba(39, 59, 82, .06);
+  font-family: var(--p17-font); font-weight: 900; }
+.p17 .kz-frame-lbl-top .kz-label-paper, .p17 .kz-frame-lbl-bot .kz-label-paper, .p17 .kz-label.kz-col-lbl-html .kz-label-paper {
+  background: var(--p17-coral); border-color: var(--p17-coral); box-shadow: 0 5px 0 #E75545; }
+.p17 .kz-frame-lbl-top .kz-tk-b, .p17 .kz-frame-lbl-top .kz-tk-n, .p17 .kz-frame-lbl-bot .kz-tk-b, .p17 .kz-frame-lbl-bot .kz-tk-n,
+.p17 .kz-label.kz-col-lbl-html .kz-tk-b, .p17 .kz-label.kz-col-lbl-html .kz-tk-n { color: #fff; }
+.p17 .kz-label.kz-col-lbl-head .kz-label-paper { background: #FFF0B8; border-color: #FFF0B8; box-shadow: 0 5px 0 #F0D98A; }
+.p17 .kz-label.kz-col-lbl-body .kz-label-paper { background: #DDF8EA; border-color: #DDF8EA; box-shadow: 0 5px 0 #B5E6CD; }
+.p17 .kz-label.is-on .kz-label-paper { background: #FFF3CE; }
+.p17 .kz-tk-b { color: var(--p17-coral); }
+.p17 .kz-tk-n, .p17 .kz-line .kz-txt { color: var(--p17-ink); }
+.p17 .kz-label.is-spot::after { border-radius: 999px; rotate: 0deg; inset: -8px -12px; border: 3px solid var(--p17-coral);
+  box-shadow: 0 0 0 6px rgba(255, 105, 87, .15); animation: p17RingIn .45s cubic-bezier(.2, .7, .2, 1) both; }
+
+/* Код — на жёлтой панели, как в образце; строки — мягкие, без полосок. */
+.p17 .kz-code { background: #FFF3CE; border-radius: 17px; padding: 10px 10px; font-family: 'SFMono-Regular', Consolas, 'JetBrains Mono', monospace; font-weight: 700; }
+.p17 .kz-line { clip-path: none; filter: none; border-radius: 10px; background: transparent; box-shadow: none; }
+.p17 .kz-line.is-gap { background: rgba(255, 255, 255, .7); }
+.p17 .kz-line.is-mark, .p17 .kz-line.is-hl { background: #fff; box-shadow: 0 0 0 2px #FFD563; }
+.p17 .kz-line.is-sel { background: #FFE3F0; box-shadow: 0 0 0 2px #EFAFD0; }
+.p17 .kz-line.is-cur { background: rgba(255, 255, 255, .85); box-shadow: 0 0 0 2px #FFD563; }
+.p17 .kz-line.kz-tap:not(:disabled):hover { background: rgba(255, 255, 255, .6); }
+/* Строка, которую читает браузер или о которой говорит Коди (экраны 2 и 12), — цветом своей части. */
+.p17 .kz-line.is-read, .p17 .kz-line.is-say { --sc: #FF6957; background: var(--sc); color: #fff; filter: none; box-shadow: 0 4px 0 rgba(0, 0, 0, .12); z-index: 1; }
+.p17 .kz-line.is-say-head { --sc: #FFC53D; }
+.p17 .kz-line.is-say-body { --sc: #58BA97; }
+.p17 .kz-line.is-read .kz-tk-n, .p17 .kz-line.is-say .kz-tk-n, .p17 .kz-line.is-read .kz-txt, .p17 .kz-line.is-say .kz-txt { color: #fff; }
+.p17 .kz-line.is-read .kz-tk-b, .p17 .kz-line.is-say .kz-tk-b { color: #FFF3CE; }
+.p17 .kz-line.is-say-head .kz-tk-n, .p17 .kz-line.is-say-head .kz-txt { color: var(--p17-ink); }
+.p17 .kz-line.is-say-head .kz-tk-b { color: #B4361A; }
+.p17 .kz-line .tk-input, .p17 .kz-line .kz-write .tk-input { background: #fff; border: 1.5px solid #EFAFD0; border-radius: 7px; color: #DB428D; }
+.p17 .kz-line .kz-write .tk-input { border-style: dashed; border-color: var(--p17-coral); }
+.p17 .kz-move-b { clip-path: none !important; filter: none; border-radius: 9px; background: #fff; border: 1.5px solid #E9EBF3; box-shadow: 0 3px 0 #EEF0F5; }
+
+/* Строка задания — Nunito, белая плашка с тонкой рамкой. */
+.p17 .kz-ask-wrap { filter: none; }
+.p17 .kz-ask { clip-path: none; filter: none; border-radius: 18px; background: #fff; color: var(--p17-ink); padding: 8px 16px 9px;
+  font: 900 clamp(15px, 2.1dvh, 19px)/1.25 var(--p17-font); letter-spacing: -.2px;
+  border: 1.5px solid var(--p17-line); box-shadow: 0 4px 0 #F1F2F7; }
+.p17 .kz-ask-n { border-radius: 999px; background: #E8F2FF; color: var(--p17-ink); font-family: var(--p17-font); font-weight: 900; }
+
+/* Кнопки — нажимные, как в образце. */
+.p17 .kz-btn { clip-path: none; filter: none; border-radius: 17px; font-family: var(--p17-font); font-weight: 900; background: var(--p17-coral); color: #fff;
+  box-shadow: 0 5px 0 #E75545; transition: transform .18s, box-shadow .18s, background .18s; }
+.p17 .kz-btn:not(:disabled):active { transform: translateY(3px); box-shadow: 0 2px 0 #E75545; }
+.p17 .kz-btn.is-coral { background: var(--p17-coral); }
+.p17 .kz-btn.is-teal, .p17 .kz-btn.is-ok { background: #35B56B; box-shadow: 0 5px 0 #268454; }
+.p17 .kz-btn.is-ghost { background: #fff; color: var(--p17-ink); border: 1.5px solid #DFE3ED; box-shadow: 0 4px 0 #E7EAF1; }
+.p17 .kz-btn.is-sel { background: #E6F6FF; color: var(--p17-ink); box-shadow: 0 0 0 3px #94D3FB, 0 4px 0 #74B9E8; }
+.p17 .kz-btn:disabled { background: #E4E7EE; color: #9BA3B4; box-shadow: 0 4px 0 #D3D8E2; opacity: 1; }
+.p17 .kz-btn.kz-call:not(:disabled) { animation: kzCall 1.2s ease-in-out infinite; }
+
+/* Плитки в лотке и за пальцем — белые, с нажимной тенью. */
+.p17 .kz-scrap, .p17 .kz-ghost-in, .p17 .kz-hand-ghost { clip-path: none !important; filter: none; border-radius: 17px; background: #fff; color: var(--p17-ink);
+  border: 2px solid #EEF0F4; box-shadow: 0 5px 0 #E9ECF2, 0 8px 16px rgba(39, 59, 82, .06); font-family: var(--p17-font); font-weight: 900; rotate: 0deg; }
+.p17 .kz-pool .kz-scrap, .p17 .kz-scrap.kz-scrap-tag, .p17 .kz-scrap-code { font-family: 'SFMono-Regular', Consolas, 'JetBrains Mono', monospace; }
+.p17 .kz-scrap:not(:disabled):hover { border-color: #C9D7EF; transform: translateY(-3px); }
+.p17 .kz-scrap.is-sel { border-color: #4EAFF0; box-shadow: 0 0 0 3px #D4EEFF, 0 4px 0 #74B9E8; translate: 0 -2px; }
+.p17 .kz-scrap.is-lifted { background: transparent; border-style: dashed; box-shadow: none; color: transparent; }
+.p17 .kz-ghost { filter: drop-shadow(0 14px 22px rgba(38, 59, 85, .2)); }
+.p17 .kz-ghost.is-back { transition-timing-function: cubic-bezier(.2, .7, .2, 1) !important; }
+
+/* Браузер — светлый, с точками-светофором и жёлтой вкладкой. Страница — честная, как была. */
+.p17 .kz-cut.kz-br-frame > .kz-cut-in { background: #F3F5FA !important; border-radius: 22px; box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 3px #E1E5EB; }
+.p17 .kz-cut.kz-br-frame { filter: drop-shadow(0 8px 0 #E1E5EC) drop-shadow(0 14px 18px rgba(41, 58, 74, .07)); }
+.p17 .kz-br-bar { padding-left: 2.5%; }
+.p17 .kz-br-bar::before { content: ''; flex: none; align-self: center; width: 40px; height: 10px; margin: 2px 6px 0 2px;
+  background: radial-gradient(circle 5px at 5px 5px, #FF8D7D 96%, transparent), radial-gradient(circle 5px at 20px 5px, #FFD05C 96%, transparent),
+    radial-gradient(circle 5px at 35px 5px, #8FD7A0 96%, transparent); }
+.p17 .kz-br-win { display: none; }
+.p17 .kz-br-tab { clip-path: none; border-radius: 12px 12px 0 0; background: #FFF1BB; color: var(--p17-ink); font-family: var(--p17-font); font-weight: 900; box-shadow: inset 0 1px 0 #fff; }
+.p17 .kz-br-tab.is-hl, .p17 .kz-br.is-spot-tab .kz-br-tab { background: #FFD563; box-shadow: 0 0 0 3px #fff, 0 0 0 6px rgba(255, 213, 99, .55); }
+.p17 .kz-br-fav { border-radius: 4px; rotate: 0deg; background: var(--p17-coral); }
+.p17 .kz-br-x::before, .p17 .kz-br-x::after { background: #8D8A7E; }
+.p17 .kz-br-plus::before, .p17 .kz-br-plus::after { background: #8D96A9; }
+.p17 .kz-cut.kz-br-tool-bg > .kz-cut-in { background: transparent !important; box-shadow: none; }
+.p17 .kz-cut.kz-br-tool-bg { filter: none; }
+.p17 .kz-br-url { background: #fff; color: #9BA2B1; }
+.p17 .kz-br-arrows i { border-color: #9BA2B1; }
+.p17 .kz-br-lock { background: #8FD7A0; border-radius: 50%; }
+.p17 .kz-cut.kz-br-paper > .kz-cut-in { background: #fff !important; border-radius: 15px; box-shadow: none; }
+.p17 .kz-cut.kz-br-paper { filter: none; }
+.p17 .kz-br.is-spot-page .kz-cut.kz-br-paper > .kz-cut-in { background: #EFFBF5 !important; }
+.p17 .kz-br.is-spot-page .kz-cut.kz-br-paper { filter: drop-shadow(0 0 0 #58BA97) drop-shadow(0 0 4px #58BA97) drop-shadow(0 10px 14px rgba(41, 58, 74, .15)); }
+.p17 .kz-br.is-hl-page .kz-br-page { outline-color: #58BA97; }
+/* Содержимое страницы: строки — серые, картинка — пейзаж с холмом и солнцем, кнопка — коралловая. */
+.p17 .kz-cut.kz-bit-line > .kz-cut-in { background: #C9D0DC !important; box-shadow: none; border-radius: 999px; }
+.p17 .kz-cut.kz-bit-pic > .kz-cut-in { background: #E8F6F7 !important; box-shadow: none; border-radius: 12px; }
+.p17 .kz-pic-sun { background: #FFDB70; }
+.p17 .kz-pic-mnt { left: -6%; right: -6%; bottom: -14%; height: 62%; background: #83D2AB; clip-path: ellipse(60% 50% at 40% 100%); }
+.p17 .kz-cut.kz-bit-btn > .kz-cut-in { background: var(--p17-coral) !important; border-radius: 9px; }
+.p17 .kz-bit-btn span { font-family: var(--p17-font); font-weight: 900; }
+.p17 .kz-mini-pic { background-color: #E8F6F7; background-image: radial-gradient(ellipse 70% 60% at 40% 110%, #83D2AB 60%, transparent 61%); border-radius: 4px; }
+
+/* Круг «от руки» вокруг вкладки → мягкое кольцо. */
+.p17 .kz-ring { border: 3px solid var(--rc, #FF6957); border-radius: 999px; box-shadow: 0 0 0 6px rgba(255, 105, 87, .15);
+  animation: p17RingIn .45s cubic-bezier(.2, .7, .2, 1) both; }
+.p17 .kz-ring path { display: none; }
+@keyframes p17RingIn { 0% { transform: scale(.6); opacity: 0; } 100% { transform: none; opacity: 1; } }
+
+/* «?» на месте нижнего края рамки (экран 4). */
+.p17 .kz-frame-miss { border-radius: 999px; border-color: #FF9B8D; background: repeating-linear-gradient(-45deg, rgba(255, 105, 87, .12) 0 6px, transparent 6px 12px); }
+.p17 .kz-frame-miss .kz-frame-miss-q { clip-path: none; border-radius: 999px; background: #fff; color: var(--p17-coral); box-shadow: 0 3px 0 #F1F2F7; font-family: var(--p17-font); font-weight: 900; }
+
+/* Места для бирок (экран 5) — пунктирные гнёзда. */
+.p17 .kz-slot-dash { border-radius: 16px; rotate: 0deg; border: 2px dashed rgba(196, 163, 70, .55); background: rgba(255, 253, 249, .85); }
+.p17 .kz-slot.is-hover .kz-slot-dash, .p17 .kz-scene.is-dragging .kz-slot:not(.is-full) .kz-slot-dash { border-color: var(--p17-coral); background: #FFF0EC; }
+
+/* Зоны head / body (экран 11) — живые: жёлтая и мятная, с глазами сверху и ножками снизу. */
+.p17 .kz-zone { overflow: visible; margin-top: 30px; }
+.p17 .kz-zone .kz-cut.kz-zone-cut { filter: none; }
+.p17 .kz-zone .kz-cut.kz-zone-cut > .kz-cut-in { border-radius: 40px; }
+.p17 .kz-zone[data-place="head"] .kz-cut.kz-zone-cut > .kz-cut-in { background: #FFDA6D !important; box-shadow: inset 0 0 0 11px #FFD35F, inset 0 3px 3px rgba(255, 255, 255, .6), inset 0 -9px 6px rgba(217, 166, 50, .2); }
+.p17 .kz-zone[data-place="body"] .kz-cut.kz-zone-cut > .kz-cut-in { background: #DBF9EB !important; box-shadow: inset 0 0 0 11px #93E7C7, inset 0 6px 5px rgba(255, 255, 255, .7), inset 0 -10px 7px rgba(86, 186, 149, .2); }
+.p17 .kz-zone::before { content: ''; position: absolute; left: 50%; top: -27px; z-index: 2; width: 72px; height: 40px; translate: -50% 0; pointer-events: none;
+  background:
+    radial-gradient(circle 2.6px at 18px 12px, #fff 96%, transparent), radial-gradient(circle 2.6px at 54px 12px, #fff 96%, transparent),
+    radial-gradient(ellipse 6px 9px at 19px 20px, #171C29 96%, transparent), radial-gradient(ellipse 6px 9px at 55px 20px, #171C29 96%, transparent),
+    radial-gradient(ellipse 17px 19px at 18px 20px, #fff 82%, var(--ez, #FFE17B) 84% 96%, transparent),
+    radial-gradient(ellipse 17px 19px at 54px 20px, #fff 82%, var(--ez, #FFE17B) 84% 96%, transparent);
+  animation: p17ZoneBlink 5.6s infinite; }
+.p17 .kz-zone[data-place="body"]::before { --ez: #8DE6C2; animation-delay: 1.4s; }
+.p17 .kz-zone::after { content: ''; position: absolute; left: 16%; right: 16%; bottom: -8px; height: 20px; z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse 22px 10px at 22px 10px, var(--fz, #FFD460) 96%, transparent), radial-gradient(ellipse 22px 10px at calc(100% - 22px) 10px, var(--fz, #FFD460) 96%, transparent); }
+.p17 .kz-zone[data-place="body"]::after { --fz: #8AE0BC; }
+.p17 .kz-zone.is-hover .kz-cut, .p17 .kz-zone.is-led .kz-cut { filter: drop-shadow(0 0 0 4px #FF9E88) drop-shadow(0 10px 18px rgba(248, 127, 84, .2)); }
+.p17 .kz-zone.is-hover { transform: translateY(-4px); }
+@keyframes p17ZoneBlink { 0%, 44%, 48%, 100% { transform: scaleY(1); } 46% { transform: scaleY(.1); } }
+.p17 .kz-zone-item { filter: drop-shadow(0 3px 5px rgba(113, 139, 96, .12)); }
+.p17 .kz-zone-item-in { clip-path: none !important; border-radius: 12px; background: #fff; border: 1.5px solid #65BC8F; font-family: var(--p17-font); font-weight: 900; }
+
+/* Итог: роли, плашка «следующий урок», подписи. */
+.p17 .kz-role { clip-path: none !important; border-radius: 15px; background: #fff; border: 1.5px solid var(--p17-line); box-shadow: 0 4px 0 #F1F2F7; font-family: var(--p17-font); font-weight: 800; }
+.p17 .kz-role i { border-radius: 50%; }
+.p17 .kz-role.is-on { background: #FFF3CE; border-color: #FFE29A; }
+.p17 .kz-next { clip-path: none !important; border-radius: 18px; background: #E8F2FF; color: var(--p17-ink); font-family: var(--p17-font); font-weight: 800; box-shadow: 0 4px 0 #D6E6FB; }
+.p17 .kz-next b { color: #2B7FC4; }
+.p17 .kz-msg { font-family: var(--p17-font); font-weight: 800; color: var(--p17-muted); }
+.p17 .kz-move-tip-k { background: #fff; border: 1.5px solid #E9EBF3; box-shadow: 0 2px 0 #EEF0F5; }
+.p17 .kz-move-tip.is-on { color: #DB4A3A; }
+.p17 .kz-tg-strip { clip-path: none !important; filter: none; border-radius: 22px; background: #FFF3CE; box-shadow: 0 6px 0 #F2E3B0; }
+/* Коллаж страницы (экраны 12 и 17): html — коралл, head — жёлтый, body — мятный. */
+.p17 .kz-collage .kz-cut.kz-col-html > .kz-cut-in { background: #FFB3A8 !important; }
+.p17 .kz-collage .kz-cut.kz-col-head > .kz-cut-in { background: #FFE07A !important; }
+.p17 .kz-collage .kz-cut.kz-col-body > .kz-cut-in { background: #91E4BF !important; }
+.p17 .kz-col-text { color: var(--p17-ink); font-family: var(--p17-font); font-weight: 900; }
+.p17 .kz-col-title .kz-tag { background: rgba(255, 255, 255, .8); border-radius: 6px; }
+
+/* Куски, летящие в человечка (экран 1) и из тела в окно (экран 8), — мягкие. */
+.p17 .kz-morph-p { border-radius: 18px; filter: drop-shadow(0 8px 12px rgba(59, 59, 74, .12)); }
+.p17 .kz-morph-lines i { border-radius: 999px; background: #C9D0DC; }
+.p17 .kz-morph-lines b { border-radius: 8px; background: #E8F6F7; }
+.p17 .kz-morph-t { font-family: var(--p17-font); font-weight: 900; }
+
+/* Рука-показ в заданиях — белая варежка. */
+.p17 .kz-hand { filter: drop-shadow(0 8px 12px rgba(38, 59, 85, .2)); transition-timing-function: cubic-bezier(.45, 0, .2, 1) !important; }
+.p17 .kz-hand svg { overflow: visible; }
+.p17 .kz-hand svg path { fill: url(#p17gMitten); stroke: #B9C4BB; stroke-width: 1.6; }
+.p17 .kz-hand.is-tap .kz-hand-ring::after { border-width: 3px; border-color: var(--p17-coral); }
+
+/* Браузер крупнее (заказчик, 30.10.2026: «браузер маленький»). */
+.p17 .kz-sheet .kz-col > .kz-br:not(.is-short) { --brh: 27dvh; }
+.p17 .kz-sheet .kz-s9 .kz-br, .p17 .kz-sheet .kz-s6-col .kz-br { --brh: 30dvh; }
+.p17 .kz-sheet .kz-s1-page .kz-br, .p17 .kz-sheet .kz-col.kz-s1-page > .kz-br:not(.is-short) { --brh: 56dvh; }
+@media (max-width: 759px) {
+  .p17 .kz-sheet .kz-br { max-width: 100%; }
+  .p17 .kz-sheet .kz-col > .kz-br:not(.is-short) { --brh: 27dvh; }
+  .p17 .kz-sheet .kz-s1-page .kz-br, .p17 .kz-sheet .kz-col.kz-s1-page > .kz-br:not(.is-short) { --brh: 44dvh; }
+  .p17 .kz-scene > .kz-stagebox.is-br { width: min(96%, 46dvh * 1.33); }
+  .p17 .kz-scene.is-tight > .kz-stagebox.is-br { width: min(92%, 36dvh * 1.33); }
+  .p17 .kz-code { padding: 6px 6px; }
+  .p17 .kz-zone { margin-top: 26px; }
+}
+@media (min-width: 760px) {
+  .p17 .kz-sheet .kz-s6 > .kz-col > .kz-br, .p17 .kz-sheet .kz-s9 > .kz-col > .kz-br, .p17 .kz-sheet .kz-scene-col > .kz-col > .kz-br:not(.is-short) { --brh: 46dvh; }
+  .p17 .kz-sheet .kz-s14 > .kz-col > .kz-br, .p17 .kz-sheet .kz-q1 > .kz-col > .kz-br { --brh: 50dvh; }
+}
+
+/* ── ДВИЖЕНИЕ — спокойное, как в образце: мягкое появление снизу, «поп», тряска. ── */
+.p17 .kz-a-drop, .p17 .kz-a-rise, .p17 .kz-a-left, .p17 .kz-a-right, .p17 .kz-line.is-new { animation-name: p17Enter; animation-duration: .45s; animation-timing-function: cubic-bezier(.2, .7, .2, 1); }
+.p17 .kz-a-pop, .p17 .kz-a-stamp { animation-name: p17PopIn; animation-duration: .35s; animation-timing-function: ease-out; }
+.p17 .kz-a-out { animation-name: p17Out; animation-duration: .4s; animation-timing-function: ease-in; }
+.p17 .kz-a-shake { animation-name: p17Shake; animation-duration: .4s; animation-timing-function: ease; }
+@keyframes p17Enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes p17PopIn { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
+@keyframes p17Out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-14px) scale(.9); } }
+@keyframes p17Shake { 20%, 60% { transform: translateX(-7px); } 40%, 80% { transform: translateX(7px); } }
+.p17 .kz-man > .kz-cut, .p17 .kz-stagebox .kz-brbox, .p17 .kz-br-tab, .p17 .kz-br-tool, .p17 .kz-br-page, .p17 .kz-br-bar { transition-timing-function: ease !important; }
+
+/* ПЕРЕХОД МЕЖДУ ЭКРАНАМИ «КЛУБКИ ШЕРСТИ» — в p17-trans.jsx (анимации — Web Animations: вещи
+   сматываются в клубки и укатываются, новые прикатываются и разматываются). */
+
+@media (prefers-reduced-motion: reduce) {
+  .p17 .kz-man.p17-man, .p17 .p17-man *,
+  .p17 .kz-wave-l, .p17 .kz-wave-r, .p17 .kz-zone::before { animation: none; }
+  .p17 .p17-lid { transition: none; }
+}
+
+/* ── ЧИТАЕМОСТЬ (заказчик, 30.10.2026: «где неудобно читать — исправь цвета») ─────────
+   Замер контраста по WCAG на всех экранах: текст — не ниже 4,5:1 (крупный — 3:1).
+   Яркий коралл #FF6957 остаётся украшением (рамка, точки, значки); где на коралле текст —
+   глубокий коралл #D63F31 (белый на нём 4,55). Скобки тегов — #C0392B (4,9 на жёлтом коде).
+   Мятный под белым текстом — #26805F; «верно» — #23874F. Мелкий серый — темнее. */
+.p17 { --p17-coral-t: #D63F31; --p17-coral-edge: #A92E22; --p17-red-t: #C0392B; --p17-muted: #5F6880; }
+.p17 .kz-tk-b { color: var(--p17-red-t); }
+/* Кнопки на коралле. */
+.p17 .kz-btn, .p17 .kz-btn.is-coral { background: var(--p17-coral-t); box-shadow: 0 5px 0 var(--p17-coral-edge); }
+.p17 .kz-btn:not(:disabled):active { box-shadow: 0 2px 0 var(--p17-coral-edge); }
+.p17 .kz-btn.is-teal, .p17 .kz-btn.is-ok { background: #23874F; box-shadow: 0 5px 0 #17633A; }
+.p17 .kz-btn.is-ghost { background: #fff; color: var(--p17-ink); }
+/* Неактивная кнопка (пока Коди говорит) — текст читается: варианты ответа видно и во время речи. */
+.p17 .kz-btn:disabled, .p17 .kz-btn.is-ghost:disabled { background: #F1F3F7; color: var(--p17-muted); border: 1.5px solid #E6E9F0; box-shadow: 0 3px 0 #E2E5EC; }
+/* Бирки html на рамке и в коллаже — глубокий коралл. */
+.p17 .kz-frame-lbl-top .kz-label-paper, .p17 .kz-frame-lbl-bot .kz-label-paper, .p17 .kz-label.kz-col-lbl-html .kz-label-paper {
+  background: var(--p17-coral-t); border-color: var(--p17-coral-t); box-shadow: 0 5px 0 var(--p17-coral-edge); }
+/* Включённая бирка (is-on) не светлеет до кремовой: у бирок html белый текст на коралле — на креме он пропадал
+   (заказчик, 30.10.2026, экран 3); бирки head / body тоже держат свой цвет. */
+.p17 .kz-label.is-on.kz-frame-lbl-top .kz-label-paper, .p17 .kz-label.is-on.kz-frame-lbl-bot .kz-label-paper, .p17 .kz-label.is-on.kz-col-lbl-html .kz-label-paper { background: var(--p17-coral-t); }
+.p17 .kz-label.is-on.kz-col-lbl-head .kz-label-paper { background: #FFF0B8; }
+.p17 .kz-label.is-on.kz-col-lbl-body .kz-label-paper { background: #DDF8EA; }
+/* Подсвеченная строка кода: html — глубокий коралл, body — тёмная мята, head — жёлтая с тёмным текстом. */
+.p17 .kz-line.is-read, .p17 .kz-line.is-say { --sc: var(--p17-coral-t); }
+.p17 .kz-line.is-say-body { --sc: #26805F; }
+.p17 .kz-line.is-read .kz-tk-b, .p17 .kz-line.is-say .kz-tk-b { color: #fff; }
+.p17 .kz-line.is-say-head .kz-tk-b { color: var(--p17-red-t); }
+/* Экран 16: закрывающий </title> — тёмная плашка со светлым текстом. */
+.p17 .kz-q2-close .kz-tag { background: var(--p17-ink); border-radius: 7px; padding: 0 .18em; }
+.p17 .kz-q2-close .kz-tk-n { color: #fff; }
+.p17 .kz-q2-close .kz-tk-b { color: #FFB3A8; }
+/* Браузер: адрес и имя файла — темнее и чуть крупнее; кнопка «O‘ynash» на странице — глубокий коралл. */
+.p17 .kz-br-url { color: #6B7488; font-size: clamp(11.5px, 1.5dvh, 13px); }
+.p17 .kz-br-tab-t.is-file { color: #5F5848; }
+.p17 .kz-br-x::before, .p17 .kz-br-x::after { background: #6E6A5E; }
+.p17 .kz-cut.kz-bit-btn > .kz-cut-in { background: var(--p17-coral-t) !important; }
+/* Код: многоточие, поле ввода, подсказка в пустом поле. */
+.p17 .kz-line .kz-dim { color: #6F6656; }
+.p17 .kz-line .tk-input, .p17 .kz-line .kz-write .tk-input { color: #B42C6F; }
+.p17 .kz-line .kz-write .tk-input::placeholder, .p17 .kz-line .tk-input::placeholder { color: #7C7466; }
+/* «?» на рамке, подписи, «следующий урок». */
+.p17 .kz-frame-miss .kz-frame-miss-q { color: var(--p17-red-t); }
+.p17 .kz-msg { color: var(--p17-muted); }
+.p17 .kz-move-tip.is-on { color: var(--p17-red-t); }
+.p17 .kz-next b { color: #1F6AAE; }
+/* Мелкий текст на телефоне — крупнее: название на вкладке (на нём весь смысл урока), кнопка на
+   странице, код на экранах 2 и 12, подписи коллажа (было 10–12,5 px). */
+@media (max-width: 759px) {
+  .p17 .kz-br-tab { font-size: 13px; }
+  .p17 .kz-bit-btn span { font-size: 11.5px; }
+  .p17 .kz-s12 .kz-code, .p17 .kz-rd .kz-code { font-size: 13px; }
+  .p17 .kz-col-title { font-size: 12.5px; }
+  .p17 .kz-collage .kz-label-paper { font-size: 12.5px; }
+}
+/* Запас высоты на низком телефоне (360 × 640) и на ноутбуке 1280 × 720. */
+@media (max-width: 759px) and (max-height: 680px) {
+  .p17 .kz-rd .kz-code { font-size: 12.5px; padding: 3px 6px; }
+  .p17 .kz-roles { gap: 5px; }
+  .p17 .kz-role { padding-top: 5px; padding-bottom: 5px; }
+}
+@media (min-width: 760px) {
+  .p17 .kz-sheet .kz-s6 > .kz-col > .kz-br { --brh: 43dvh; }
+}
+
+/* ── БРАУЗЕР — КАК CHROME В WINDOWS (заказчик, 30.10.2026) ──────────────────────────
+   Светлая тема Chrome: серая полоса вкладок, белая активная вкладка со «скатами» внизу,
+   кнопки окна «— □ ✕» справа, белая панель со стрелками и адресной строкой-«таблеткой»,
+   шрифт Windows (Segoe UI). Без точек-светофора macOS. Подсветка вкладки на заданиях — прежняя. */
+.p17 .kz-br { --chr-strip: #DEE1E6; --chr-ink: #202124; --chr-icon: #5F6368; --chr-omni: #F1F3F4;
+  --chr-font: 'Segoe UI', 'Segoe UI Variable', system-ui, -apple-system, Roboto, sans-serif; }
+.p17 .kz-cut.kz-br-frame > .kz-cut-in { background: var(--chr-strip) !important; border-radius: 10px; box-shadow: inset 0 0 0 1px #C7CBD1; }
+.p17 .kz-cut.kz-br-frame { filter: drop-shadow(0 12px 22px rgba(0, 0, 0, .14)) drop-shadow(0 2px 4px rgba(0, 0, 0, .08)); }
+.p17 .kz-br-bar { padding-left: 2%; gap: 4px; }
+.p17 .kz-br-bar::before { content: none; display: none; }
+/* Вкладка: белая, верхние углы скруглены, внизу — вогнутые «скаты» в полосу вкладок. */
+.p17 .kz-br-tab { --tabc: #FFFFFF; position: relative; background: var(--tabc); border-radius: 8px 8px 0 0; box-shadow: none;
+  color: var(--chr-ink); font-family: var(--chr-font); font-weight: 500; padding: 0 10px 0 9px; overflow: visible; }
+.p17 .kz-br-tab::before, .p17 .kz-br-tab::after { content: ''; position: absolute; bottom: 0; width: 8px; height: 8px; pointer-events: none; }
+.p17 .kz-br-tab::before { left: -8px; background: radial-gradient(circle at 0 0, transparent 7.6px, var(--tabc) 8px); }
+.p17 .kz-br-tab::after { right: -8px; background: radial-gradient(circle at 100% 0, transparent 7.6px, var(--tabc) 8px); }
+.p17 .kz-br-tab.is-hl, .p17 .kz-br.is-spot-tab .kz-br-tab { --tabc: #FFD563; box-shadow: none; }
+.p17 .kz-br-tab-t { overflow: hidden; }
+.p17 .kz-br-tab-t.is-file { color: #5F6368; font-style: normal; }
+.p17 .kz-br-fav { border-radius: 3px; }
+.p17 .kz-br-x::before, .p17 .kz-br-x::after { background: var(--chr-icon); }
+.p17 .kz-br-plus::before, .p17 .kz-br-plus::after { background: var(--chr-icon); }
+/* Кнопки окна Windows справа: свернуть, развернуть, закрыть — тонкими тёмными линиями. */
+.p17 .kz-br-win { display: flex; align-self: stretch; align-items: center; margin-top: 0; padding-right: 2.5%; gap: clamp(12px, 2.2vw, 22px); }
+.p17 .kz-br-win i { opacity: 1; }
+.p17 .kz-w-min::before { background: var(--chr-ink); height: 1.2px; }
+.p17 .kz-w-max { border: 1.2px solid var(--chr-ink) !important; border-radius: 1px; }
+.p17 .kz-w-close::before, .p17 .kz-w-close::after { background: var(--chr-ink); width: 1.2px; }
+/* Панель инструментов — белая, сливается с активной вкладкой; стрелки и адрес — серые значки Chrome. */
+.p17 .kz-cut.kz-br-tool-bg > .kz-cut-in { background: #FFFFFF !important; border-radius: 0; box-shadow: inset 0 -1px 0 #DADCE0; }
+.p17 .kz-br-arrows i { border-color: var(--chr-icon); opacity: .9; }
+.p17 .kz-ar-r { opacity: .35 !important; }
+.p17 .kz-br-url { background: var(--chr-omni); color: var(--chr-ink); font-family: var(--chr-font); font-weight: 400; border-radius: 999px; }
+.p17 .kz-br-lock { width: 9px; height: 9px; border-radius: 50%; background: transparent; box-shadow: inset 0 0 0 1.6px var(--chr-icon); }
+.p17 .kz-br-url.is-hl { background: #FFF1BB; box-shadow: 0 0 0 2px #FFD563; }
+/* Страница — белая, сразу под панелью, нижние углы окна скруглены. */
+.p17 .kz-cut.kz-br-paper > .kz-cut-in { background: #FFFFFF !important; border-radius: 0 0 6px 6px; box-shadow: none; }
+.p17 .kz-morph-p.is-name .kz-morph-t { color: #74284C; }
+/* Коллаж страницы (экраны 2, 12, 17): бирки компактные — садятся на край строки и не закрывают
+   текст; на телефоне коллаж крупнее (заказчик, 30.10.2026: «всё как будто прижимается»). */
+.p17 .kz-collage .kz-label-paper, .p17 .kz-label.kz-col-lbl-html .kz-label-paper, .p17 .kz-label.kz-col-lbl-head .kz-label-paper,
+.p17 .kz-label.kz-col-lbl-body .kz-label-paper { padding: 2px 9px 3px; border-width: 1.5px; border-radius: 10px; font-size: 12px; }
+.p17 .kz-collage .kz-label-paper { box-shadow: 0 3px 0 #E9ECF2; }
+.p17 .kz-label.kz-col-lbl-html .kz-label-paper { box-shadow: 0 3px 0 var(--p17-coral-edge); }
+.p17 .kz-label.kz-col-lbl-head .kz-label-paper { box-shadow: 0 3px 0 #F0D98A; }
+.p17 .kz-label.kz-col-lbl-body .kz-label-paper { box-shadow: 0 3px 0 #B5E6CD; }
+.p17 .kz-collage .kz-col-in { gap: 9%; }
+@media (max-width: 759px) {
+  .p17 .kz-s12 .kz-collage, .p17 .kz-rd .kz-collage { width: min(100%, 290px, 36dvh); }
+  .p17 .kz-collage .kz-label-paper { font-size: 11.5px; }
+}
+
+/* Экран 8 (body) на телефоне: человечку — своё место над браузером, браузер и код компактнее
+   (заказчик, 30.10.2026: «многовато текста, для человечка мало пространства»). */
+@media (max-width: 759px) {
+  .p17 .kz-scene.kz-s9 { gap: 6px; }
+  .p17 .kz-scene.kz-s9 > .kz-stagebox { flex: 0 0 auto; height: auto; width: min(48vw, 24.5dvh); }
+  .p17 .kz-scene.kz-s9 > .kz-stagebox .kz-manbox { inset: 4% 8% 2% 8%; }
+  .p17 .kz-sheet .kz-s9 > .kz-col > .kz-br:not(.is-short) { --brh: 23dvh; max-width: min(100%, calc(var(--brh) * 1.52)); align-self: center; width: 100%; }
+  .p17 .kz-s9 .kz-col { gap: 6px; }
+  .p17 .kz-s9 .kz-code { padding-top: 3px; padding-bottom: 3px; }
+  .p17 .kz-s9 .kz-br-tab-t { font-size: 11.5px; letter-spacing: -.1px; }
+  .p17 .kz-s9 .kz-br-tab { max-width: 68%; padding: 0 8px; gap: 5px; }
+  .p17 .kz-s9 .kz-br-win { gap: 8px; padding-right: 2%; }
+}
+/* Бирка body на человечке — сбоку от свитшота, «хвостиком» к телу (точку даёт сборка). */
+.p17 .kz-label.kz-s9-lbl.is-man { translate: 10px -50%; scale: .78; transform-origin: 0 50%; }
+.p17 .kz-label.kz-s9-lbl.is-man .kz-label-paper { position: relative; }
+.p17 .kz-label.kz-s9-lbl.is-man .kz-label-paper::before { content: ''; position: absolute; left: -11px; top: 50%; translate: 0 -50%;
+  border: 8px solid transparent; border-left: 0; border-right: 11px solid #fff; filter: drop-shadow(-2px 0 0 #EEF0F4); }
+@media (max-width: 759px) and (max-height: 600px) {
+  .p17 .kz-scene.kz-s9 > .kz-stagebox { width: min(42vw, 21dvh); }
+  .p17 .kz-sheet .kz-s9 > .kz-col > .kz-br:not(.is-short) { --brh: 21dvh; }
+}
+
+/* Экран 11 (head / body) на телефоне: зоны одна под другой, а не рядом
+   (заказчик, 30.10.2026: «сделать сверху вниз») — сверху голова head, под ней тело body. */
+@media (max-width: 759px) {
+  .p17 .kz-zones { grid-template-columns: 1fr; gap: 10px; }
+  .p17 .kz-sheet-body > .kz-tray { gap: 6px; }
+  .p17 .kz-zones .kz-zone { min-height: clamp(66px, 11.5dvh, 110px); margin-top: 24px; }
+  .p17 .kz-zones .kz-zone-in { gap: 5px; padding: 6px 10px; }
+  .p17 .kz-zones .kz-zone::after { left: 28%; right: 28%; }
+  /* Бирки head / body — в левом верхнем углу зоны (заказчик, 30.10.2026, по скриншоту). */
+  .p17 .kz-zones .kz-zone-in > .kz-label { align-self: flex-start; margin: -22px 0 0 4px; }
+}
+@media (max-width: 759px) and (max-height: 600px) {
+  .p17 .kz-zones .kz-zone { margin-top: 22px; }
+  .p17 .kz-zones { gap: 8px; }
+}
+
+/* Экран 6 (head) на телефоне: человечка нажимают (голова, капсула с названием) — ему своё место
+   над браузером, браузер и код компактнее (как экран 8). */
+@media (max-width: 759px) {
+  .p17 .kz-scene.kz-s6 { gap: 6px; }
+  .p17 .kz-scene.kz-s6 > .kz-stagebox { flex: 0 0 auto; height: auto; width: min(44vw, 22dvh); }
+  .p17 .kz-scene.kz-s6 > .kz-stagebox .kz-manbox { inset: 6% 6% 1% 6%; }
+  .p17 .kz-sheet .kz-s6 > .kz-col > .kz-br:not(.is-short) { --brh: 20dvh; max-width: min(100%, calc(var(--brh) * 1.52)); align-self: center; width: 100%; }
+  .p17 .kz-s6 .kz-col { gap: 6px; }
+  .p17 .kz-s6 .kz-code { padding-top: 3px; padding-bottom: 3px; }
+  .p17 .kz-s6 .kz-br-tab-t { font-size: 11.5px; letter-spacing: -.1px; }
+  .p17 .kz-s6 .kz-br-tab { max-width: 68%; padding: 0 8px; gap: 5px; }
+  .p17 .kz-s6 .kz-br-win { gap: 8px; padding-right: 2%; }
+}
+
+/* Экран 1, браузер → человечек (заказчик, 30.10.2026: «пересбор странно выглядит»): куски браузера
+   летят к частям, и по пути человечек проявляется на их месте, а куски тают — перетекают в него,
+   а не застывают цветными «таблетками» и не сменяются им рывком. */
+.p17 .kz-s1.is-morph .kz-s1-man.is-ghost { visibility: visible; animation: p17GhostIn .6s ease-out .6s both; }
+.p17 .kz-s1.is-morph .kz-morph-p.is-fly { animation: p17PieceOut .5s ease-in .5s forwards; }
+@keyframes p17GhostIn { from { opacity: 0; scale: .96; } to { opacity: 1; scale: 1; } }
+@keyframes p17PieceOut { to { opacity: 0; scale: .7; } }
+@media (prefers-reduced-motion: reduce) {
+  .p17 .kz-s1.is-morph .kz-s1-man.is-ghost, .p17 .kz-s1.is-morph .kz-morph-p.is-fly, .p17 .kz-man > .p17-title, .p17 .p17-call { animation: none; }
+}
+
+/* На телефоне коллаж и браузер — во всю ширину, насколько позволяет высота экрана (заказчик, 31.10.2026:
+   «порой кажутся маленькими, растянуть на всю длину»). Ширину ограничивает только остаток высоты:
+   на низком телефоне (до 690 px) — как раньше, на высоком — от края до края. */
+@media (max-width: 759px) and (min-height: 690px) {
+  .p17 .kz-s12 .kz-collage, .p17 .kz-rd .kz-collage { width: min(100%, calc((100dvh - 447px) * 1.25)); }
+  .p17.b-stage .kz-s15 .kz-collage { width: min(100%, calc((100dvh - 425px) * 1.25)); }
+  .p17 .kz-sheet .kz-s6 > .kz-col > .kz-br:not(.is-short) { --brh: calc(100dvh - 481px); }
+  .p17 .kz-sheet .kz-s9 > .kz-col > .kz-br:not(.is-short) { --brh: calc(100dvh - 470px); }
+}
+
+/* Проверка «от и до» (31.10.2026): расположение на телефоне. */
+/* Строка «читает» маркером — полоса под текстом, а не поперёк (строки у нас ниже, чем в бумажном уроке). */
+.p17 .kz-line.kz-sweep::after { bottom: 1px; height: 3px; }
+/* Строка title в коллаже — в одну строку: шрифт по ширине коллажа (было: «Mening / saytim» в две строки). */
+.p17 .kz-collage { container-type: inline-size; }
+.p17 .kz-collage .kz-col-title { white-space: nowrap; font-size: clamp(9.5px, 4.7cqw, 13px); }
+/* Панель «Barakalla!» / подсказки всегда поверх листа: на низком телефоне код заходил на неё сверху
+   и закрывал галочку (экраны 14, 15). Пока панель открыта, браузер на телефоне ниже — чтобы код
+   над ней помещался целиком. */
+.p17.b-stage .stage-nav.b-sheet { position: relative; z-index: 30; }
+@media (max-width: 759px) {
+  .p17.b-stage:has(.b-sheet) .kz-sheet .kz-col > .kz-br:not(.is-short) { --brh: 19dvh; }
+}
+@media (max-width: 759px) {
+  .p17.b-stage:has(.b-sheet) .kz-sheet .kz-col > .kz-br:not(.is-short) { max-width: min(100%, calc(var(--brh) * 1.52)); align-self: center; width: 100%; }
+  .p17.b-stage:has(.b-sheet) .kz-sheet .kz-col > .kz-br.is-short { max-width: min(100%, calc(16dvh * 2.16)); align-self: center; width: 100%; }
+}
+/* Бирки html на рамке (экраны 3–5) на телефоне — на самой рамке, не на вкладке браузера и не на кнопке «O‘ynash»
+   (на ноутбуке браузер в рамке крупнее, бирки и так их не закрывают). */
+@media (max-width: 759px) {
+  .p17 .kz-frame-lbl-top { top: -9%; left: -3%; }
+  .p17 .kz-frame-lbl-bot { bottom: -10%; right: -3%; }
+}
+/* Бирка body на окне (экран 8) — в нижнем левом углу страницы (точку даёт сборка). */
+.p17 .kz-label.kz-s9-lbl.is-win { translate: 0 -100%; scale: .8; transform-origin: 0 100%; }
 /* Урок 1 (заказчик, 27.10.2026: «окно браузера маленькое»): на ноутбуке браузер на
    экранах 6–10, 14 и 15 крупнее — место вокруг было пустым; текст в окне крупнее вместе
    с ним. Только в уроке 1 — общий kollazh.css (уроки 2–5, практики) не трогается. */

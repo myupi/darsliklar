@@ -1,7 +1,7 @@
 // =============================================================================
 // КУРС «HTML» · Модуль 1 · Практика к уроку 4 — «Острова». Дети 10–14, проходят сами.
 // Один самодостаточный JSX: канон курса (до пометки «УРОК») + практика.
-// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/praktika-04/p04.src.jsx lessons/html/04p-ssylki-i-atributy.jsx
+// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/praktika-04/p04.src.jsx lessons/test/25-ssylki-i-atributy-praktika.jsx
 // =============================================================================
 /*@CANON@*/
 // =============================================================================
@@ -29,7 +29,7 @@
 // браузер честный и без прокрутки; код не исполняется; конфетти только в финале.
 // =============================================================================
 const META = {
-  lessonId: 'html-04p-orollar',
+  lessonId: 'test-25-ssylki-i-atributy-praktika',
   module: 'html-m1-osnovy',
   lessonTitle: {
     uz: '4-dars amaliyoti. Orollar',

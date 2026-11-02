@@ -1,7 +1,8 @@
 // =============================================================================
-// КУРС «HTML» · Модуль 1 · Практика к уроку 4 — «Острова». Дети 10–14, проходят сами.
-// Один самодостаточный JSX: канон курса (до пометки «УРОК») + практика.
-// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/praktika-04/p04.src.jsx lessons/html/04p-ssylki-i-atributy.jsx
+// КУРС «HTML» · Модуль 1 «Основы разметки» · Урок 2 — «Заголовки и текст»
+// (бумажный коллаж, по эталону урока 1). Дети 10–14, проходят сами.
+// Один самодостаточный JSX: канон курса (до пометки «УРОК») + урок.
+// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/zagolovki/z2.src.jsx lessons/html/02-zagolovki-i-tekst.jsx
 // =============================================================================
 // =============================================================================
 // КУРС «HTML» — КАНОН УРОКОВ v1 · дети 8–10 лет · UZ / RU / EN
@@ -6661,317 +6662,1108 @@ const CANON_LIB_CSS = `
 const CANON_SCREEN_CSS = CANON_SCREEN_CSS_BASE + CANON_MECH_CSS + CANON_DZ_CSS + CANON_CRT_CSS + CANON_LIB_CSS;
 // ==============================  У Р О К  =====================================
 // =============================================================================
-// ===== ПРАКТИКА К УРОКУ 4 · «Острова» · модуль html-m1-osnovy =====
+// ===== УРОК 2 · «Заголовки и текст» · модуль html-m1-osnovy =====
 //
-// ЗАМЫСЕЛ (26.10.2026; каркас и вид — практики 01p–03p, бумажный стиль урока 1).
-// Сайт островов: у каждого острова своя страница, между ними мосты-ссылки. В
-// хуке ученик нажимает «Шторм!» — шторм рвёт мосты. Ученик чинит четыре моста
-// кодом и пишет своё меню островов. Ссылки в бумажном браузере честные: их
-// можно нажать — откроется страница острова (или «Файл не найден»).
+// ЗАМЫСЕЛ (22.10.2026, переделка по эталону — урок 1 «Бумажная страница»;
+// материал — ролик html2.mp4 «Заголовки и текст»). Тот же бумажный стиль: лист
+// с рваным краем, вырезки с фактурой и тенью, stop-motion, шорох бумаги,
+// переход «разбор и сборка», честный бумажный браузер. Бумажный человечек из
+// урока 1 сделал страницу о своём коте, но все слова на ней слиплись в кашу.
+// Ученик учит теги, которые делают текст читаемым, и собирает свою страницу.
 //
-// СЕМЬ СЛАЙДОВ (заказчик, 22.10.2026): хук · пять заданий от лёгкого к сложному,
-// у каждого своя механика:
-//   t1 попугаи — у готовой ссылки нет адреса: дописать href="parrots.html";
-//   t2 указатели — две ссылки ведут не туда: поменять значения href (проверить нажатием);
-//   t3 вулкан — с пустой строки написать ссылку целиком;
-//   t4 после шторма — найти и починить две сломанные ссылки (опечатка в href,
-//      нет </a> — абзац ниже стал ссылкой); счётчик «осталось исправить»;
-//   t5 своё меню — с нуля: h1 (урок 2), список ul (урок 3) и три ссылки на острова.
-// Только материал уроков 1–4: готовые head и body вокруг кода, h1, h2, p, ul, li, a, href.
+// ДУГА (15 экранов): s1 крючок (каша → страница) · s2 план · тройки
+// «объяснение → сам делаешь → закрепление»: заголовки h1–h6 (s3–s5), абзац p
+// (s6–s8), жирный b и курсив i (s9–s11), вся страница (s12–s14) · s15 вывод.
+// Сценарий — docs/scenarij-02-zagolovki-i-tekst.md.
 //
-// ОСОБЫЕ ПРАВИЛА (как в 01p–03p): Коди — голова в кружке в шапке, без облака с
-// текстом; пишет ученик; проверка по «Проверить» (одна причина, со второй неудачи
-// — ступень подсказки); три ступени по лампочке, после образца — ещё одна задача;
-// браузер честный и без прокрутки; код не исполняется; конфетти только в финале.
+// ОСОБЫЕ ПРАВИЛА УРОКА
+//   · Подсветка идёт за речью Коди: одна реплика — одна подсвеченная вещь.
+//   · Честный браузер: заголовки убывают от h1 к h6; переносы строк в коде
+//     склеиваются в пробел; каждый p — отдельный абзац с отступом; незакрытый
+//     h1 делает огромным всё, что после него; незакрытый b делает жирным весь
+//     текст дальше (так и в настоящем браузере).
+//   · Конфетти только в финале: похвалы экранов — поза smile.
+//
+// СИСТЕМА СЛОВ. Заголовок (sarlavha) — h1…h6, h1 главный и самый крупный,
+// обычно один — главный заголовок страницы (не «название»: название страницы — title, урок 1); h2 — заголовок раздела. Абзац (xatboshi) —
+// p. b — жирный (qalin), i — курсив (qiya, kursiv). Как в уроке 1: teg,
+// yorliq — только вкладка, oyna — окно, sahifa nomi — название.
+//
+// ОБРАЩЕНИЕ: UZ — Siz, RU — «ты» без рода, EN — «you».
 // =============================================================================
 const META = {
-  lessonId: 'html-04p-orollar',
+  lessonId: 'test-20-zagolovki-i-tekst',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: '4-dars amaliyoti. Orollar',
-    ru: 'Практика к уроку 4. Острова',
-    en: 'Lesson 4 practice. The islands'
+    uz: '2-dars. Sarlavhalar va matn',
+    ru: 'Урок 2. Заголовки и текст',
+    en: 'Lesson 2. Headings and text'
   }
 };
-
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
-
 const fillL = (node, vars) => {
   const out = {};
   LANGS.forEach((l) => {
     let s = node[l] !== undefined ? node[l] : node.ru;
     Object.keys(vars || {}).forEach((k) => {
       const v = vars[k];
-      const sv = v && typeof v === 'object' ? (v[l] !== undefined ? v[l] : v.ru) : String(v);
-      s = s.split('{' + k + '}').join(sv);
+      s = s.split('{' + k + '}').join(v && typeof v === 'object' ? (v[l] !== undefined ? v[l] : v.ru) : v);
     });
     out[l] = s;
   });
   return out;
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ОСТРОВА — пять мест карты. Задание n чинит мост к острову n; последний — меню
-// ученика. file — страница острова.
-// ─────────────────────────────────────────────────────────────────────────────
-const STREET = [
-  { id: 'parrots', c: '#2A8C7E', file: 'parrots.html', name: L3('To‘tiqushlar', 'Попугаи', 'Parrots') },
-  { id: 'cave', c: '#7B6A9E', file: 'cave.html', name: L3('G‘or', 'Пещера', 'Cave') },
-  { id: 'volcano', c: '#E0643F', file: 'volcano.html', name: L3('Vulqon', 'Вулкан', 'Volcano') },
-  { id: 'light', c: '#F0B13F', file: 'lighthouse.html', name: L3('Mayoq', 'Маяк', 'Lighthouse') },
-  { id: 'mine', c: '#1F2A44', name: L3('Sizning menyuingiz', 'Твоё меню', 'Your menu') }
-];
-const HOME = STREET.length - 1;
-// Фото-файлов в этой практике нет (картинки — урок 5).
-const PHOTO_FILES = {};
-// Страницы сайта: куда ведут ссылки.
-const SITE_PAGES = {
-  'index.html': { title: L3('Orollar xaritasi', 'Карта островов', 'Island map'), text: L3('Qayerga suzamiz?', 'Куда поплывём?', 'Where shall we sail?'), pic: 'map' },
-  'parrots.html': { title: L3('To‘tiqushlar oroli', 'Остров попугаев', 'Parrot Island'), text: L3('Bu yerda to‘tiqushlar qo‘shiq aytadi.', 'Здесь попугаи поют песни.', 'Parrots sing songs here.'), pic: 'parrots' },
-  'cave.html': { title: L3('G‘or', 'Пещера', 'Cave'), text: L3('G‘orda qadimiy xazina yashiringan.', 'В пещере спрятан старинный клад.', 'An old treasure is hidden in the cave.'), pic: 'cave' },
-  'volcano.html': { title: L3('Vulqon', 'Вулкан', 'Volcano'), text: L3('Vulqon uxlayapti, lekin issiq.', 'Вулкан спит, но он горячий.', 'The volcano is asleep, but it’s hot.'), pic: 'volcano' },
-  'lighthouse.html': { title: L3('Mayoq', 'Маяк', 'Lighthouse'), text: L3('Mayoq kemalarga yo‘l ko‘rsatadi.', 'Маяк показывает кораблям дорогу.', 'The lighthouse shows ships the way.'), pic: 'light' }
-};
-
-// Слова ссылок и страниц.
-const TXT = {
-  top: L3('Orollar', 'Острова', 'Islands'),
-  parrots: L3('To‘tiqushlar oroli', 'Остров попугаев', 'Parrot Island'),
-  cave: L3('G‘or', 'Пещера', 'Cave'),
-  light: L3('Mayoq', 'Маяк', 'Lighthouse'),
-  volcano: L3('Vulqon', 'Вулкан', 'Volcano'),
-  parrotsS: L3('To‘tiqushlar', 'Попугаи', 'Parrots'),
-  whereH: L3('Qayerga suzamiz?', 'Куда поплывём?', 'Where shall we sail?'),
-  wish: L3('Yaxshi sayohat!', 'Счастливого пути!', 'Have a good trip!'),
-  wish2: L3('Ehtiyot bo‘ling, to‘lqinlar!', 'Осторожно, волны!', 'Watch out for the waves!'),
-  menuH: L3('Mening orollarim', 'Мои острова', 'My islands'),
-  home: L3('Bosh sahifa', 'Главная', 'Home')
-};
-
-// Подписи интерфейса практики. up, down, mySite, hello, play нужны бумажному набору.
 const UI = {
-  task: L3('{n}-topshiriq', 'Задание {n}', 'Task {n}'),
-  houseOf: L3('{n}/5-orol', 'Остров {n} из 5', 'Island {n} of 5'),
-  map: L3('Orollar xaritasi', 'Карта островов', 'Island map'),
-  works: L3('ko‘prik bor', 'мост есть', 'bridge ready'),
-  off: L3('kutmoqda', 'ждёт', 'waiting'),
-  now: L3('hozir shu yerda', 'сейчас здесь', 'you are here'),
+  inspector: L3('Qoida', 'Правило', 'Rule'),
   check: L3('Tekshirish', 'Проверить', 'Check'),
-  keys: L3('Teg belgilari', 'Символы для тегов', 'Tag symbols'),
-  editor: L3('Kod muharriri', 'Редактор кода', 'Code editor'),
-  page: L3('Sahifa', 'Страница', 'Page'),
+  erase: L3('O‘chirish', 'Стереть', 'Erase'),
+  goal: L3('Vazifa', 'Задание', 'Task'),
+  save: L3('Saqlash', 'Сохранить', 'Save'),
+  saved: L3('Saqlandi', 'Сохранено', 'Saved'),
+  author: L3('Muallif', 'Автор', 'Author'),
   code: L3('Kod', 'Код', 'Code'),
-  fb: L3('Tekshiruv', 'Проверка', 'Check'),
-  incomplete: L3('hujjat hali to‘liq emas', 'документ собран не полностью', 'the document is not complete yet'),
-  ok: L3('Tayyor', 'Готово', 'Done'),
-  titleField: L3('title ichidagi nom', 'Название в title', 'Name in title'),
-  bodyField: L3('body ichidagi matn', 'Текст в body', 'Text in body'),
-  sample: L3('Namuna', 'Образец', 'Sample'),
-  start: L3('Boshlash', 'Начать', 'Start'),
-  finish: L3('Yakunlash', 'Завершить', 'Finish'),
-  ready: L3('Ish tayyor', 'Работа готова', 'Work is ready'),
-  drill: L3('Yana bitta', 'Ещё одна', 'One more'),
-  gapHere: L3('shu yerda tugaydimi?', 'здесь кончается?', 'ends here?'),
-  storm: L3('Bo‘ron!', 'Шторм!', 'Storm!'),
-  files: L3('Orollar fayllari', 'Файлы островов', 'Island files'),
-  tryLink: L3('Havolani bosib tekshiring', 'Нажми ссылку — проверь', 'Tap a link to test it'),
-  left: L3('Tuzatish kerak: {n}', 'Осталось исправить: {n}', 'Left to fix: {n}'),
-  allFixed: L3('Hammasi tuzatildi', 'Всё исправлено', 'All fixed'),
-  needH1: L3('h1 — menyu nomi', 'h1 — название меню', 'h1 — the menu name'),
-  needList: L3('ul yoki ol — ro‘yxat', 'ul или ol — список', 'ul or ol — the list'),
-  need3: L3('li ichida kamida 3 ta havola', 'хотя бы 3 ссылки в li', 'at least 3 links in li'),
-  needReal: L3('havolalar orollarga olib boradi', 'ссылки ведут на острова', 'the links lead to islands'),
-  needClosed: L3('hamma teglar yopilgan', 'все теги закрыты', 'all tags are closed'),
-  notFound: L3('Fayl topilmadi', 'Файл не найден', 'File not found'),
-  back: L3('← Orqaga', '← Назад', '← Back'),
+  result: L3('Natija', 'Результат', 'Result'),
   nextLesson: L3('Keyingi dars', 'Следующий урок', 'Next lesson'),
-  next: L3('Rasmlar', 'Изображения', 'Images'),
-  up: L3('Yuqoriga', 'Вверх', 'Up'),
-  down: L3('Pastga', 'Вниз', 'Down'),
+  next: L3('Ro‘yxatlar', 'Списки', 'Lists'),
+  turn: L3('Aylantirish', 'Превратить', 'Transform'),
+  ready: L3('Tayyor', 'Готово', 'Done'),
+  tab: L3('Yorliq', 'Вкладка', 'Tab'),
+  win: L3('Oyna', 'Окно', 'Window'),
   mySite: L3('Mening saytim', 'Мой сайт', 'My site'),
   hello: L3('Salom, dunyo!', 'Привет, мир!', 'Hello, world!'),
-  play: L3('O‘ynash', 'Играть', 'Play')
+  play: L3('O‘ynash', 'Играть', 'Play'),
+  noTags: L3('Bu yerga faqat so‘z yozing, burchakli qavslarsiz.', 'Здесь нужны только слова, без угловых скобок.', 'Only words here, no angle brackets.'),
+  hintN: L3('Yordam', 'Подсказка', 'Hint'),
+  up: L3('Yuqoriga', 'Вверх', 'Up'),
+  down: L3('Pastga', 'Вниз', 'Down'),
+  finish: L3('Darsni tugatish', 'Завершить урок', 'Finish the lesson')
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ОБРАТНАЯ СВЯЗЬ ПРОВЕРКИ. Одна проблема — одна короткая фраза: что не так и
-// что сделать. Без «ошибка», «неправильно», «xato», «noto‘g‘ri». Фразы про
-// атрибуты (имя, «=», кавычки, атрибут в закрывающем теге) — общие, в движке.
+// СТРАНИЦА ЧЕЛОВЕЧКА О КОТЕ — сквозной пример урока. Строка абзаца — части:
+// строка или { b } / { i } (слово в теге).
 // ─────────────────────────────────────────────────────────────────────────────
-const FB = {
-  // Запись тегов, пары и порядок (разбор фрагмента — checkFrag)
-  pairMismatch: L3('{a} tegi </{b}> bilan yopilgan. Juft bir xil bo‘lishi kerak: </{a}>.', '{a} закрыт тегом </{b}>. Пара должна совпадать: </{a}>.', '{a} is closed with </{b}>. The pair must match: </{a}>.'),
-  unclosedIn: L3('{tag} hali yopilmagan, {next} esa allaqachon tugayapti.', '{tag} ещё не закрыт, а {next} уже заканчивается.', '{tag} isn’t closed yet, but {next} is already ending.'),
-  blockInBlock: L3('{tag} hali tugamadi, {next} esa boshlanyapti. Avval {tag} ni yoping.', '{tag} ещё не закончился, а {next} уже начинается. Сначала закрой {tag}.', '{tag} hasn’t ended, but {next} is already starting. Close {tag} first.'),
-  inlineOutside: L3('{tag} so‘z atrofiga qo‘yiladi: xatboshi yoki sarlavha ichida.', '{tag} ставят вокруг слова — внутри абзаца или заголовка.', '{tag} goes around a word, inside a paragraph or a heading.'),
-  textOutside: L3('Matn teglardan tashqarida turibdi. Ro‘yxat bandini li ichiga qo‘ying.', 'Текст стоит снаружи тегов. Пункт списка поставь внутрь li.', 'The text is outside the tags. Put the list item inside li.'),
-  noGt: L3('{tag} tegi oxirida o‘ng «>» qavs yetishmayapti.', 'У тега {tag} в конце не хватает уголка «>».', 'The {tag} tag is missing the bracket “>” at the end.'),
-  noLt: L3('{tag} oldida chap «<» qavs yetishmayapti.', 'Перед {tag} не хватает уголка «<».', 'The bracket “<” is missing before {tag}.'),
-  unknown: L3('«{raw}» tegida harflar adashgan: {tag} kerak.', 'В теге «{raw}» перепутаны буквы: нужно {tag}.', 'The letters in “{raw}” are mixed up: it should be {tag}.'),
-  unknownFar: L3('«{raw}» tegi bizga notanish. Bizda h1 dan h6 gacha, p, b, i, ul, ol, li, a va img teglari bor.', 'Тег «{raw}» нам не знаком. У нас есть теги с h1 по h6, p, b, i, ul, ol, li, a и img.', 'We don’t know the tag “{raw}”. We have the tags h1 to h6, p, b, i, ul, ol, li, img and the a tag.'),
-  slashEnd: L3('Qiya chiziq boshqa joyda turibdi. Yopuvchi tegda u chap «<» qavsdan keyin keladi: </{tag}>.', 'Косая черта стоит не там. В закрывающем теге она идёт сразу после уголка «<»: </{tag}>.', 'The slash is in the wrong spot. In a closing tag it goes right after the bracket “<”: </{tag}>.'),
-  backslash: L3('Yopuvchi tegda qiya chiziq «/» turadi, bu yerda esa teskari «\\» chiziq.', 'В закрывающем теге нужна косая черта «/», а здесь обратная «\\».', 'A closing tag needs a slash “/”, but here it is a backslash “\\”.'),
-  junk: L3('Qavslar ichiga faqat teg nomini yozamiz, matn esa tashqarida turadi.', 'Внутри уголков пишем только имя тега, а текст — снаружи.', 'Inside the brackets we write only the tag name; the text goes outside.'),
-  emptyTag: L3('Bu yerda bo‘sh qavslar. Ichida teg nomi bo‘lishi kerak.', 'Здесь пустые уголки. Внутри должно быть имя тега.', 'These brackets are empty. A tag name goes inside.'),
-  openAgain: L3('Bu yerda ochuvchi {tag} yozilgan. Yopuvchi tegga qiya chiziq kerak.', 'Здесь написан открывающий {tag}. Закрывающему тегу нужна косая черта.', 'This is an opening {tag}. The closing tag needs a slash.'),
-  unclosedEnd: L3('{tag} nima bilan tugashini tekshiring: yopuvchi teg yo‘q.', 'Проверь, чем заканчивается {tag}: закрывающего тега нет.', 'Check how {tag} ends: there is no closing tag.'),
-  closeWithoutOpen: L3('Bu yerda yopuvchi {tag} bor, ochuvchisi esa yo‘q.', 'Здесь закрывающий {tag}, а открывающего нет.', 'There is a closing {tag} here, but no opening one.'),
-  textSame: L3('Teglar joyida! Faqat so‘zlar o‘zgarib qoldi: teglarni tuzatamiz, matnni esa avvalgidek qoldiramiz.', 'Теги в порядке! Только слова изменились: чиним теги, а текст оставляем как был.', 'The tags are fine! Only the words changed: we fix the tags and leave the text as it was.'),
-  headEmpty: L3('Sarlavha teglari joyida, ichi esa bo‘sh. Ro‘yxat nomini yozing.', 'Теги заголовка на месте, а внутри пусто. Напиши название списка.', 'The heading tags are in place, but empty. Write the list name.'),
-  // Списки (урок 3)
-  listText: L3('Ro‘yxatda matn li siz turibdi: unda nuqta ham, raqam ham yo‘q. Uni li ga o‘rang.', 'В списке текст стоит без li — у него нет ни точки, ни номера. Оберни его в li.', 'There’s text in the list without li: it gets no dot or number. Wrap it in li.'),
-  liOutside: L3('li faqat ul yoki ol ichida yoziladi, bu esa ro‘yxatdan tashqarida turibdi.', 'li пишут только внутри ul или ol, а этот стоит снаружи списка.', 'li goes only inside ul or ol, but this one is outside the list.'),
-  listNotClosed: L3('{tag} ro‘yxati hali yopilmagan, {next} esa boshlanyapti. Avval ro‘yxatni yoping.', 'Список {tag} ещё не закрыт, а {next} уже начинается. Сначала закрой список.', 'The {tag} list isn’t closed yet, but {next} is already starting. Close the list first.'),
-  // Ссылки (урок 4)
-  needA: L3('Bu yerda havola kerak: a tegi.', 'Здесь нужна ссылка — тег a.', 'This needs a link: the a tag.'),
-  oneLink: L3('Bitta havola yozing: bitta a jufti.', 'Напиши одну ссылку — одну пару a.', 'Write just one link: one opening a and one closing a.'),
-  noHref: L3('Havolada manzil yo‘q: ochuvchi a tegiga href atributini yozing.', 'У ссылки нет адреса: допиши в открывающий тег a атрибут href.', 'The link has no address: add the href attribute to the opening a tag.'),
-  hrefEmpty: L3('href ichi bo‘sh: qo‘shtirnoq ichiga sahifa manzilini yozing.', 'В href пусто: впиши между кавычками адрес страницы.', 'href is empty: type the page address between the quotes.'),
-  hrefWrong: L3('Bu havola {href} ga olib boradi, bizga esa {want} kerak.', 'Эта ссылка ведёт на {href}, а нужен {want}.', 'This link leads to {href}, but we need {want}.'),
-  textKeep: L3('Manzil to‘g‘ri! Havola so‘zlarini avvalgidek qoldiring: «{w}».', 'Адрес верный! Слова ссылки оставь прежними: «{w}».', 'The address is right! Keep the link words as they were: “{w}”.'),
-  linkTo: L3('«{text}» havolasi {href} ga olib boryapti. «{text}» orolining sahifasi esa {want}.', '«{text}» ведёт на {href}, а страница острова «{text}» — {want}.', 'The “{text}” link leads to {href}, but the “{text}” island page is {want}.'),
-  twoLinks: L3('Ikkala havola joyida qolsin: har biri o‘z oroliga.', 'Пусть обе ссылки останутся — каждая на свой остров.', 'Keep both links, each pointing to its island.'),
-  needText: L3('Teglar orasiga sahifada ko‘rinadigan so‘zlarni yozing.', 'Между тегами напиши слова, которые увидят на странице.', 'Between the tags, type the words people will see on the page.'),
-  keepLinks: L3('Teglar tuzaldi! Faqat havolalarni avvalgidek qoldiring: o‘sha so‘zlar va o‘sha manzillar.', 'Теги починены! Только оставь ссылки как были: те же слова и те же адреса.', 'The tags are fixed! Just keep the links as they were: the same words and addresses.'),
-  notReal: L3('{href} degan sahifa yo‘q. Orollar fayllaridan birini yozing.', 'Страницы {href} нет. Впиши файл одного из островов.', 'There’s no page {href}. Type one of the island files.'),
-  // t5 — своё меню
-  artEmpty: L3('Hozircha bo‘sh. Menyu nomini h1 ga yozishdan boshlang.', 'Пока пусто. Начни с названия меню в h1.', 'It’s empty so far. Start with the menu name in h1.'),
-  needH1: L3('Tepaga h1 sarlavha kerak: menyuingiz nomi.', 'Сверху нужен заголовок h1 — название твоего меню.', 'You need an h1 heading on top: your menu’s name.'),
-  menuHeadEmpty: L3('Sarlavha teglari joyida, ichi esa bo‘sh. Menyu nomini yozing.', 'Теги заголовка на месте, а внутри пусто. Напиши название меню.', 'The heading tags are in place, but empty. Write the menu name.'),
-  needList: L3('Sarlavha ostiga ro‘yxat kerak: ul yoki ol.', 'Под заголовком нужен список: ul или ol.', 'Under the heading you need a list: ul or ol.'),
-  needLinks: L3('Ro‘yxatda kamida uchta havola bo‘lsin: har bir li ichida bittadan.', 'В списке нужно хотя бы три ссылки — по одной в каждом li.', 'The list needs at least three links, one in each li.'),
-  needHome: L3('index.html ga olib boradigan havola kerak.', 'Нужна ссылка, которая ведёт на index.html.', 'You need a link that leads to index.html.')
+const PAGE = {
+  title: L3('Mening mushugim', 'Мой кот', 'My cat'),
+  p1: L3(['Mushugim ', { b: 'juda' }, ' ', { i: 'uxlashni' }, ' yaxshi ko‘radi.'],
+    ['Мой кот ', { b: 'очень' }, ' любит ', { i: 'спать' }, '.'],
+    ['My cat ', { b: 'really' }, ' loves to ', { i: 'sleep' }, '.']),
+  h2: L3('U nima yeydi', 'Что он ест', 'What he eats'),
+  p2: L3(['Baliq va sutni yaxshi ko‘radi.'], ['Он любит рыбу и молоко.'], ['He loves fish and milk.'])
+};
+
+// Обёртка слова или строки в тег, набранная в два поля (s7, s10): что не так.
+const WRAP_MSGS = {
+  needOpen: L3('Matndan oldin ochuvchi {tag} tegi kerak.', 'Перед текстом нужен открывающий тег {tag}.', 'Before the text you need the opening {tag} tag.'),
+  openSlash: L3('Bu yopuvchi teg. Matndan oldin qiya chiziqsiz ochuvchi teg turadi.', 'Это закрывающий тег. Перед текстом ставят открывающий, без косой черты.', 'That’s a closing tag. Before the text goes the opening tag, without a slash.'),
+  needClose: L3('Matndan keyin yopuvchi {tag} tegi kerak.', 'После текста нужен закрывающий тег {tag}.', 'After the text you need the closing {tag} tag.'),
+  needSlash: L3('Bu ochuvchi teg. Yopuvchi tegda {tag} dan oldin qiya chiziq «/» turadi.', 'Это открывающий тег. В закрывающем перед {tag} стоит косая черта «/».', 'That’s an opening tag. The closing one has a slash “/” before {tag}.'),
+  needLt: L3('Teg chap «<» qavs bilan boshlanadi.', 'Тег начинается с уголка «<».', 'A tag starts with the bracket “<”.'),
+  needGt: L3('Teg oxirida o‘ng «>» qavs turadi.', 'В конце тега нужен уголок «>».', 'A tag ends with the bracket “>”.'),
+  wrongName: L3('Teg ichida {tag} bo‘lishi kerak.', 'Внутри тега должно быть {tag}.', 'The tag should say {tag}.')
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ВСЕ ТЕКСТЫ ЭКРАНОВ. Реплики (say, hints, praise, done …) звучат; подписи
-// (eyebrow, order, ask, note, empty …) только печатаются. В узбекских звучащих
-// репликах нет тире: движок отдаёт его сервису точкой.
+// ТЕКСТЫ. Реплика Коди — 1–2 коротких предложения. Звучат: say, done, ok, msgs,
+// hints, why, miss …; печатаются: eyebrow, ask, cards.title, card.
 // ─────────────────────────────────────────────────────────────────────────────
 const C = {
-  // Хук: острова соединены мостами → касание «Шторм!» → мосты рвутся, флажки гаснут.
-  intro: {
-    eyebrow: L3('Orollar', 'Острова', 'Islands'),
-    say: L3('Bu orollar sayti: har bir orolning o‘z sahifasi bor, orollar orasida esa havolalar ko‘prik bo‘lib turibdi.',
-      'Это сайт островов: у каждого острова своя страница, а между ними мосты-ссылки.',
-      'This is an islands website: each island has its own page, and link bridges connect them.'),
-    blown: L3('Voy! Bo‘ron ko‘priklarni uzib yubordi: havolalar ishlamayapti.', 'Ой! Шторм порвал мосты — ссылки не работают.', 'Oh no! The storm broke the bridges: the links don’t work.'),
-    plan: L3('To‘rtta ko‘prikni kod bilan tiklaymiz, beshinchi orolga esa o‘z menyuingizni yozasiz. Har bir topshiriq oldingisidan biroz qiyinroq.',
-      'Починим четыре моста кодом, а для пятого острова ты напишешь своё меню. Каждое задание чуть сложнее прошлого.',
-      'We’ll fix four bridges with code, and you’ll write your own menu for the fifth island. Each task is a bit harder than the last.'),
-    ask: L3('«Bo‘ron!» tugmasini bosing', 'Нажми «Шторм!»', 'Tap “Storm!”'),
-    order: L3('To‘rtta ko‘prikni tiklang va o‘z menyuingizni yozing. Kodni siz yozasiz.', 'Почини четыре моста и напиши своё меню. Код пишешь ты.', 'Fix four bridges and write your own menu. You write the code.'),
-    note: L3('Ko‘prigi tiklangan orol yonadi. Havolani bosib tekshirsa bo‘ladi: brauzer o‘sha sahifani ochadi.', 'Остров загорается, когда его мост готов. Ссылку можно нажать и проверить — браузер откроет страницу.', 'An island lights up when its bridge is ready. You can tap a link to test it: the browser opens that page.')
+  s1: {
+    eyebrow: L3('Chalkash matn', 'Каша из текста', 'A wall of text'),
+    say: L3('Bu odamchaning mushugi haqidagi sahifasi. Lekin hamma so‘zlar bir-biriga yopishib qolgan: qayerda nom, qayerda hikoya, tushunib bo‘lmaydi.',
+      'Это страница человечка о его коте. Но все слова слиплись в одну кашу: где название, где рассказ — не понять.',
+      'This is the paper buddy’s page about his cat. But all the words are stuck together: you can’t tell the title from the story.'),
+    magic: L3('Voy, qarang! Tepada katta sarlavha paydo bo‘ldi.', 'Ого! Наверху появился крупный заголовок.', 'Whoa! A big heading appeared at the top.'),
+    magicP: L3('Matn xatboshilarga bo‘lindi.', 'Текст разделился на абзацы.', 'The text split into paragraphs.'),
+    magicB: L3('Muhim so‘z esa qalin bo‘ldi.', 'А важное слово стало жирным.', 'And the important word turned bold.'),
+    done: L3('Bugun matnni shunday bezashni o‘rganasiz va o‘z sahifangizni yasaysiz!', 'Сегодня ты научишься так оформлять текст и сделаешь свою страницу!', 'Today you’ll learn to shape text like this and make your own page!'),
+    ask: L3('«Aylantirish» tugmasini bosing', 'Нажми «Превратить»', 'Tap “Transform”'),
+    askDone: L3('Sarlavha, xatboshilar va qalin so‘z', 'Заголовок, абзацы и жирное слово', 'A heading, paragraphs and a bold word')
   },
-
-  // 1 · самое лёгкое: у готовой ссылки нет адреса.
-  t1: {
-    order: L3('Havolaga manzil bering: parrots.html', 'Дай ссылке адрес: parrots.html', 'Give the link an address: parrots.html'),
-    say: L3('To‘tiqushlar oroliga havola bor, lekin manzili yo‘q: so‘zlar qora. Ochuvchi a tegiga href atributini yozing.',
-      'Ссылка на остров попугаев есть, а адреса нет — слова чёрные. Допиши в открывающий тег a атрибут href.',
-      'There’s a link to Parrot Island, but it has no address: the words are black. Add the href attribute to the opening a tag.'),
-    hints: [
-      L3('Havolaga qaysi atribut manzil beradi?', 'Какой атрибут даёт ссылке адрес?', 'Which attribute gives a link its address?'),
-      L3('Bu href. U ochuvchi tegda, a dan keyin yoziladi: nomi, tenglik belgisi va qo‘shtirnoq ichida manzil.', 'Это href. Его пишут в открывающем теге после a: имя, знак равно и адрес в кавычках.', 'It’s href. It goes in the opening tag, right after the letter a: the name, an equals sign and the address in quotes.'),
-      L3('Mana boshqa havolaning manzili qanday yozilgan. To‘tiqushlarni ham shunday yozing.', 'Вот как записан адрес у другой ссылки. Попугаев запиши так же.', 'Here’s how another link’s address is written. Write the parrots the same way.')
+  s2: {
+    eyebrow: L3('Reja', 'План', 'Plan'),
+    say: L3('Mana bugungi dars rejasi. Unda to‘rtta qadam bor.', 'Вот план урока. В нём четыре шага.', 'Here’s the plan for today. It has four steps.'),
+    cards: [
+      { title: L3('Sarlavhalar', 'Заголовки', 'Headings'),
+        say: L3('Avval sarlavhalar bilan tanishamiz: katta va kichik.', 'Сначала заголовки: большие и маленькие.', 'First, headings: big and small.') },
+      { title: L3('Xatboshilar', 'Абзацы', 'Paragraphs'),
+        say: L3('Keyin matnni xatboshilarga bo‘lamiz.', 'Потом разделим текст на абзацы.', 'Then we’ll split text into paragraphs.') },
+      { title: L3('Qalin va qiya', 'Жирный и курсив', 'Bold and italic'),
+        say: L3('Uchinchi qadamda muhim so‘zlarni qalin va qiya qilamiz.', 'Третий шаг — выделим важные слова жирным и курсивом.', 'Step three: we’ll make important words bold and italic.') },
+      { title: L3('O‘z sahifangiz', 'Своя страница', 'Your own page'),
+        say: L3('Oxirida esa sarlavha va matnli o‘z sahifangizni yasaysiz!', 'А в конце ты сделаешь свою страницу с заголовком и текстом!', 'And at the end, you’ll make your own page with a heading and text!') }
     ],
-    praise: L3('Zo‘r! Ko‘prik tiklandi: havolani bosib ko‘ring.', 'Огонь! Мост восстановлен — нажми ссылку и проверь.', 'Awesome! The bridge is back: tap the link to try it.'),
-    done: L3('To‘tiqushlarga ko‘prik tayyor.', 'Мост к попугаям готов.', 'The bridge to the parrots is ready.'),
-    drill: L3('G‘or havolasiga ham manzil bering: cave.html.', 'Дай адрес и ссылке на пещеру: cave.html.', 'Give the cave link an address too: cave.html.')
+    done: L3('Reja tayyor. Boshladik!', 'План готов. Начинаем!', 'That’s the plan. Let’s start!'),
+    ask: L3('Rejani tinglang', 'Слушай план урока', 'Listen to the plan')
   },
-
-  // 2 · две ссылки ведут не туда: поменять значения href.
-  t2: {
-    order: L3('Ikkala havolani o‘z oroliga yo‘naltiring', 'Направь обе ссылки на их острова', 'Point both links to their islands'),
-    say: L3('Bo‘ron ko‘rsatkichlarni aralashtirib yubordi: «G‘or» mayoqqa, «Mayoq» esa g‘orga olib boryapti. Manzillarni tuzating. Havolani bosib tekshirib ko‘rishingiz mumkin.',
-      'Шторм перепутал указатели: «Пещера» ведёт на маяк, а «Маяк» — в пещеру. Исправь адреса. Ссылку можно нажать и проверить.',
-      'The storm mixed up the signposts: “Cave” leads to the lighthouse, and “Lighthouse” leads to the cave. Fix the addresses. You can tap a link to test it.'),
-    hints: [
-      L3('Har bir havolani bosing: u qayerga olib boradi?', 'Нажми каждую ссылку: куда она ведёт?', 'Tap each link: where does it lead?'),
-      L3('G‘or sahifasi cave.html, mayoqniki esa lighthouse.html. href qiymatlarini almashtiring.', 'Пещера — cave.html, маяк — lighthouse.html. Поменяй значения href местами.', 'The cave is cave.html, the lighthouse is lighthouse.html. Swap the href values.'),
-      L3('Mana to‘g‘ri havola. Ikkinchisini ham shunday tuzating.', 'Вот правильная ссылка. Вторую поправь так же.', 'Here’s a correct link. Fix the second one the same way.')
-    ],
-    praise: L3('To‘g‘ri! Endi har bir ko‘rsatkich o‘z oroliga olib boradi.', 'Верно! Теперь каждый указатель ведёт на свой остров.', 'Right! Now each signpost leads to its own island.'),
-    done: L3('Ko‘rsatkichlar joyida.', 'Указатели на месте.', 'The signposts are right.'),
-    drill: L3('Bu yerda ham aralash: «To‘tiqushlar» va «Vulqon». Tuzating.', 'И здесь путаница: «Попугаи» и «Вулкан». Исправь.', 'They’re mixed up here too: “Parrots” and “Volcano”. Fix them.')
+  s3: {
+    eyebrow: L3('Sarlavhalar', 'Заголовки', 'Headings'),
+    say: L3('Sarlavha teglari oltita: h1 dan h6 gacha.', 'Тегов заголовков шесть: от h1 до h6.', 'There are six heading tags: from h1 to h6.'),
+    askBig: L3('Qarang: eng katta sarlavha', 'Смотри: самый крупный заголовок', 'Watch: the biggest heading'),
+    big: L3('Bu h1. U eng muhim va eng katta sarlavha. Odatda sahifada h1 bitta bo‘ladi.',
+      'Это h1 — самый главный и самый крупный заголовок. Обычно он на странице один.',
+      'This is h1, the most important and biggest heading. A page usually has just one.'),
+    askSmall: L3('Qarang: eng kichik sarlavha', 'Смотри: самый мелкий заголовок', 'Watch: the smallest heading'),
+    small: L3('Bu h6, eng kichik sarlavha. Raqam qancha katta bo‘lsa, sarlavha shuncha kichik.',
+      'Это h6 — самый маленький. Чем больше цифра, тем мельче заголовок.',
+      'This is h6, the smallest. The bigger the number, the smaller the heading.'),
+    done: L3('Brauzer sarlavhalarni qalin va katta qilib ko‘rsatadi. Qog‘oz tasmalarni esa yaqqol ko‘rinishi uchun yasadik.',
+      'Браузер показывает заголовки крупно и жирно. Бумажные полоски мы сделали для наглядности.',
+      'The browser shows headings big and bold. We made the paper strips to help you see it.'),
+    ask: L3('Sarlavhalarga qarang', 'Смотри на заголовки', 'Watch the headings'),
+    word: L3('Sarlavha', 'Заголовок', 'Heading')
   },
-
-  // 3 · ссылка целиком с пустой строки.
-  t3: {
-    order: L3('Vulqonga havolani to‘liq yozing', 'Напиши ссылку на вулкан целиком', 'Write a whole link to the volcano'),
-    say: L3('Vulqonga ko‘prik umuman yo‘q. Bo‘sh qatorga havolani to‘liq yozing: a tegi, volcano.html manzilli href va o‘z so‘zlaringiz.',
-      'К вулкану моста совсем нет. Напиши в пустой строке ссылку целиком: тег a, href с адресом volcano.html и свои слова.',
-      'There’s no bridge to the volcano at all. Write a whole link on the empty line: the a tag, href with the address volcano.html, and your own words.'),
-    hints: [
-      L3('Havola uch qismdan iborat: ochuvchi teg, so‘zlar va yopuvchi teg.', 'Ссылка из трёх частей: открывающий тег, слова и закрывающий тег.', 'A link has three parts: the opening tag, the words and the closing tag.'),
-      L3('Ochuvchi tegga volcano.html manzilli href atributini yozing, oxirida a ni yoping.', 'В открывающий тег впиши href с адресом volcano.html, а в конце закрой a.', 'Put href with the address volcano.html in the opening tag, and close the a at the end.'),
-      L3('Mana boshqa orolga havola. Vulqonga ham shunday yozing.', 'Вот ссылка на другой остров. На вулкан напиши так же.', 'Here’s a link to another island. Write the volcano one the same way.')
-    ],
-    praise: L3('Ajoyib! Vulqonga yangi ko‘prik qurildi.', 'Здорово! К вулкану построен новый мост.', 'Great! A new bridge to the volcano is built.'),
-    done: L3('Vulqonga ko‘prik tayyor.', 'Мост к вулкану готов.', 'The bridge to the volcano is ready.'),
-    drill: L3('Endi mayoqqa havolani to‘liq yozing: lighthouse.html.', 'Теперь напиши целиком ссылку на маяк: lighthouse.html.', 'Now write a whole link to the lighthouse: lighthouse.html.')
-  },
-
-  // 4 · найти и починить две сломанные ссылки; счётчик «осталось исправить».
-  t4: {
-    order: L3('Ikkita buzilgan havolani toping va tuzating', 'Найди и почини две сломанные ссылки', 'Find and fix two broken links'),
-    say: L3('Bo‘ron ikkita havolani buzdi: «Mayoq» qora bo‘lib qoldi, pastdagi tilak esa ko‘k. Buzilgan joylarni toping va tuzating.',
-      'Шторм сломал две ссылки: «Маяк» стал чёрным, а пожелание внизу — синим. Найди поломки и почини.',
-      'The storm broke two links: “Lighthouse” turned black, and the wish below turned blue. Find the breaks and fix them.'),
-    hints: [
-      L3('Har bir havolani tekshiring: atribut nomi to‘g‘rimi, havola yopilganmi?', 'Проверь каждую ссылку: верно ли имя атрибута, закрыта ли ссылка?', 'Check each link: is the attribute name right, is the link closed?'),
-      L3('{n}-qatorga qarang: undagi havolada nimadir joyida emas.', 'Посмотри на строку {n}: со ссылкой в ней что-то не так.', 'Look at line {n}: something’s off with the link there.'),
-      L3('Havola: href bilan ochuvchi a, so‘zlar va yopuvchi a. Mana to‘g‘ri havolalar.', 'Ссылка — это открывающий a с href, слова и закрывающий a. Вот правильные ссылки.', 'A link is the opening a with href, the words and the closing a. Here are correct links.')
-    ],
-    hintLine: L3('Hammasi tuzaldi, «Tekshirish»ni bosing.', 'Всё починено — нажми «Проверить».', 'Everything is fixed — tap “Check”.'),
-    hintKeep: L3('Avvalgi kod bilan solishtiring: o‘sha havolalar va o‘sha manzillar qolishi kerak.', 'Сравни с тем, что было: те же ссылки и те же адреса.', 'Compare with how it was: the same links and the same addresses.'),
-    hintTags: L3('Teglarni tekshiring: har bir ochilgan teg o‘z jufti bilan yopilishi kerak.', 'Проверь теги: каждый открытый тег должен закрыться своей парой.', 'Check the tags: every opened tag must close with its pair.'),
-    praise: L3('Qutqardingiz! Ikkala havola yana ishlaydi.', 'Спасено! Обе ссылки снова работают.', 'Saved! Both links work again.'),
-    done: L3('Havolalar tuzatildi.', 'Ссылки починены.', 'The links are fixed.'),
-    drill: L3('Bu yerda ham ikkita havola buzilgan. Toping va tuzating.', 'И здесь две ссылки сломаны. Найди и почини.', 'Two links are broken here too. Find and fix them.')
-  },
-
-  // 5 · своё меню с нуля: h1 (урок 2), список (урок 3) и три ссылки на острова.
-  t5: {
-    order: L3('O‘z menyuingizni yozing: h1 nom, ro‘yxat va kamida uchta havola', 'Напиши своё меню: название h1, список и хотя бы три ссылки', 'Write your menu: an h1 name, a list and at least three links'),
-    say: L3('Ko‘priklar tiklandi! Endi orollar menyusini o‘zingiz yozing: h1 da nom, ostida ro‘yxat, unda kamida uchta li, har birida orolga havola.',
-      'Мосты восстановлены! Теперь напиши своё меню островов: название h1, под ним список, а в нём хотя бы три li, в каждом ссылка на остров.',
-      'The bridges are back! Now write your own island menu: an h1 name, a list under it, with at least three li, each with a link to an island.'),
-    empty: L3('Menyuingiz shu yerda chiqadi', 'Здесь появится твоё меню', 'Your menu will appear here'),
-    hints: [
-      L3('Sahifa sarlavhadan boshlanadi, ostida ro‘yxat, ro‘yxatda havolalar.', 'Страница начинается с заголовка, под ним список, в списке ссылки.', 'The page starts with a heading, then a list, with links in the list.'),
-      L3('h1 juftidan boshlang va ichiga menyu nomini yozing.', 'Начни с пары h1 и напиши внутри название меню.', 'Start with an h1 pair and type the menu name inside.'),
-      L3('Mana boshqa menyu. O‘zingiznikini ham shunday tuzing.', 'Вот другое меню. Своё построй так же.', 'Here’s another menu. Build yours the same way.')
-    ],
-    hint2: {
-      h1: L3('h1 juftidan boshlang va ichiga menyu nomini yozing.', 'Начни с пары h1 и напиши внутри название меню.', 'Start with an h1 pair and type the menu name inside.'),
-      list: L3('Sarlavhadan keyin ul ni oching, oxirida uni yoping.', 'После заголовка открой ul, а в конце закрой.', 'After the heading, open ul, and close it at the end.'),
-      links: L3('Har bir li ichiga havola yozing: a, href da orol fayli va so‘zlar.', 'В каждый li впиши ссылку: a, в href файл острова и слова.', 'In each li, write a link: the a tag with an island file in href, and the words.'),
-      real: L3('Orollar fayllariga qarang: href da faqat bor sahifalar bo‘lsin.', 'Посмотри на файлы островов: в href — только существующие страницы.', 'Look at the island files: href should only have pages that exist.'),
-      tag: L3('Teglarni tekshiring: har bir ochilgan teg o‘z jufti bilan yopilishi kerak.', 'Проверь теги: каждый открытый тег должен закрыться своей парой.', 'Check the tags: every opened tag must close with its pair.')
+  s4: {
+    eyebrow: L3('Sarlavhani yoping', 'Закрой заголовок', 'Close the heading'),
+    say: L3('Voy, butun matn ulkan bo‘lib ketdi! h1 ochilgan, lekin yopilmagan, shuning uchun brauzer sarlavha davom etyapti deb o‘ylaydi. Bo‘sh joyga yopuvchi h1 tegini yozing.',
+      'Ой, весь текст стал огромным! h1 открыт, но не закрыт — браузер думает, что заголовок продолжается. Допиши в пустое место закрывающий тег h1.',
+      'Oops, all the text turned huge! h1 is opened but not closed, so the browser thinks the heading goes on. Type the closing h1 tag in the empty spot.'),
+    msgs: {
+      needSlash: L3('Bu ochuvchi teg. Yopuvchi tegda h1 dan oldin qiya chiziq «/» turadi.', 'Это открывающий тег. В закрывающем перед h1 стоит косая черта «/».', 'That’s the opening tag. The closing one has a slash “/” before h1.'),
+      needLt: L3('Teg chap «<» qavs bilan boshlanadi. Uni boshiga qo‘shing.', 'Тег начинается с уголка «<». Добавь его в начало.', 'A tag starts with the bracket “<”. Add it at the start.'),
+      needGt: L3('Teg oxirida o‘ng «>» qavs turadi. Uni oxiriga qo‘shing.', 'В конце тега нужен уголок «>». Добавь его в конец.', 'A tag ends with the bracket “>”. Add it at the end.'),
+      wrongName: L3('Teg ichida boshqa so‘z yozilgan. Bu yerda h1 kerak.', 'Внутри тега другое слово. Здесь нужен h1.', 'There’s a different word inside the tag. Here you need h1.'),
+      generic: L3('Qiya chiziq «/» birinchi burchakli qavsdan keyin darhol turadi.', 'Косая черта «/» стоит сразу после первого уголка.', 'The slash “/” goes right after the first bracket.')
     },
-    praise: L3('Menyuingiz tayyor! Havolalarni bosib ko‘ring: har biri o‘z oroliga olib boradi.', 'Твоё меню готово! Нажми ссылки — каждая ведёт на свой остров.', 'Your menu is ready! Tap the links: each one leads to its island.'),
-    done: L3('Menyuingiz tayyor.', 'Твоё меню уже готово.', 'Your menu is already done.'),
-    drill: L3('Menyu ostiga bosh sahifaga havola qo‘shing: index.html.', 'Добавь под меню ссылку на главную: index.html.', 'Add a link to the home page under the menu: index.html.')
+    hints: [
+      L3('Sarlavha qayerda tugashi kerak? Uning ochuvchi tegiga qarang.', 'Где должен закончиться заголовок? Посмотри на его открывающий тег.', 'Where should the heading end? Look at its opening tag.'),
+      L3('Yopuvchi teg o‘sha so‘z, faqat qiya chiziq bilan.', 'Закрывающий тег — то же слово, но с косой чертой.', 'The closing tag is the same word with a slash.'),
+      L3('Avval burchakli qavs, keyin qiya chiziq qo‘ying. Undan keyin h1 va oxirida yana burchakli qavs.', 'Сначала уголок, потом косая черта. Дальше h1 и в конце снова уголок.', 'First a bracket, then the slash. Then h1, and another bracket at the end.')
+    ],
+    ok: L3('To‘g‘ri! Sarlavha yopildi, matn yana oddiy bo‘ldi.', 'Есть! Заголовок закрыт — текст снова обычный.', 'Yes! The heading is closed, and the text is normal again.'),
+    ask: L3('Bo‘sh joyga yopuvchi h1 tegini yozing', 'Допиши закрывающий тег h1 в пустое место', 'Type the closing h1 tag in the empty spot')
   },
-
-  drill: {
-    say: L3('Chiqdi! Endi yana bir marta, yangi matn bilan.', 'Получилось! Теперь ещё раз, с новым текстом.', 'You did it! Now once more, with new text.'),
-    done: L3('Yangi matn bilan ham chiqdi. Endi bu sizning qo‘lingizda.', 'И с новым текстом получилось. Теперь это точно твоё.', 'It worked with new text too. Now it’s really yours.')
+  s5: {
+    eyebrow: L3('Qaysi sarlavha?', 'Какой заголовок?', 'Which heading?'),
+    say: L3('Butun sahifaning asosiy sarlavhasi uchun h1 kerak, bo‘lim sarlavhalari uchun esa h2. Teglarni o‘z joyiga torting, bittasi ortiqcha.',
+      'Главный заголовок страницы — это h1, заголовки разделов — h2. Перетащи теги на места, один тег лишний.',
+      'The main heading of the page is h1, and section headings are h2. Drag the tags into place; one tag is extra.'),
+    why: {
+      h1sec: L3('h1 sahifada bitta, bu asosiy sarlavha. Bo‘lim uchun h2 kerak.', 'h1 на странице один — это главный заголовок. Для раздела нужен h2.', 'A page has one h1: the main heading. A section needs h2.'),
+      h2title: L3('Bu butun sahifaning asosiy sarlavhasi, unga h1 kerak.', 'Это главный заголовок всей страницы, ему нужен h1.', 'This is the main heading of the whole page: it needs h1.'),
+      h6: L3('h6 eng kichik sarlavha. Bu yerga boshqa teg kerak.', 'h6 — самый мелкий. Здесь нужен другой тег.', 'h6 is the smallest. A different tag goes here.')
+    },
+    hints: [
+      L3('Qaysi qator butun sahifaning asosiy sarlavhasi?', 'Какая строка — главный заголовок всей страницы?', 'Which line is the main heading of the whole page?'),
+      L3('Asosiy sarlavha tepada turadi. Qolgan ikkitasi bo‘limlar.', 'Главный заголовок стоит сверху. Остальные две строки — разделы.', 'The main heading is at the top. The other two lines are sections.'),
+      L3('h1 ni tepadagi qatorga, ikkala h2 ni pastdagi qatorlarga qo‘ying.', 'h1 — на верхнюю строку, оба h2 — на две нижние.', 'Put h1 on the top line and both h2 tags on the two lines below.')
+    ],
+    ok: L3('To‘g‘ri! Asosiy sarlavha katta, bo‘limlar kichikroq: sahifani o‘qish oson.', 'Верно! Главный заголовок крупно, разделы помельче — страницу легко читать.', 'Right! The main heading is big, the sections smaller: the page is easy to read.'),
+    ask: L3('Tegni sarlavhaga torting', 'Перетащи тег на заголовок', 'Drag a tag onto a heading'),
+    askPlace: L3('Endi qatorni bosing', 'Теперь нажми строку', 'Now tap a line'),
+    pickFirst: L3('Avval tegni bosing.', 'Сначала нажми тег.', 'Tap a tag first.'),
+    lines: [L3('Mening mushugim', 'Мой кот', 'My cat'), L3('U nima yeydi', 'Что он ест', 'What he eats'), L3('U qanday o‘ynaydi', 'Как он играет', 'How he plays')]
   },
-
-  fin: {
-    eyebrow: L3('Ko‘priklar tiklandi', 'Мосты восстановлены', 'The bridges are back'),
-    say: L3('Tabriklayman! Orollar yana bog‘langan. Menyu esa sizniki.', 'Ура! Острова снова связаны. А меню — твоё.', 'Hooray! The islands are connected again. And the menu is yours.'),
-    skills: [
-      L3('Havolaga href bilan manzil beraman', 'Даю ссылке адрес атрибутом href', 'I give a link an address with href'),
-      L3('Noto‘g‘ri manzilni tuzataman', 'Исправляю неверный адрес', 'I fix a wrong address'),
-      L3('Havolani to‘liq yozaman', 'Пишу ссылку целиком', 'I write a whole link'),
-      L3('Buzilgan havolalarni tuzataman', 'Чиню сломанные ссылки', 'I fix broken links'),
-      L3('Havolali menyu yozaman', 'Пишу меню со ссылками', 'I write a menu with links')
-    ]
+  s6: {
+    eyebrow: L3('Xatboshi', 'Абзац', 'Paragraph'),
+    say: L3('Kodda uchta qator, brauzer esa ularni bitta qatorga yopishtirdi. Koddagi qator ko‘chishini brauzer ko‘rmaydi.',
+      'В коде три строки, а браузер склеил их в одну. Переносы строк в коде браузер не видит.',
+      'The code has three lines, but the browser glued them into one. The browser doesn’t see line breaks in code.'),
+    sayP: L3('Matn xatboshi bo‘lishi uchun uni p tegiga o‘raymiz. Qarang.',
+      'Чтобы текст стал абзацем, его оборачивают в тег p. Смотри.',
+      'To make text a paragraph, we wrap it in the p tag. Watch.'),
+    done: L3('Har bir p alohida xatboshi. Xatboshilar orasida brauzer o‘zi bo‘sh joy qoldiradi.',
+      'Каждый p — отдельный абзац. Между абзацами браузер сам делает отступ.',
+      'Each p is a separate paragraph. The browser adds space between paragraphs by itself.'),
+    ask: L3('Qarang: qatorlar xatboshilarga aylanadi', 'Смотри: строки становятся абзацами', 'Watch: the lines become paragraphs'),
+    lines: [L3('Mushugim kun bo‘yi uxlaydi.', 'Мой кот спит весь день.', 'My cat sleeps all day.'),
+      L3('Kechqurun u o‘ynaydi.', 'Вечером он играет.', 'In the evening he plays.'),
+      L3('Baliqni yaxshi ko‘radi.', 'Он любит рыбу.', 'He loves fish.')]
+  },
+  s7: {
+    eyebrow: L3('Xatboshi yozing', 'Напиши абзац', 'Write a paragraph'),
+    say: L3('Bu qator hali xatboshi emas: brauzer uni oldingisiga yopishtirdi. Uni p tegiga o‘rang. Matndan oldin ochuvchi tegni, keyin yopuvchi tegni yozing.',
+      'Эта строка ещё не абзац: браузер приклеил её к предыдущей. Оберни её в тег p. Перед текстом напиши открывающий тег, после текста — закрывающий.',
+      'This line isn’t a paragraph yet: the browser glued it to the one before. Wrap it in p. Type the opening tag before the text and the closing tag after it.'),
+    hints: [
+      L3('Xatboshi teg bilan boshlanib, teg bilan tugaydi.', 'Абзац начинается тегом и заканчивается тегом.', 'A paragraph starts with a tag and ends with a tag.'),
+      L3('Xatboshi tegi p. Yopuvchisida qiya chiziq bor.', 'Тег абзаца — p. В закрывающем есть косая черта.', 'The paragraph tag is p. The closing one has a slash.'),
+      L3('Birinchi joyga ochuvchi p, ikkinchisiga yopuvchi p yozing.', 'В первое место — открывающий p, во второе — закрывающий p.', 'Type the opening p in the first spot and the closing p in the second.')
+    ],
+    ok: L3('To‘g‘ri! Endi bu alohida xatboshi.', 'Верно! Теперь это отдельный абзац.', 'Right! Now it’s a separate paragraph.'),
+    ask: L3('Qatorni p tegiga o‘rang', 'Оберни строку в тег p', 'Wrap the line in the p tag'),
+    prev: L3('Mushugim kun bo‘yi uxlaydi.', 'Мой кот спит весь день.', 'My cat sleeps all day.'),
+    text: L3('Kechqurun u to‘p o‘ynaydi.', 'Вечером он играет с мячом.', 'In the evening he plays with a ball.')
+  },
+  s8: {
+    eyebrow: L3('Nechta xatboshi?', 'Сколько абзацев?', 'How many paragraphs?'),
+    say: L3('Endi brauzer kabi o‘ylang: xatboshilarni qatorlar emas, p teglari belgilaydi.', 'Теперь подумай как браузер: абзацы задают не строки, а теги p.', 'Now think like a browser: paragraphs come from p tags, not from lines.'),
+    askQ: L3('Brauzer nechta xatboshi ko‘rsatadi?', 'Сколько абзацев покажет браузер?', 'How many paragraphs will the browser show?'),
+    ok: L3('To‘g‘ri! p nechta bo‘lsa, xatboshi shuncha.', 'Верно! Сколько p — столько и абзацев.', 'Right! The number of p tags is the number of paragraphs.'),
+    miss: {
+      one: L3('Qarang: qatorlar bir nechta, lekin p bitta. Demak, xatboshi ham bitta.', 'Смотри: строк несколько, а p один. Значит, и абзац один.', 'Look: there are several lines, but only one p. So there is one paragraph.'),
+      many: L3('Qarang: p teglari bir nechta. Har bir p alohida xatboshi, ular qaysi qatorda turishi muhim emas.', 'Смотри: тегов p несколько. Каждый p — отдельный абзац, неважно, в какой он строке.', 'Look: there are several p tags. Each p is a separate paragraph, whatever line it’s on.')
+    },
+    done: L3('Tushunarli: koddagi qatorlar emas, p teglari muhim.', 'Главное понятно: важны не строки в коде, а теги p.', 'Got it: what matters is the p tags, not the lines in the code.')
+  },
+  s9: {
+    eyebrow: L3('Qalin va qiya', 'Жирный и курсив', 'Bold and italic'),
+    say: L3('Muhim so‘zni ajratish uchun yana ikkita teg bor.', 'Чтобы выделить важное слово, есть ещё два тега.', 'There are two more tags to make a word stand out.'),
+    askB: L3('Qarang: b tegi', 'Смотри: тег b', 'Watch: the b tag'),
+    b: L3('b tegi so‘zni qalin qiladi, shunda u darhol ko‘zga tashlanadi.', 'Тег b делает слово жирным, чтобы его заметили.', 'The b tag makes a word bold so people notice it.'),
+    askI: L3('Qarang: i tegi', 'Смотри: тег i', 'Watch: the i tag'),
+    i: L3('i tegi esa so‘zni qiya qiladi. Bu kursiv deyiladi.', 'А тег i наклоняет слово — это курсив.', 'And the i tag slants the word: that’s italic.'),
+    done: L3('b va i so‘z atrofiga qo‘yiladi: so‘zdan oldin ochuvchi teg, so‘zdan keyin yopuvchi teg.', 'b и i ставят вокруг слова: открывающий тег перед ним, закрывающий после.', 'b and i go around a word: the opening tag before it, the closing tag after.'),
+    ask: L3('b va i teglariga qarang', 'Смотри на теги b и i', 'Watch the b and i tags')
+  },
+  s10: {
+    eyebrow: L3('So‘zni ajrating', 'Выдели слово', 'Make a word stand out'),
+    say: L3('Bu so‘zni qalin qiling: so‘zdan oldin ochuvchi b tegini, keyin yopuvchi b tegini yozing.', 'Сделай это слово жирным: перед словом напиши открывающий тег b, после — закрывающий.', 'Make this word bold: type the opening b tag before the word and the closing one after it.'),
+    hints: [
+      L3('So‘zni qalin qiladigan teg qaysi?', 'Какой тег делает слово жирным?', 'Which tag makes a word bold?'),
+      L3('Bu b tegi. Yopuvchisida qiya chiziq bor.', 'Это тег b. В закрывающем есть косая черта.', 'It’s the b tag. The closing one has a slash.'),
+      L3('So‘zdan oldingi joyga ochuvchi b, keyingi joyga yopuvchi b yozing.', 'В место перед словом — открывающий b, после слова — закрывающий b.', 'Type the opening b before the word and the closing b after it.')
+    ],
+    ok: L3('To‘g‘ri! So‘z qalin bo‘ldi.', 'Есть! Слово стало жирным.', 'Yes! The word is bold now.'),
+    ask: L3('«{w}» so‘zini qalin qiling', 'Сделай слово «{w}» жирным', 'Make the word “{w}” bold'),
+    parts: L3(['U ', 'baliqni', ' yaxshi ko‘radi.'], ['Он любит ', 'рыбу', '.'], ['He loves ', 'fish', '.'])
+  },
+  s11: {
+    eyebrow: L3('b yoki i?', 'b или i?', 'b or i?'),
+    say: L3('Men so‘zlarni bezamoqchi edim, lekin teglarni unutib qo‘ydim. Kartochkadagidek bo‘lishi uchun qaysi teg kerak?',
+      'Я хотел выделить слова, но забыл теги. Какой тег нужен, чтобы вышло как на карточке?',
+      'I wanted to style some words, but I forgot the tags. Which tag makes it look like the card?'),
+    askQ: L3('Qaysi teg kerak: b yoki i?', 'Какой тег нужен: b или i?', 'Which tag is needed: b or i?'),
+    ok: {
+      b: L3('To‘g‘ri! b so‘zni qalin qiladi.', 'Верно! b делает слово жирным.', 'Right! b makes the word bold.'),
+      i: L3('To‘g‘ri! i so‘zni qiya qiladi.', 'Верно! i делает слово наклонным.', 'Right! i makes the word slanted.')
+    },
+    miss: {
+      b: L3('Qarang: kartochkada so‘z qalin. Qalin qiladigan teg b.', 'Смотри: на карточке слово жирное. Жирным делает тег b.', 'Look: on the card the word is bold. The b tag makes it bold.'),
+      i: L3('Qarang: kartochkada so‘z qiya. Qiya qiladigan teg i.', 'Смотри: на карточке слово наклонное. Наклоняет тег i.', 'Look: on the card the word is slanted. The i tag slants it.')
+    },
+    done: L3('Endi b va i ni adashtirmaysiz.', 'Теперь b и i не перепутать.', 'Now you won’t mix up b and i.'),
+    card: L3('Shunday bo‘lishi kerak', 'Как должно быть', 'How it should look')
+  },
+  s12: {
+    eyebrow: L3('Yuqoridan pastga', 'Сверху вниз', 'Top to bottom'),
+    say: L3('Bu odamchaning butun sahifasi. Brauzer uni qanday o‘qishini ko‘raylik.', 'Это вся страница человечка. Посмотрим, как браузер её читает.', 'This is the buddy’s whole page. Let’s see how the browser reads it.'),
+    order1: L3('Brauzer kodni yuqoridan pastga o‘qiydi. Avval h1, asosiy sarlavha.', 'Браузер читает код сверху вниз. Сначала h1 — главный заголовок.', 'The browser reads code from top to bottom. First h1, the main heading.'),
+    order2: L3('Keyin xatboshi. Uning ichida qalin so‘z va qiya so‘z bor.', 'Потом абзац, а в нём жирное слово и наклонное слово.', 'Then a paragraph with a bold word and a slanted word inside.'),
+    order3: L3('Keyin h2, bo‘lim sarlavhasi, va yana xatboshi.', 'Дальше h2 — заголовок раздела, и снова абзац.', 'Then h2, a section heading, and another paragraph.'),
+    ask: L3('Brauzer qanday o‘qishini kuzating', 'Смотри, как читает браузер', 'Watch how the browser reads'),
+    askDone: L3('Brauzer yuqoridan pastga o‘qiydi', 'Браузер читает сверху вниз', 'The browser reads top to bottom')
+  },
+  // Своя страница — два экрана (одно действие на экран): заголовок, потом абзац; засчёт по «Готово».
+  s13: {
+    eyebrow: L3('Sarlavhangiz', 'Свой заголовок', 'Your heading'),
+    say: L3('Endi o‘z sahifangizni yasang. h1 ichiga o‘zingizga yoqqan narsa haqida sarlavha yozing va «Tayyor»ni bosing.',
+      'Теперь твоя страница. Напиши в h1 заголовок о том, что тебе нравится, и нажми «Готово».',
+      'Now your own page. Type a heading in h1 about something you like, then tap “Done”.'),
+    ok: L3('Zo‘r sarlavha! U sahifadagi eng katta va asosiy sarlavha.', 'Отличный заголовок! Он самый крупный и главный на странице.', 'Great heading! It’s the biggest and the main one on the page.'),
+    hints: [
+      L3('Sarlavha o‘ylab toping: masalan, sevimli o‘yiningiz yoki hayvoningiz.', 'Придумай заголовок: например, любимая игра или животное.', 'Make up a heading: your favorite game or animal, for example.'),
+      L3('Faqat so‘z yozing, teglar allaqachon joyida.', 'Пиши только слова — теги уже на месте.', 'Type only words: the tags are already in place.'),
+      L3('Masalan: Futbol. Yozib bo‘lgach, «Tayyor»ni bosing.', 'Например: Футбол. Потом нажми «Готово».', 'For example: Football. Then tap “Done”.')
+    ],
+    ask: L3('h1 ichiga sarlavha yozing va «Tayyor»ni bosing', 'Напиши заголовок в h1 и нажми «Готово»', 'Type a heading in h1 and tap “Done”'),
+    ph: L3('Masalan: Futbol', 'Например: Футбол', 'For example: Football')
+  },
+  s13b: {
+    eyebrow: L3('Xatboshingiz', 'Свой абзац', 'Your paragraph'),
+    say: L3('Endi p ichiga sarlavhangiz haqida bitta gap yozing va «Tayyor»ni bosing.',
+      'Теперь напиши в p одно предложение о своём заголовке и нажми «Готово».',
+      'Now type one sentence about your heading in p, then tap “Done”.'),
+    ok: L3('Sahifangiz tayyor: sarlavha va xatboshi bor.', 'Твоя страница готова: есть заголовок и абзац.', 'Your page is ready: it has a heading and a paragraph.'),
+    hints: [
+      L3('Sarlavhangiz haqida nima deya olasiz?', 'Что можно сказать о твоём заголовке?', 'What can you say about your heading?'),
+      L3('Faqat so‘z yozing, teglar allaqachon joyida.', 'Пиши только слова — теги уже на месте.', 'Type only words: the tags are already in place.'),
+      L3('Masalan: Men do‘stlarim bilan futbol o‘ynayman. Keyin «Tayyor»ni bosing.', 'Например: Я играю в футбол с друзьями. Потом нажми «Готово».', 'For example: I play football with my friends. Then tap “Done”.')
+    ],
+    ask: L3('p ichiga bitta gap yozing va «Tayyor»ni bosing', 'Напиши в p одно предложение и нажми «Готово»', 'Type one sentence in p and tap “Done”'),
+    ph: L3('Masalan: Men futbol o‘ynayman.', 'Например: Я играю в футбол.', 'For example: I play football.')
+  },
+  s14: {
+    eyebrow: L3('Hammasi qalin bo‘ldi', 'Всё стало жирным', 'Everything turned bold'),
+    say: L3('Voy, sahifangizdagi hamma matn qalin bo‘lib ketdi! b ochilgan, lekin u qayerda tugashini brauzer bilmaydi. Yetishmayotgan tegni bo‘sh joyga torting.',
+      'Ой, весь текст на твоей странице стал жирным! b открыт, а где он заканчивается — браузер не знает. Перетащи недостающий тег в пустое место.',
+      'Oops, all the text on your page turned bold! b is opened, but the browser doesn’t know where it ends. Drag the missing tag into the empty spot.'),
+    why: {
+      '</i>': L3('Bu yopuvchi i tegi. Bizga b ni yopish kerak.', 'Это закрывающий i. А закрыть нужно b.', 'That’s the closing i. We need to close b.'),
+      '<b>': L3('Bu yana ochuvchi b. Yopuvchi tegda qiya chiziq bor.', 'Это ещё один открывающий b. В закрывающем есть косая черта.', 'That’s another opening b. The closing one has a slash.')
+    },
+    ok: L3('To‘g‘ri! Faqat bitta so‘z qalin qoldi.', 'Есть! Жирным осталось только одно слово.', 'Yes! Only one word is bold now.'),
+    ask: L3('Yetishmayotgan tegni bo‘sh joyga torting', 'Перетащи недостающий тег в пустое место', 'Drag the missing tag into the empty spot'),
+    opts: ['</i>', '</b>', '<b>'],
+    bword: L3('Diqqat!', 'Внимание!', 'Note!'),
+    tail: L3('Sahifam tayyor.', 'Моя страница готова.', 'My page is ready.')
+  },
+  // ИТОГОВАЯ ПРОВЕРКА (q1, q2): новый пример без образца; до первой попытки ответ не подсвечен.
+  q1: {
+    eyebrow: L3('O‘zingizni tekshiring', 'Проверь себя', 'Check yourself'),
+    say: L3('Yangi sahifa: it haqida. Teglarni o‘zingiz qo‘ying: sarlavha, gap va muhim so‘z. Bitta teg ortiqcha.',
+      'Новая страница — про собаку. Расставь теги сам: заголовок, предложение и важное слово. Один тег лишний.',
+      'A new page, about a dog. Place the tags yourself: the heading, the sentence and the key word. One tag is extra.'),
+    head: L3('Mening itim', 'Мой пёс', 'My dog'),
+    line: L3('Uning ismi Reks.', 'Его зовут Рекс.', 'His name is Rex.'),
+    pre: L3('U ', 'Он ', 'He is '),
+    word: L3('juda', 'очень', 'very'),
+    post: L3(' aqlli.', ' умный.', ' smart.'),
+    why: {
+      headH6: L3('Qarang: h6 eng kichik sarlavha. Sahifaning asosiy sarlavhasiga h1 kerak.', 'Смотри: h6 — самый мелкий заголовок. Главному заголовку страницы нужен h1.', 'Look: h6 is the smallest heading. The main heading of the page needs h1.'),
+      headP: L3('Qarang: bu oddiy xatboshi bo‘lib qoldi. Asosiy sarlavha uchun h1 kerak.', 'Смотри: получился обычный абзац. Для главного заголовка нужен h1.', 'Look: it became a plain paragraph. The main heading needs h1.'),
+      lineH1: L3('Qarang: gap ulkan sarlavhaga aylandi. Oddiy gap uchun p kerak.', 'Смотри: предложение стало огромным заголовком. Для обычного предложения нужен p.', 'Look: the sentence became a huge heading. A plain sentence needs p.'),
+      lineH6: L3('Qarang: gap sarlavhaga aylandi. Oddiy gap uchun p kerak.', 'Смотри: предложение стало заголовком. Для обычного предложения нужен p.', 'Look: the sentence became a heading. A plain sentence needs p.'),
+      allB: L3('Qarang: hammasi qalin bo‘lib qoldi. b faqat muhim so‘zga kerak.', 'Смотри: жирным стало всё. b нужен только для важного слова.', 'Look: everything turned bold. b is only for the key word.'),
+      wordBlock: L3('Qarang: bu teg so‘zni alohida qatorga chiqarib yubordi. Muhim so‘zni qalin qilish uchun b kerak.', 'Смотри: этот тег вынес слово на отдельную строку. Чтобы выделить важное слово жирным, нужен b.', 'Look: this tag moved the word onto its own line. To make the key word bold, you need b.')
+    },
+    hints: [
+      L3('Har bir qatorga qarang: u sarlavhami, oddiy gapmi yoki muhim so‘zmi?', 'Посмотри на каждую строку: это заголовок, обычное предложение или важное слово?', 'Look at each line: is it a heading, a plain sentence or a key word?'),
+      L3('Asosiy sarlavha — h1, gap — p, muhim so‘z — b. h6 ortiqcha.', 'Главный заголовок — h1, предложение — p, важное слово — b. h6 лишний.', 'Main heading: h1. Sentence: p. Key word: b. h6 is extra.'),
+      L3('Yonib turgan tegni yonib turgan joyga torting.', 'Перетащи светящийся тег на светящееся место.', 'Drag the glowing tag to the glowing place.')
+    ],
+    ok: L3('Ajoyib! Sarlavha h1 da, gap p da, muhim so‘z esa b da.', 'Отлично! Заголовок в h1, предложение в p, а важное слово — в b.', 'Great! The heading is in h1, the sentence in p, and the key word in b.'),
+    pickFirst: L3('Avval tegni tanlang.', 'Сначала выбери тег.', 'Pick a tag first.'),
+    ask: L3('Tegni joyiga torting', 'Перетащи тег на место', 'Drag a tag into place'),
+    askPlace: L3('Endi joyni bosing', 'Теперь нажми место', 'Now tap the place')
+  },
+  q2: {
+    eyebrow: L3('Nechta h1?', 'Сколько h1?', 'How many h1?'),
+    say: L3('Oxirgi savol. Odatda sahifada nechta h1 bo‘ladi?', 'Последний вопрос. Сколько h1 обычно бывает на странице?', 'Last question. How many h1 headings does a page usually have?'),
+    // Верный ответ не первый; неверные гаснут после попытки, с объяснением.
+    opts: [
+      { id: 'many', t: L3('Qancha ko‘p bo‘lsa, shuncha yaxshi', 'Чем больше, тем лучше', 'The more, the better'),
+        why: L3('Yo‘q: h1 — asosiy sarlavha. Odatda u bitta, bo‘limlar uchun esa h2 bor.', 'Нет: h1 — главный заголовок. Обычно он один, а для разделов есть h2.', 'No: h1 is the main heading. Usually there’s one, and sections use h2.') },
+      { id: 'one', right: true, t: L3('Bitta — bu asosiy sarlavha', 'Один — это главный заголовок', 'One: it’s the main heading') },
+      { id: 'none', t: L3('Hech qancha — sarlavha kerak emas', 'Ни одного — заголовки не нужны', 'None: headings aren’t needed'),
+        why: L3('Yo‘q: sarlavhasiz sahifani o‘qish qiyin. Asosiy sarlavha — h1.', 'Нет: без заголовков страницу трудно читать. Главный заголовок — h1.', 'No: a page without headings is hard to read. The main heading is h1.') }
+    ],
+    hints: [
+      L3('h1 qanday sarlavha ekanini eslang.', 'Вспомни, какой заголовок — h1.', 'Remember what kind of heading h1 is.'),
+      L3('h1 — eng katta va asosiy sarlavha. Asosiy narsa nechta bo‘ladi?', 'h1 — самый крупный и главный заголовок. Сколько бывает главного?', 'h1 is the biggest, main heading. How many main things can there be?'),
+      L3('Odatda sahifada bitta h1 bo‘ladi.', 'Обычно на странице один h1.', 'A page usually has one h1.')
+    ],
+    ok: L3('To‘g‘ri! h1 bitta — bu asosiy sarlavha. Bo‘limlar uchun h2 dan h6 gacha teglar bor.', 'Верно! h1 один — это главный заголовок. Для разделов есть теги от h2 до h6.', 'Right! There’s one h1, the main heading. Sections use h2 to h6.'),
+    ask: L3('Javobni tanlang', 'Выбери ответ', 'Pick an answer')
+  },
+  s15: {
+    eyebrow: L3('Xulosa', 'Вывод', 'Summary'),
+    say: [
+      { text: L3('Qarang, bu sizning sahifangiz!', 'Посмотри, это твоя страница!', 'Look, this is your page!'), k: null },
+      { text: L3('h1 dan h6 gacha teglar sarlavhalar. h1 eng katta, bu asosiy sarlavha.', 'Теги от h1 до h6 — заголовки. h1 самый крупный, это главный заголовок.', 'The tags from h1 to h6 are headings. h1 is the biggest: the main heading.'), k: 'h' },
+      { text: L3('p tegi xatboshi. Har bir p yangi qatordan boshlanadi.', 'Тег p — абзац. Каждый p начинается с новой строки.', 'The p tag is a paragraph. Each p starts on a new line.'), k: 'p' },
+      { text: L3('b so‘zni qalin qiladi, i esa qiya qiladi.', 'b делает слово жирным, а i — наклонным.', 'b makes a word bold, and i makes it slanted.'), k: 'bi' },
+      { text: L3('Tabriklayman! Endi sahifangiz o‘z hikoyasini aytib bera oladi.', 'Ура! Теперь твоя страница умеет рассказывать.', 'Hooray! Now your page can tell a story.'), k: null }
+    ],
+    roles: {
+      h: L3('h1–h6 — sarlavhalar', 'h1–h6 — заголовки', 'h1–h6 — headings'),
+      p: L3('p — xatboshi', 'p — абзац', 'p — paragraph'),
+      bi: L3('b — qalin, i — qiya', 'b — жирный, i — курсив', 'b — bold, i — italic')
+    },
+    ask: L3('Sahifangizga qarang', 'Посмотри на свою страницу', 'Look at your page')
   }
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ТЕГИ ВСЛУХ — SpokenTags (как в уроке 1, словарь дополнен тегами урока)
+// На экране тег пишется точно (h1, </p>), а сервис озвучки прочёл бы латиницу
+// посреди узбекской или русской фразы как попало. Перед отправкой в озвучку
+// теги и знаки разметки заменяются понятными словами.
+// ─────────────────────────────────────────────────────────────────────────────
+// Названия тегов вслух — по-английски во всех языках (заказчик, 17.10.2026:
+// «body, а не бади»): сервис читает их как английские слова. Остальные слова
+// (закрывающий тег, уголок, косая черта) — на языке урока.
+const TAG_SAY = {
+  ru: { html: 'HTML', head: 'head', title: 'title', body: 'body', doctype: 'doctype',
+    h1: 'H one', h2: 'H two', h3: 'H three', h4: 'H four', h5: 'H five', h6: 'H six',
+    p: 'P', b: 'B', i: 'I',
+    close: 'закрывающий тег', lt: 'уголок', gt: 'закрывающий уголок', slash: 'косая черта' },
+  uz: { html: 'HTML', head: 'head', title: 'title', body: 'body', doctype: 'doctype',
+    h1: 'H one', h2: 'H two', h3: 'H three', h4: 'H four', h5: 'H five', h6: 'H six',
+    p: 'P', b: 'B', i: 'I',
+    close: 'yopuvchi teg', lt: 'ochuvchi burchak', gt: 'yopuvchi burchak', slash: 'qiya chiziq' },
+  en: { html: 'H T M L', head: 'head', title: 'title', body: 'body', doctype: 'doctype',
+    h1: 'H one', h2: 'H two', h3: 'H three', h4: 'H four', h5: 'H five', h6: 'H six',
+    p: 'P', b: 'B', i: 'I',
+    close: 'closing tag', lt: 'less-than sign', gt: 'greater-than sign', slash: 'slash' }
+};
+function spokenHtml(text, lang) {
+  const m = TAG_SAY[lang] || TAG_SAY.ru;
+  const word = (t) => m[String(t).toLowerCase()] || t;
+  let s = String(text || '');
+  s = s.replace(/<!DOCTYPE\s+html>/gi, m.doctype + ' ' + m.html);
+  s = s.replace(/<\s*\/\s*([a-z][a-z0-9]*)\s*>/gi, (all, t) => ' ' + m.close + ' ' + word(t) + ' ');
+  s = s.replace(/<\s*([a-z][a-z0-9]*)\s*>/gi, (all, t) => ' ' + word(t) + ' ');
+  s = s.replace(/\b(html|HTML|head|title|body|DOCTYPE|h[1-6])\b/g, (w) => word(w));
+  // Одиночные латинские p, b, i — это имена тегов: в тексте урока других нет.
+  s = s.replace(/(^|[\s(«“"])([pbi])(?=[\s,.!?:;)»”"]|$)/g, (all, pre, t) => pre + word(t));
+  s = s.replace(/</g, ' ' + m.lt + ' ').replace(/>/g, ' ' + m.gt + ' ').replace(/\s\/\s/g, ' ' + m.slash + ' ');
+  return s.replace(/\s+/g, ' ').replace(/\s+([.,!?;:])/g, '$1').trim();
+}
+
+// Реплики героя в данных экрана — для прогрева озвучки. Собираем только
+// реплики (ключи из SPOKEN и всё под ними); подписи, цели и примеры
+// печатаются и сервису не нужны. Шаблоны с {подстановкой} не греем.
+const SPOKEN = { say: 1, cast: 1, found1: 1, found2: 1, say2: 1, other: 1, hints: 1, hints1: 1, hints2: 1,
+  done: 1, praise: 1, wrong: 1, more: 1, why: 1, err: 1, built: 1, typeSay: 1, typeMsg: 1, typeHints: 1, tell: 1,
+  ok: 1, ok1: 1, rightPred: 1, wrongPred: 1, wrapSay: 1, wrapped: 1, fixed: 1, addSay: 1, added: 1, empty: 1,
+  noTags: 1, quizSay: 1, quizWrong: 1, found: 1, fixWrong: 1, onLevel: 1, onText: 1, onAdd: 1, onReset: 1,
+  onBefore: 1, almost: 1, saved: 1, pickFirst: 1, wrongSpot: 1, steps: 1, tasks: 1, okLv: 1 };
+const NOT_SPOKEN_IN = { steps: { icon: 1, text: 1 }, cast: { pose: 1, step: 1 }, tasks: { ask: 1 } };
+function heroLines(node, lang, out, on, parent) {
+  const acc = out || [];
+  if (!node || typeof node !== 'object') return acc;
+  if (Array.isArray(node)) { node.forEach((x) => heroLines(x, lang, acc, on, parent)); return acc; }
+  if (node.uz !== undefined || node.ru !== undefined) {
+    if (!on) return acc;
+    const s = node[lang] !== undefined ? node[lang] : node.ru;
+    if (typeof s === 'string' && s.indexOf('{') < 0) acc.push(s);
+    return acc;
+  }
+  Object.keys(node).forEach((k) => {
+    const skip = parent && NOT_SPOKEN_IN[parent] && NOT_SPOKEN_IN[parent][k];
+    if (skip) return;
+    heroLines(node[k], lang, acc, on || !!SPOKEN[k], SPOKEN[k] ? k : parent);
+  });
+  return acc;
+}
+
+function SpokenTags({ children }) {
+  const audio = useAudio();
+  const lang = useLang();
+  const value = useMemo(() => (audio ? Object.assign({}, audio, {
+    speak: (text, gender, onStart, fon) => audio.speak(spokenHtml(text, lang), gender, onStart, fon)
+  }) : audio), [audio, lang]);
+  return <AudioProvider value={value}>{children}</AudioProvider>;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ЦВЕТА ТЕГОВ. Теги урока 1 — те же, что были (графит, фиолетовый, ягодный,
+// стальной голубой). Новые: заголовки h1–h6 — один индиго на все уровни
+// (уровень читается цифрой и размером, а не цветом), абзац p — морская
+// волна, выделение b и i — пурпур. Все тона одной светлоты (OKLCH L≈0.5),
+// контраст на белом — от 5:1. Оранжевый — интерфейс, жёлтый — подсказка,
+// зелёный — «верно»: ни один тег ими не окрашен.
+// ─────────────────────────────────────────────────────────────────────────────
+const TAGC = { html: '#586A83', head: '#6F57AB', title: '#9F4471', body: '#1171A0',
+  h: '#4F46C8', p: '#227882', em: '#97368A' };
+const isHead = (t) => /^h[1-6]$/.test(String(t || ''));
+const tagColor = (t) => (isHead(t) ? TAGC.h : (t === 'b' || t === 'i') ? TAGC.em : (TAGC[t] || T.ink2));
+const lvlOf = (t) => (isHead(t) ? Number(String(t).slice(1)) : 0);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// МОДЕЛЬ СТРАНИЦЫ. Страница — список блоков внутри body:
+//   { id, tag: 'h1'…'h6' | 'p' | null, parts: [{ k: 't' | 'b' | 'i', v }] }
+// tag null — голый текст прямо в body (так выглядит «стена текста»).
+// parts — текст блока; b и i выделяют свои куски.
+// ─────────────────────────────────────────────────────────────────────────────
+const txt = (v) => ({ k: 't', v: String(v == null ? '' : v) });
+const blk = (id, tag, parts) => ({ id, tag, parts: typeof parts === 'string' ? [txt(parts)] : parts });
+const plain = (b) => b.parts.map((x) => x.v).join('');
+
+// Предложения блока: границы — после . ! ? и перед пробелом.
+const sentencesOf = (s) => (String(s || '').match(/[^.!?…]+(?:[.!?…]+|$)/g) || []).map((x) => x.trim()).filter(Boolean);
+
+// Готовая разметка — для артефакта и экрана «Моя страница».
+const escHtml = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const inlineHtml = (parts) => parts.map((x) => (x.k === 'b' || x.k === 'i'
+  ? '<' + x.k + '>' + escHtml(x.v) + '</' + x.k + '>' : escHtml(x.v))).join('');
+const buildHtml = (title, blocks) => [
+  '<!DOCTYPE html>', '<html>', '  <head>', '    <title>' + escHtml(title) + '</title>', '  </head>', '  <body>'
+].concat(blocks.map((b) => '    ' + (b.tag ? '<' + b.tag + '>' + inlineHtml(b.parts) + '</' + b.tag + '>' : inlineHtml(b.parts))))
+  .concat(['  </body>', '</html>']).join('\n');
+
+// Осмысленный текст: хотя бы две буквы и без разметки.
+const hasLetters = (s) => (String(s || '').match(/[A-Za-zА-Яа-яЁёЎўҚқҒғҲҳʻʼ‘’]/g) || []).length >= 2;
+const hasTags = (s) => /[<>]/.test(String(s || ''));
+const normTag = (s) => String(s || '').replace(/\s+/g, '').toLowerCase();
+
+const reduceMotion = () => typeof window !== 'undefined' && !!window.matchMedia
+  && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// СЛОВА И ВЫДЕЛЕНИЕ. Предложение режется на слова, пробелы и знаки; выделение
+// b или i — диапазон слов [a, b] (индексы токенов). Точка, запятая и кавычки
+// в выделение не попадают сами — ученик выбирает слова.
+// ─────────────────────────────────────────────────────────────────────────────
+const PUNCT = /^[.,!?;«»"“”()…]$/;
+const toTokens = (s) => (String(s || '').match(/[^\s.,!?;«»"“”()…]+|\s+|[.,!?;«»"“”()…]/g) || [])
+  .map((v) => ({ v, w: !/^\s+$/.test(v) && !PUNCT.test(v) }));
+const fragOf = (toks, a, b) => toks.slice(a, b + 1).map((t) => t.v).join('');
+function findRange(toks, frag) {
+  const f = String(frag || '').trim();
+  for (let a = 0; a < toks.length; a += 1) {
+    if (!toks[a].w) continue;
+    for (let b = a; b < toks.length; b += 1) {
+      if (!toks[b].w) continue;
+      const s = fragOf(toks, a, b);
+      if (s === f) return [a, b];
+      if (s.length > f.length) break;
+    }
+  }
+  return null;
+}
+// Текст + отметки → parts блока.
+function partsFrom(toks, marks) {
+  const out = [];
+  toks.forEach((t, i) => {
+    const m = (marks || []).find((x) => i >= x.a && i <= x.b);
+    const k = m ? m.tag : 't';
+    const id = m ? 'm' + m.a : 't';
+    const last = out[out.length - 1];
+    if (last && last.k === k && last._id === id) last.v += t.v;
+    else out.push({ k, v: t.v, _id: id });
+  });
+  return out.map((x) => ({ k: x.k, v: x.v }));
+}
+// Выбор диапазона касаниями: первое слово → последнее; ещё касание — заново.
+function useWordSel() {
+  const [sel, setSel] = useState(null);
+  const tap = useCallback((i) => {
+    setSel((s) => {
+      if (!s) return { a: i, b: i };
+      if (s.a === s.b) {
+        if (s.a === i) return null;
+        return { a: Math.min(s.a, i), b: Math.max(s.a, i) };
+      }
+      return { a: i, b: i };
+    });
+  }, []);
+  return [sel, tap, setSel];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ТЕГ, ТОКЕН И КОД
+// ─────────────────────────────────────────────────────────────────────────────
+function Tag({ tag, close, doctype, big }) {
+  if (doctype) return <span className="tk-doc">{'<!DOCTYPE html>'}</span>;
+  return (
+    <span className={'tk-tag' + (big ? ' is-big' : '')} style={{ '--c': tagColor(tag) }}>
+      <span className="tk-br">{'<'}</span>
+      {close ? <span className="tk-sl">/</span> : null}
+      <span className="tk-nm">{tag}</span>
+      <span className="tk-br">{'>'}</span>
+    </span>
+  );
+}
+
+// Один токен строки кода. zone(z, t) → { tap, cls, disabled, led, style }.
+function Tok({ t, zone, onZone, regZone }) {
+  const st = zone && t.z ? zone(t.z, t) : null;
+  let inner;
+  if (t.k === 'node') inner = t.node;
+  else if (t.k === 'text') inner = <span className={'tk-tx' + (t.dim ? ' is-dim' : '')}>{t.v === '' ? ' ' : t.v}</span>;
+  else if (t.k === 'doctype') inner = <Tag doctype />;
+  else inner = <Tag tag={t.tag} close={t.k === 'close'} />;
+  const ref = regZone && t.z ? (el) => regZone(t.z, el) : undefined;
+  if (st && st.tap) {
+    return (
+      <button type="button" ref={ref} className={'tk tk-btn' + (st.cls ? ' ' + st.cls : '')} style={st.style}
+        disabled={!!st.disabled} onClick={(e) => { if (onZone) onZone(t.z, e.currentTarget, t); }}>
+        {inner}
+        <Led on={!!st.led} />
+      </button>
+    );
+  }
+  return <span ref={ref} className={'tk' + (st && st.cls ? ' ' + st.cls : '')} style={st ? st.style : undefined}>{inner}</span>;
+}
+
+// Строки документа. frame: 'full' — весь документ, 'hb' — head и body без
+// DOCTYPE и html (экономит три строки на телефоне), 'body' — только body,
+// 'none' — одни блоки. collapse(b) — свернуть текст блока до «…».
+function srcLines(blocks, opts) {
+  const o = opts || {};
+  const frame = o.frame || 'body';
+  const L = [];
+  const full = frame === 'full';
+  const base = full ? 2 : (frame === 'body' || frame === 'hb') ? 1 : 0;
+  if (full) {
+    L.push({ key: 'doctype', d: 0, toks: [{ k: 'doctype', z: 'doctype' }] });
+    L.push({ key: 'html-o', d: 0, toks: [{ k: 'open', tag: 'html', z: 'html:o' }] });
+  }
+  if (full || frame === 'hb') {
+    const h = full ? 1 : 0;
+    L.push({ key: 'head-o', d: h, toks: [{ k: 'open', tag: 'head', z: 'head:o' }] });
+    L.push({ key: 'title', d: h + 1, tag: 'title', toks: [{ k: 'open', tag: 'title', z: 'title:o' },
+      { k: 'text', v: o.title || '', z: 'title:t', slot: 'title' }, { k: 'close', tag: 'title', z: 'title:c' }] });
+    L.push({ key: 'head-c', d: h, toks: [{ k: 'close', tag: 'head', z: 'head:c' }] });
+  }
+  if (frame !== 'none') L.push({ key: 'body-o', d: base - 1, toks: [{ k: 'open', tag: 'body', z: 'body:o' }] });
+  blocks.forEach((b) => {
+    const toks = [];
+    if (b.tag) toks.push({ k: 'open', tag: b.tag, z: b.id + ':o' });
+    if (o.collapse && o.collapse(b)) toks.push({ k: 'text', v: '…', z: b.id + ':0', dim: true });
+    else {
+      b.parts.forEach((x, j) => {
+        if (x.k === 'b' || x.k === 'i') {
+          toks.push({ k: 'open', tag: x.k, z: b.id + ':' + j + ':o' });
+          toks.push({ k: 'text', v: x.v, z: b.id + ':' + j });
+          toks.push({ k: 'close', tag: x.k, z: b.id + ':' + j + ':c' });
+        } else toks.push({ k: 'text', v: x.v, z: b.id + ':' + j });
+      });
+    }
+    if (b.tag) toks.push({ k: 'close', tag: b.tag, z: b.id + ':c' });
+    L.push({ key: 'b-' + b.id, id: b.id, d: base, tag: b.tag, toks });
+  });
+  if (frame !== 'none') L.push({ key: 'body-c', d: base - 1, toks: [{ k: 'close', tag: 'body', z: 'body:c' }] });
+  if (full) L.push({ key: 'html-c', d: 0, toks: [{ k: 'close', tag: 'html', z: 'html:c' }] });
+  return L;
+}
+
+// Вид кода. Строка с длинным текстом переносится с висячим отступом —
+// абзац читается целиком и на узком телефоне.
+function Src({ lines, zone, onZone, regZone, lineProps, className, numbers = true }) {
+  return (
+    <div className={'src' + (className ? ' ' + className : '')} translate="no">
+      {lines.map((ln, i) => {
+        const ex = lineProps ? (lineProps(ln, i) || {}) : {};
+        const body = (
+          <>
+            {numbers ? <span className="src-n mono" aria-hidden="true">{i + 1}</span> : null}
+            <span className="src-code">
+              {ex.content || ln.toks.map((t, j) => <Tok key={j} t={t} zone={zone} onZone={onZone} regZone={regZone} />)}
+            </span>
+            {ex.after || null}
+          </>
+        );
+        const cls = 'src-line' + (ln.id ? ' is-block' : '') + (ex.cls ? ' ' + ex.cls : '');
+        const style = { '--d': ln.d, '--c': ln.tag ? tagColor(ln.tag) : 'transparent' };
+        if (ex.onTap) {
+          return (
+            <button type="button" key={ln.key} className={cls + ' src-tap'} style={style} disabled={!!ex.disabled}
+              ref={ex.reg} onClick={(e) => ex.onTap(e.currentTarget)}>
+              {body}
+              <Led on={!!ex.led} />
+            </button>
+          );
+        }
+        return <div key={ln.key} ref={ex.reg} className={cls} style={style}>{body}</div>;
+      })}
+    </div>
+  );
+}
+
+// Текст, который «печатается» по буквам. При «меньше движения» — сразу целиком.
+function TypeText({ text, speed = 42 }) {
+  const s = String(text || '');
+  const [n, setN] = useState(() => (reduceMotion() ? s.length : 0));
+  useEffect(() => {
+    if (reduceMotion()) { setN(s.length); return undefined; }
+    setN(0);
+    let i = 0;
+    const id = setInterval(() => { i += 1; setN(i); if (i >= s.length) clearInterval(id); }, speed);
+    return () => clearInterval(id);
+  }, [s, speed]);
+  return <>{s.slice(0, n)}{n < s.length ? <span className="tt-caret" aria-hidden="true" /> : null}</>;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// СТРАНИЦА В БРАУЗЕРЕ — HTML без CSS, как его рисует браузер по умолчанию.
+// flash { id, n } — блок, который только что изменился; hl — подсвеченные id;
+// fresh — блоки, которые только что появились (въезжают).
+// ─────────────────────────────────────────────────────────────────────────────
+const inlineParts = (parts) => parts.map((x, i) => (x.k === 'b' ? <b key={i}>{x.v}</b>
+  : x.k === 'i' ? <i key={i}>{x.v}</i> : <React.Fragment key={i}>{x.v}</React.Fragment>));
+
+function Page({ blocks, flash, hl, fresh, regBlock, renderBlock }) {
+  return (
+    <div className="pg">
+      {blocks.map((b) => {
+        const f = flash && flash.id === b.id;
+        const cls = 'pg-b ' + (b.tag ? 'pg-' + b.tag : 'pg-raw') + (f ? ' is-flash' : '')
+          + (hl && hl.indexOf(b.id) >= 0 ? ' is-hl' : '') + (fresh && fresh.indexOf(b.id) >= 0 ? ' is-new' : '');
+        return (
+          <div key={b.id + (f ? ':' + flash.n : '')} ref={regBlock ? (el) => regBlock(b.id, el) : undefined}
+            className={cls} style={{ '--c': b.tag ? tagColor(b.tag) : T.ink3 }}>
+            {renderBlock ? renderBlock(b) : inlineParts(b.parts)}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// МИНИ-БРАУЗЕР (как в уроке 1): вкладка и страница. hl: 'title' — вкладка,
+// 'body' — страница, 'both' — обе (когда важно показать, что меняется не то).
+function MiniBrowser({ title, page, hl, tabRef, pageRef, flashTab, flashPage, pins, compact, typed, cls }) {
+  const pick = usePick();
+  const t = title != null && String(title).trim() !== '' ? String(title) : '';
+  const hlc = hl === 'both' ? ' mb-hl-title mb-hl-body' : hl ? ' mb-hl-' + hl : '';
+  return (
+    <div className={'mb' + hlc + (compact ? ' mb-compact' : '') + (cls ? ' ' + cls : '')}>
+      <div className="mb-top">
+        <span ref={tabRef} key={'tab' + (flashTab || 0)} className={'mb-tab' + (flashTab ? ' is-flash' : '')}>
+          <span className="mb-fav" aria-hidden="true" />
+          <span className={'mb-tab-t' + (t ? '' : ' is-file')}>{t ? (typed ? <TypeText text={t} /> : t) : 'index.html'}</span>
+          <span className="mb-x" aria-hidden="true" />
+          {pins && pins.tab ? <span className="mb-pin mb-pin-tab">{pick(pins.tab)}</span> : null}
+        </span>
+        {/* Окно как Chrome в Windows: «+» новой вкладки и кнопки окна справа. */}
+        <span className="mb-new" aria-hidden="true" />
+        <span className="mb-win" aria-hidden="true"><i className="mb-w-min" /><i className="mb-w-max" /><i className="mb-w-x" /></span>
+      </div>
+      <div ref={pageRef} key={'pg' + (flashPage || 0)} className={'mb-page' + (flashPage ? ' is-flash' : '')}>
+        <div className="mb-doc">{page}</div>
+        {pins && pins.page ? <span className="mb-pin mb-pin-page">{pick(pins.page)}</span> : null}
+      </div>
+    </div>
+  );
+}
+
+// ПРОВОД — линия от места в коде к тому, что оно меняет в браузере.
+function Wire({ wrapRef, from, to, color, on, nonce }) {
+  const [g, setG] = useState(null);
+  useLayoutEffect(() => {
+    if (!on) { setG(null); return undefined; }
+    let dead = false;
+    const calc = () => {
+      if (dead) return;
+      const w = wrapRef.current, a = from(), b = to();
+      if (!w || !a || !b) { setG(null); return; }
+      const W = w.getBoundingClientRect(), A = a.getBoundingClientRect(), B = b.getBoundingClientRect();
+      if (!A.width || !B.width) { setG(null); return; }
+      const ax = A.left + A.width / 2 - W.left, ay = A.top + A.height / 2 - W.top;
+      const bx = B.left + B.width / 2 - W.left, by = B.top + B.height / 2 - W.top;
+      const horiz = Math.abs(bx - ax) > Math.abs(by - ay) * 1.2;
+      let p1, p2, c1, c2;
+      if (horiz) {
+        p1 = [ax < bx ? A.right - W.left : A.left - W.left, ay];
+        p2 = [ax < bx ? B.left - W.left : B.right - W.left, by];
+        const mx = (p1[0] + p2[0]) / 2;
+        c1 = [mx, p1[1]]; c2 = [mx, p2[1]];
+      } else {
+        p1 = [ax, ay > by ? A.top - W.top : A.bottom - W.top];
+        p2 = [bx, ay > by ? B.bottom - W.top : B.top - W.top];
+        const my = (p1[1] + p2[1]) / 2;
+        c1 = [p1[0], my]; c2 = [p2[0], my];
+      }
+      const r = (n) => Math.round(n * 10) / 10;
+      setG({ d: `M${r(p1[0])} ${r(p1[1])} C${r(c1[0])} ${r(c1[1])} ${r(c2[0])} ${r(c2[1])} ${r(p2[0])} ${r(p2[1])}`,
+        s: p1, e: p2, w: W.width, h: W.height });
+    };
+    calc();
+    const timers = [80, 300, 700].map((ms) => setTimeout(calc, ms));
+    let ro = null;
+    if (typeof ResizeObserver !== 'undefined' && wrapRef.current) { ro = new ResizeObserver(calc); ro.observe(wrapRef.current); }
+    window.addEventListener('resize', calc);
+    return () => { dead = true; timers.forEach(clearTimeout); if (ro) ro.disconnect(); window.removeEventListener('resize', calc); };
+  }, [on, nonce]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!g) return null;
+  return (
+    <svg className="wire" width={g.w} height={g.h} viewBox={`0 0 ${g.w} ${g.h}`} aria-hidden="true" style={{ '--c': color }}>
+      <path key={'p' + nonce} className="wire-path" d={g.d} pathLength="100" />
+      <circle key={'s' + nonce} className="wire-dot" cx={g.s[0]} cy={g.s[1]} r="4" />
+      <circle key={'e' + nonce} className="wire-dot wire-end" cx={g.e[0]} cy={g.e[1]} r="5.5" />
+    </svg>
+  );
+}
+
+// РУКА-ПОДСКАЗКА: новая механика сначала показывается движением.
+function DemoHand({ wrapRef, targets, run }) {
+  const audio = useAudio();
+  const pausedRef = useRef(false);
+  pausedRef.current = !!(audio && audio.paused);
+  const [pos, setPos] = useState(null);
+  const [tap, setTap] = useState(false);
+  useEffect(() => {
+    if (!run) { setPos(null); return undefined; }
+    let dead = false;
+    let i = 0;
+    const place = () => {
+      const w = wrapRef.current;
+      const el = targets[i % targets.length] && targets[i % targets.length]();
+      if (!w || !el) return;
+      const W = w.getBoundingClientRect(), R = el.getBoundingClientRect();
+      setPos({ x: R.left + R.width / 2 - W.left, y: R.top + R.height / 2 - W.top });
+    };
+    const tapT = [];
+    const pressLater = () => { tapT.push(setTimeout(() => { if (!dead) setTap(true); }, 560)); };
+    const first = setTimeout(() => { if (!dead) { place(); pressLater(); } }, 400);
+    const id = setInterval(() => {
+      if (dead || pausedRef.current) return;
+      i += 1;
+      if (i >= targets.length * 2) { clearInterval(id); setPos(null); return; }
+      setTap(false);
+      place();
+      pressLater();
+    }, 1500);
+    return () => { dead = true; clearTimeout(first); tapT.forEach(clearTimeout); clearInterval(id); };
+  }, [run]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!pos || !run) return null;
+  return (
+    <span className={'demo-hand' + (tap ? ' is-tap' : '')} style={{ transform: `translate(${pos.x}px, ${pos.y}px)` }} aria-hidden="true">
+      <span className="dh-ring" />
+      <svg viewBox="0 0 40 48" width="34" height="41">
+        <path d="M14 6a4 4 0 0 1 8 0v15a4 4 0 0 1 7 1 4 4 0 0 1 7 2v10c0 7-5 12-13 12h-3c-5 0-8-2-11-6l-6-9a3.6 3.6 0 0 1 5.6-4.4L14 30z"
+          fill="#fff" stroke={T.ink} strokeWidth="2.4" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+}
+
+// ЛЕСЕНКА В МЕХАНИКАХ УРОКА: направление → сужение → почти ответ.
+function useLadder(init) {
+  const ref = useRef(init || 0);
+  const [level, setLevel] = useState(init || 0);
+  const bump = useCallback(() => { ref.current = Math.min(3, ref.current + 1); setLevel(ref.current); return ref.current; }, []);
+  const reset = useCallback(() => { ref.current = 0; setLevel(0); }, []);
+  return { level, bump, reset, ref };
+}
+function LadderNote({ level, text, cls }) {
+  const pick = usePick();
+  if (!level || !text) return null;
+  return (
+    <div className={'note note-hint note-one' + (cls ? ' ' + cls : '')} key={level + ':' + pick(text)} aria-live="polite">
+      <span className="note-lbl">
+        <Icon name="bulb" size={13} />
+        {pick(HINT_LABEL[level - 1])}
+        <span className="note-step mono">{level}/3</span>
+      </span>
+      <div className="note-body">{pick(text)}</div>
+    </div>
+  );
+}
+
+// Переключатель из двух-трёх положений: «Код / Результат», «Было / Стало».
+function SegToggle({ value, options, onChange, label }) {
+  const pick = usePick();
+  const audio = useAudio();
+  return (
+    <div className="seg2" role="radiogroup" aria-label={label ? pick(label) : undefined}>
+      {options.map((o) => (
+        <button key={o.v} type="button" role="radio" aria-checked={value === o.v}
+          className={'seg2-b' + (value === o.v ? ' is-on' : '')}
+          onClick={() => { sfx('tap', audio && audio.on); onChange(o.v); }}>
+          {pick(o.label)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Поле прямо в строке кода. Кегль 16 px — иначе iOS увеличивает страницу.
+// Ширина поля — по тексту (или подсказке-примеру), высота — по переносам.
+// Ширину меряем холстом тем же шрифтом, что у поля; дальше её ограничивает
+// строка (max-width: 100%, flex-shrink), и тогда текст переносится.
+let _growCtx = null;
+function fitGrow(el) {
+  if (!el) return;
+  const cs = getComputedStyle(el);
+  if (!_growCtx) _growCtx = document.createElement('canvas').getContext('2d');
+  if (_growCtx) {
+    _growCtx.font = cs.font || (cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily);
+    const txt = el.value || el.placeholder || '';
+    const w = Math.ceil(_growCtx.measureText(txt).width) + parseFloat(cs.paddingLeft || 0) + parseFloat(cs.paddingRight || 0) + 8;
+    el.style.width = w + 'px';
+  }
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+function InlineInput({ value, onChange, placeholder, label, max = 40, inputRef, onEnter, cls, onFocus }) {
+  // РАСТЁТ ПО ТЕКСТУ (заказчик, 17.10.2026): сначала в ширину — поле ровно по
+  // тексту и расширяется по мере набора; упёрлось в край строки — текст
+  // переносится внутри поля, и тогда оно растёт в высоту. Видно всё написанное.
+  // Поле — textarea; Enter строку не переносит, а работает, как раньше.
+  const pick = usePick();
+  const ref = useRef(null);
+  const setRef = (el) => { ref.current = el; if (inputRef) inputRef.current = el; };
+  const fit = () => fitGrow(ref.current);
+  useLayoutEffect(fit, [value]);
+  useEffect(() => {
+    const host = ref.current && ref.current.parentElement;
+    if (typeof ResizeObserver === 'undefined' || !host) {
+      window.addEventListener('resize', fit);
+      return () => window.removeEventListener('resize', fit);
+    }
+    const ro = new ResizeObserver(() => fit());
+    ro.observe(host);
+    return () => ro.disconnect();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <textarea ref={setRef} rows={1} className={'tk-input tk-grow' + (cls ? ' ' + cls : '')} value={value} maxLength={max}
+      placeholder={placeholder ? pick(placeholder) : ''} aria-label={label ? pick(label) : undefined}
+      autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} enterKeyHint="done"
+      onFocus={onFocus} onChange={(e) => onChange(e.target.value.replace(/\r?\n/g, ' '))}
+      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (onEnter) onEnter(); else e.currentTarget.blur(); } }} />
+  );
+}
+
+// Рабочая область «браузер + код»: в колонку на телефоне, в ряд на компьютере.
+// view ('code' | 'result') на телефоне оставляет одну половину — переключает
+// SegToggle над ней; на компьютере видны обе.
+const Work = React.forwardRef(function Work({ browser, code, wire, extra, cls, view }, ref) {
+  return (
+    <div className={'work' + (view ? ' work-v work-v-' + view : '') + (cls ? ' ' + cls : '')} ref={ref}>
+      {browser ? <div className="work-b">{browser}</div> : null}
+      <div className="work-c">{code}</div>
+      {wire || null}
+      {extra || null}
+    </div>
+  );
+});
+
+// Хранилище экрана: прочитать при монтировании, записать и в стор, и в состояние.
+function useRec(id) {
+  const store = useStore();
+  const [rec, setRec] = useState(() => store.get(id) || null);
+  const put = useCallback((v) => { store.set(id, v); setRec(v); }, [id, store]);
+  return [rec, put, store];
+}
+
+// Ровно один раз за жизнь экрана: защёлка для реплик «впервые».
+function useOnce() {
+  const seen = useRef({});
+  return useCallback((k) => { if (seen.current[k]) return false; seen.current[k] = true; return true; }, []);
+}
+
+// Тряска элемента после неверного ответа.
+function useShake() {
+  const [shake, setShake] = useState(null);
+  const alive = useRef(true);
+  useEffect(() => () => { alive.current = false; }, []);
+  const wobble = useCallback((k) => { setShake(k); setTimeout(() => { if (alive.current) setShake(null); }, 420); }, []);
+  return [shake, wobble, alive];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ПРОВЕРКА СТРУКТУРЫ — список правил; ошибка называется правилом, а не
+// «сломанной страницей».
+// ─────────────────────────────────────────────────────────────────────────────
+function Inspector({ rules }) {
+  const pick = usePick();
+  const firstOpen = rules.findIndex((r) => !r.ok);
+  return (
+    <div className={'insp' + (firstOpen < 0 ? ' insp-all' : '')} aria-live="polite">
+      <span className="insp-h"><Icon name="listN" size={14} />{pick(UI.inspector)}</span>
+      {rules.map((r, i) => (
+        <span key={r.id} className={'insp-r' + (r.ok ? ' is-ok' : '') + (i === firstOpen ? ' is-now' : '')}>
+          <span className="insp-ic">{r.ok ? <Icon name="check" size={13} /> : null}</span>
+          {pick(r.text)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// НАБОР ТЕГА С КЛАВИШАМИ. Поле в строке кода + кнопки символов для телефона.
+// check() сравнивает с want и называет, чего не хватает.
+// ─────────────────────────────────────────────────────────────────────────────
+function useTagTyping({ max = 16 } = {}) {
+  const [val, setVal] = useState('');
+  const inputRef = useRef(null);
+  const insert = (ch) => {
+    const el = inputRef.current;
+    const a = el && typeof el.selectionStart === 'number' ? el.selectionStart : val.length;
+    const b = el && typeof el.selectionEnd === 'number' ? el.selectionEnd : val.length;
+    const nv = (val.slice(0, a) + ch + val.slice(b)).slice(0, max);
+    setVal(nv);
+    sfx('type', true);
+    requestAnimationFrame(() => { if (el) { el.focus(); const pos = Math.min(nv.length, a + ch.length); el.setSelectionRange(pos, pos); } });
+  };
+  const backspace = () => {
+    const el = inputRef.current;
+    const a = el && typeof el.selectionStart === 'number' ? el.selectionStart : val.length;
+    const b = el && typeof el.selectionEnd === 'number' ? el.selectionEnd : val.length;
+    const cut = a === b ? Math.max(0, a - 1) : a;
+    const nv = val.slice(0, cut) + val.slice(b);
+    setVal(nv);
+    sfx('tap', true);
+    requestAnimationFrame(() => { if (el) { el.focus(); el.setSelectionRange(cut, cut); } });
+  };
+  const prefill = (s) => {
+    setVal(s);
+    requestAnimationFrame(() => { const el = inputRef.current; if (el) { el.focus(); el.setSelectionRange(s.length, s.length); } });
+  };
+  return { val, setVal: (v) => setVal(String(v).slice(0, max)), inputRef, insert, backspace, prefill };
+}
+// Что не так с набранным закрывающим тегом. null — всё верно.
+function tagTypingIssue(typed, tag, msgs) {
+  const n = normTag(typed);
+  if (n === '</' + tag + '>') return null;
+  if (n === '<' + tag + '>') return msgs.needSlash;
+  if (n.charAt(0) !== '<') return msgs.needLt;
+  if (n.charAt(n.length - 1) !== '>') return msgs.needGt;
+  if (n.indexOf('</') === 0) return fillL(msgs.wrongName, { tag });
+  return msgs.generic;
+}
+function KeyRow({ keys, ty, canTap, onCheck, ready, label }) {
+  const pick = usePick();
+  return (
+    <div className="keys" translate="no">
+      {keys.map((k) => (
+        <button key={k} type="button" className="key-b mono" disabled={!canTap} onClick={() => ty.insert(k)}>{k}</button>
+      ))}
+      <button type="button" className="key-b" disabled={!canTap || !ty.val} onClick={ty.backspace}
+        aria-label={pick(UI.erase)}><Icon name="undo" size={17} /></button>
+      <button type="button" className={'key-b key-go' + (ready ? ' is-ready' : '')} disabled={!canTap}
+        onClick={onCheck}>{pick(label || UI.check)}</button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// СТРОКА СЛОВ — абзац в коде, где каждое слово можно нажать. Показывает
+// выбранный диапазон и уже поставленные теги b/i прямо в коде.
+// ─────────────────────────────────────────────────────────────────────────────
+function WordLine({ toks, marks, sel, onWord, canTap, led, hlRange, refFirst }) {
+  const markAt = (i) => (marks || []).find((m) => i >= m.a && i <= m.b);
+  return (
+    <span className="wl">
+      {toks.map((t, i) => {
+        const m = markAt(i);
+        const open = m && m.a === i ? <Tag tag={m.tag} /> : null;
+        const close = m && m.b === i ? <Tag tag={m.tag} close /> : null;
+        const inSel = sel && i >= sel.a && i <= sel.b;
+        const inHl = hlRange && i >= hlRange[0] && i <= hlRange[1];
+        const cls = (inSel ? ' is-sel' : '') + (m ? ' is-mark is-' + m.tag : '') + (inHl ? ' is-hlr' : '')
+          + (sel && i === sel.a ? ' is-a' : '') + (sel && i === sel.b ? ' is-b' : '');
+        if (!t.w) return <React.Fragment key={i}>{open}<span className={'wl-sp' + cls}>{t.v}</span>{close}</React.Fragment>;
+        return (
+          <React.Fragment key={i}>
+            {open}
+            <button type="button" ref={refFirst && refFirst.at === i ? refFirst.set : undefined}
+              className={'wl-w' + cls + (led ? ' is-led' : '')} disabled={!canTap} onClick={() => onWord(i)}>{t.v}</button>
+            {close}
+          </React.Fragment>
+        );
+      })}
+    </span>
+  );
+}
+
+// Кнопки уровня заголовка h1…h6.
+function LevelRow({ levels, value, onPick, canTap, seen, led, refFor }) {
+  return (
+    <div className="lvl-row" translate="no">
+      {levels.map((n) => (
+        <button key={n} type="button" ref={refFor ? (el) => refFor(n, el) : undefined}
+          className={'lvl-b' + (value === n ? ' is-on' : '') + (seen && seen.indexOf(n) >= 0 ? ' is-seen' : '') + (led ? ' is-led' : '')}
+          disabled={!canTap} onClick={() => onPick(n)} aria-pressed={value === n}>
+          <span className="mono">h{n}</span>
+          {seen && seen.indexOf(n) >= 0 ? <Icon name="check" size={11} /> : null}
+          <Led on={!!led && !(seen && seen.indexOf(n) >= 0)} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Карточка цели с номером раунда.
+function GoalCard({ goal, n, total, done, doneText }) {
+  const pick = usePick();
+  if (done) {
+    return (
+      <div className="goal is-done">
+        <span className="goal-ic"><Icon name="check" size={18} /></span>
+        <span className="goal-t"><b>{pick(doneText)}</b></span>
+      </div>
+    );
+  }
+  return (
+    <div className="goal" key={pick(goal)}>
+      <span className="goal-ic"><Icon name="eye" size={18} /></span>
+      <span className="goal-t"><span className="goal-l">{pick(UI.goal)}</span><b>{pick(goal)}</b></span>
+      {total > 1 ? <span className="goal-n mono">{n}/{total}</span> : null}
+    </div>
+  );
+}
+
+// Ключи реплик урока — для прогрева озвучки (heroLines).
+Object.assign(SPOKEN, { opts: 1, why: 1, magic: 1, magicP: 1, magicB: 1, big: 1, small: 1, msgs: 1, sayP: 1, askQ: 1, miss: 1,
+  b: 1, i: 1, order1: 1, order2: 1, order3: 1, cards: 1 });
+Object.assign(NOT_SPOKEN_IN, { cards: { title: 1 }, opts: { t: 1, id: 1, right: 1 } });
 
 // Сгенерировано tools/kollazh/paper-data.mjs из assets/paper.mp3 — не править руками.
 const PAPER_MP3 = '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';
@@ -7333,9 +8125,7 @@ function ManBox({ frame, frameSides, frameAnim, frameHl, labels, man, br, cls, c
 // БУМАЖНЫЙ БРАУЗЕР — узнаваемый Chrome в Windows, только из бумаги: тёмная
 // полоса вкладок (вкладка с значком, именем и крестиком, «+»), кнопки окна
 // «– □ ×», полоса со стрелками и адресной строкой, под ней страница.
-// url — файл открытой страницы в адресной строке (урок 4: ссылка меняет адрес),
-// urlHl — подсветить адрес, onBack — стрелка «назад» нажимается.
-function PaperBrowser({ title, children, tabHl, pageHl, stamp, short, cls, tabRef, pageRef, url, urlHl, onBack }) {
+function PaperBrowser({ title, children, tabHl, pageHl, stamp, short, cls, tabRef, pageRef }) {
   const t = title != null && String(title).trim() !== '' ? String(title) : '';
   return (
     <div className={'kz-br' + (short ? ' is-short' : '') + (pageHl ? ' is-hl-page' : '') + (cls ? ' ' + cls : '')}>
@@ -7351,8 +8141,8 @@ function PaperBrowser({ title, children, tabHl, pageHl, stamp, short, cls, tabRe
       </div>
       <div className="kz-br-tool">
         <Cut c="#E6DCC6" seed={33} n={12} amp={6} asp={12} cls="kz-br-tool-bg" />
-        <span className="kz-br-arrows">{onBack ? <button type="button" className="kz-ar-l kz-ar-btn" onClick={onBack} aria-label="Back" /> : <i className="kz-ar-l" aria-hidden="true" />}<i className="kz-ar-r" aria-hidden="true" /></span>
-        <span className={'kz-br-url' + (urlHl ? ' is-hl' : '')}><i className="kz-br-lock" aria-hidden="true" /><span key={'u' + (url || '')} className={'kz-br-url-t' + (stamp && url ? ' kz-a-stamp' : '')}>{url || 'index.html'}</span></span>
+        <span className="kz-br-arrows" aria-hidden="true"><i className="kz-ar-l" /><i className="kz-ar-r" /></span>
+        <span className="kz-br-url"><i className="kz-br-lock" aria-hidden="true" /><span>index.html</span></span>
       </div>
       <div className="kz-br-body">
         <Cut c={KZ.cream} seed={32} n={16} amp={1.1} asp={1.6} cls="kz-br-paper" />
@@ -7855,801 +8645,31 @@ function useKzTransition(screenKey) {
 }
 
 // =============================================================================
-// МЕХАНИКА ПРАКТИК 4 И 5 (копия механики практики 03p; добавлены атрибуты:
-// ссылка a с href и картинка img с src и alt — честная страница, по ссылке можно
-// перейти, картинка показывается, ломается или даёт текст alt; проверка
-// атрибутов). Общая для 04p «Острова» и 05p «Выставка»: практика 05p подключает
-// этот файл. Свои у каждой — карта (stopArt, STREET), страницы сайта (SITE_PAGES),
-// фото-файлы (PHOTO_FILES), тексты. Каркас — практика 01p; вид — бумажный набор урока 1.
+// ЧАСТИ УРОКА 2 — страница в бумажном браузере, код с тегами, обёртка в два поля
 // =============================================================================
+const WAIT_MS = 1100;   // пауза в наборе, после которой свой текст засчитывается (s13)
+const normT = (s) => String(s || '').replace(/\s+/g, '').toLowerCase();
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ТЕГИ ПРОИЗНОСЯТСЯ СЛОВАМИ. На экране точная запись (title, </body>), в озвучку
-// теги уходят английскими словами («title», «закрывающий тег body»). Знаки в
-// кавычках рядом со своим названием убирает бумажный набор (kollazh-kit).
-// ─────────────────────────────────────────────────────────────────────────────
-const TAG_SAY = {
-  ru: { html: 'HTML', head: 'head', title: 'title', body: 'body', doctype: 'doctype',
-    h1: 'H one', h2: 'H two', h3: 'H three', h4: 'H four', h5: 'H five', h6: 'H six', p: 'P', b: 'B', i: 'I', ul: 'U L', ol: 'O L', li: 'L I',
-    a: 'A', href: 'H ref', img: 'I M G', src: 'S R C', alt: 'alt', dot: 'точка',
-    close: 'закрывающий тег', lt: 'уголок', gt: 'уголок', slash: 'косая черта' },
-  uz: { html: 'HTML', head: 'head', title: 'title', body: 'body', doctype: 'doctype',
-    h1: 'H one', h2: 'H two', h3: 'H three', h4: 'H four', h5: 'H five', h6: 'H six', p: 'P', b: 'B', i: 'I', ul: 'U L', ol: 'O L', li: 'L I',
-    a: 'A', href: 'H ref', img: 'I M G', src: 'S R C', alt: 'alt', dot: 'nuqta',
-    close: 'yopuvchi teg', lt: 'chap qavs', gt: 'o‘ng qavs', slash: 'qiya chiziq' },
-  en: { html: 'H T M L', head: 'head', title: 'title', body: 'body', doctype: 'doctype',
-    h1: 'H one', h2: 'H two', h3: 'H three', h4: 'H four', h5: 'H five', h6: 'H six', p: 'P', b: 'B', i: 'I', ul: 'U L', ol: 'O L', li: 'L I',
-    a: 'A', href: 'H ref', img: 'I M G', src: 'S R C', alt: 'alt', dot: 'dot',
-    close: 'closing tag', lt: 'less-than sign', gt: 'greater-than sign', slash: 'slash' }
-};
-function spokenHtml(text, lang) {
-  const m = TAG_SAY[lang] || TAG_SAY.ru;
-  const word = (t) => m[String(t).toLowerCase()] || t;
-  let s = String(text || '');
-  // Знаки «=» и кавычки в речь не идут (рядом всегда слова «знак равно», «кавычки»);
-  // файл cats.html — «cats точка HTML», cat.jpg — «cat точка J P G».
-  s = s.replace(/[«“"]\s*=\s*[»”"]/g, ' ').replace(/"/g, ' ');
-  const EXT = { html: 'html', jpg: 'J P G', png: 'P N G' };
-  s = s.replace(/\b([A-Za-z_0-9]+)\.(html|jpg|png)\b/g, (all, n, e) => n + ' ' + m.dot + ' ' + EXT[e]);
-  s = s.replace(/<!DOCTYPE\s+html>/gi, m.doctype + ' ' + m.html);
-  s = s.replace(/<\s*\/\s*([a-z][a-z0-9]*)\s*>/gi, (all, t) => ' ' + m.close + ' ' + word(t) + ' ');
-  s = s.replace(/<\s*([a-z][a-z0-9]*)\s*>/gi, (all, t) => ' ' + word(t) + ' ');
-  s = s.replace(/\b(html|HTML|head|title|body|DOCTYPE|h[1-6])\b/g, (w) => word(w));
-  // Одиночные латинские p, b, i — имена тегов (как в уроке 2): других в репликах нет.
-  s = s.replace(/(^|[\s(«“"])([pbi])(?=[\s,.!?:;)»”"]|$)/g, (all, pre, t) => pre + word(t));
-  // Голые ul, ol, li (урок 3) — тоже словами.
-  s = s.replace(/(^|[^A-Za-z‘’'ʻʼ])(ul|ol|li|href|img|src)(?=[^A-Za-z‘’'ʻʼ]|$)/g, (all, pre, t) => pre + word(t));
-  // Тег a: в узбекском и русском латинская «a» — только тег; в английском «a» —
-  // артикль, тег узнаётся в «the a», «opening a», «closing a», «letter a».
-  if (lang === 'en') s = s.replace(/\b(the|The|letter|opening|closing) a\b/g, '$1 ' + m.a);
-  else s = s.replace(/(^|[^A-Za-z‘’'ʻʼ-])a(?=[^A-Za-z‘’'ʻʼ-]|$)/g, (all, pre) => pre + m.a);
-  s = s.replace(/</g, ' ' + m.lt + ' ').replace(/>/g, ' ' + m.gt + ' ').replace(/\s\/\s/g, ' ' + m.slash + ' ');
-  return s.replace(/\s+/g, ' ').replace(/\s+([.,!?;:])/g, '$1').trim();
-}
-// Реплики в данных экрана — для прогрева озвучки. Подписи, которые только
-// печатаются, пропускаем; шаблоны с подстановкой {…} — тоже.
-const PRINTED = { eyebrow: 1, order: 1, order2: 1, drill2: 1, ask: 1, empty: 1, note: 1, skills: 1, drill: 1, pose: 1 };
-function heroLines(node, lang, out) {
-  const acc = out || [];
-  if (!node || typeof node !== 'object') return acc;
-  if (Array.isArray(node)) { node.forEach((x) => heroLines(x, lang, acc)); return acc; }
-  if (node.uz !== undefined || node.ru !== undefined) {
-    const s = node[lang] !== undefined ? node[lang] : node.ru;
-    if (typeof s === 'string' && s.indexOf('{') < 0) acc.push(s);
-    return acc;
-  }
-  Object.keys(node).forEach((k) => { if (!PRINTED[k]) heroLines(node[k], lang, acc); });
-  return acc;
-}
-function SpokenTags({ children }) {
-  const audio = useAudio();
-  const lang = useLang();
-  const value = useMemo(() => (audio ? Object.assign({}, audio, {
-    speak: (text, gender, onStart, fon) => audio.speak(spokenHtml(text, lang), gender, onStart, fon)
-  }) : audio), [audio, lang]);
-  return <AudioProvider value={value}>{children}</AudioProvider>;
-}
+// Части строки абзаца → JSX страницы (b — жирный, i — курсив) и → код (теги b, i).
+// Часть с ключом k ({ s, k } / { b, k } / { i, k }) получает data-k — по нему в хуке
+// слово из каши находит своё место на странице.
+const inl = (parts, hl, key) => (parts || []).map((x, j) => (typeof x === 'string' ? <React.Fragment key={(key || '') + j}>{x}</React.Fragment>
+  : x.s !== undefined ? <span key={(key || '') + j} data-k={x.k}>{x.s}</span>
+    : x.b !== undefined ? <b key={(key || '') + j} data-k={x.k} className={'z2-b' + (hl === 'b' ? ' is-hl' : '')}>{x.b}</b>
+      : <i key={(key || '') + j} data-k={x.k} className={'z2-i' + (hl === 'i' ? ' is-hl' : '')}>{x.i}</i>));
+const codeParts = (parts) => [].concat(...(parts || []).map((x, j) => (typeof x === 'string' ? [W_(x)]
+  : x.b !== undefined ? [<span key={'bo' + j}>{T_('b')}</span>, W_(x.b), <span key={'bc' + j}>{T_('b', true)}</span>]
+    : [<span key={'io' + j}>{T_('i')}</span>, W_(x.i), <span key={'ic' + j}>{T_('i', true)}</span>])));
+const plainOf = (parts) => (parts || []).map((x) => (typeof x === 'string' ? x : x.s !== undefined ? x.s : x.b !== undefined ? x.b : x.i)).join('');
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ЧАСТИ СТРАНИЦЫ — цвета как в уроке 1: html — коралл, head и title — горчица,
-// body — бирюза. Цвет — только у полосок вложенности; смысл несёт форма
-// (сплошная — закрыто, пунктир — нет), а теги в коде — коралловые уголки и
-// имя чернилами, как на бумажках урока.
-// ─────────────────────────────────────────────────────────────────────────────
-const TAGC = { html: '#E0643F', head: '#D39A1E', title: '#D39A1E', body: '#2A8C7E',
-  h1: '#E0643F', h2: '#E0643F', h3: '#E0643F', h4: '#E0643F', h5: '#E0643F', h6: '#E0643F', p: '#2A8C7E', b: '#D39A1E', i: '#D39A1E', ul: '#2A8C7E', ol: '#D39A1E', li: '#E0643F', a: '#2A8C7E', img: '#D39A1E' };
-const HEADS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
-const KNOWN = ['html', 'head', 'title', 'body'].concat(HEADS, ['p', 'b', 'i', 'ul', 'ol', 'li', 'a', 'img']);
-// Атрибуты наших тегов (уроки 4–5): у ссылки — href, у картинки — src и alt.
-const ATTRS = { a: ['href'], img: ['src', 'alt'] };
-const catOf = (tag) => (tag === 'html' ? 'html' : tag === 'head' || tag === 'title' ? 'head' : 'body');
-const isHead = (t) => /^h[1-6]$/.test(t);
-const isBlock = (t) => isHead(t) || t === 'p';
-const isInline = (t) => t === 'b' || t === 'i' || t === 'a';
-const isList = (t) => t === 'ul' || t === 'ol';
-
-// Осмысленный текст: хотя бы две буквы любого алфавита.
-const LETTER_RE = /\p{L}/gu;
-const hasLetters = (s) => (String(s || '').match(LETTER_RE) || []).length >= 2;
-// Похоже на тег: «<» с буквой, «/» или «!» после него, либо знакомый тег без «<».
-const hasTags = (s) => /<\s*[A-Za-z\/!\\]/.test(String(s || '')) || /\b(html|head|title|body|h[1-6]|ul|ol|li|img)\s*>/i.test(String(s || ''));
-const squash = (s) => String(s || '').replace(/\s+/g, ' ').trim();
-// Сравнение заданных надписей: регистр, ё/е, кавычки и знаки по краям не важны.
-const normName = (s) => String(s || '').toLowerCase().replace(/ё/g, 'е')
-  .replace(/[«»"“”„'‘’ʻʼ`.!?,:;…]/g, '').replace(/\s+/g, ' ').trim();
-const reduceMotion = () => typeof window !== 'undefined' && !!window.matchMedia
-  && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const escHtml = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const pickOf = (x, lang) => (x && typeof x === 'object' ? (x[lang] !== undefined ? x[lang] : x.ru) : String(x || ''));
-
-// Расстояние между словами — чтобы узнать «titel» и подсказать title.
-function editDist(a, b) {
-  const m = a.length, n = b.length;
-  const d = [];
-  for (let i = 0; i <= m; i += 1) { d[i] = [i]; }
-  for (let j = 0; j <= n; j += 1) { d[0][j] = j; }
-  for (let i = 1; i <= m; i += 1) {
-    for (let j = 1; j <= n; j += 1) {
-      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-    }
-  }
-  return d[m][n];
-}
-const nearTag = (name) => {
-  const s = String(name || '').toLowerCase();
-  let best = null;
-  let bd = 3;
-  KNOWN.forEach((k) => { const dd = editDist(s, k); if (dd < bd) { bd = dd; best = k; } });
-  return s.length >= 2 && bd <= 2 ? best : null;
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// РАЗБОР КОДА. Код ученика НИКОГДА не исполняется и не вставляется как HTML:
-// lexDoc только режет строку на теги и текст. Пробелы и переносы внутри и
-// между тегами допустимы, регистр букв не важен.
-//   { k: 'doctype' } · { k: 'open' | 'close', name } · { k: 'text', v } ·
-//   { k: 'bad', bad: 'noGt' | 'noLt' | 'unknown' | 'slashEnd' | 'backslash' | 'junk' | 'emptyTag', name, raw }
-// У каждого токена — номер строки (line), считая от нуля.
-// ─────────────────────────────────────────────────────────────────────────────
-// Атрибуты в открывающем теге, как их читает браузер: имя (строчными), значение,
-// в кавычках ли оно, есть ли знак «=».
-function parseAttrs(str) {
-  const out = [];
-  const re = /([^\s"'=<>\/]+)(\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
-  let m;
-  while ((m = re.exec(String(str || '')))) {
-    out.push({ n: m[1].toLowerCase(), raw: m[1], eq: !!m[2], v: m[3] != null ? m[3] : m[4] != null ? m[4] : m[5] != null ? m[5] : '', q: m[3] != null || m[4] != null });
-  }
-  return out;
-}
-const attrOf = (t, n) => (t && t.attrs ? t.attrs.find((a) => a.n === n) : null);
-
-function lexDoc(src) {
-  const s = String(src || '');
-  const out = [];
-  let line = 0;
-  const push = (tok, from, to) => {
-    tok.line = line;
-    out.push(tok);
-    for (let k = from; k < to; k += 1) if (s.charCodeAt(k) === 10) line += 1;
-  };
-  // Текст без «<». Внутри ищем знакомый тег без открывающего уголка: «title>».
-  const pushText = (from, to) => {
-    const part = s.slice(from, to);
-    const re = /(\/?)[ \t]*\b(html|head|title|body|h[1-6]|ul|ol|li)[ \t]*>/gi;
-    let last = 0;
-    let m;
-    while ((m = re.exec(part))) {
-      if (m.index > last) push({ k: 'text', v: part.slice(last, m.index) }, from + last, from + m.index);
-      push({ k: 'bad', bad: 'noLt', name: m[2].toLowerCase(), raw: m[0] }, from + m.index, from + m.index + m[0].length);
-      last = m.index + m[0].length;
-    }
-    if (last < part.length) push({ k: 'text', v: part.slice(last) }, from + last, to);
-  };
-  let i = 0;
-  while (i < s.length) {
-    // «<» без буквы, «/», «\» или «!» после него — просто текст («<3», «2 < 5»),
-    // как и в настоящем браузере.
-    if (s[i] === '<' && !/^<\s*[A-Za-z\/!\\]/.test(s.slice(i, i + 24))) {
-      const j = s.indexOf('<', i + 1);
-      const end = j < 0 ? s.length : j;
-      pushText(i, end);
-      i = end;
-      continue;
-    }
-    if (s[i] !== '<') {
-      const j = s.indexOf('<', i);
-      const end = j < 0 ? s.length : j;
-      pushText(i, end);
-      i = end;
-      continue;
-    }
-    // Конец тега — первый «>» вне кавычек (в значении атрибута «>» не считается).
-    let gt = -1;
-    let qq = null;
-    for (let k = i + 1; k < s.length; k += 1) {
-      const ch = s[k];
-      if (qq) { if (ch === qq) qq = null; continue; }
-      if ((ch === '"' || ch === "'") && /=\s*$/.test(s.slice(i + 1, k))) { qq = ch; continue; }
-      if (ch === '>') { gt = k; break; }
-      if (ch === '<') break;
-    }
-    if (qq) {
-      // Кавычка открыта и не закрыта: браузер съедает всё до конца — тег не закончен.
-      const nm0 = (/^<\s*\/?\s*([A-Za-z][A-Za-z0-9]*)/.exec(s.slice(i)) || ['', ''])[1].toLowerCase();
-      push({ k: 'bad', bad: 'quote', name: nm0, raw: s.slice(i) }, i, s.length);
-      i = s.length;
-      continue;
-    }
-    if (gt < 0) {
-      // «<title» без «>»: тег не закончен. Хвост дальше читается как текст.
-      const m = /^<\s*[\/\\]?\s*!?[A-Za-z]*[A-Za-z0-9]*/.exec(s.slice(i));
-      const raw = m ? m[0] : '<';
-      const name = (/[A-Za-z][A-Za-z0-9]*/.exec(raw.replace(/^<\s*[\/\\]?\s*!?/, '')) || [''])[0].toLowerCase();
-      push({ k: 'bad', bad: 'noGt', name, raw }, i, i + raw.length);
-      i += raw.length;
-      continue;
-    }
-    const inner = s.slice(i + 1, gt);
-    const raw = s.slice(i, gt + 1);
-    let tok;
-    let m;
-    if (/^\s*!/.test(inner)) tok = { k: 'doctype', raw };
-    else if ((m = /^\s*(\/)?\s*([A-Za-z][A-Za-z0-9]*)\s*$/.exec(inner))) {
-      const name = m[2].toLowerCase();
-      tok = KNOWN.indexOf(name) >= 0 ? { k: m[1] ? 'close' : 'open', name, raw, attrs: [] }
-        : { k: 'bad', bad: 'unknown', name, raw };
-    } else if ((m = /^\s*img\s*\/\s*$/i.exec(inner))) {
-      tok = { k: 'open', name: 'img', raw, attrs: [] };
-    } else if ((m = /^\s*(\/)?\s*([A-Za-z][A-Za-z0-9]*)\s+([\s\S]*?)\s*(\/)?\s*$/.exec(inner)) && KNOWN.indexOf(m[2].toLowerCase()) >= 0) {
-      // Тег с атрибутами: <a href="cats.html">, <img src="cat.jpg" alt="…">.
-      tok = { k: m[1] ? 'close' : 'open', name: m[2].toLowerCase(), raw, attrs: parseAttrs(m[3]), attrStr: m[3] };
-    } else if ((m = /^\s*\\\s*([A-Za-z][A-Za-z0-9]*)\s*$/.exec(inner))) {
-      tok = { k: 'bad', bad: 'backslash', name: m[1].toLowerCase(), raw };
-    } else if ((m = /^\s*([A-Za-z][A-Za-z0-9]*)\s*\/\s*$/.exec(inner))) {
-      tok = { k: 'bad', bad: 'slashEnd', name: m[1].toLowerCase(), raw };
-    } else if (/^\s*$/.test(inner)) tok = { k: 'bad', bad: 'emptyTag', name: '', raw };
-    else {
-      m = /^\s*\/?\s*([A-Za-z][A-Za-z0-9]*)/.exec(inner);
-      tok = { k: 'bad', bad: 'junk', name: m ? m[1].toLowerCase() : '', raw };
-    }
-    push(tok, i, gt + 1);
-    i = gt + 1;
-  }
-  return out;
-}
-
-// Фразы проверки атрибутов — общие для практик 4 и 5 (своё FB практики главнее).
-const FB_ATTR = {
-  quoteOpen: L3('{tag} tegida qo‘shtirnoq ochilgan, lekin yopilmagan: brauzer undan keyingi hamma narsani qiymat deb o‘ylaydi. Qiymatdan keyin ham qo‘shtirnoq qo‘ying.', 'В теге {tag} кавычка открыта, но не закрыта — браузер считает всё дальше значением. Поставь кавычку и после значения.', 'In the {tag} tag a quote is opened but not closed: the browser treats everything after it as the value. Put a quote after the value too.'),
-  attrOnClose: L3('Atribut yopuvchi {tag} tegida turibdi, brauzer uni sezmaydi. Atributni ochuvchi tegga o‘tkazing.', 'Атрибут стоит в закрывающем теге {tag} — браузер его не замечает. Перенеси атрибут в открывающий тег.', 'The attribute is in the closing {tag} tag, and the browser ignores it. Move the attribute into the opening tag.'),
-  imgClose: L3('img ning yopuvchi tegi bo‘lmaydi: u hech narsani o‘ramaydi. Yopuvchi img ni o‘chiring.', 'У img не бывает закрывающего тега — он ничего не оборачивает. Сотри закрывающий img.', 'img has no closing tag: it doesn’t wrap anything. Erase the closing img.'),
-  hrefOnImg: L3('href havolalar uchun. Rasm faylining manzili src atributida yoziladi.', 'href — для ссылок. Адрес файла картинки пишут в атрибуте src.', 'href is for links. A picture’s file address goes in the src attribute.'),
-  srcOnA: L3('Havolada manzil href atributida yoziladi, {raw} da emas.', 'У ссылки адрес пишут в атрибуте href, а не в {raw}.', 'A link’s address goes in the href attribute, not in {raw}.'),
-  attrName: L3('Atribut nomini tekshiring: {raw} emas, {want}.', 'Проверь имя атрибута: не {raw}, а {want}.', 'Check the attribute name: not {raw}, but {want}.'),
-  attrUnknown: L3('{tag} tegida {raw} atributi kerak emas.', 'У тега {tag} атрибут {raw} не нужен.', 'The {tag} tag doesn’t need the {raw} attribute.'),
-  attrNoEq: L3('{name} dan keyin tenglik belgisi «=» va qo‘shtirnoq ichida qiymat kerak.', 'После {name} нужен знак равно «=» и значение в кавычках.', 'After {name} you need an equals sign “=” and a value in quotes.'),
-  attrNoQuotes: L3('Brauzer tushundi, lekin {name} qiymati qo‘shtirnoq ichida yoziladi: qiymatdan oldin ham, keyin ham.', 'Браузер понял, но значение {name} пишут в кавычках — и перед ним, и после.', 'The browser understood, but the {name} value goes in quotes, before and after it.'),
-  aInA: L3('Oldingi havola yopilmagan: yangi a dan oldin yopuvchi a tegi kerak.', 'Предыдущая ссылка не закрыта: перед новым a нужен закрывающий тег a.', 'The previous link isn’t closed: put the closing a tag before the next opening a.')
-};
-Object.keys(FB_ATTR).forEach((k) => { if (!FB[k]) FB[k] = FB_ATTR[k]; });
-
-const fb = (key, vars, cat) => ({ ok: false, msg: vars ? fillL(FB[key] || key, vars) : (FB[key] || key), cat: cat || 'tag' });
-const fbT = (node, vars, cat) => ({ ok: false, msg: vars ? fillL(node, vars) : node, cat: cat || 'tag' });
-
-// Неверно записанный тег — своя фраза для каждого случая.
-function badFb(t) {
-  const nm = t.name || '';
-  const cat = KNOWN.indexOf(nm) >= 0 ? catOf(nm) : (nearTag(nm) ? catOf(nearTag(nm)) : 'tag');
-  const r = (o) => Object.assign(o, { line: t.line });
-  if (t.bad === 'quote') return r(fb('quoteOpen', { tag: nm || 'a' }, cat));
-  if (t.bad === 'noGt') return r(fb('noGt', { tag: KNOWN.indexOf(nm) >= 0 ? nm : (t.raw || '<') }, cat));
-  if (t.bad === 'noLt') return r(fb('noLt', { tag: nm }, cat));
-  if (t.bad === 'slashEnd') return r(fb('slashEnd', { tag: KNOWN.indexOf(nm) >= 0 ? nm : (nearTag(nm) || nm) }, cat));
-  if (t.bad === 'backslash') return r(fb('backslash', null, cat));
-  if (t.bad === 'emptyTag') return r(fb('emptyTag', null, 'tag'));
-  if (t.bad === 'junk') return r(fb('junk', null, cat));
-  const near = nearTag(nm);
-  return r(near ? fb('unknown', { raw: t.raw, tag: near }, catOf(near)) : fb('unknownFar', { raw: t.raw }, 'tag'));
-}
-
-// Полоски вложенности: какой контейнер на каких строках и закрыт ли он.
-// Незакрытый тянется до места, где его закрыли бы, или до конца кода.
-// title — строчный, полоска ему не нужна.
-function regionsOf(src) {
-  const toks = lexDoc(src);
-  const last = String(src || '').split('\n').length - 1;
-  const stack = [];
-  const regs = [];
-  toks.forEach((t) => {
-    if (t.k === 'open' && t.name !== 'title' && t.name !== 'img' && t.name !== 'a') stack.push({ tag: t.name, from: t.line, depth: stack.length });
-    else if (t.k === 'close' && t.name !== 'title' && t.name !== 'img' && t.name !== 'a') {
-      let at = -1;
-      for (let k = stack.length - 1; k >= 0; k -= 1) if (stack[k].tag === t.name) { at = k; break; }
-      if (at < 0) return;
-      for (let k = stack.length - 1; k > at; k -= 1) regs.push(Object.assign({}, stack[k], { to: t.line - 1, closed: false }));
-      regs.push(Object.assign({}, stack[at], { to: t.line, closed: true }));
-      stack.length = at;
-    }
-  });
-  stack.forEach((r) => regs.push(Object.assign({}, r, { to: last, closed: false })));
-  return regs;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ПОДСВЕТКА КОДА — как теги на бумажках урока 1: уголки и косая черта
-// коралловые, имя чернилами. Начертание одно для всех кусочков: подсветка
-// лежит под прозрачной textarea и обязана совпадать с ней буква в букву.
-// ─────────────────────────────────────────────────────────────────────────────
-// Атрибуты внутри тега: имя бирюзовое, «=» коралловый, значение горчично-коричневое.
-// Каждый символ строки остаётся на месте — подсветка совпадает с полем ввода.
-function hlAttrs(str, key) {
-  const out = [];
-  const re = /([^\s"'=]+)(?:(\s*=\s*)("[^"]*"?|'[^']*'?|[^\s"']+)?)?|(\s+)|(.)/g;
-  let m;
-  let k = 0;
-  while ((m = re.exec(str))) {
-    k += 1;
-    if (m[4] || m[5]) { out.push(<span key={key + 's' + k} className="ed-t">{m[0]}</span>); continue; }
-    out.push(<span key={key + 'n' + k} className="ed-an">{m[1]}</span>);
-    if (m[2]) out.push(<span key={key + 'e' + k} className="ed-eq">{m[2]}</span>);
-    if (m[3]) out.push(<span key={key + 'v' + k} className="ed-av">{m[3]}</span>);
-  }
-  return out;
-}
-function hlLine(str) {
-  const re = /<!DOCTYPE\s+html\s*>|<\s*[\/\\]?\s*[A-Za-z][A-Za-z0-9]*(?:\s+(?:[^<>"']|"[^"]*"|'[^']*')*)?\s*\/?\s*>/gi;
-  const out = [];
-  let last = 0;
-  let m;
-  while ((m = re.exec(str))) {
-    if (m.index > last) out.push(<span key={'t' + last} className="ed-t">{str.slice(last, m.index)}</span>);
-    const raw = m[0];
-    const nm = ((/[A-Za-z][A-Za-z0-9]*/.exec(raw.replace(/^<\s*[\/\\]?\s*/, '')) || [''])[0]).toLowerCase();
-    if (/^<!/.test(raw)) out.push(<span key={'g' + m.index} className="ed-doc">{raw}</span>);
-    else if (KNOWN.indexOf(nm) >= 0 && /^<\s*\/?\s*[A-Za-z][A-Za-z0-9]*\s*>$/.test(raw)) {
-      const mm = /^(<\s*\/?\s*)([A-Za-z][A-Za-z0-9]*)(\s*>)$/.exec(raw);
-      out.push(<span key={'g' + m.index} className="ed-tag"><span className="ed-br">{mm[1]}</span><span className="ed-nm">{mm[2]}</span><span className="ed-br">{mm[3]}</span></span>);
-    } else if (KNOWN.indexOf(nm) >= 0 && /^<\s*\/?\s*[A-Za-z][A-Za-z0-9]*\s+[\s\S]*>$/.test(raw)) {
-      // Тег с атрибутами: «<a» + атрибуты + «>».
-      const mm = /^(<\s*\/?\s*)([A-Za-z][A-Za-z0-9]*)(\s+[\s\S]*?)(\s*\/?\s*>)$/.exec(raw);
-      out.push(<span key={'g' + m.index} className="ed-tag"><span className="ed-br">{mm[1]}</span><span className="ed-nm">{mm[2]}</span>{hlAttrs(mm[3], 'a' + m.index)}<span className="ed-br">{mm[4]}</span></span>);
-    } else out.push(<span key={'g' + m.index} className="ed-unk">{raw}</span>);
-    last = m.index + raw.length;
-  }
-  if (last < str.length) out.push(<span key={'t' + last} className="ed-t">{str.slice(last)}</span>);
-  return out;
-}
-
-// Вставка символа с кнопки < / > в место курсора. execCommand сохраняет
-// отмену (Ctrl+Z) и шлёт обычное событие ввода; запасной путь — setRangeText.
-function insertAtCaret(el, ch) {
-  if (!el) return;
-  if (document.activeElement !== el) el.focus();
-  let done = false;
-  try { done = !!(document.execCommand && document.execCommand('insertText', false, ch)); } catch (e) { done = false; }
-  if (done) return;
-  const a = typeof el.selectionStart === 'number' ? el.selectionStart : el.value.length;
-  const b = typeof el.selectionEnd === 'number' ? el.selectionEnd : a;
-  if (el.setRangeText) el.setRangeText(ch, a, b, 'end');
-  else {
-    const proto = Object.getPrototypeOf(el);
-    const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
-    setter.call(el, el.value.slice(0, a) + ch + el.value.slice(b));
-    el.setSelectionRange(a + ch.length, a + ch.length);
-  }
-  el.dispatchEvent(new Event('input', { bubbles: true }));
-}
-
-const MAX_CODE = 1500;
-
-// Бумажная подложка: вырезка с рваным краем под содержимым (редактор, заметка,
-// образец). Сам край не обрезает текст — он лежит слоем ниже.
-function Pad({ c, seed = 7, cls, children, style }) {
-  return (
-    <div className={'pp-pad kz-piece' + (cls ? ' ' + cls : '')} style={style}>
-      <Cut c={c || '#FFFCF4'} seed={seed} n={18} amp={0.9} asp={1.4} cls="pp-pad-bg" />
-      {children}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// РЕДАКТОР КОДА. Прозрачная textarea лежит поверх подсвеченных строк той же
-// ширины, шрифта и отступов: всё, что умеет обычное поле (курсор, выделение,
-// удаление, переносы, вставка, отмена), работает как есть. Строки до и после
-// — неизменяемая рамка задания. single — одна строка: Enter не переносит.
-// regions — полоски вложенности; markLine — строка, на которую указывает подсказка.
-// ─────────────────────────────────────────────────────────────────────────────
-function CodeEditor({ value, onChange, before, after, single, ind, regions, markLine, inputRef, label, led }) {
-  const pick = usePick();
-  const boxRef = useRef(null);
-  const lines = String(value || '').split('\n');
-  const nB = (before || []).length;
-  // Рамка задания длиннее окна (телефон) — показываем место для ввода сразу.
-  useLayoutEffect(() => {
-    const box = boxRef.current;
-    const ed = box && box.querySelector('.ed-edit');
-    if (box && ed && box.scrollHeight > box.clientHeight + 4) box.scrollTop = Math.max(0, ed.offsetTop - 28);
-  }, []);
-  // Открылась клавиатура — редактор стал ниже: строка ввода не должна уехать
-  // за край. Для документа целиком браузер сам держит курсор на виду.
-  const reveal = useCallback(() => {
-    const box = boxRef.current;
-    const ed = box && box.querySelector('.ed-edit');
-    if (!box || !ed || !nB) return;
-    const top = ed.offsetTop, bot = top + ed.offsetHeight;
-    if (top < box.scrollTop + 4 || bot > box.scrollTop + box.clientHeight - 4) box.scrollTop = Math.max(0, Math.min(top - 8, bot - box.clientHeight + 8));
-  }, [nB]);
-  useEffect(() => {
-    const vv = typeof window !== 'undefined' && window.visualViewport;
-    const on = () => { if (inputRef && inputRef.current && document.activeElement === inputRef.current) setTimeout(reveal, 60); };
-    if (vv) vv.addEventListener('resize', on);
-    window.addEventListener('resize', on);
-    return () => { if (vv) vv.removeEventListener('resize', on); window.removeEventListener('resize', on); };
-  }, [reveal]); // eslint-disable-line react-hooks/exhaustive-deps
-  const barsAt = (i) => (regions ? regions.filter((r) => r.from <= i && i <= r.to) : []);
-  const bars = (i) => barsAt(i).map((r, k) => (
-    <span key={k} aria-hidden="true"
-      className={'ed-bar' + (r.closed ? '' : ' is-open') + (r.from === i ? ' is-first' : '') + (r.to === i ? ' is-last' : '')}
-      style={{ '--c': TAGC[r.tag], '--lv': r.depth }} />
-  ));
-  const staticLine = (txt, i, key) => (
-    <div className={'ed-line is-static' + (markLine === i ? ' is-mark' : '')} key={key}>
-      <span className="ed-n" aria-hidden="true">{i + 1}</span>
-      {bars(i)}
-      {txt ? hlLine(txt) : '​'}
-    </div>
-  );
-  const change = (e) => {
-    let v = e.target.value;
-    if (single) v = v.replace(/\r?\n/g, ' ');
-    onChange(v.slice(0, MAX_CODE));
-  };
-  return (
-    <div ref={boxRef} className="ed" translate="no" style={{ '--edi': (ind || 0) + 'ch' }}>
-      {(before || []).map((t, i) => staticLine(t, i, 'b' + i))}
-      <div className={'ed-edit' + (single ? ' is-single' : '') + (nB || (after && after.length) ? ' is-framed' : '') + (led ? ' is-led-in' : '')}>
-        <div className="ed-hl" aria-hidden="true">
-          {lines.map((ln, i) => (
-            <div key={i} className={'ed-line' + (markLine === nB + i ? ' is-mark' : '')}>
-              <span className="ed-n">{nB + i + 1}</span>
-              {bars(nB + i)}
-              {ln ? hlLine(ln) : '​'}
-            </div>
-          ))}
-        </div>
-        <textarea ref={inputRef} className="ed-ta" value={value} onChange={change} rows={1} wrap="soft"
-          onFocus={() => { setTimeout(reveal, 80); setTimeout(reveal, 420); }}
-          onKeyDown={(e) => { if (single && e.key === 'Enter') e.preventDefault(); }}
-          spellCheck={false} autoCapitalize="off" autoCorrect="off" autoComplete="off"
-          enterKeyHint={single ? 'done' : 'enter'} aria-label={pick(label || UI.editor)} />
-      </div>
-      {(after || []).map((t, i) => staticLine(t, nB + lines.length + i, 'a' + i))}
-    </div>
-  );
-}
-
-// Поле прямо в строке кода. Растёт по тексту: сначала в ширину, упёрлось в
-// край строки — переносит текст и растёт в высоту. 16 px — меньше нельзя:
-// iOS увеличит страницу. Enter строку не переносит.
-let _growCtx = null;
-function fitGrow(el) {
-  if (!el) return;
-  const cs = getComputedStyle(el);
-  if (!_growCtx) _growCtx = document.createElement('canvas').getContext('2d');
-  if (_growCtx) {
-    _growCtx.font = cs.font || (cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily);
-    const txt = el.value || el.placeholder || '';
-    const w = Math.ceil(_growCtx.measureText(txt).width) + parseFloat(cs.paddingLeft || 0) + parseFloat(cs.paddingRight || 0) + 10;
-    el.style.width = w + 'px';
-  }
-  el.style.height = 'auto';
-  el.style.height = el.scrollHeight + 'px';
-}
-function InlineInput({ value, onChange, placeholder, label, max = 60, inputRef, cls }) {
-  const pick = usePick();
-  const ref = useRef(null);
-  const setRef = (el) => { ref.current = el; if (inputRef) inputRef.current = el; };
-  const fit = () => fitGrow(ref.current);
-  useLayoutEffect(fit, [value]);
-  useEffect(() => {
-    const host = ref.current && ref.current.parentElement;
-    if (typeof ResizeObserver === 'undefined' || !host) {
-      window.addEventListener('resize', fit);
-      return () => window.removeEventListener('resize', fit);
-    }
-    const ro = new ResizeObserver(() => fit());
-    ro.observe(host);
-    return () => ro.disconnect();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  return (
-    <textarea ref={setRef} rows={1} className={'tk-input' + (cls ? ' ' + cls : '')} value={value} maxLength={max}
-      placeholder={placeholder ? pick(placeholder) : ''} aria-label={label ? pick(label) : undefined}
-      autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} enterKeyHint="done"
-      onChange={(e) => onChange(e.target.value.replace(/\r?\n/g, ' '))}
-      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }} />
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ДОКУМЕНТ С ПОЛЯМИ (t1, t2). Документ собран правильно; ученик пишет только
-// содержимое title или body — прямо в строке кода. Полоски слева — вложенность;
-// hl подсвечивает часть по подсказке, led — поле, куда писать.
-// ─────────────────────────────────────────────────────────────────────────────
-function FieldDoc({ title, body, onTitle, onBody, editTitle = true, editBody = true, hl, led, titleRef, bodyRef, focusBody, ph }) {
-  const pick = usePick();
-  const boxRef = useRef(null);
-  useLayoutEffect(() => {
-    const box = boxRef.current;
-    const row = box && box.children[6];
-    if (focusBody && row && box.scrollHeight > box.clientHeight + 4) box.scrollTop = Math.max(0, row.offsetTop - box.clientHeight / 2);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const field = (val, on, ref, lbl, which) => (
-    <InlineInput value={val} onChange={on} label={lbl} inputRef={ref} placeholder={ph && ph[which]}
-      cls={led === which ? 'is-led-in' : ''} max={which === 'body' ? 140 : 40} />
-  );
-  const rows = [
-    { d: 0, reg: [], c: <span className="pp-doc">{'<!DOCTYPE html>'}</span> },
-    { d: 0, reg: ['html'], first: 'html', c: T_('html') },
-    { d: 1, reg: ['html', 'head'], first: 'head', c: T_('head') },
-    { d: 2, reg: ['html', 'head', 'title'], c: <>{T_('title')}{editTitle ? field(title, onTitle, titleRef, UI.titleField, 'title') : <span className="pp-text">{title}</span>}{T_('title', true)}</> },
-    { d: 1, reg: ['html', 'head'], last: 'head', c: T_('head', true) },
-    { d: 1, reg: ['html', 'body'], first: 'body', c: T_('body') },
-    { d: 2, reg: ['html', 'body'], c: editBody ? field(body, onBody, bodyRef, UI.bodyField, 'body') : <span className="pp-text">{body}</span> },
-    { d: 1, reg: ['html', 'body'], last: 'body', c: T_('body', true) },
-    { d: 0, reg: ['html'], last: 'html', c: T_('html', true) }
-  ];
-  return (
-    <div ref={boxRef} className="cv" translate="no" aria-label={pick(UI.editor)} role="group">
-      {rows.map((r, i) => {
-        const inHl = hl && r.reg.indexOf(hl) >= 0;
-        return (
-          <div key={i} className={'cv-line' + (hl ? (inHl ? ' is-in' : ' is-out') : '')} style={{ '--d': r.d }}>
-            <span className="cv-n" aria-hidden="true">{i + 1}</span>
-            {r.reg.filter((g) => g !== 'title').map((g) => (
-              <span key={g} aria-hidden="true" className={'cv-bar' + (r.first === g ? ' is-first' : '') + (r.last === g ? ' is-last' : '')}
-                style={{ '--c': TAGC[g], '--lv': g === 'html' ? 0 : 1 }} />
-            ))}
-            <span className="cv-code">{r.c}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// Статичный кусок кода: образец подсказки, код готовой страницы.
-function CodeSample({ code, label, cls }) {
-  const pick = usePick();
-  return (
-    <div className={'sample' + (cls ? ' ' + cls : '')} translate="no">
-      {label ? <span className="sample-lbl">{pick(label)}</span> : null}
-      <div className="sample-code">
-        {String(code).split('\n').map((ln, i) => <div key={i} className="sample-line">{ln ? hlLine(ln) : '​'}</div>)}
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ЧТО ПОКАЖЕТ БРАУЗЕР (уроки 2–3) — честно, как настоящий, для наших тегов:
-//   · title — на вкладку (незакрытый уносит на вкладку остальной код);
-//   · h1–h6 и p — блоки; p внутри незакрытого заголовка — шрифтом заголовка;
-//   · b и i — жирный и курсив; незакрытый b / i тянется дальше;
-//   · ul / ol — список; точку или номер ставит только li; текст в списке без
-//     li — без точки; <li> вместо </li> даёт пустой пункт; li вне списка — без
-//     отступа; p в незакрытом списке сдвинут, как список;
-//   · текст без тегов — отдельной строкой в окне.
-// Возвращает { title, blocks } — только текст. Блок: { t: 'h1'…'h6' | 'p' | 'raw'
-// | 'stray', parts } или { t: 'ul' | 'ol', kids: [{ li, parts } | { txt: parts } | { p: parts }] }.
-// ─────────────────────────────────────────────────────────────────────────────
-function renderDoc(src) {
-  const toks = lexDoc(src);
-  let title = null;
-  let inTitle = false;
-  let tt = '';
-  const blocks = [];
-  let cur = null;        // куда идёт текст: блок, пункт или кусок текста в списке
-  let list = null;       // открытый список
-  const fmt = { b: 0, i: 0 };
-  let openHead = null;
-  // Ссылка: href открытого a (строка) — слова синие и ведут туда; a без href — обычный
-  // текст. Незакрытый a тянется дальше, как в настоящем браузере.
-  let link;
-  const part = (v) => ({ s: v, b: fmt.b > 0, i: fmt.i > 0, href: link });
-  const open = (t, inh) => { cur = { t, inh: inh || null, parts: [] }; blocks.push(cur); };
-  const text = (v) => {
-    if (cur) { cur.parts.push(part(v)); return; }
-    if (!v.trim()) return;
-    if (list) { cur = { txt: true, parts: [part(v)] }; list.kids.push(cur); return; }
-    open('raw'); cur.parts.push(part(v));
-  };
-  toks.forEach((t) => {
-    if (inTitle) {
-      if (t.k === 'close' && t.name === 'title') { inTitle = false; title = squash(tt); return; }
-      tt += t.k === 'text' ? t.v : ' ' + (t.raw || '') + ' ';
-      return;
-    }
-    if (t.k === 'open' && t.name === 'title') { inTitle = true; tt = ''; return; }
-    if (t.k === 'text') { text(t.v); return; }
-    if (t.k === 'bad') { if (t.bad === 'noLt' || t.bad === 'backslash' || t.bad === 'emptyTag') text(t.raw); return; }
-    if (t.k === 'open' && t.name === 'a') { const h = attrOf(t, 'href'); link = h ? h.v.trim() : undefined; return; }
-    if (t.k === 'close' && (t.name === 'a' || t.name === 'img')) { if (t.name === 'a') link = undefined; return; }
-    if (t.k === 'open' && t.name === 'img') {
-      // Картинка — кусок строки: файл есть — фото; нет src — пусто (или текст alt);
-      // файла нет — значок сломанной картинки и alt.
-      const sa = attrOf(t, 'src'), aa = attrOf(t, 'alt');
-      const ip = { img: { src: sa ? sa.v.trim() : undefined, alt: aa ? aa.v : undefined }, href: link, s: '' };
-      if (cur) { cur.parts.push(ip); return; }
-      if (list) { cur = { txt: true, parts: [ip] }; list.kids.push(cur); return; }
-      open('raw'); cur.parts.push(ip);
-      return;
-    }
-    if (t.k === 'open') {
-      if (isList(t.name)) { list = { t: t.name, kids: [] }; blocks.push(list); cur = null; openHead = null; return; }
-      if (t.name === 'li') {
-        if (list) { cur = { li: true, parts: [] }; list.kids.push(cur); }
-        else open('stray');
-        return;
-      }
-      if (isHead(t.name) || t.name === 'p') {
-        if (list) { cur = { p: true, t: t.name, parts: [] }; list.kids.push(cur); return; }
-        if (isHead(t.name)) { open(t.name); openHead = t.name; return; }
-        open('p', openHead); return;
-      }
-      if (isInline(t.name)) { fmt[t.name] += 1; return; }
-      return;
-    }
-    if (t.k === 'close') {
-      if (isInline(t.name)) { fmt[t.name] = Math.max(0, fmt[t.name] - 1); return; }
-      if (isList(t.name)) { if (list) { list = null; cur = null; } return; }
-      if (t.name === 'li') { if (cur && (cur.li || cur.t === 'stray')) cur = null; return; }
-      if (isHead(t.name)) openHead = null;
-      if ((isBlock(t.name)) && cur) { cur = null; }
-      if (cur && cur.txt) cur = null;
-    }
-  });
-  if (inTitle) title = squash(tt);
-  const has = (ps) => ps.some((x) => x.img || String(x.s || '').trim());
-  return {
-    title,
-    blocks: blocks.filter((bk) => (bk.kids ? true : has(bk.parts)))
-      .map((bk) => (bk.kids ? Object.assign({}, bk, { kids: bk.kids.filter((k) => k.li || has(k.parts)) }) : bk))
-  };
-}
-
-// ПРОВЕРКА ФРАГМЕНТА (теги уроков 2–3). Обход по порядку записи; первая проблема —
-// фраза, всего проблем — для счётчика «осталось исправить» (по строкам с поломкой).
-//   · блоки h1–h6 и p стоят друг за другом; b и i — внутри блока или пункта;
-//   · список ul / ol, внутри только пункты li; пары совпадают;
-//   · strictText — текст вне блоков и списков тоже проблема (своя работа).
-// lists: [{ t, items: [{ text, marks }], line }], blocks: [{ t, text, marks }].
-// Атрибуты ссылки и картинки: имя знакомое (у a — href, у img — src и alt), есть
-// знак «=», значение в кавычках (браузер поймёт и без них — пишем в кавычках).
-function attrIssues(t) {
-  const ok = ATTRS[t.name] || [];
-  const out = [];
-  (t.attrs || []).forEach((a) => {
-    if (ok.indexOf(a.n) < 0) {
-      if (t.name === 'img' && a.n === 'href') out.push({ key: 'hrefOnImg' });
-      else if (t.name === 'a' && (a.n === 'src' || a.n === 'alt')) out.push({ key: 'srcOnA', vars: { raw: a.raw } });
-      else {
-        const near = a.n.length >= 2 ? ok.find((w) => editDist(a.n, w) <= 2) : null;
-        out.push(near ? { key: 'attrName', vars: { raw: a.raw, want: near } } : { key: 'attrUnknown', vars: { raw: a.raw, tag: t.name } });
-      }
-      return;
-    }
-    if (!a.eq) { out.push({ key: 'attrNoEq', vars: { name: a.n } }); return; }
-    if (!a.q) out.push({ key: 'attrNoQuotes', vars: { name: a.n } });
-  });
-  return out;
-}
-
-function checkFrag(code, opts) {
-  const o = opts || {};
-  const toks = lexDoc(code);
-  const issues = [];
-  const add = (key, vars, line) => issues.push({ key, vars: vars || null, line });
-  const stack = [];
-  const blocks = [];
-  const lists = [];
-  const strays = [];
-  const links = [];      // ссылки: { href, text, line, inLi }
-  const imgs = [];       // картинки: { src, alt, line, inLi }
-  let link = null;
-  let cur = null;
-  let list = null;
-  const bare = (idx) => {
-    for (let k = idx + 1; k < toks.length; k += 1) {
-      if (toks[k].k !== 'text') return true;
-      if (hasLetters(toks[k].v)) return false;
-    }
-    return true;
-  };
-  const top = () => stack[stack.length - 1];
-  // Строка текста — там, где его первая буква (кусок может начинаться с переноса).
-  const textLine = (t) => t.line + (String(t.v).slice(0, String(t.v).search(/\S|$/)).match(/\n/g) || []).length;
-  toks.forEach((t, idx) => {
-    if (t.k === 'bad') { issues.push(Object.assign(badFb(t), { line: t.line, bad: true })); return; }
-    if ((t.k === 'open' || t.k === 'close') && (t.name === 'a' || t.name === 'img')) {
-      if (t.k === 'close' && t.attrs && t.attrs.length) add('attrOnClose', { tag: t.name }, t.line);
-      if (t.k === 'close' && t.name === 'img') { add('imgClose', null, t.line); return; }
-      if (t.k === 'open') {
-        attrIssues(t).forEach((x) => add(x.key, x.vars, t.line));
-        // Ссылка или картинка прямо в body — строчка страницы (как в настоящем браузере).
-        if (!cur && !isList(top())) { cur = { t: 'line', text: '', marks: [], line: t.line }; blocks.push(cur); }
-        else if (!cur) add('listText', { tag: top() }, t.line);
-        const inLi = top() === 'li';
-        if (t.name === 'img') {
-          const sa = attrOf(t, 'src'), aa = attrOf(t, 'alt');
-          imgs.push({ src: sa ? sa.v.trim() : undefined, alt: aa ? aa.v : undefined, line: t.line, inLi });
-          return;
-        }
-        if (top() === 'a') add('aInA', null, t.line);
-        const h = attrOf(t, 'href');
-        link = { href: h ? h.v.trim() : undefined, text: '', line: t.line, inLi };
-        links.push(link);
-        stack.push('a');
-        return;
-      }
-      link = null;
-    }
-    if (t.k === 'doctype' || ((t.k === 'open' || t.k === 'close') && !isBlock(t.name) && !isInline(t.name) && !isList(t.name) && t.name !== 'li')) return;
-    if (t.k === 'text') {
-      if (link) link.text += t.v;
-      if (cur) {
-        cur.text += t.v;
-        stack.filter(isInline).forEach((x) => { cur.marks.push({ tag: x, v: t.v }); });
-      } else if (hasLetters(t.v)) {
-        if (isList(top())) add('listText', { tag: top() }, textLine(t));
-        else if (o.strictText) add('textOutside', null, textLine(t));
-      }
-      return;
-    }
-    if (t.k === 'open') {
-      if (isList(t.name)) {
-        if (cur && !(cur.t === 'line' && !stack.length) && !stack.some(isList)) { add('blockInBlock', { tag: stack.find(isBlock) || top(), next: t.name }, t.line); stack.length = 0; cur = null; }
-        if (cur && cur.t === 'line') cur = null;
-        stack.push(t.name);
-        list = { t: t.name, items: [], line: t.line };
-        lists.push(list);
-        return;
-      }
-      if (t.name === 'li') {
-        if (top() === 'li') {
-          if (bare(idx)) { add('openAgain', { tag: 'li' }, t.line); stack.pop(); cur = null; return; }
-          add('unclosedIn', { tag: 'li', next: 'li' }, t.line); stack.pop();
-        }
-        cur = { text: '', marks: [], line: t.line };
-        if (isList(top())) list.items.push(cur);
-        else { add('liOutside', null, t.line); strays.push(cur); }
-        stack.push('li');
-        return;
-      }
-      if (isBlock(t.name)) {
-        if (isList(top())) { add('listNotClosed', { tag: top(), next: t.name }, t.line); stack.length = 0; list = null; }
-        else if (top() === t.name && stack.length === 1 && bare(idx)) { add('openAgain', { tag: t.name }, t.line); stack.length = 0; cur = null; return; }
-        else if (stack.length) add('blockInBlock', { tag: stack.find(isBlock) || top(), next: t.name }, t.line);
-        stack.length = 0;
-        cur = { t: t.name, text: '', marks: [], line: t.line };
-        blocks.push(cur);
-        stack.push(t.name);
-        return;
-      }
-      if (!cur) add('inlineOutside', { tag: t.name }, t.line);
-      stack.push(t.name);
-      return;
-    }
-    const tp = top();
-    if (tp === t.name) {
-      stack.pop();
-      if (isBlock(t.name) || t.name === 'li') cur = null;
-      if (isList(t.name)) { list = null; cur = null; }
-      return;
-    }
-    if ((tp && isHead(tp) && isHead(t.name)) || (isList(tp) && isList(t.name))) { add('pairMismatch', { a: tp, b: t.name }, t.line); stack.pop(); cur = null; if (isList(tp)) list = null; return; }
-    const at = stack.lastIndexOf(t.name);
-    if (at >= 0) {
-      for (let k = stack.length - 1; k > at; k -= 1) add('unclosedIn', { tag: stack[k], next: t.name }, t.line);
-      stack.length = at;
-      if (isBlock(t.name) || isList(t.name) || t.name === 'li') cur = null;
-      if (isList(t.name)) list = null;
-      return;
-    }
-    add('closeWithoutOpen', { tag: t.name }, t.line);
-  });
-  for (let k = stack.length - 1; k >= 0; k -= 1) add('unclosedEnd', { tag: stack[k] }, null);
-  const first = issues[0];
-  const msg = first ? (first.bad ? first.msg : fillL(FB[first.key], first.vars || {})) : null;
-  const lines = {};
-  issues.forEach((x, k) => { lines[x.line == null ? 'n' + k : x.line] = 1; });
-  return { ok: !issues.length, msg, line: first ? first.line : null, count: Object.keys(lines).length, blocks, lists, strays, links, imgs };
-}
-
-// Страница всегда помещается в окно целиком, без прокрутки (правило эталона):
-// не влезает — шрифт страницы ступеньками уменьшается (не меньше 56 %). Ещё раз —
-// после «штампа» (пока он идёт, страница кажется выше).
+// СТРАНИЦА В БУМАЖНОМ БРАУЗЕРЕ — как её рисует браузер по умолчанию: заголовки
+// убывают от h1 к h6, абзацы с отступом, b — жирный, i — курсив. Блок:
+// { t: 'h1'…'h6' | 'p' | 'raw', parts, hl, k, cls }. raw — текст без тегов.
+// wall — всё одной склеенной строкой (так браузер показывает текст без тегов).
+// Страница всегда помещается в окно целиком, без прокрутки (заказчик, 22.10.2026:
+// «ученик не поймёт» полосу прокрутки): не влезает — шрифт страницы ступеньками
+// уменьшается, пока не влезет (не меньше 55 %). Пересчёт — при смене текста и
+// размера окна.
 function useFitPage(dep) {
   const ref = useRef(null);
   useLayoutEffect(() => {
@@ -8662,1027 +8682,1346 @@ function useFitPage(dep) {
       while (page.scrollHeight > page.clientHeight + 1 && k > 0.56) { k -= 0.06; el.style.fontSize = k.toFixed(2) + 'em'; }
     };
     fit();
-    const tm = setTimeout(fit, 700);
-    if (typeof ResizeObserver === 'undefined') return () => clearTimeout(tm);
+    if (typeof ResizeObserver === 'undefined') return undefined;
     const ro = new ResizeObserver(() => fit());
     ro.observe(page);
-    return () => { clearTimeout(tm); ro.disconnect(); };
+    return () => ro.disconnect();
   }, [dep]); // eslint-disable-line react-hooks/exhaustive-deps
   return ref;
 }
-
-// Бумажное фото из файла (практика 5): рваная вырезка с фоном и рисунком.
-// PHOTO_FILES — файлы практики: { 'cat.jpg': { pic, bg, seed } }.
-function PgPhoto({ file }) {
-  const ph = PHOTO_FILES[file];
-  if (!ph) return null;
+function PageDoc({ blocks, wall, anim, cls }) {
+  const ref = useFitPage(JSON.stringify(blocks) + (wall ? 'w' : ''));
+  if (wall) return <div ref={ref} className={'z2-doc z2-wall' + (cls ? ' ' + cls : '')}>{blocks.map((bk) => plainOf(bk.parts)).join(' ')}</div>;
   return (
-    <span className="pg-photo" data-file={file}>
-      <Cut c={ph.bg} seed={ph.seed} n={9} amp={3} asp={1.35} cls="pg-photo-cut" />
-      <span className={'pg-pic pg-pic-' + ph.pic} aria-hidden="true"><i /><i /><i /></span>
-    </span>
-  );
-}
-// Картинка, как её рисует браузер: файл есть — фото; src нет — пусто (с alt —
-// только текст alt); файла нет — значок сломанной картинки и alt.
-function PgImg({ src, alt }) {
-  const has = typeof src === 'string' && src !== '';
-  if (has && PHOTO_FILES[src]) return <PgPhoto file={src} />;
-  if (!has) return alt ? <span className="pg-alt">{alt}</span> : <span className="pg-noimg" />;
-  return <span className="pg-broken" data-src={src}><i className="pg-broken-ic" aria-hidden="true" />{alt ? <span>{alt}</span> : null}</span>;
-}
-// Кусочки текста с b и i, ссылки (href — синие, нажимаются) и картинки.
-const pgParts = (parts, go) => parts.map((x, k) => {
-  let inner = x.img ? <PgImg src={x.img.src} alt={x.img.alt} /> : (x.i ? <i>{x.s}</i> : x.s);
-  if (x.b && !x.img) inner = <b>{inner}</b>;
-  if (typeof x.href === 'string') {
-    return go ? <button key={k} type="button" className="pg-a" data-href={x.href} onClick={() => go(x.href)}>{inner}</button>
-      : <span key={k} className="pg-a">{inner}</span>;
-  }
-  return <React.Fragment key={k}>{inner}</React.Fragment>;
-});
-const hasText = (ps) => ps.some((x) => x.img || String(x.s || '').trim());
-
-// Страница сайта, на которую ведёт ссылка (практика 4): SITE_PAGES —
-// { 'cave.html': { title, text, pic } }. Файла нет — «Файл не найден».
-function SitePageView({ url, onBack }) {
-  const pick = usePick();
-  const pg = SITE_PAGES[url];
-  if (!pg) return <div className="pg-nf"><span className="pg-nf-ic" aria-hidden="true" /><b>{pick(UI.notFound)}</b><span translate="no">{url}</span></div>;
-  return (
-    <div className="pg-site">
-      <div className="pg-blk pg-h1">{pick(pg.title)}</div>
-      {pg.pic ? <span className={'pg-site-pic pg-site-' + pg.pic} aria-hidden="true"><i /><i /><i /></span> : null}
-      <div className="pg-blk pg-p">{pick(pg.text)}</div>
-      <button type="button" className="pg-a pg-back" onClick={onBack}>{pick(UI.back)}</button>
-    </div>
-  );
-}
-
-// Бумажный браузер урока 1 со страницей уроков 2–5. Классы pg- (pp-doc занят
-// строкой DOCTYPE в коде с полями). По ссылке можно перейти: открывается
-// страница файла из href, адрес и вкладка меняются, стрелка «назад» возвращает.
-// Код поменялся — снова своя страница.
-function PageView({ title, blocks, empty, flash, hl, url }) {
-  const pick = usePick();
-  const list = blocks || [];
-  const key = JSON.stringify(list);
-  const [at, setAt] = useState(null);
-  const [nav, setNav] = useState(0);
-  useEffect(() => { setAt(null); }, [key]);
-  const ref = useFitPage(key + (flash || 0) + (at || ''));
-  const go = (href) => { const h = String(href || '').trim(); setAt(h || null); setNav((x) => x + 1); sfx('pop', true); };
-  const back = () => { setAt(null); setNav((x) => x + 1); sfx('tap', true); };
-  const away = at != null;
-  const sp = away ? SITE_PAGES[at] : null;
-  const tab = away ? (sp ? pick(sp.title) : at) : title;
-  return (
-    <PaperBrowser title={tab} url={away ? at : (url || 'index.html')} stamp={away || nav ? nav + (flash || 0) : flash} urlHl={away}
-      onBack={away ? back : undefined} tabHl={hl === 'title'} pageHl={hl === 'body'} cls="pp-br kz-piece">
-      <div ref={ref} key={'pg' + (flash || 0) + ':' + nav} className={'pg-doc' + (list.length || away ? '' : ' is-empty') + (flash || nav ? ' kz-a-pop' : '')}>
-        {away ? <SitePageView url={at} onBack={back} /> : list.length ? list.map((bk, j) => {
-          if (bk.kids) {
-            let n = 0;
-            const rows = [];
-            bk.kids.forEach((kid, q) => {
-              if (kid.li) { n += 1; rows.push(<div key={q} className="pg-li"><span className="pg-mk" aria-hidden="true">{bk.t === 'ol' ? n + '.' : '•'}</span><span>{kid.parts.length && hasText(kid.parts) ? pgParts(kid.parts, go) : ' '}</span></div>); }
-              else if (kid.p) rows.push(<div key={q} className={'pg-blk pg-' + (kid.t || 'p')}>{pgParts(kid.parts, go)}</div>);
-              else rows.push(<div key={q} className="pg-txt">{pgParts(kid.parts, go)}</div>);
-            });
-            return <div key={j} className={'pg-list pg-' + bk.t}>{rows}</div>;
-          }
-          if (bk.t === 'stray') return <div key={j} className="pg-li pg-stray"><span className="pg-mk" aria-hidden="true">•</span><span>{pgParts(bk.parts, go)}</span></div>;
-          return <div key={j} className={'pg-blk pg-' + bk.t + (bk.inh ? ' pg-in-' + bk.inh : '')}>{pgParts(bk.parts, go)}</div>;
-        }) : (empty ? pick(empty) : ' ')}
-      </div>
-    </PaperBrowser>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ТРОПА ПОХОДА — карта продвижения: пять привалов на бумажной тропе. Привал —
-// бумажный флажок-круг с мини-списком (точки или номера). Ждёт — выцвел и
-// покосился, список размыт; готов — свой цвет, ровно, галочка. Свой список до
-// написания — пунктирный круг; потом — его название.
-// (houseLit / houseName / StreetStrip / StreetMap — устройство карты 01p.)
-// ─────────────────────────────────────────────────────────────────────────────
-const houseLit = (store, i) => !!(store.get('t' + (i + 1)) || {}).solved;
-const houseName = (store, i, pick) => {
-  const own = i === HOME ? ((store.get('t' + (i + 1)) || {}).result || {}).title : null;
-  return own && houseLit(store, i) ? own : pick(STREET[i].name);
-};
-const TILT = [-8, 6, -6, 8, 0];
-function Clipping({ i, lit, cur, name, size, pop, whole }) {
-  const h = STREET[i];
-  const home = i === HOME;
-  const on = lit || (whole && !home);
-  const ghost = home && !lit;
-  const wait = !on && !home;
-  return (
-    <span className={'pp-house pp-stop' + (on ? ' is-lit' : '') + (wait ? ' is-wait' : '') + (cur ? ' is-cur' : '') + (ghost ? ' is-ghost' : '') + (pop ? ' kz-a-stamp' : '') + (size ? ' is-' + size : '')}
-      style={{ '--hc': h.c, '--tilt': TILT[i % TILT.length] + 'deg' }}>
-      <span className="pp-h-art" aria-hidden="true">
-        {ghost ? <span className="pp-stop-plan" /> : stopArt(h, i, on)}
-      </span>
-      {lit ? <span className="pp-h-ok"><Icon name="check" size={9} /></span> : null}
-      {name ? <span className="pp-h-name">{name}</span> : null}
-    </span>
-  );
-}
-
-// Полоса тропы над заданием: пять привалов и подпись текущего. mini — для шапки
-// телефона: только предыдущий, текущий и следующий, без подписи.
-function StreetStrip({ cur, pop, mini }) {
-  const pick = usePick();
-  const store = useStore();
-  const shown = mini ? STREET.map((s, i) => i).filter((i) => Math.abs(i - cur) <= 1) : STREET.map((s, i) => i);
-  const nm = (i) => houseName(store, i, pick);
-  return (
-    <div className={'pp-strip' + (mini ? ' is-mini' : ' kz-piece')}>
-      <div className="pp-strip-row" role="list" aria-label={pick(UI.map)}>
-        {shown.map((i) => (
-          <span key={STREET[i].id} role="listitem" title={nm(i)}
-            aria-label={nm(i) + ' — ' + pick(houseLit(store, i) ? UI.works : UI.off) + (i === cur ? ', ' + pick(UI.now) : '')}>
-            <Clipping i={i} lit={houseLit(store, i)} cur={i === cur} size="s" pop={pop && i === cur} />
-          </span>
-        ))}
-      </div>
-      {mini ? null : (
-        <span className="pp-strip-cap"><b>{pick(fillL(UI.houseOf, { n: cur + 1 }))}</b><span>{nm(cur)}</span></span>
-      )}
-    </div>
-  );
-}
-
-// Большая тропа — на вступлении и в финале: привалы вдоль пунктирной тропинки.
-// whole — до дождя (хук): все привалы целые; blown — дождь только что прошёл:
-// с флажков слетают капли-клочки.
-function StreetMap({ glow, whole, blown }) {
-  const pick = usePick();
-  const store = useStore();
-  return (
-    <div className={'pp-street pp-trail kz-piece' + (glow ? ' is-glow' : '') + (blown ? ' is-blown' : '')} role="list" aria-label={pick(UI.map)}>
-      <Cut c="#DCE8CF" seed={120} n={20} amp={5} asp={6} cls="pp-road pp-board" />
-      <span className="pp-trail-path" aria-hidden="true" />
-      {STREET.map((s, i) => {
-        const lit = houseLit(store, i);
-        return (
-          <span key={s.id} role="listitem" className="pp-street-h" style={{ '--dl': (glow ? 0.15 + i * 0.12 : i * 0.06) + 's', '--i': i }}
-            aria-label={houseName(store, i, pick) + ' — ' + pick(lit || (whole && i !== HOME) ? UI.works : UI.off)}>
-            <Clipping i={i} lit={lit} whole={whole} name={houseName(store, i, pick)} size="l" />
-            {blown && i !== HOME ? <Cut c="#7FB3D5" round seed={140 + i} n={5} amp={10} cls="pp-scrap pp-drop" /> : null}
-          </span>
-        );
+    <div ref={ref} className={'z2-doc' + (cls ? ' ' + cls : '')}>
+      {blocks.map((bk, i) => {
+        const c = 'z2-blk z2-' + bk.t + (bk.hl === true ? ' is-hl' : '') + (bk.cls ? ' ' + bk.cls : '') + (anim ? ' kz-a-drop' : '');
+        const st = anim ? { '--dl': (0.12 * i) + 's' } : null;
+        return <div key={bk.k || i} className={c} style={st}>{inl(bk.parts, bk.hl, 'k' + i)}</div>;
       })}
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// НАГЛЯДНАЯ ПОМОЩЬ — видна сразу, подписана названиями тегов.
-// ─────────────────────────────────────────────────────────────────────────────
-// Как должно выглядеть в браузере (t3): список с точками или номерами.
-function ListTarget({ kind, items }) {
+// Обёртка в тег, набранная в два поля: перед текстом и после. null — всё верно.
+function wrapIssue(a, b, tag) {
+  const na = normT(a), nb = normT(b);
+  const o = '<' + tag + '>', z = '</' + tag + '>';
+  const one = (n, want, side) => {
+    if (n === want) return null;
+    if (!n) return side === 'a' ? WRAP_MSGS.needOpen : WRAP_MSGS.needClose;
+    if (side === 'a' && n === z) return WRAP_MSGS.openSlash;
+    if (side === 'b' && n === o) return WRAP_MSGS.needSlash;
+    if (n.charAt(0) !== '<') return WRAP_MSGS.needLt;
+    if (n.charAt(n.length - 1) !== '>') return WRAP_MSGS.needGt;
+    return WRAP_MSGS.wrongName;
+  };
+  const m = one(na, o, 'a') || one(nb, z, 'b');
+  return m ? fillL(m, { tag }) : null;
+}
+
+// Два поля и общие кнопки < / тег >: символ встаёт в поле, где курсор.
+function useTwoSlots() {
+  const a = useTagTyping({ max: 8 });
+  const b = useTagTyping({ max: 8 });
+  const [act, setAct] = useState('a');
+  const ty = act === 'a' ? a : b;
+  return { a, b, act, setAct, ty: { val: a.val || b.val, insert: ty.insert, backspace: ty.backspace } };
+}
+const Slot = ({ ty, on, onFocus, blink, label, onEnter }) => (
+  <span className={'kz-gap z2-slot' + (blink ? ' kz-gap-led' : '') + (on ? ' is-act' : '')}>
+    <InlineInput value={ty.val} onChange={ty.setVal} inputRef={ty.inputRef} onFocus={onFocus} onEnter={onEnter}
+      placeholder={L3('…', '…', '…')} label={label} max={8} cls="kz-tag-in" />
+  </span>
+);
+
+// =============================================================================
+// S1. КРЮЧОК — каша из текста в бумажном браузере. «Превратить»: слова из каши
+// ступенчато (stop-motion, с шорохом) разлетаются по своим местам — название
+// подлетает наверх и растёт в заголовок, абзацы встают с отступом, на слово
+// «очень» клеится горчичная полоска (как в ролике). Ученик видит: это тот же
+// текст, только разложенный тегами.
+// =============================================================================
+const S1_FLY = 0.75;   // полёт одного куска, с
+function S1({ p }) {
   const pick = usePick();
-  return (
-    <div className="pp-target kz-piece">
-      <span className="pp-target-h">{pick(UI.target)}</span>
-      <span className="pp-target-s">
-        {items.map((x, k) => <span key={k} className="pp-target-li"><i aria-hidden="true">{kind === 'ol' ? (k + 1) + '.' : '•'}</i>{x}</span>)}
-      </span>
+  const c = C.s1;
+  const [rec, put] = useRec('s1');
+  const solved = !!(rec && rec.done);
+  const [phase, setPhase] = useState(solved ? 'page' : 'wall');   // wall · fly · page
+  const [fresh, setFresh] = useState(false);
+  const [speaker, say, spoken, sayNow] = useVoice([{ text: solved ? c.done : c.say, pose: solved ? 'smile' : 'hello' }]);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(solved, spoken);
+  const led = useIdleLed(canTap && phase === 'wall', 0);
+  const tm = useRef(0);
+  const pageRef = useRef(null);
+  useEffect(() => () => { clearTimeout(tm.current); paperOff(); }, []);
+  const land = () => { paperOff(); put({ done: true }); setPhase('page'); sfx('ok', true); sayNow(c.magic, 'wonder'); say(c.magicP, 'point'); say(c.magicB, 'point'); say(c.done, 'smile'); };
+  const turn = () => {
+    if (!canTap || phase !== 'wall') return;
+    sfx('pop', true); setFresh(true);
+    if (reduceMotion()) { land(); return; }
+    setPhase('fly');
+  };
+  // Полёт: каждый кусок каши едет от своего места к месту на странице и меняет
+  // размер до размера там (заголовок — крупнее). Лесенка: заголовок, абзац, …
+  useLayoutEffect(() => {
+    if (phase !== 'fly') return undefined;
+    const box = pageRef.current;
+    if (!box) { land(); return undefined; }
+    let last = 0;
+    box.querySelectorAll('.z2-wall-fly [data-k]').forEach((el) => {
+      const k = el.getAttribute('data-k');
+      const to = box.querySelector('.z2-ghostpage [data-k="' + k + '"]');
+      if (!to) return;
+      const a = el.getBoundingClientRect();
+      const t = (to.getClientRects()[0] || to.getBoundingClientRect());
+      const sc = parseFloat(getComputedStyle(to).fontSize) / parseFloat(getComputedStyle(el).fontSize);
+      const dl = Number(k.split('-')[0]) * 0.16 + Number(k.split('-')[1]) * 0.05;
+      last = Math.max(last, dl);
+      // Бумажка срывается с наклоном и выпрямляется, когда садится на место.
+      el.style.rotate = ((Number(k.split('-')[1]) % 2 ? 1 : -1) * (4 + (k.length % 3) * 2)) + 'deg';
+      void el.offsetWidth;
+      const tr = (prop) => prop + ' ' + S1_FLY + 's steps(9, end) ' + dl.toFixed(2) + 's';
+      el.style.transition = [tr('translate'), tr('scale'), tr('rotate')].join(', ');
+      el.style.translate = (t.left - a.left).toFixed(1) + 'px ' + (t.top - a.top).toFixed(1) + 'px';
+      el.style.scale = sc.toFixed(3);
+      el.style.rotate = '0deg';
+    });
+    paperOn();
+    tm.current = setTimeout(land, (last + S1_FLY) * 1000 + 180);
+    return undefined;
+  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Подсветка за речью: «название» — h1, «абзацы» — абзацы, «жирное слово» — b.
+  const hl = phase !== 'page' ? null : speaker.text === c.magic ? 'h1' : speaker.text === c.magicP ? 'p' : speaker.text === c.magicB ? 'b' : null;
+  // Части с ключами «блок-часть»: по ним кусок каши находит своё место.
+  const keyed = (parts, bi) => parts.map((x, j) => (typeof x === 'string' ? { s: x, k: bi + '-' + j } : Object.assign({}, x, { k: bi + '-' + j })));
+  const blocks = [
+    { t: 'h1', parts: keyed([pick(PAGE.title)], 0), hl: hl === 'h1' },
+    { t: 'p', parts: keyed(pick(PAGE.p1), 1), hl: hl === 'p' ? true : hl === 'b' ? 'b' : null, cls: 'z2-taped' + (fresh ? ' is-fresh' : '') },
+    { t: 'h2', parts: keyed([pick(PAGE.h2)], 2) },
+    { t: 'p', parts: keyed(pick(PAGE.p2), 3), hl: hl === 'p' }
+  ];
+  // Каша: те же куски подряд, одной строкой, одним шрифтом.
+  // Пробел — только между блоками: внутри абзаца пробелы уже есть в самих частях.
+  const chunks = [].concat(...blocks.map((bk) => bk.parts));
+  const wall = (cls) => (
+    <div className={'z2-doc z2-wall' + (cls ? ' ' + cls : '')}>
+      {chunks.map((x, j) => {
+        // Пробелы по краям куска — снаружи бумажки: у inline-block они схлопываются.
+        const raw = x.s !== undefined ? x.s : x.b !== undefined ? x.b : x.i;
+        const lead = /^\s/.test(raw) || (j && x.k.split('-')[1] === '0') ? ' ' : '';
+        const trail = /\S\s+$/.test(raw) ? ' ' : '';
+        const word = raw.trim();
+        return <React.Fragment key={x.k}>{lead}{word ? <span className="z2-chunk" data-k={x.k}>{word}</span> : null}{trail}</React.Fragment>;
+      })}
     </div>
   );
-}
-// Сколько ещё сломанных строк (t4): живой счётчик — условие видно.
-function FixLeft({ n }) {
-  const pick = usePick();
+  const askText = phase === 'wall' ? c.ask : c.askDone;
   return (
-    <div className={'pp-left kz-piece' + (n ? '' : ' is-ok')} aria-live="polite">
-      {n ? pick(fillL(UI.left, { n })) : <><Icon name="check" size={13} />{pick(UI.allFixed)}</>}
-    </div>
-  );
-}
-// Что должно быть в своей работе (t5) — галочки загораются по ходу набора.
-function Checklist({ items }) {
-  const pick = usePick();
-  return (
-    <div className="pp-check kz-piece">
-      {items.map((it) => (
-        <span key={it.k} className={'pp-check-i' + (it.ok ? ' is-ok' : '')}>
-          <span className="pp-check-box">{it.ok ? <Icon name="check" size={11} /> : null}</span>{pick(it.text)}
-        </span>
-      ))}
-    </div>
+    <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+      <Sheet cls="z2-sheet">
+        <KzAsk text={askText} />
+        <div className="kz-scene z2-s1">
+          <div className="kz-stagebox z2-s1-man"><div className="kz-manbox kz-manbox-free"><PaperMan anim={!solved} wave={phase === 'page'} /></div></div>
+          <div className="kz-col z2-s1-page">
+            <PaperBrowser title={pick(PAGE.title)} cls="z2-br">
+              <div ref={pageRef} className="z2-s1-box">
+                {phase === 'wall' ? wall() : null}
+                {phase !== 'wall' ? <PageDoc blocks={blocks} cls={phase === 'fly' ? 'z2-ghostpage' : ''} /> : null}
+                {phase === 'fly' ? wall('z2-wall-fly') : null}
+              </div>
+            </PaperBrowser>
+          </div>
+        </div>
+        {phase !== 'page' ? (
+          <div className="kz-row"><button type="button" className="kz-btn is-coral" disabled={!canTap || phase !== 'wall'} onClick={turn}>{pick(UI.turn)}<Led on={led} /></button></div>
+        ) : null}
+      </Sheet>
+    </Stage>
   );
 }
 
-// Подписи ступеней подсказки: направление → место или правило → образец.
-const HINT_STEP = [
-  L3('Yo‘nalish', 'Направление', 'Where to look'),
-  L3('Joy va qoida', 'Место и правило', 'Place and rule'),
-  L3('Deyarli javob', 'Почти ответ', 'Almost there')
+// =============================================================================
+// S2. ПЛАН — четыре карточки открываются сами, пока Коди о них говорит.
+// =============================================================================
+const CARD_C = [KZ.coral, KZ.mustard, KZ.teal, 'var(--kz-piece)'];
+function S2({ p }) {
+  const pick = usePick();
+  const c = C.s2;
+  const [rec, put] = useRec('s2');
+  const solved = !!(rec && rec.done);
+  const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
+    : [{ text: c.say, pose: 'explain' }].concat(c.cards.map((k) => ({ text: k.say, pose: 'point' })), [{ text: c.done, pose: 'smile' }]));
+  const [open, setOpen] = useState(solved ? 4 : 0);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(solved, spoken);
+  const reach = (n) => { if (n <= open) return; setOpen(n); sfx('pop', true); if (n === 4) put({ done: true }); };
+  useEffect(() => {
+    const i = c.cards.findIndex((k) => k.say === speaker.text);
+    reach(i >= 0 ? i + 1 : speaker.text === c.done ? 4 : 0);
+  }, [speaker.text]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (spoken) reach(4); }, [spoken]); // eslint-disable-line react-hooks/exhaustive-deps
+  const again = (i) => { if (canTap && i < open) sayNow(c.cards[i].say, 'point'); };
+  return (
+    <Stage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="z2-sheet">
+        <KzAsk text={c.ask} n={open + '/4'} />
+        <div className="kz-plan">
+          {c.cards.map((card, i) => {
+            const on = i < open;
+            const now = on && speaker.text === card.say;
+            return (
+              <button key={i} type="button" className={'kz-card' + (on ? ' is-open' : '')} disabled={!on || !canTap} onClick={() => again(i)}
+                aria-label={on ? pick(card.title) : String(i + 1)} style={{ '--dl': (i * 0.12) + 's' }}>
+                <Cut c={on ? CARD_C[i] : 'var(--kz-piece)'} seed={80 + i} n={9} amp={3} asp={1.6} cls="kz-card-cut kz-a-drop" r={i % 2 ? 1.2 : -1.4} dl={i * 0.12} hl={now} hlc={KZ.ink}>
+                  <span className="kz-card-face" key={on ? 'o' : 'c'}>
+                    {on ? <span className="kz-a-stamp">{pick(card.title)}</span> : <span className="kz-card-n">{i + 1}</span>}
+                  </span>
+                </Cut>
+              </button>
+            );
+          })}
+        </div>
+      </Sheet>
+    </Stage>
+  );
+}
+
+// =============================================================================
+// S3. ШЕСТЬ ЗАГОЛОВКОВ — на бирюзовом листе body шесть бумажных полосок от h1 до
+// h6, каждая мельче предыдущей (как в ролике). Показ: загорается самая крупная,
+// потом самую мелкую; у h1 появляется звёздочка «главный», у h6 — лупа.
+// =============================================================================
+const H_SIZE = [1, 0.84, 0.7, 0.58, 0.48, 0.4];
+function BodySheet({ children, label = true, cls }) {
+  return (
+    <div className={'z2-body' + (cls ? ' ' + cls : '')}>
+      <Cut c={KZ.teal} seed={400} n={16} amp={1.6} asp={1.5} cls="z2-body-cut" />
+      {label ? <KzLabel t="body" cls="z2-body-lbl" /> : null}
+      <div className="z2-body-in">{children}</div>
+    </div>
+  );
+}
+function S3({ p }) {
+  const pick = usePick();
+  const c = C.s3;
+  const [rec, put] = useRec('s3');
+  const solved = !!(rec && rec.done);
+  const [n, setN] = useState(solved ? 2 : 0);
+  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
+    : [{ text: c.say, pose: 'explain' }]);
+  const boxRef = useRef(null);
+  const strip = (i) => () => boxRef.current && boxRef.current.querySelectorAll('.z2-hstrip')[i];
+  // Показ: загорается самый крупный заголовок, потом самый мелкий; Коди называет оба.
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { look: strip(0), act: () => { sfx('pop', true); setN(1); } },
+    { say: [{ text: c.big, pose: 'point' }] },
+    { look: strip(5), act: () => { sfx('ok', true); setN(2); } },
+    { say: [{ text: c.small, pose: 'explain' }, { text: c.done, pose: 'smile' }] },
+    { act: () => put({ done: true }) }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
+  // Строка задания — за речью: пока Коди говорит о h1, она ещё про h1.
+  const askText = solved || demo.done ? c.done : demo.idx >= 2 ? c.askSmall : c.askBig;
+  // Пока Коди говорит о h1 — светится h1, о h6 — h6.
+  const hlI = speaker.text === c.big ? 0 : speaker.text === c.small ? 5 : -1;
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+      <Sheet cls="z2-sheet">
+        <KzAsk text={askText} n={solved ? null : n + '/2'} />
+        <div className="kz-scene" ref={boxRef}>
+          <BodySheet cls="z2-s3-body">
+            {H_SIZE.map((s, i) => {
+              return (
+                <span key={i} className={'z2-hstrip kz-a-left' + (hlI === i ? ' is-hl' : '')}
+                  style={{ '--hs': s, '--dl': (0.12 * i) + 's', '--r': (i % 2 ? 0.7 : -0.6) + 'deg' }}>
+                  <span className="z2-hstrip-paper">
+                    <TagK t={'h' + (i + 1)} />
+                    <span className="z2-hstrip-w">{pick(c.word)}</span>
+                  </span>
+                  {i === 0 && n >= 1 ? <span className="z2-star kz-a-stamp" aria-hidden="true">★</span> : null}
+                  {i === 5 && n >= 2 ? <span className="z2-loupe kz-a-stamp" aria-hidden="true" /> : null}
+                </span>
+              );
+            })}
+          </BodySheet>
+        </div>
+      </Sheet>
+    </Stage>
+  );
+}
+
+// =============================================================================
+// S4. ЗАКРОЙ ЗАГОЛОВОК — без </h1> браузер честно делает огромным и абзац под
+// заголовком. Ученик набирает </h1>: абзац ступенчато становится обычным.
+// =============================================================================
+function S4({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.s4;
+  const [rec, put] = useRec('s4');
+  const solved = !!(rec && rec.done);
+  const ty = useTagTyping({ max: 12 });
+  const [msg, setMsg] = useState(null);
+  const [okNow, setOkNow] = useState(solved);
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'wonder' }]);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(solved || okNow, spoken);
+  const lad = useKzLadder(!okNow);
+  const st = useRef({ tries: 0, misses: 0 });
+  const led = useIdleLed(canTap && !okNow && !ty.val, 0);
+  const blink = !okNow && (speaker.text === c.say || led);
+  const check = () => {
+    if (!canTap || okNow || !ty.val.trim()) return;
+    st.current.tries += 1;
+    const issue = tagTypingIssue(ty.val, 'h1', c.msgs);
+    if (!issue) {
+      sfx('win', true); setMsg(null); setOkNow(true); put({ done: true });
+      log({ screenId: 's4', type: 'write-closing', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
+      sayNow(c.ok, 'smile');
+      return;
+    }
+    st.current.misses += 1;
+    sfx('soft', true); setMsg(issue); sayNow(issue, 'think');
+    if (st.current.misses >= 2) lad.bump();
+  };
+  const p1 = pick(PAGE.p2);
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="z2-sheet">
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hintAt(lad.lv, c.hints))} />
+        <div className="kz-scene kz-scene-col">
+          <div className="kz-col">
+            <PaperBrowser title={pick(PAGE.title)} short cls={'z2-br' + (okNow ? '' : ' z2-broken')} pageHl={!okNow}>
+              <PageDoc blocks={[{ t: 'h1', parts: [pick(PAGE.title)] }, { t: 'p', parts: p1, cls: okNow ? 'kz-a-stamp' : 'z2-inh1' }]} />
+            </PaperBrowser>
+            <KzCode lines={[
+              { k: 'b', d: 0, cls: 'z2-edge', parts: [T_('body')] },
+              { k: 'h', d: 1, cls: okNow ? 'is-new' : 'is-gap', parts: [T_('h1'), W_(pick(PAGE.title)), okNow ? <span key="c" className="kz-a-stamp">{T_('h1', true)}</span> : (
+                <span key="g" className={'kz-gap' + (blink ? ' kz-gap-led' : '') + (ty.val ? '' : ' z2-miss')}>
+                  <InlineInput value={ty.val} onChange={(v) => { ty.setVal(v); setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={12} cls="kz-tag-in" />
+                </span>)] },
+              { k: 'p', d: 1, parts: [T_('p'), ...codeParts(p1), T_('p', true)] },
+              { k: 'bc', d: 0, cls: 'z2-edge', parts: [T_('body', true)] }
+            ]} />
+          </div>
+        </div>
+        {!okNow ? <KeyRow keys={['<', '/', 'h1', '>']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 4} /> : null}
+      </Sheet>
+    </Stage>
+  );
+}
+
+// =============================================================================
+// S5. КАКОЙ ЗАГОЛОВОК — три строки страницы без тегов; бирки h1, h2, h2, h6
+// (одна лишняя). Перетащить бирку на строку или нажать бирку, потом строку.
+// Браузер рядом сразу показывает размер. Новую механику сначала показывает рука.
+// =============================================================================
+const S5_TAGS = [{ id: 'h2a', t: 'h2' }, { id: 'h6', t: 'h6' }, { id: 'h1', t: 'h1' }, { id: 'h2b', t: 'h2' }];
+const S5_WANT = ['h1', 'h2', 'h2'];
+function S5({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.s5;
+  const [rec, put] = useRec('s5');
+  const solved = !!(rec && rec.done);
+  const [slots, setSlots] = useState(solved ? ['h1', 'h2a', 'h2b'] : [null, null, null]);
+  const [sel, setSel] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [shake, setShake] = useState(null);
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'explain' }]);
+  const canTap = useCanAnswer(spoken);
+  const doneN = slots.filter(Boolean).length;
+  const done = doneN === 3;
+  const canGo = useAdvanceGate(solved || done, spoken);
+  const lad = useKzLadder(!done);
+  const st = useRef({ tries: 0, misses: 0 });
+  const led = useIdleLed(canTap && !done, doneN * 10 + (sel ? 1 : 0));
+  const tagOf = (id) => S5_TAGS.find((x) => x.id === id).t;
+  const place = (id, where) => {
+    const k = Number(where);
+    if (!canTap || done || !id || Number.isNaN(k) || slots[k]) return false;
+    st.current.tries += 1;
+    const t = tagOf(id);
+    if (t !== S5_WANT[k]) {
+      st.current.misses += 1;
+      sfx('soft', true); setShake(id); setTimeout(() => setShake(null), 520);
+      const m = t === 'h6' ? c.why.h6 : t === 'h1' ? c.why.h1sec : c.why.h2title;
+      setMsg(m); sayNow(m, 'think');
+      if (st.current.misses >= 2) lad.bump();
+      return false;
+    }
+    sfx('pop', true);
+    const ns = slots.slice(); ns[k] = id;
+    setSlots(ns); setSel(null); setMsg(null);
+    if (ns.every(Boolean)) {
+      put({ done: true });
+      log({ screenId: 's5', type: 'place-headings', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
+      sayNow(c.ok, 'smile');
+    }
+    return true;
+  };
+  const dnd = useKzDrag((id, where) => place(id, where));
+  const trayRef = useRef(null);
+  const codeRef = useRef(null);
+  const pickLine = (k) => { if (!sel) { setMsg(c.pickFirst); return; } place(sel, String(k)); };
+  const nextK = slots.findIndex((x) => !x);
+  const lit = lad.lv >= 3;
+  const nextId = nextK >= 0 ? S5_TAGS.find((x) => x.t === S5_WANT[nextK] && slots.indexOf(x.id) < 0).id : null;
+  const lines = c.lines.map((ln, k) => {
+    const id = slots[k];
+    const t = id ? tagOf(id) : null;
+    return {
+      k: 'l' + k, d: 0, place: String(k), cls: (id ? 'is-new' : 'z2-hline') + (dnd.hover === String(k) ? ' is-hover' : ''),
+      onTap: id ? null : () => pickLine(k), disabled: !canTap || done,
+      led: !id && ((led && !!sel) || (lit && k === nextK)),
+      parts: t ? [T_(t), W_(pick(ln)), T_(t, true)] : [<span key="d" className="kz-dash kz-dash-sm" />, W_(pick(ln)), <span key="e" className="kz-dash kz-dash-sm" />]
+    };
+  });
+  const blocks = c.lines.map((ln, k) => (slots[k] ? { t: tagOf(slots[k]), parts: [pick(ln)], k: 'b' + k } : { t: 'raw', parts: [pick(ln)], k: 'b' + k }));
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="z2-sheet">
+        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hintAt(lad.lv, c.hints))} n={done ? null : doneN + '/3'} />
+        <div className={'kz-scene z2-s5' + (dnd.active || sel ? ' is-dragging' : '')}>
+          <div className="kz-col" ref={codeRef}><KzCode lines={lines} /></div>
+          <div className="kz-col">
+            <PaperBrowser title={pick(PAGE.title)} short cls="z2-br"><PageDoc blocks={blocks} /></PaperBrowser>
+          </div>
+        </div>
+        {!done ? (
+          <div ref={trayRef} className="kz-tray">
+            {S5_TAGS.map((tg, i) => {
+              if (slots.indexOf(tg.id) >= 0) return null;
+              return (
+                <button key={tg.id} type="button" disabled={!canTap || done} data-id={tg.id}
+                  className={'kz-scrap kz-scrap-tag' + (sel === tg.id ? ' is-sel' : '') + (shake === tg.id ? ' kz-a-shake' : '') + (lit && tg.id === nextId ? ' is-led' : '')}
+                  style={{ '--r': ((i % 2 ? 1 : -1) * (1.2 + i * 0.4)) + 'deg' }}
+                  onPointerDown={(e) => { if (canTap && !done) dnd.start(e, tg.id, '<' + tg.t + '>'); }}
+                  onClick={() => { setSel(sel === tg.id ? null : tg.id); setMsg(null); sfx('tap', true); }}>
+                  <TagK t={tg.t} /><Led on={led && !sel && !done && tg.id === nextId} />
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+        <KzHand label="<h1>" run={canTap && !done && !sel && !dnd.active && doneN === 0}
+          targets={[() => trayRef.current && trayRef.current.querySelector('[data-id="h1"]'), () => codeRef.current && codeRef.current.querySelector('[data-place="0"]')]} />
+      </Sheet>
+      <KzGhost ghost={dnd.ghost} />
+    </Stage>
+  );
+}
+
+// =============================================================================
+// S6. АБЗАЦЫ — три строки кода без тегов: браузер склеил их в одну. Показ: строки
+// загораются — каждая оборачивается в p, в окне появляется отдельный абзац.
+// =============================================================================
+function S6({ p }) {
+  const pick = usePick();
+  const c = C.s6;
+  const [rec, put] = useRec('s6');
+  const solved = !!(rec && rec.done);
+  const [wrapped, setWrapped] = useState(solved ? [true, true, true] : [false, false, false]);
+  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
+    : [{ text: c.say, pose: 'explain' }, { text: c.sayP, pose: 'point' }]);
+  const n = wrapped.filter(Boolean).length;
+  const wrap = (k) => { setWrapped((w) => { const x = w.slice(); x[k] = true; return x; }); sfx('pop', true); };
+  const codeRef = useRef(null);
+  const line = (k) => () => codeRef.current && codeRef.current.querySelectorAll('.kz-line.z2-hline')[0];
+  // Показ: строки по очереди загораются — каждая оборачивается в p.
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { look: line(0), act: () => wrap(0) },
+    { look: line(1), act: () => wrap(1) },
+    { look: line(2), act: () => { wrap(2); } },
+    { say: [{ text: c.done, pose: 'smile' }] },
+    { act: () => put({ done: true }) }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
+  // Пока Коди говорит про склейку — окно подсвечено.
+  const glued = speaker.text === c.say && !solved;
+  // Честно: подряд идущие строки без тегов склеиваются, каждый p — отдельный абзац.
+  const blocks = [];
+  c.lines.forEach((ln, k) => {
+    if (wrapped[k]) blocks.push({ t: 'p', parts: [pick(ln)], k: 'p' + k, cls: 'kz-a-stamp' });
+    else if (blocks.length && blocks[blocks.length - 1].t === 'raw') blocks[blocks.length - 1].parts.push(' ' + pick(ln));
+    else blocks.push({ t: 'raw', parts: [pick(ln)], k: 'r' + k });
+  });
+  const nextK = wrapped.findIndex((x) => !x);
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={n === 3 ? c.done : c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="z2-sheet">
+        <KzAsk text={n === 3 ? c.done : c.ask} n={n === 3 ? null : n + '/3'} />
+        <div className="kz-scene z2-s5">
+          <div className="kz-col" ref={codeRef}>
+            <KzCode lines={[{ k: 'b', d: 0, cls: 'z2-edge', parts: [T_('body')] }].concat(c.lines.map((ln, k) => ({
+              k: 'l' + k + (wrapped[k] ? 'w' : ''), d: 1, cls: wrapped[k] ? 'is-new' : 'z2-hline' + (k === nextK && speaker.text === c.sayP ? ' is-read' : ''),
+              parts: wrapped[k] ? [T_('p'), W_(pick(ln)), T_('p', true)] : [W_(pick(ln))]
+            }))).concat([{ k: 'bc', d: 0, cls: 'z2-edge', parts: [T_('body', true)] }])} />
+          </div>
+          <div className="kz-col">
+            <PaperBrowser title={pick(PAGE.title)} short cls="z2-br" pageHl={glued}><PageDoc blocks={blocks} /></PaperBrowser>
+          </div>
+        </div>
+      </Sheet>
+    </Stage>
+  );
+}
+
+// =============================================================================
+// S7. НАПИШИ АБЗАЦ — две строки без тегов: браузер честно склеил их в одну (как
+// на экране 6). Вторую ученик оборачивает в p — она встаёт отдельным абзацем. Два поля:
+// перед текстом и после; кнопки < / p > вставляют в поле с курсором.
+// =============================================================================
+function S7({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.s7;
+  const [rec, put] = useRec('s7');
+  const solved = !!(rec && rec.done);
+  const sl = useTwoSlots();
+  const [msg, setMsg] = useState(null);
+  const [okNow, setOkNow] = useState(solved);
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'explain' }]);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(solved || okNow, spoken);
+  const lad = useKzLadder(!okNow);
+  const st = useRef({ tries: 0, misses: 0 });
+  const led = useIdleLed(canTap && !okNow && !sl.a.val && !sl.b.val, 0);
+  const check = () => {
+    if (!canTap || okNow || (!sl.a.val.trim() && !sl.b.val.trim())) return;
+    st.current.tries += 1;
+    const issue = wrapIssue(sl.a.val, sl.b.val, 'p');
+    if (!issue) {
+      sfx('win', true); setMsg(null); setOkNow(true); put({ done: true });
+      log({ screenId: 's7', type: 'wrap-p', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
+      sayNow(c.ok, 'smile');
+      return;
+    }
+    st.current.misses += 1;
+    sfx('soft', true); setMsg(issue); sayNow(issue, 'think');
+    if (st.current.misses >= 2) lad.bump();
+  };
+  const prev = pick(c.prev), text = pick(c.text);
+  // Честно, как в настоящем браузере: две строки без тегов — одна строка текста;
+  // строка в p — отдельный абзац с отступом, первая остаётся простым текстом.
+  const blocks = okNow ? [{ t: 'raw', parts: [prev] }, { t: 'p', parts: [text], cls: 'kz-a-stamp' }]
+    : [{ t: 'raw', parts: [prev, ' ' + text] }];
+  const blink = !okNow && led;
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="z2-sheet">
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hintAt(lad.lv, c.hints))} />
+        <div className="kz-scene kz-scene-col">
+          <div className="kz-col">
+            <PaperBrowser title={pick(PAGE.title)} short cls="z2-br" pageHl={!okNow}><PageDoc blocks={blocks} /></PaperBrowser>
+            <KzCode lines={[
+              { k: 'b', d: 0, cls: 'z2-edge', parts: [T_('body')] },
+              { k: 'p', d: 1, cls: 'z2-ctx', parts: [W_(prev)] },
+              { k: 'x', d: 1, cls: okNow ? 'is-new' : 'is-hl', parts: okNow ? [T_('p'), W_(text), T_('p', true)] : [
+                <Slot key="a" ty={sl.a} on={sl.act === 'a'} onFocus={() => sl.setAct('a')} blink={blink} label={c.ask} onEnter={check} />,
+                W_(text),
+                <Slot key="z" ty={sl.b} on={sl.act === 'b'} onFocus={() => sl.setAct('b')} blink={blink} label={c.ask} onEnter={check} />] },
+              { k: 'bc', d: 0, cls: 'z2-edge', parts: [T_('body', true)] }
+            ]} />
+          </div>
+        </div>
+        {!okNow ? <KeyRow keys={['<', '/', 'p', '>']} ty={sl.ty} canTap={canTap} onCheck={check} ready={sl.a.val.trim().length > 2 && sl.b.val.trim().length > 3} /> : null}
+      </Sheet>
+    </Stage>
+  );
+}
+
+// =============================================================================
+// S8. СКОЛЬКО АБЗАЦЕВ? — кусок кода; ученик отвечает 1, 2 или 3, браузер
+// показывает правду. Ловушки: всё в одной строке, но тегов p несколько; строк
+// несколько, а p один. Промах — дополнительный раунд того же типа.
+// =============================================================================
+const S8_W = [L3('Mushugim uxlaydi.', 'Кот спит.', 'The cat sleeps.'), L3('U baliq yeydi.', 'Он ест рыбу.', 'He eats fish.'),
+  L3('U o‘ynaydi.', 'Он играет.', 'He plays.'), L3('Bugun havo quyoshli.', 'Сегодня солнце.', 'It’s sunny today.'), L3('Biz sayr qilamiz.', 'Мы гуляем.', 'We go for a walk.')];
+// lines — строки кода: массив абзацев на строке; abz — сколько абзацев; type — какая ловушка.
+const S8_ROUNDS = [
+  { lines: [['p0', 'p1']], abz: 2, type: 'many' },
+  { lines: [['o0'], ['c1']], abz: 1, type: 'one' },
+  { lines: [['p0', 'p1'], ['p2']], abz: 3, type: 'many' }
 ];
-
-// Одна заметка под работой — бумажный листок: разбор проверки, ступень
-// подсказки (с образцом на третьей) или похвала.
-function TaskNote({ note, extra }) {
-  const pick = usePick();
-  if (!note || !note.text) return null;
-  const kind = note.kind === 'hint' ? 'hint' : note.kind === 'ok' ? 'ok' : 'fb';
-  return (
-    <div className={'note-one pp-note is-' + kind + ' kz-piece'} key={kind + note.n} aria-live="polite">
-      <span className="pp-note-lbl">
-        {kind === 'hint' ? <><Icon name="bulb" size={13} />{pick(HINT_STEP[note.level - 1])}<span className="pp-note-step">{note.level}/3</span></>
-          : kind === 'ok' ? <><Icon name="check" size={13} />{pick(UI.ok)}</>
-            : <>{pick(UI.fb)}{note.sub ? <span className="pp-note-sub">{pick(UI.incomplete)}</span> : null}</>}
-      </span>
-      {kind === 'hint' && note.fb ? <div className="pp-note-fb">{pick(note.fb)}</div> : null}
-      <div className="pp-note-body">{pick(note.text)}</div>
-      {kind === 'hint' && note.level === 3 && extra ? <div className="pp-note-extra">{extra}</div> : null}
-    </div>
-  );
+const S8_EXTRA = [
+  { lines: [['p3', 'p4', 'p2']], abz: 3, type: 'many' },
+  { lines: [['o3'], ['m4'], ['c2']], abz: 1, type: 'one' },
+  { lines: [['p4'], ['p3', 'p0']], abz: 3, type: 'many' }
+];
+// p0 — <p>текст</p>; o0 — <p>текст (абзац открыт); m4 — текст внутри; c1 — текст</p>.
+function s8Parts(tok, pick) {
+  const w = pick(S8_W[Number(tok.slice(1))]);
+  if (tok[0] === 'p') return [T_('p'), W_(w), T_('p', true)];
+  if (tok[0] === 'o') return [T_('p'), W_(w)];
+  if (tok[0] === 'c') return [W_(w), T_('p', true)];
+  return [W_(w)];
 }
-
-// Кнопки < / > для телефона. Нажатие не забирает фокус у поля: символ встаёт
-// в место курсора, клавиатура остаётся открытой.
-function SymKeys({ inputRef }) {
-  const pick = usePick();
-  const keep = (e) => e.preventDefault();
-  return (
-    <div className="pp-sym" role="group" aria-label={pick(UI.keys)} translate="no">
-      {['<', '/', '>'].map((k) => (
-        <button key={k} type="button" className="pp-key" onPointerDown={keep} onMouseDown={keep}
-          onClick={() => { insertAtCaret(inputRef.current, k); sfx('type', true); }}>{k}</button>
-      ))}
-    </div>
-  );
-}
-
-// Подпись задания в шапке: «Задание 2 · Почта».
-const taskEyebrow = (num, house) => {
-  const head = fillL(UI.task, { n: num });
-  const out = {};
-  LANGS.forEach((l) => { out[l] = head[l] + ' · ' + STREET[house - 1].name[l]; });
+function s8Blocks(rd, pick) {
+  const out = [];
+  let cur = null;
+  rd.lines.forEach((ln) => ln.forEach((tok) => {
+    const w = pick(S8_W[Number(tok.slice(1))]);
+    if (tok[0] === 'p') out.push({ t: 'p', parts: [w] });
+    else if (tok[0] === 'o') { cur = { t: 'p', parts: [w] }; out.push(cur); }
+    else if (cur) cur.parts.push(' ' + w);
+    if (tok[0] === 'c') cur = null;
+  }));
   return out;
+}
+function S8({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.s8;
+  const [rec, put] = useRec('s8');
+  const solved = !!(rec && rec.done);
+  const [queue, setQueue] = useState(() => (solved ? [] : [0, 1, 2].map((i) => ({ i }))));
+  const [doneN, setDoneN] = useState(0);
+  const [ans, setAns] = useState(null);
+  const [pending, setPending] = useState(null);
+  const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
+    : [{ text: c.say, pose: 'explain' }, { text: c.askQ, pose: 'curious' }]);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(solved || !queue.length, spoken);
+  const stats = useRef([]);
+  const round = queue[0] || null;
+  // После последнего ответа на экране остаётся последний раунд и правда браузера.
+  const lastRef = useRef(null);
+  if (round) lastRef.current = round;
+  const shownRd = round || (ans ? lastRef.current : null);
+  const R = shownRd ? (shownRd.extra ? S8_EXTRA : S8_ROUNDS)[shownRd.i] : null;
+  const led = useIdleLed(canTap && !!round && !ans, doneN);
+  const answer = (k) => {
+    if (!canTap || !round || ans) return;
+    const right = k === R.abz;
+    setAns(k);
+    stats.current.push({ i: round.i, extra: !!round.extra, right });
+    sfx(right ? 'ok' : 'soft', true);
+    const rest = queue.slice(1);
+    if (!right && !round.extra) rest.unshift({ i: round.i, extra: true });
+    const line = right ? c.ok : c.miss[R.type];
+    if (!rest.length) {
+      [0, 1, 2].forEach((ii) => {
+        const f = stats.current.find((x) => x.i === ii && !x.extra);
+        const e = stats.current.find((x) => x.i === ii && x.extra);
+        log({ screenId: 's8.r' + (ii + 1), type: 'predict', correct: true, firstTry: !!(f && f.right), attempts: e ? 2 : 1, helped: !!(f && !f.right), followUp: e ? e.right : null });
+      });
+      put({ done: true }); setQueue([]);
+      sayNow(joinL(line, c.done), 'smile');
+      return;
+    }
+    sayNow(line, right ? 'smile' : 'rule');
+    setPending(rest);
+  };
+  useEffect(() => {
+    if (!pending || !spoken) return undefined;
+    const t = setTimeout(() => { setQueue(pending); setPending(null); setDoneN((d) => d + 1); setAns(null); sayNow(c.askQ, 'curious'); }, reduceMotion() ? 300 : 1000);
+    return () => clearTimeout(t);
+  }, [pending, spoken]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={round ? c.askQ : c.done} nav={navOf(p, canGo)}>
+      <Sheet cls="z2-sheet">
+        <KzAsk text={round ? c.askQ : c.done} n={round ? (doneN + 1) + '/' + (doneN + queue.length) : null} />
+        <div className="kz-scene kz-scene-col">
+          <div className="kz-col">
+            {R ? <div className="kz-slip-wrap" key={'s' + doneN}><KzCode lines={R.lines.map((ln, j) => ({ k: 'r' + j, d: 0, cls: 'kz-slip kz-a-drop', parts: [].concat(...ln.map((tok) => s8Parts(tok, pick))) }))} cls="kz-code-sm" /></div> : null}
+            <PaperBrowser title={pick(PAGE.title)} short cls="z2-br" pageHl={!!ans}>
+              {ans && R ? <PageDoc blocks={s8Blocks(R, pick)} anim /> : <div className="z2-qmark" aria-hidden="true">?</div>}
+            </PaperBrowser>
+          </div>
+        </div>
+        {round ? (
+          <div className="kz-pick z2-pick3">
+            {[1, 2, 3].map((k) => (
+              <button key={k} type="button" disabled={!canTap || !!ans}
+                className={'kz-btn ' + (ans === k ? (k === R.abz ? 'is-ok' : 'is-off') : ans && k === R.abz ? 'is-ok' : 'is-ghost')}
+                onClick={() => answer(k)}>{k}<Led on={led && !ans} /></button>
+            ))}
+          </div>
+        ) : null}
+      </Sheet>
+    </Stage>
+  );
+}
+
+// =============================================================================
+// S9. ЖИРНЫЙ И КУРСИВ — как в ролике: бумажная карточка абзаца с биркой <p>, над
+// словами «очень» и «спать» на скотче приклеены бирки <b> и <i>. Показ: загорается
+// бирка b — слово становится жирным, под него ступенчато клеится горчичная полоска;
+// потом бирка i — слово наклоняется. Строка кода под карточкой обновляется по шагу.
+// Карточка — образ (как рамка в уроке 1); в браузере так же — жирный и курсив.
+// =============================================================================
+function S9({ p }) {
+  const pick = usePick();
+  const c = C.s9;
+  const [rec, put] = useRec('s9');
+  const solved = !!(rec && rec.done);
+  const [n, setN] = useState(solved ? 2 : 0);
+  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
+    : [{ text: c.say, pose: 'explain' }]);
+  const cardRef = useRef(null);
+  const lbl = (k) => () => cardRef.current && cardRef.current.querySelector('.z2-w.is-' + k + ' .kz-label');
+  // Показ: загорается бирка b — слово жирное; потом бирка i — слово наклонное.
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { look: lbl('b'), act: () => { sfx('pop', true); setN(1); } },
+    { say: [{ text: c.b, pose: 'point' }] },
+    { look: lbl('i'), act: () => { sfx('ok', true); setN(2); } },
+    { say: [{ text: c.i, pose: 'explain' }, { text: c.done, pose: 'smile' }] },
+    { act: () => put({ done: true }) }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
+  const src = pick(PAGE.p1);
+  // Пока бирка не сработала, слово ещё без тега: в коде — части по шагу.
+  const parts = src.map((x) => (typeof x === 'string' ? x : x.b !== undefined ? (n >= 1 ? x : x.b) : (n >= 2 ? x : x.i)));
+  // Строка задания — за речью: пока Коди говорит о b, она ещё про b.
+  const askText = solved || demo.done ? c.done : demo.idx >= 2 ? c.askI : c.askB;
+  // Пока Коди говорит о b — светится бирка b и её слово; о i — бирка i.
+  const sayK = speaker.text === c.b ? 'b' : speaker.text === c.i ? 'i' : null;
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+      <Sheet cls="z2-sheet">
+        <KzAsk text={askText} n={solved ? null : n + '/2'} />
+        <div className="kz-scene kz-scene-col">
+          <div className="kz-col">
+            <div className="z2-pcard kz-piece kz-a-drop" ref={cardRef}>
+              <Cut c="#FBF6EA" seed={430} n={14} amp={1.4} asp={3} cls="z2-pcard-cut" />
+              <KzLabel t="p" cls="z2-pcard-lbl" />
+              <p className="z2-pcard-text">
+                {src.map((x, j) => {
+                  // Знак препинания сразу после слова держится с ним на одной строке.
+                  const punct = (k) => { const nx = src[k]; return typeof nx === 'string' ? (nx.match(/^[.,!?;:…]+/) || [''])[0] : ''; };
+                  if (typeof x === 'string') return <React.Fragment key={j}>{j > 0 && typeof src[j - 1] !== 'string' ? x.slice(punct(j).length) : x}</React.Fragment>;
+                  const isB = x.b !== undefined;
+                  const on = isB ? n >= 1 : n >= 2;
+                  return (
+                    <span key={j} className={'z2-w' + (isB ? ' is-b' : ' is-i') + (on ? ' is-on' : '') + (sayK === (isB ? 'b' : 'i') ? ' is-say' : '')}>
+                      <KzLabel t={isB ? 'b' : 'i'} cls="z2-w-lbl" on={on} hl={sayK === (isB ? 'b' : 'i')} />
+                      <span className="z2-w-txt">{isB ? x.b : x.i}</span>{punct(j + 1)}
+                    </span>
+                  );
+                })}
+              </p>
+            </div>
+            <KzCode lines={[{ k: 'p' + n, d: 0, cls: n ? 'is-new' : '', parts: [T_('p'), ...codeParts(parts), T_('p', true)] }]} />
+          </div>
+        </div>
+      </Sheet>
+    </Stage>
+  );
+}
+
+// =============================================================================
+// S10. ВЫДЕЛИ СЛОВО — два поля вокруг слова; набранный <b> без </b> честно
+// делает жирным всё до конца абзаца.
+// =============================================================================
+function S10({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.s10;
+  const [rec, put] = useRec('s10');
+  const solved = !!(rec && rec.done);
+  const sl = useTwoSlots();
+  const [msg, setMsg] = useState(null);
+  const [okNow, setOkNow] = useState(solved);
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'explain' }]);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(solved || okNow, spoken);
+  const lad = useKzLadder(!okNow);
+  const st = useRef({ tries: 0, misses: 0 });
+  const led = useIdleLed(canTap && !okNow && !sl.a.val && !sl.b.val, 0);
+  const [pre, w, post] = pick(c.parts);
+  const check = () => {
+    if (!canTap || okNow || (!sl.a.val.trim() && !sl.b.val.trim())) return;
+    st.current.tries += 1;
+    const issue = wrapIssue(sl.a.val, sl.b.val, 'b');
+    if (!issue) {
+      sfx('win', true); setMsg(null); setOkNow(true); put({ done: true });
+      log({ screenId: 's10', type: 'wrap-b', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
+      sayNow(c.ok, 'smile');
+      return;
+    }
+    st.current.misses += 1;
+    sfx('soft', true); setMsg(issue); sayNow(issue, 'think');
+    if (st.current.misses >= 2) lad.bump();
+  };
+  const openB = okNow || normT(sl.a.val) === '<b>';
+  const closeB = okNow || normT(sl.b.val) === '</b>';
+  // Честно: открыт и закрыт — жирное слово; только открыт — жирное до конца абзаца.
+  const parts = openB && closeB ? [pre, { b: w }, post] : openB ? [pre, { b: w + post }] : [pre + w + post];
+  const ask = fillL(c.ask, { w });
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || ask} nav={navOf(p, canGo)}>
+      <Sheet cls="z2-sheet">
+        <KzAsk text={okNow ? c.ok : ask} hint={okNow ? null : (msg || hintAt(lad.lv, c.hints))} />
+        <div className="kz-scene kz-scene-col">
+          <div className="kz-col">
+            <PaperBrowser title={pick(PAGE.title)} short cls={'z2-br' + (openB && !closeB ? ' z2-broken' : '')}><PageDoc blocks={[{ t: 'p', parts, cls: 'z2-big' }]} /></PaperBrowser>
+            <KzCode lines={[{ k: 'x', d: 0, cls: okNow ? 'is-new' : 'is-hl', parts: okNow ? [T_('p'), W_(pre), T_('b'), W_(w), T_('b', true), W_(post), T_('p', true)] : [
+              T_('p'), W_(pre),
+              <Slot key="a" ty={sl.a} on={sl.act === 'a'} onFocus={() => sl.setAct('a')} blink={!okNow && led} label={ask} onEnter={check} />,
+              <span key="w" className="kz-txt z2-target">{w}</span>,
+              <Slot key="z" ty={sl.b} on={sl.act === 'b'} onFocus={() => sl.setAct('b')} blink={!okNow && led} label={ask} onEnter={check} />,
+              W_(post), T_('p', true)] }]} />
+          </div>
+        </div>
+        {!okNow ? <KeyRow keys={['<', '/', 'b', '>']} ty={sl.ty} canTap={canTap} onCheck={check} ready={sl.a.val.trim().length > 2 && sl.b.val.trim().length > 3} /> : null}
+      </Sheet>
+    </Stage>
+  );
+}
+
+// =============================================================================
+// S11. b ИЛИ i? — Коди забыл теги. Карточка показывает, как должно быть; ученик
+// выбирает b или i, браузер показывает результат. Промах — ещё раунд того же типа.
+// =============================================================================
+const S11_ROUNDS = [
+  { want: 'b', s: L3(['Mushugim ', 'juda', ' katta.'], ['Мой кот ', 'очень', ' большой.'], ['My cat is ', 'very', ' big.']) },
+  { want: 'i', s: L3(['U ', 'sekin', ' yuradi.'], ['Он ходит ', 'медленно', '.'], ['He walks ', 'slowly', '.']) },
+  { want: 'b', s: L3(['Bu ', 'mening', ' mushugim.'], ['Это ', 'мой', ' кот.'], ['This is ', 'my', ' cat.']) }
+];
+const S11_EXTRA = [
+  { want: 'b', s: L3(['Bugun ', 'juda', ' issiq.'], ['Сегодня ', 'очень', ' жарко.'], ['Today is ', 'very', ' hot.']) },
+  { want: 'i', s: L3(['U ', 'jimgina', ' uxlaydi.'], ['Он спит ', 'тихо', '.'], ['He sleeps ', 'quietly', '.']) },
+  { want: 'b', s: L3(['Bu ', 'mening', ' uyim.'], ['Это ', 'мой', ' дом.'], ['This is ', 'my', ' house.']) }
+];
+function S11({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.s11;
+  const [rec, put] = useRec('s11');
+  const solved = !!(rec && rec.done);
+  const [queue, setQueue] = useState(() => (solved ? [] : [0, 1, 2].map((i) => ({ i }))));
+  const [doneN, setDoneN] = useState(0);
+  const [ans, setAns] = useState(null);
+  const [pending, setPending] = useState(null);
+  const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]
+    : [{ text: c.say, pose: 'embarrassed' }, { text: c.askQ, pose: 'curious' }]);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(solved || !queue.length, spoken);
+  const stats = useRef([]);
+  const round = queue[0] || null;
+  const lastRef = useRef(null);
+  if (round) lastRef.current = round;
+  const shownRd = round || (ans ? lastRef.current : null);
+  const R = shownRd ? (shownRd.extra ? S11_EXTRA : S11_ROUNDS)[shownRd.i] : null;
+  const led = useIdleLed(canTap && !!round && !ans, doneN);
+  const answer = (k) => {
+    if (!canTap || !round || ans) return;
+    const right = k === R.want;
+    setAns(k);
+    stats.current.push({ i: round.i, extra: !!round.extra, right });
+    sfx(right ? 'ok' : 'soft', true);
+    const rest = queue.slice(1);
+    if (!right && !round.extra) rest.unshift({ i: round.i, extra: true });
+    const line = right ? c.ok[k] : c.miss[R.want];
+    if (!rest.length) {
+      [0, 1, 2].forEach((ii) => {
+        const f = stats.current.find((x) => x.i === ii && !x.extra);
+        const e = stats.current.find((x) => x.i === ii && x.extra);
+        log({ screenId: 's11.r' + (ii + 1), type: 'choose-tag', correct: true, firstTry: !!(f && f.right), attempts: e ? 2 : 1, helped: !!(f && !f.right), followUp: e ? e.right : null });
+      });
+      put({ done: true }); setQueue([]);
+      sayNow(joinL(line, c.done), 'smile');
+      return;
+    }
+    sayNow(line, right ? 'smile' : 'rule');
+    setPending(rest);
+  };
+  useEffect(() => {
+    if (!pending || !spoken) return undefined;
+    const t = setTimeout(() => { setQueue(pending); setPending(null); setDoneN((d) => d + 1); setAns(null); sayNow(c.askQ, 'curious'); }, reduceMotion() ? 300 : 1000);
+    return () => clearTimeout(t);
+  }, [pending, spoken]); // eslint-disable-line react-hooks/exhaustive-deps
+  const s = R ? pick(R.s) : null;
+  const mk = (tag) => (s ? [s[0], tag === 'b' ? { b: s[1] } : { i: s[1] }, s[2]] : []);
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={round ? c.askQ : c.done} nav={navOf(p, canGo)}>
+      <Sheet cls="z2-sheet">
+        <KzAsk text={round ? c.askQ : c.done} n={round ? (doneN + 1) + '/' + (doneN + queue.length) : null} />
+        {R ? (
+          <div className="kz-scene kz-scene-col" key={'r' + doneN}>
+            <div className="kz-col">
+              <div className="z2-card kz-a-drop">
+                <span className="z2-card-h">{pick(c.card)}</span>
+                <PageDoc blocks={[{ t: 'p', parts: mk(R.want), cls: 'z2-big' }]} />
+              </div>
+              <KzCode lines={[{ k: 'c', d: 0, cls: ans ? 'is-new' : 'is-hl', parts: [T_('p'), W_(s[0]),
+                ans ? <span key="o">{T_(ans)}</span> : <span key="o" className="kz-dash kz-dash-sm" />, W_(s[1]),
+                ans ? <span key="z">{T_(ans, true)}</span> : <span key="z" className="kz-dash kz-dash-sm" />, W_(s[2]), T_('p', true)] }]} />
+              <PaperBrowser title={pick(PAGE.title)} short cls="z2-br" pageHl={!!ans}>
+                <PageDoc blocks={[{ t: 'p', parts: ans ? mk(ans) : [s.join('')], cls: 'z2-big' + (ans ? ' kz-a-stamp' : '') }]} />
+              </PaperBrowser>
+            </div>
+          </div>
+        ) : null}
+        {round ? (
+          <div className="kz-pick">
+            {['b', 'i'].map((k) => (
+              <button key={k} type="button" disabled={!canTap || !!ans}
+                className={'kz-btn z2-tagbtn ' + (ans === k ? (k === R.want ? 'is-ok' : 'is-off') : ans && k === R.want ? 'is-ok' : 'is-ghost')}
+                onClick={() => answer(k)}><TagK t={k} /><Led on={led && !ans} /></button>
+            ))}
+          </div>
+        ) : null}
+      </Sheet>
+    </Stage>
+  );
+}
+
+// =============================================================================
+// S12. СВЕРХУ ВНИЗ — показ: браузер сам читает код; строки кода страницы о коте
+// подсвечиваются по очереди, страница собирается в окне.
+// =============================================================================
+const READ12 = ['h1', 'p1', 'h2', 'p2'];
+function S12({ p }) {
+  const pick = usePick();
+  const c = C.s12;
+  const [rec, put] = useRec('s12');
+  const solved = !!(rec && rec.done);
+  const [read, setRead] = useState(solved ? READ12.length : -1);
+  const ORDER = [{ text: c.order1, pose: 'point' }, { text: c.order2, pose: 'point' }, { text: c.order3, pose: 'smile' }];
+  const [speaker, say, spoken, sayNow] = useVoice(solved ? ORDER : [{ text: c.say, pose: 'explain' }]);
+  const timers = useRef([]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  const STEP = reduceMotion() ? 120 : 700;
+  const run = () => { READ12.forEach((k, i) => timers.current.push(setTimeout(() => { setRead(i); sfx('tap', true); }, STEP * i))); };
+  // Показ: строки читаются по очереди сами, потом Коди называет порядок.
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { act: run },
+    { wait: STEP * READ12.length + 200 },
+    { act: () => { setRead(READ12.length); } },
+    { say: ORDER },
+    { act: () => put({ done: true }) }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
+  const sayK = spoken ? null : speaker.text === c.order1 ? ['h1'] : speaker.text === c.order2 ? ['p1'] : speaker.text === c.order3 ? ['h2', 'p2'] : null;
+  const cur = read >= 0 && read < READ12.length ? READ12[read] : null;
+  const on = (k) => (sayK ? sayK.indexOf(k) >= 0 : cur === k);
+  const p1 = pick(PAGE.p1), p2 = pick(PAGE.p2);
+  const lines = [
+    { k: 'b', d: 0, cls: 'z2-edge', parts: [T_('body')] },
+    { k: 'h1', d: 1, parts: [T_('h1'), W_(pick(PAGE.title)), T_('h1', true)] },
+    { k: 'p1', d: 1, parts: [T_('p'), ...codeParts(p1), T_('p', true)] },
+    { k: 'h2', d: 1, parts: [T_('h2'), W_(pick(PAGE.h2)), T_('h2', true)] },
+    { k: 'p2', d: 1, parts: [T_('p'), ...codeParts(p2), T_('p', true)] },
+    { k: 'bc', d: 0, cls: 'z2-edge', parts: [T_('body', true)] }
+  ].map((ln) => Object.assign(ln, { cls: on(ln.k) ? 'is-read' : '' }));
+  const at = (k) => read >= READ12.indexOf(k);
+  const blocks = [
+    at('h1') ? { t: 'h1', parts: [pick(PAGE.title)], hl: on('h1'), k: 'h1' } : null,
+    at('p1') ? { t: 'p', parts: p1, hl: on('p1'), k: 'p1' } : null,
+    at('h2') ? { t: 'h2', parts: [pick(PAGE.h2)], hl: on('h2'), k: 'h2' } : null,
+    at('p2') ? { t: 'p', parts: p2, hl: on('p2'), k: 'p2' } : null
+  ].filter(Boolean);
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={read < 0 ? c.ask : c.askDone} nav={navOf(p, canGo)}>
+      <Sheet cls="z2-sheet">
+        <KzAsk text={read < 0 ? c.ask : c.askDone} />
+        <div className="kz-scene z2-s5">
+          <div className="kz-col"><KzCode lines={lines} cls="kz-code-sm" /></div>
+          <div className="kz-col">
+            <PaperBrowser title={pick(PAGE.title)} cls="z2-br">{blocks.length ? <PageDoc blocks={blocks} anim={!solved} /> : null}</PaperBrowser>
+          </div>
+        </div>
+      </Sheet>
+    </Stage>
+  );
+}
+
+// =============================================================================
+// S13. СВОЙ ЗАГОЛОВОК и S13b. СВОЙ АБЗАЦ — своя страница двумя экранами (одно
+// действие на экран): сначала заголовок в h1, потом предложение в p. Окно
+// меняется сразу при наборе; засчитывается только по «Готово» (useTypedDone из
+// набора, как в уроке 1; заказчик: пауза в наборе не завершает задание).
+// =============================================================================
+function OwnTextScreen({ p, id, storeKey, type, max, code }) {
+  const pick = usePick();
+  const c = C[id];
+  const [rec] = useRec(id);
+  const lad = useKzLadder(!(rec && rec.done));
+  const ty = useTypedDone({ storeKey, screenId: id, type, lad });
+  const [speaker, , spoken, sayNow] = useVoice([{ text: ty.solved ? c.ok : c.say, pose: ty.solved ? 'smile' : 'point' }]);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(ty.solved, spoken);
+  const led = useIdleLed(canTap && !ty.solved && !ty.val.trim(), 0);
+  const confirm = () => { if (canTap && ty.ready) ty.commit(() => sayNow(c.ok, 'smile')); };
+  const hint = hasTags(ty.val) ? UI.noTags : hintAt(lad.lv, c.hints);
+  const input = <span key="g" className={'kz-gap' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={ty.setVal} onEnter={confirm} placeholder={c.ph} label={c.ask} max={max} /></span>;
+  const v = code(input, ty.shown);
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="z2-sheet kz-typed">
+        <KzAsk text={ty.solved ? c.ok : c.ask} hint={ty.solved && !hasTags(ty.val) ? null : hint} />
+        <div className="kz-scene kz-scene-col">
+          <div className="kz-col">
+            <PaperBrowser title={pick(UI.mySite)} short cls="z2-br" pageHl={!ty.solved}>{v.blocks.length ? <PageDoc blocks={v.blocks} /> : null}</PaperBrowser>
+            <KzCode lines={v.lines} />
+          </div>
+        </div>
+        <ReadyBtn on={canTap && ty.ready} glow={canTap && ty.ready && !ty.solved} onClick={confirm} />
+      </Sheet>
+    </Stage>
+  );
+}
+function S13({ p }) {
+  return <OwnTextScreen p={p} id="s13" storeKey="myTitle" type="own-heading" max={30} code={(input, shown) => ({
+    blocks: shown ? [{ t: 'h1', parts: [shown] }] : [],
+    lines: [
+      { k: 'b', d: 0, cls: 'z2-edge', parts: [T_('body')] },
+      { k: 'h', d: 1, cls: 'is-hl', parts: [T_('h1'), input, T_('h1', true)] },
+      { k: 'p', d: 1, cls: 'z2-later', parts: [T_('p'), <span key="d" className="kz-dim">…</span>, T_('p', true)] },
+      { k: 'bc', d: 0, cls: 'z2-edge', parts: [T_('body', true)] }
+    ]
+  })} />;
+}
+function S13B({ p }) {
+  const mine = useMine2();
+  return <OwnTextScreen p={p} id="s13b" storeKey="myText" type="own-paragraph" max={70} code={(input, shown) => ({
+    blocks: [{ t: 'h1', parts: [mine.title] }].concat(shown ? [{ t: 'p', parts: [shown] }] : []),
+    lines: [
+      { k: 'b', d: 0, cls: 'z2-edge', parts: [T_('body')] },
+      { k: 'h', d: 1, cls: 'z2-ctx', parts: [T_('h1'), W_(mine.title), T_('h1', true)] },
+      { k: 'p', d: 1, cls: 'is-hl', parts: [T_('p'), input, T_('p', true)] },
+      { k: 'bc', d: 0, cls: 'z2-edge', parts: [T_('body', true)] }
+    ]
+  })} />;
+}
+
+// Своя страница ученика (s13–s15): название и текст, образец — если пропущено.
+const useMine2 = () => {
+  const store = useStore();
+  const pick = usePick();
+  return { title: store.get('myTitle') || pick(UI.mySite), text: store.get('myText') || pick(UI.hello) };
 };
 
 // =============================================================================
-// ЗАДАНИЕ — общий ход
-//
-// Запись задания в сторе (tN): st — то, что написал ученик; checks — число
-// проверок; hint — сколько ступеней подсказки открыто; note — заметка под
-// работой; solved — дом на улице горит; done — можно идти дальше (после
-// дополнительной задачи, если она была); drill — дополнительная задача.
-// Всё живёт в сторе урока, поэтому «Назад» и возврат ничего не теряют, а
-// «Повторить» (SCREEN_RESET) стирает только текущее задание.
+// S14. ВСЁ СТАЛО ЖИРНЫМ — на своей странице <b> открыт и не закрыт: браузер
+// честно делает жирным весь текст дальше. Перетащить (или нажать) нужную бирку.
 // =============================================================================
-// Со скольких неудачных проверок подряд подсказка приходит сама.
-const AUTO_HINT_AFTER = 2;
-
-function useTask(cfg) {
-  const store = useStore();
+function S14({ p }) {
+  const pick = usePick();
   const log = useLog();
-  const [rec, setRec] = useState(() => {
-    const saved = store.get(cfg.id);
-    return saved && saved.st ? saved
-      : { st: cfg.init(), solved: false, done: false, checks: 0, hint: 0, note: null, drill: null, n: 0 };
-  });
-  const ref = useRef(rec);
-  const put = useCallback((patch) => {
-    const v = Object.assign({}, ref.current, patch);
-    ref.current = v;
-    store.set(cfg.id, v);
-    setRec(v);
-    return v;
-  }, [cfg.id, store]);
-
-  const drilling0 = !!(rec.drill && !rec.drill.done);
-  const [speaker, , spoken, sayNow] = useVoice(rec.done ? [{ text: cfg.C.done, pose: 'smile' }]
-    : [{ text: drilling0 ? C.drill.say : cfg.C.say, pose: 'point' }]);
-  const canGo = useAdvanceGate(rec.done, spoken);
-  const [fresh, setFresh] = useState(false);
-  const [flash, setFlash] = useState(0);
-
-  // Строка журнала: попытка — это проверка по кнопке, а не нажатие клавиши.
-  const row = (v) => log({
-    screenId: cfg.id, type: cfg.kind, correct: !!v.solved, firstTry: !!v.firstTry,
-    attempts: v.checks, hintMax: v.hint,
-    drill: v.drill ? { done: !!v.drill.done, attempts: v.drill.checks } : null
-  });
-
-  const setSt = useCallback((st) => { put({ st }); }, [put]);
-  const setDrillSt = useCallback((st) => { put({ drill: Object.assign({}, ref.current.drill, { st }) }); }, [put]);
-
-  // Следующая ступень подсказки: что записать в rec и что показать.
-  const nextHint = (cur) => {
-    const lv = Math.min(3, cur.hint + 1);
-    const h = cfg.hint(lv, cur.st);
-    return { lv, h, patch: { hint: lv, hcat: lv === 3 ? (h.cat || cur.hcat || null) : cur.hcat } };
-  };
-
-  // ПОДСКАЗКА ПОСЛЕ НЕУДАЧ (заказчик, 15.10.2026). Каждая неудачная проверка
-  // сначала называет, что не так. Начиная со второй неудачи подряд к этому
-  // сразу добавляется следующая ступень подсказки. Одна реплика на всё.
-  const check = () => {
-    const cur = ref.current;
-    const r = cfg.check(cur.st);
-    const checks = cur.checks + 1;
-    const n = cur.n + 1;
-    if (!r.ok) {
-      sfx('soft', true);
-      const fails = (cur.fails || 0) + 1;
-      if (fails >= AUTO_HINT_AFTER && cur.hint < 3) {
-        const { lv, h, patch } = nextHint(cur);
-        const v = put(Object.assign({ checks, n, fails, lastOk: false, shake: n,
-          note: { kind: 'hint', level: lv, text: h.text, fb: r.msg, n } }, patch));
-        row(v);
-        sayNow(joinL(r.msg, h.text), 'think');
-        return;
-      }
-      const v = put({ checks, n, fails, lastOk: false, shake: n, note: { kind: 'fb', text: r.msg, n, sub: !!r.sub } });
-      row(v);
-      sayNow(r.msg, 'think');
-      return;
+  const c = C.s14;
+  const mine = useMine2();
+  const [rec, put] = useRec('s14');
+  const solved = !!(rec && rec.done);
+  const [off, setOff] = useState([]);
+  const [okNow, setOkNow] = useState(solved);
+  const [msg, setMsg] = useState(null);
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'wonder' }]);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(solved || okNow, spoken);
+  const led = useIdleLed(canTap && !okNow, off.length);
+  const choose = (o) => {
+    if (!canTap || okNow || off.indexOf(o) >= 0) return false;
+    if (o === '</b>') {
+      sfx('win', true); setOkNow(true); setMsg(null); put({ done: true });
+      log({ screenId: 's14', type: 'fix-closing', correct: true, firstTry: off.length === 0, attempts: off.length + 1 });
+      sayNow(c.ok, 'smile');
+      return true;
     }
-    const was = cur.solved;
-    // Решил после образца третьей ступени — короткая задача с новым содержимым.
-    const needDrill = !was && !!cfg.drill && cur.hint >= 3;
-    const say = needDrill ? joinL(cfg.C.praise, C.drill.say) : cfg.C.praise;
-    let drill = cur.drill;
-    if (needDrill) {
-      const d = cfg.drill.make(cur.hcat || null);
-      drill = { cat: cur.hcat || null, st: d.init(), checks: 0, done: false, note: null };
-    }
-    const v = put({
-      checks, n, fails: 0, solved: true, lastOk: true, firstTry: was ? cur.firstTry : checks === 1,
-      done: !needDrill, result: r.result || null, drill, note: { kind: 'ok', text: say, n }
-    });
-    if (cfg.onSolved) cfg.onSolved(r);
-    sfx(was ? 'ok' : 'win', true);
-    if (!was) setFresh(true);
-    setFlash((k) => k + 1);
-    row(v);
-    sayNow(say, 'smile');
+    sfx('soft', true); setOff(off.concat(o)); setMsg(c.why[o]); sayNow(c.why[o], 'think');
+    return false;
   };
-
-  const checkDrill = () => {
-    const cur = ref.current;
-    const d = cur.drill;
-    if (!d || d.done) return;
-    const dc = cfg.drill.make(d.cat);
-    const r = dc.check(d.st);
-    const checks = d.checks + 1;
-    const n = cur.n + 1;
-    if (!r.ok) {
-      sfx('soft', true);
-      const v = put({ n, shake: n, drill: Object.assign({}, d, { checks, note: { kind: 'fb', text: r.msg, n, sub: !!r.sub } }) });
-      row(v);
-      sayNow(r.msg, 'think');
-      return;
-    }
-    sfx('ok', true);
-    const v = put({ n, done: true, drill: Object.assign({}, d, { checks, done: true, note: null }),
-      note: { kind: 'ok', text: C.drill.done, n } });
-    row(v);
-    sayNow(C.drill.done, 'smile');
-  };
-
-  // Подсказка по просьбе — лампочкой в шапке (её реплику канон произносит
-  // сам — здесь только ступень в заметке).
-  const openHint = () => {
-    const cur = ref.current;
-    if (cur.solved) {
-      // Дополнительная задача: лампочка даёт правило задания (вторая ступень), без готового ответа.
-      if (cur.drill && !cur.drill.done) {
-        const n = cur.n + 1;
-        put({ n, drill: Object.assign({}, cur.drill, { note: { kind: 'hint', level: 2, text: cfg.hint(2, cur.st).text, n } }) });
-      }
-      return;
-    }
-    const { lv, h, patch } = nextHint(cur);
-    const n = cur.n + 1;
-    const v = put(Object.assign({ n, note: { kind: 'hint', level: lv, text: h.text, n } }, patch));
-    row(v);
-  };
-  const openRef = useRef(openHint);
-  openRef.current = openHint;
-  useEffect(() => {
-    const h = (e) => { const el = e.target; if (el && el.closest && el.closest('.ctl-hint')) openRef.current(); };
-    document.addEventListener('click', h, true);
-    return () => document.removeEventListener('click', h, true);
-  }, []);
-
-  return { rec, put, setSt, setDrillSt, check, checkDrill, openHint, speaker, canGo, fresh, flash, say: sayNow };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ВЫБОР МЕСТА (t6): код — неподвижные строки, между ними — места-щели. Нажатое
-// верное место раскрывается в строку ввода (дальше обычный редактор), неверное
-// трясётся, и проверка называет причину. Полоски вложенности видны сразу:
-// незакрытая часть — пунктиром.
-// ─────────────────────────────────────────────────────────────────────────────
-function GapPick({ lines, gaps, onPick, led, miss }) {
-  const pick = usePick();
-  const regs = regionsOf(lines.join('\n'));
-  const bars = (i) => regs.filter((r) => r.from <= i && i <= r.to).map((r, k) => (
-    <span key={k} aria-hidden="true" className={'ed-bar' + (r.closed ? '' : ' is-open') + (r.from === i ? ' is-first' : '') + (r.to === i ? ' is-last' : '')}
-      style={{ '--c': TAGC[r.tag], '--lv': r.depth }} />
-  ));
+  const dnd = useKzDrag((o, where) => (where === 'gap' ? choose(o) : false));
+  const bw = pick(c.bword), tail = pick(c.tail);
+  // Честно: без </b> жирным становится всё до конца страницы, и следующий абзац тоже.
+  const blocks = okNow
+    ? [{ t: 'h1', parts: [mine.title] }, { t: 'p', parts: [{ b: bw }, ' ' + mine.text], cls: 'kz-a-stamp' }, { t: 'p', parts: [tail] }]
+    : [{ t: 'h1', parts: [mine.title] }, { t: 'p', parts: [{ b: bw + ' ' + mine.text }] }, { t: 'p', parts: [{ b: tail }] }];
+  const glow = off.length >= 2 ? '</b>' : null;
   return (
-    <div className="ed pp-gaps" translate="no">
-      {lines.map((ln, i) => (
-        <React.Fragment key={i}>
-          <div className="ed-line is-static"><span className="ed-n" aria-hidden="true">{i + 1}</span>{bars(i)}{ln ? hlLine(ln) : '​'}</div>
-          {gaps.indexOf(i) >= 0 ? (
-            <button type="button" className={'pp-gap' + (led === i ? ' is-led' : '') + (miss && miss.at === i ? ' kz-a-shake' : '')}
-              key={'g' + i + (miss && miss.at === i ? ':' + miss.n : '')} onClick={() => onPick(i)} aria-label={pick(UI.gapHere)}>
-              <span className="pp-gap-line" aria-hidden="true" />
-            </button>
-          ) : null}
-        </React.Fragment>
-      ))}
-    </div>
-  );
-}
-
-// Рабочая область: бумажный браузер с наглядной помощью и редактор с
-// кнопками. В колонку на телефоне (браузер сверху, редактор — главный), в ряд
-// на компьютере.
-function Workbench({ spec, st, setSt, inputRef, fx, aids, tools, flash, onPick }) {
-  const f = fx || {};
-  let title;
-  let text;
-  let editor;
-  if (spec.kind === 'fields') {
-    title = st.title;
-    text = st.body;
-    editor = (
-      <FieldDoc title={st.title} body={st.body} editTitle={spec.editTitle !== false} editBody={spec.editBody !== false}
-        onTitle={(v) => setSt(Object.assign({}, st, { title: v }))}
-        onBody={(v) => setSt(Object.assign({}, st, { body: v }))}
-        hl={f.hl} led={f.led} titleRef={inputRef} bodyRef={inputRef} focusBody={!!spec.focusBody} ph={spec.ph} />
-    );
-  } else if (spec.kind === 'gap' && st.at == null) {
-    const pg = renderDoc(spec.lines.join('\n'));
-    title = pg.title;
-    text = pg.blocks;
-    editor = <GapPick lines={spec.lines} gaps={spec.gaps} onPick={onPick} led={f.ledGap} miss={st.miss} />;
-  } else {
-    const before = spec.kind === 'gap' ? spec.lines.slice(0, st.at + 1) : spec.before;
-    const after = spec.kind === 'gap' ? spec.lines.slice(st.at + 1) : spec.after;
-    const full = (before || []).concat([st.code]).concat(after || []).join('\n');
-    const pg = renderDoc(full);
-    title = pg.title;
-    text = pg.blocks;
-    editor = (
-      <CodeEditor value={st.code} onChange={(v) => setSt(Object.assign({}, st, { code: v }))}
-        before={before} after={after} single={spec.kind === 'line' || spec.kind === 'gap'} ind={spec.ind}
-        regions={spec.bars ? regionsOf(full) : null} markLine={f.markLine} inputRef={inputRef} led={!!f.led} />
-    );
-  }
-  return (
-    <div className={'op-work' + (spec.big ? ' is-big' : '')}>
-      <div className="op-side">
-        <PageView title={title} blocks={spec.kind === 'fields' ? null : text} empty={spec.empty} flash={flash} hl={f.hl} url={spec.url} />
-        {aids || null}
-      </div>
-      <div className="op-main">
-        <Pad cls={'pp-edpad' + (spec.big ? ' is-big' : '')}>{editor}</Pad>
-        {tools}
-      </div>
-    </div>
-  );
-}
-
-// =============================================================================
-// КАРКАС ЭКРАНА ПРАКТИКИ — БЕЗ КОДИ И БЕЗ ТЕКСТА РЕПЛИК
-// =============================================================================
-// Коди — как в уроке 1 на телефоне (заказчик, 22.10.2026): голова в кружке в
-// шапке рядом с лампочкой (VoiceDot канона): лицо держит эмоцию реплики,
-// вокруг бегут волны, пока звучит голос. Текста реплик нет (заказчик,
-// 14–15.10.2026): пузырь героя смонтирован, но спрятан — он ведёт озвучку и
-// зовёт onSpoken. Телефон: Коди и лампочка слева, три дома улицы по центру,
-// пауза и счётчик справа. Содержимое — на бумажном листе урока 1.
-const PStage = ({ children, eyebrow, screen, total, nav, speaker, done, hint, top }) => {
-  const pick = usePick();
-  const speaking = useSayBusy();
-  useEffect(() => { _hintText = hint || null; return () => { _hintText = null; }; }, [hint]);
-  const line = speaker ? pick(speaker.text) : '';
-  const idle = useIdleCoach(!!nav, speaking);
-  const voiceDot = speaker ? <VoiceDot pose={speaker.pose} /> : null;
-  return (
-    <div className={'stage p-stage' + (speaking ? ' is-speaking' : '') + (idle ? ' is-idle is-idle-' + idle : '')}>
-      <div className="stage-header">
-        <div className="limit">
-          <div className="progress-track">
-            <div className="progress-bar" style={{ width: ((screen + 1) / total) * 100 + '%' }} />
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="z2-sheet">
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : msg} />
+        <div className="kz-scene z2-s5">
+          <div className="kz-col">
+            <PaperBrowser title={pick(UI.mySite)} cls={'z2-br' + (okNow ? '' : ' z2-broken')} pageHl={!okNow}><PageDoc blocks={blocks} /></PaperBrowser>
           </div>
-          <div className="chrome">
-            <div className="eyebrow"><span className="dot" />{pick(eyebrow)}</div>
-            <span className="p-voice-l">{line ? voiceDot : null}{nav && <HintChromeBtn />}</span>
-            {top ? <div className="p-top">{top}</div> : null}
-            <div className="chrome-side">
-              <ExitBtn />
-              {line ? <span className="p-voice-r">{voiceDot}</span> : null}
-              {nav && <span className="p-voice-r"><HintChromeBtn /></span>}
-              {nav && <PauseBtn done={done} />}
-              <div className="mono counter">{String(screen + 1).padStart(2, '0')}/{String(total).padStart(2, '0')}</div>
+          <div className="kz-col">
+            <KzCode lines={[
+              { k: 'b', d: 0, cls: 'z2-edge', parts: [T_('body')] },
+              { k: 'h', d: 1, parts: [T_('h1'), W_(mine.title), T_('h1', true)] },
+              { k: 'p', d: 1, cls: okNow ? 'is-new' : 'is-hl', parts: [T_('p'), T_('b'), W_(bw), okNow ? <span key="c" className="kz-a-stamp">{T_('b', true)}</span>
+                : <span key="g" data-place="gap" className={'kz-dash kz-dash-sm kz-drop z2-miss' + (dnd.hover === 'gap' ? ' is-hover' : '') + (dnd.active ? ' is-call' : '')} />, W_(' ' + mine.text), T_('p', true)] },
+              { k: 'p2', d: 1, parts: [T_('p'), W_(tail), T_('p', true)] },
+              { k: 'bc', d: 0, cls: 'z2-edge', parts: [T_('body', true)] }
+            ]} cls="kz-code-sm" />
+          </div>
+        </div>
+        {!okNow ? (
+          <div className="kz-tray">
+            {c.opts.map((o, i) => (
+              <button key={o} type="button" disabled={!canTap || off.indexOf(o) >= 0} onClick={() => choose(o)}
+                onPointerDown={(e) => { if (canTap && !okNow && off.indexOf(o) < 0) dnd.start(e, o, o); }}
+                className={'kz-scrap kz-scrap-tag' + (off.indexOf(o) >= 0 ? ' is-used' : '') + (glow === o ? ' is-led' : '')} style={{ '--r': ((i - 1) * 2) + 'deg' }}>
+                <span translate="no">{o}</span><Led on={led && off.indexOf(o) < 0} />
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </Sheet>
+      <KzGhost ghost={dnd.ghost} />
+    </Stage>
+  );
+}
+
+// =============================================================================
+// Q1. ПРОВЕРЬ СЕБЯ — новая страница про собаку без образца: три строки без тегов,
+// бирки h1, p, b и лишняя h6. Ученик сам решает, какой тег куда (перетащить или
+// нажать тег, потом место). До первой попытки ответ не подсвечен. Не туда —
+// браузер честно на миг показывает, что вышло, Коди называет причину, бирка
+// возвращается. Подсказки — по лампочке (третья ступень подсвечивает тег и место).
+// =============================================================================
+const Q1_TAGS = ['b', 'h1', 'h6', 'p'];
+const Q1_WANT = { head: 'h1', line: 'p', word: 'b' };
+function Q1({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.q1;
+  const [rec, put] = useRec('q1');
+  const solved = !!(rec && rec.done);
+  const [slots, setSlots] = useState(solved ? Object.assign({}, Q1_WANT) : { head: null, line: null, word: null });
+  const [sel, setSel] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [shake, setShake] = useState(null);
+  const [peek, setPeek] = useState(null);   // { where, tag } — что на миг показал браузер при ошибке
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'curious' }]);
+  const canTap = useCanAnswer(spoken);
+  const done = !!(slots.head && slots.line && slots.word);
+  const canGo = useAdvanceGate(solved || done, spoken);
+  const lad = useKzLadder(!done);
+  const st = useRef({ tries: 0, misses: 0 });
+  const peekT = useRef(0);
+  useEffect(() => () => clearTimeout(peekT.current), []);
+  const nFull = (slots.head ? 1 : 0) + (slots.line ? 1 : 0) + (slots.word ? 1 : 0);
+  const led = useIdleLed(canTap && !done, nFull + (sel ? 10 : 0));
+  const whyOf = (where, tag) => (where === 'head' ? (tag === 'h6' ? c.why.headH6 : tag === 'p' ? c.why.headP : c.why.allB)
+    : where === 'line' ? (tag === 'h1' ? c.why.lineH1 : tag === 'h6' ? c.why.lineH6 : c.why.allB) : c.why.wordBlock);
+  const place = (tag, where) => {
+    if (!canTap || done || !tag || !where || slots[where]) return false;
+    st.current.tries += 1;
+    if (Q1_WANT[where] !== tag) {
+      st.current.misses += 1;
+      sfx('soft', true); setShake(tag); setTimeout(() => setShake(null), 520);
+      clearTimeout(peekT.current); setPeek({ where, tag }); peekT.current = setTimeout(() => setPeek(null), 1800);
+      const m = whyOf(where, tag);
+      setMsg(m); setSel(null); sayNow(m, 'think');
+      if (st.current.misses >= 2) lad.bump();
+      return false;
+    }
+    sfx('pop', true);
+    const ns = Object.assign({}, slots, { [where]: tag });
+    setSlots(ns); setSel(null); setMsg(null); setPeek(null);
+    if (ns.head && ns.line && ns.word) {
+      put({ done: true });
+      log({ screenId: 'q1', type: 'place-text-tags', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
+      sayNow(c.ok, 'smile');
+    }
+    return true;
+  };
+  const dnd = useKzDrag((tag, where) => place(tag, where));
+  const pickSlot = (where) => { if (!sel) { setMsg(c.pickFirst); return; } place(sel, where); };
+  const lit = lad.lv >= 3;
+  const nextWhere = !slots.head ? 'head' : !slots.line ? 'line' : 'word';
+  const head = pick(c.head), line = pick(c.line), pre = pick(c.pre), word = pick(c.word), post = pick(c.post);
+  // Честная страница: тег на месте или тот, что на миг показан при ошибке.
+  const tagOf = (where) => slots[where] || (peek && peek.where === where ? peek.tag : null);
+  const blocks = (() => {
+    const out = [];
+    const push = (t, parts) => {
+      if (!t || t === 'b') {   // без тега или b — строчный текст: склеивается с соседним строчным
+        const prt = t === 'b' ? [{ b: parts.join('') }] : parts;
+        const last = out[out.length - 1];
+        if (last && last.t === 'raw') last.parts = last.parts.concat([' '], prt); else out.push({ t: 'raw', parts: prt, k: 'r' + out.length });
+      } else out.push({ t, parts, k: t + out.length });
+    };
+    push(tagOf('head'), [head]);
+    push(tagOf('line'), [line]);
+    const w = tagOf('word');
+    if (!w || w === 'b') out.push({ t: 'p', parts: [pre, w ? { b: word } : word, post], k: 'p3' });
+    else { out.push({ t: 'p', parts: [pre], k: 'p3a' }); out.push({ t: w, parts: [word], k: 'w3' }); out.push({ t: 'p', parts: [post], k: 'p3b' }); }
+    return out;
+  })();
+  const slot = (where) => (
+    <button key={'s' + where} type="button" data-place={where} disabled={!canTap || done || !!slots[where]} onClick={() => pickSlot(where)}
+      className={'kz-dash kz-drop kz-q1-slot' + (dnd.hover === where ? ' is-hover' : '') + (dnd.active || sel ? ' is-call' : '')}>
+      <Led on={(led && !!sel) || (lit && where === nextWhere)} />
+    </button>
+  );
+  const wrapped = (where, text) => (slots[where] ? [T_(slots[where]), W_(text), T_(slots[where], true)] : [slot(where), W_(text)]);
+  const hint = hintAt(lad.lv, c.hints);
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="z2-sheet">
+        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hint)} n={done ? null : nFull + '/3'} />
+        <div className={'kz-scene kz-scene-col z2-q1' + (dnd.active || sel ? ' is-dragging' : '')}>
+          <div className="kz-col">
+            <PaperBrowser title={pick(UI.mySite)} short cls="z2-br" pageHl={!!peek}><PageDoc blocks={blocks} /></PaperBrowser>
+            <KzCode lines={[
+              { k: 'b', d: 0, cls: 'z2-edge', parts: [T_('body')] },
+              { k: 'h', d: 1, cls: slots.head ? 'is-new' : '', parts: wrapped('head', head) },
+              { k: 'l', d: 1, cls: slots.line ? 'is-new' : '', parts: wrapped('line', line) },
+              { k: 'w', d: 1, cls: slots.word ? 'is-new' : '', parts: [T_('p'), W_(pre)].concat(wrapped('word', word), [W_(post), T_('p', true)]) },
+              { k: 'bc', d: 0, cls: 'z2-edge', parts: [T_('body', true)] }
+            ]} cls="kz-code-sm" />
+          </div>
+        </div>
+        {!done ? (
+          <div className="kz-tray">
+            {Q1_TAGS.map((tg, i) => ((slots.head === tg || slots.line === tg || slots.word === tg) ? null : (
+              <button key={tg} type="button" disabled={!canTap} data-id={tg}
+                className={'kz-scrap kz-scrap-tag' + (sel === tg ? ' is-sel' : '') + (shake === tg ? ' kz-a-shake' : '') + (lit && tg === Q1_WANT[nextWhere] ? ' is-led' : '')}
+                style={{ '--r': ((i % 2 ? 1 : -1) * 2) + 'deg' }}
+                onPointerDown={(e) => { if (canTap && !done) dnd.start(e, tg, '<' + tg + '>'); }}
+                onClick={() => { setSel(sel === tg ? null : tg); setMsg(null); sfx('tap', true); }}>
+                <span translate="no">{'<' + tg + '>'}</span><Led on={led && !sel} />
+              </button>
+            )))}
+          </div>
+        ) : null}
+      </Sheet>
+      <KzGhost ghost={dnd.ghost} />
+    </Stage>
+  );
+}
+
+// =============================================================================
+// Q2. СКОЛЬКО h1? — три варианта, верный не первый. До первой попытки ничего не
+// подсвечено; неверный вариант гаснет, Коди называет причину, можно снова.
+// Подсказки — по лампочке (третья ступень подсвечивает ответ).
+// =============================================================================
+function Q2({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.q2;
+  const mine = useMine2();
+  const [rec, put] = useRec('q2');
+  const solved = !!(rec && rec.done);
+  const [off, setOff] = useState([]);
+  const [okNow, setOkNow] = useState(solved);
+  const [msg, setMsg] = useState(null);
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'curious' }]);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(solved || okNow, spoken);
+  const lad = useKzLadder(!okNow);
+  const led = useIdleLed(canTap && !okNow, off.length);
+  const choose = (o) => {
+    if (!canTap || okNow || off.indexOf(o.id) >= 0) return;
+    if (o.right) {
+      sfx('win', true); setOkNow(true); setMsg(null); put({ done: true });
+      log({ screenId: 'q2', type: 'how-many-h1', correct: true, firstTry: off.length === 0 && lad.asked.current === 0, attempts: off.length + 1, hints: lad.asked.current, depth: lad.lv });
+      sayNow(c.ok, 'smile');
+      return;
+    }
+    sfx('soft', true); setOff(off.concat(o.id)); setMsg(o.why); sayNow(o.why, 'think');
+    if (off.length + 1 >= 2) lad.bump();
+  };
+  const lit = lad.lv >= 3;
+  return (
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="z2-sheet">
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hintAt(lad.lv, c.hints))} />
+        <div className="kz-scene kz-scene-col kz-q2">
+          <div className="kz-col">
+            <KzCode lines={[{ k: 'h', d: 0, parts: [<span key="o" className="kz-q2-close">{T_('h1')}</span>, W_(mine.title), <span key="c" className="kz-q2-close">{T_('h1', true)}</span>] }]} />
+            <div className="kz-quiz">
+              {c.opts.map((o) => (
+                <button key={o.id} type="button" disabled={!canTap || okNow || off.indexOf(o.id) >= 0} onClick={() => choose(o)}
+                  className={'kz-btn ' + (okNow && o.right ? 'is-ok' : off.indexOf(o.id) >= 0 ? 'is-off' : 'is-ghost') + (lit && o.right && !okNow ? ' is-led' : '')}>
+                  {pick(o.t)}<Led on={led && !okNow && off.indexOf(o.id) < 0} />
+                </button>
+              ))}
             </div>
           </div>
         </div>
-      </div>
-      {speaker && (
-        <div className="speaker-wrap p-hidden-hero"><div className="limit"><PersonaBubble {...speaker} /></div></div>
-      )}
-      <div className="stage-content">
-        <div className="limit stack">{children}</div>
-      </div>
-      {nav && <div className="stage-nav"><div className="limit navrow">{nav}</div></div>}
-    </div>
-  );
-};
-
-// Строка задания — бумажная полоска урока 1 (KzAsk); у дополнительной задачи — ярлычок.
-function PAsk({ text, drill }) {
-  const pick = usePick();
-  return (
-    <div className="kz-ask-wrap pp-ask-wrap">
-      <p className={'kz-ask pp-ask' + (drill ? ' is-drill' : '')} aria-live="polite">
-        {drill ? <span className="pp-drill-tag">{pick(UI.drill)}</span> : null}{pick(text)}
-      </p>
-    </div>
-  );
-}
-
-function TaskScreen({ p, make }) {
-  const pick = usePick();
-  const lang = useLang();
-  const store = useStore();
-  const cfg = useMemo(() => make(pick, store, lang), [lang]); // eslint-disable-line react-hooks/exhaustive-deps
-  const t = useTask(cfg);
-  const rec = t.rec;
-  const mainRef = useRef(null);
-  const drillRef = useRef(null);
-  const drilling = !!(rec.drill && !rec.drill.done);
-  const dcfg = drilling ? cfg.drill.make(rec.drill.cat) : null;
-  const cur = drilling ? dcfg : cfg;
-  const st = drilling ? rec.drill.st : rec.st;
-  const spec = cur.spec;
-  const typing = spec.kind !== 'fields' && !(spec.kind === 'gap' && st.at == null);
-  const stageHint = drilling ? cfg.hint(2, rec.st).text : rec.solved ? cfg.C.done : cfg.hint(Math.min(3, rec.hint + 1), rec.st).text;
-  const keep = (e) => e.preventDefault();
-  // Нажатое место в задании с выбором места (t6): верное раскрывается в строку
-  // ввода, неверное трясётся и называет причину.
-  const onPick = (i) => {
-    const res = cur.pick(i);
-    const n = rec.n + 1;
-    const nst = res.ok ? Object.assign({}, st, { at: i, miss: null }) : Object.assign({}, st, { miss: { at: i, n } });
-    const note = res.ok ? null : { kind: 'fb', text: res.msg, n };
-    if (drilling) t.put({ n, drill: Object.assign({}, rec.drill, { st: nst, note }) });
-    else t.put({ n, st: nst, note });
-    sfx(res.ok ? 'ok' : 'soft', true);
-    t.say(res.ok ? res.say : res.msg, res.ok ? 'point' : 'think');
-    if (res.ok) setTimeout(() => { const el = (drilling ? drillRef : mainRef).current; if (el) el.focus(); }, 60);
-  };
-  const tools = (
-    <div className="op-tools kz-piece">
-      {typing ? <SymKeys inputRef={drilling ? drillRef : mainRef} /> : null}
-      <button type="button" className="pp-go" onMouseDown={keep} onClick={drilling ? t.checkDrill : t.check}>
-        <Icon name="check" size={17} />{pick(UI.check)}
-      </button>
-    </div>
-  );
-  const note = drilling ? (rec.drill.note || rec.note) : rec.note;
-  const order = drilling ? (dcfg.orderOf ? dcfg.orderOf(st) : dcfg.order) : (cfg.orderOf ? cfg.orderOf(rec.st) : cfg.C.order);
-  return (
-    <PStage eyebrow={taskEyebrow(cfg.num, cfg.num)} screen={p.screen} total={p.total} speaker={t.speaker} done={t.canGo}
-      top={<StreetStrip mini cur={cfg.num - 1} pop={t.fresh} />}
-      hint={stageHint}
-      nav={<><BackBtn onPrev={p.prev} /><NextBtn disabled={!t.canGo} onClick={p.next} /></>}>
-      <Sheet cls="pp-sheet">
-        <StreetStrip cur={cfg.num - 1} pop={t.fresh} />
-        <PAsk text={order} drill={drilling} />
-        {cur.orderExtra ? <div className="pp-extra">{typeof cur.orderExtra === 'function' ? cur.orderExtra(rec, st) : cur.orderExtra}</div> : null}
-        <Workbench key={drilling ? 'drill' : 'main'} spec={spec} st={st} setSt={drilling ? t.setDrillSt : t.setSt}
-          inputRef={drilling ? drillRef : mainRef} fx={!drilling && cfg.fx ? cfg.fx(rec) : (drilling && dcfg.fx ? dcfg.fx(rec.drill) : null)}
-          aids={cur.aids ? (typeof cur.aids === 'function' ? cur.aids(rec, st) : cur.aids) : null}
-          tools={tools} flash={drilling ? 0 : t.flash} onPick={onPick} />
-        <TaskNote note={note} extra={!drilling && cfg.h3 ? cfg.h3(rec) : null} />
       </Sheet>
-    </PStage>
+    </Stage>
   );
 }
 
 // =============================================================================
-// ХУК, ПЯТЬ ЗАДАНИЙ, ВЫВОД И КОРЕНЬ ПРАКТИКИ «ОСТРОВА»
-// Семь слайдов (заказчик, 22.10.2026). У каждого задания своя механика:
-// дописать href → поменять адреса двух ссылок (проверить нажатием) → ссылка
-// целиком с пустой строки → найти и починить две ссылки (счётчик) → своё меню
-// с нуля (живой список условий).
+// S15. ВЫВОД — своя страница ученика в бумажном браузере; роли тегов загораются,
+// пока Коди их называет. Единственный праздник урока.
 // =============================================================================
-const DOCTYPE = '<!DOCTYPE html>';
-// Готовая рамка документа (урок 1): head с title и открытый body; extra — строки в body.
-const frame = (title, extra) => [DOCTYPE, '<html>', '  <head>', '    <title>' + title + '</title>', '  </head>', '  <body>'].concat(extra || []);
-const END = ['  </body>', '</html>'];
-const same = (a, b) => normName(a) === normName(b);
-// Разбор нашёл поломку записи, пар или атрибутов — его фраза; line — где она.
-const fragFail = (r) => ({ ok: false, msg: r.msg, cat: 'tag', line: r.line });
-const linkCode = (href, text) => '<a href="' + href + '">' + text + '</a>';
-const isReal = (href) => !!SITE_PAGES[String(href || '').trim()];
-
-// Карта: остров — песчаный круг, на нём флажок своего цвета и пальма. Ждёт —
-// флажок сорван и выцвел; готов — флажок поднят.
-function stopArt(h, i, on) {
-  return (
-    <>
-      <Cut c="#F3DFA8" round seed={80 + i} n={7} amp={4} cls="pp-stop-disc" />
-      <span className={'pp-isle' + (on ? '' : ' is-mess')} style={{ '--hc': h.c }}><i /><i /><i /></span>
-    </>
-  );
-}
-
-// Файлы островов — видны сразу (наглядная помощь): картинка острова и его файл.
-function IslandFiles({ hl }) {
+function S15({ p }) {
   const pick = usePick();
-  return (
-    <div className="pp-files kz-piece" aria-label={pick(UI.files)}>
-      <span className="pp-files-h">{pick(UI.files)}</span>
-      <span className="pp-files-row">
-        {STREET.filter((s) => s.file).map((s) => (
-          <span key={s.id} className={'pp-file' + (hl === s.file ? ' is-hl' : '')} style={{ '--hc': s.c }}>
-            <i aria-hidden="true" /><code translate="no">{s.file}</code>
-          </span>
-        ))}
-      </span>
-      <span className="pp-files-tip">{pick(UI.tryLink)}</span>
-    </div>
-  );
-}
-
-// t1 — у ссылки появился нужный адрес, слова прежние.
-function checkAddHref(code, w, want) {
-  const r = checkFrag(code);
-  if (!r.ok) return fragFail(r);
-  if (!r.links.length) return fb('needA');
-  if (r.links.length > 1) return fb('oneLink');
-  const L = r.links[0];
-  if (L.href === undefined) return fb('noHref');
-  if (!L.href) return fb('hrefEmpty');
-  if (L.href !== want) return fb('hrefWrong', { href: L.href, want });
-  if (!same(L.text, w)) return fb('textKeep', { w });
-  return { ok: true, result: {} };
-}
-// t2, t4 — каждая ссылка со своими словами ведёт на свою страницу.
-function checkLinkMap(r, map) {
-  if (r.links.length !== map.length) return fb('twoLinks');
-  for (let k = 0; k < map.length; k += 1) {
-    const m = map[k];
-    const L = r.links.find((x) => same(x.text, m.text));
-    if (!L) return fb('keepLinks');
-    if (L.href === undefined) return fb('noHref');
-    if (!L.href) return fb('hrefEmpty');
-    if (L.href !== m.href) return fb('linkTo', { text: m.text, href: L.href, want: m.href });
-  }
-  return { ok: true, result: {} };
-}
-function checkSwap(code, map) {
-  const r = checkFrag(code, { strictText: true });
-  if (!r.ok) return fragFail(r);
-  return checkLinkMap(r, map);
-}
-// t3 — одна ссылка целиком: a, href с нужным адресом, свои слова.
-function checkNewLink(code, want) {
-  const s = String(code || '').trim();
-  if (!s) return fb('needA');
-  const r = checkFrag(code);
-  if (!r.ok) return fragFail(r);
-  if (!r.links.length) return fb('needA');
-  if (r.links.length > 1) return fb('oneLink');
-  const L = r.links[0];
-  if (L.href === undefined) return fb('noHref');
-  if (!L.href) return fb('hrefEmpty');
-  if (L.href !== want) return fb('hrefWrong', { href: L.href, want });
-  if (!hasLetters(L.text)) return fb('needText');
-  return { ok: true, result: {} };
-}
-// t4 — сломанные ссылки починены; ссылки и абзацы прежние.
-function checkFixLinks(code, map) {
-  const r = checkFrag(code, { strictText: true });
-  if (!r.ok) return fragFail(r);
-  return checkLinkMap(r, map);
-}
-const brokenLeft = (code) => { const r = checkFrag(code, { strictText: true }); return r.ok ? 0 : Math.max(1, r.count); };
-
-// t5 — своё меню: h1 с названием, список, хотя бы три ссылки в li — на настоящие страницы.
-function menuOf(code) {
-  const r = checkFrag(code, { strictText: true });
-  const h1 = r.blocks.find((x) => x.t === 'h1' && hasLetters(x.text));
-  const ls = r.lists[0] || null;
-  const inLi = r.links.filter((L) => L.inLi && hasLetters(L.text) && L.href !== undefined);
-  const real = inLi.length > 0 && inLi.every((L) => isReal(L.href));
-  return { r, h1, ls, n: inLi.length, inLi, real, closed: r.ok && (r.blocks.length > 0 || r.lists.length > 0) };
-}
-function checkOwn(code) {
-  if (!String(code || '').trim()) return fb('artEmpty', null, 'h1');
-  const a = menuOf(code);
-  if (!a.r.ok) return fragFail(a.r);
-  if (!a.r.blocks.some((x) => x.t === 'h1')) return fb('needH1', null, 'h1');
-  if (!a.h1) return fb('menuHeadEmpty', null, 'h1');
-  if (!a.ls) return fb('needList', null, 'list');
-  if (a.n < 3) return fb('needLinks', null, 'links');
-  const bad = a.inLi.find((L) => !isReal(L.href));
-  if (bad) return fb(bad.href ? 'notReal' : 'hrefEmpty', { href: bad.href }, 'real');
-  return { ok: true, result: { title: squash(a.h1.text), items: a.inLi.map((L) => squash(L.text)) } };
-}
-
-// =============================================================================
-// ПЯТЬ ЗАДАНИЙ. num — номер задания и остров, к которому оно чинит мост.
-// =============================================================================
-// 1 · Попугаи — у готовой ссылки нет адреса: дописать href.
-function cfgT1(pick) {
-  const top = pick(TXT.top);
-  const before = frame(top, ['    <h2>' + pick(TXT.whereH) + '</h2>']);
-  const w = pick(TXT.parrots), w2 = pick(TXT.cave);
-  return {
-    id: 't1', num: 1, kind: 'line', C: C.t1,
-    spec: { kind: 'line', before, after: END, ind: 4, url: 'index.html' },
-    init: () => ({ code: '<a>' + w + '</a>' }),
-    check: (st) => checkAddHref(st.code, w, 'parrots.html'),
-    hint: (lv) => ({ text: C.t1.hints[lv - 1] }),
-    fx: (rec) => (rec.solved ? null : { led: rec.hint >= 3 }),
-    aids: <IslandFiles hl="parrots.html" />,
-    h3: () => <CodeSample code={linkCode('lighthouse.html', pick(TXT.light))} />,
-    drill: { make: () => ({
-      order: C.t1.drill,
-      spec: { kind: 'line', before, after: END, ind: 4, url: 'index.html' },
-      init: () => ({ code: '<a>' + w2 + '</a>' }), check: (st) => checkAddHref(st.code, w2, 'cave.html'),
-      aids: <IslandFiles hl="cave.html" />
-    }) }
-  };
-}
-
-// 2 · Указатели — «Пещера» и «Маяк» ведут не туда: поменять значения href.
-function cfgT2(pick) {
-  const top = pick(TXT.top);
-  const before = frame(top, ['    <h2>' + pick(TXT.whereH) + '</h2>']);
-  const cave = pick(TXT.cave), light = pick(TXT.light), par = pick(TXT.parrotsS), vol = pick(TXT.volcano);
-  const map = [{ text: cave, href: 'cave.html' }, { text: light, href: 'lighthouse.html' }];
-  const map2 = [{ text: par, href: 'parrots.html' }, { text: vol, href: 'volcano.html' }];
-  return {
-    id: 't2', num: 2, kind: 'block', C: C.t2,
-    spec: { kind: 'block', before, after: END, ind: 4, url: 'index.html' },
-    init: () => ({ code: [linkCode('lighthouse.html', cave), linkCode('cave.html', light)].join('\n') }),
-    check: (st) => checkSwap(st.code, map),
-    hint: (lv) => ({ text: C.t2.hints[lv - 1] }),
-    fx: (rec) => (rec.solved ? null : { led: rec.hint >= 3 }),
-    aids: <IslandFiles />,
-    h3: () => <CodeSample code={linkCode('cave.html', cave)} />,
-    drill: { make: () => ({
-      order: C.t2.drill,
-      spec: { kind: 'block', before, after: END, ind: 4, url: 'index.html' },
-      init: () => ({ code: [linkCode('volcano.html', par), linkCode('parrots.html', vol)].join('\n') }), check: (st) => checkSwap(st.code, map2),
-      aids: <IslandFiles />
-    }) }
-  };
-}
-
-// 3 · Вулкан — ссылка целиком с пустой строки.
-function cfgT3(pick) {
-  const top = pick(TXT.top);
-  const before = frame(top, ['    <h2>' + pick(TXT.whereH) + '</h2>', '    ' + linkCode('parrots.html', pick(TXT.parrots))]);
-  return {
-    id: 't3', num: 3, kind: 'line', C: C.t3,
-    spec: { kind: 'line', before, after: END, ind: 4, url: 'index.html' },
-    init: () => ({ code: '' }),
-    check: (st) => checkNewLink(st.code, 'volcano.html'),
-    hint: (lv) => ({ text: C.t3.hints[lv - 1] }),
-    fx: (rec) => (rec.solved ? null : { led: rec.hint >= 3 }),
-    aids: <IslandFiles hl="volcano.html" />,
-    h3: () => <CodeSample code={linkCode('cave.html', pick(TXT.cave))} />,
-    drill: { make: () => ({
-      order: C.t3.drill,
-      spec: { kind: 'line', before, after: END, ind: 4, url: 'index.html' },
-      init: () => ({ code: '' }), check: (st) => checkNewLink(st.code, 'lighthouse.html'),
-      aids: <IslandFiles hl="lighthouse.html" />
-    }) }
-  };
-}
-
-// 4 · После шторма — опечатка в имени атрибута (ссылка стала чёрной) и нет </a>
-// (абзац ниже стал синим). Браузер честно показывает обе поломки.
-function cfgT4(pick) {
-  const top = pick(TXT.top);
-  const before = frame(top, ['    <h2>' + pick(TXT.whereH) + '</h2>']);
-  const light = pick(TXT.light), vol = pick(TXT.volcano), cave = pick(TXT.cave), par = pick(TXT.parrotsS);
-  const map = [{ text: light, href: 'lighthouse.html' }, { text: vol, href: 'volcano.html' }];
-  const map2 = [{ text: cave, href: 'cave.html' }, { text: par, href: 'parrots.html' }];
-  const lineOf = (code) => { const r = checkFrag(code, { strictText: true }); return r.ok || r.line == null ? null : before.length + r.line; };
-  return {
-    id: 't4', num: 4, kind: 'block', C: C.t4,
-    spec: { kind: 'block', before, after: END, ind: 4, url: 'index.html' },
-    init: () => ({ code: ['<a hrf="lighthouse.html">' + light + '</a>', '<a href="volcano.html">' + vol, '<p>' + pick(TXT.wish) + '</p>'].join('\n') }),
-    check: (st) => checkFixLinks(st.code, map),
-    hint: (lv, st) => {
-      if (lv !== 2) return { text: C.t4.hints[lv - 1] };
-      const at = lineOf(st.code);
-      if (at != null) return { text: fillL(C.t4.hints[1], { n: at + 1 }) };
-      if (brokenLeft(st.code)) return { text: C.t4.hintTags };
-      return { text: checkFixLinks(st.code, map).ok ? C.t4.hintLine : C.t4.hintKeep };
-    },
-    fx: (rec) => (rec.solved ? null : { markLine: rec.hint >= 2 ? lineOf(rec.st.code) : null }),
-    aids: (rec, st) => <FixLeft n={brokenLeft(st.code)} />,
-    h3: () => <CodeSample code={[linkCode('cave.html', cave), linkCode('parrots.html', par)].join('\n')} />,
-    drill: { make: () => ({
-      order: C.t4.drill,
-      spec: { kind: 'block', before, after: END, ind: 4, url: 'index.html' },
-      init: () => ({ code: ['<a href="cave.html">' + cave, '<p>' + pick(TXT.wish2) + '</p>', '<a hreff="parrots.html">' + par + '</a>'].join('\n') }),
-      check: (st) => checkFixLinks(st.code, map2),
-      aids: (d, st) => <FixLeft n={brokenLeft(st.code)} />
-    }) }
-  };
-}
-
-// 5 · Своё меню — с нуля внутри body: h1, список и три ссылки на острова.
-// Список условий загорается по ходу набора; редактор во всё свободное место.
-function cfgT5(pick) {
-  const top = pick(TXT.top);
-  const before = frame(top);
-  const items = (code) => {
-    const a = menuOf(code);
-    return [
-      { k: 'h1', ok: !!a.h1, text: UI.needH1 },
-      { k: 'list', ok: !!a.ls, text: UI.needList },
-      { k: 'n', ok: a.n >= 3, text: UI.need3 },
-      { k: 'real', ok: a.n >= 1 && a.real, text: UI.needReal },
-      { k: 'cl', ok: a.closed, text: UI.needClosed }
-    ];
-  };
-  return {
-    id: 't5', num: 5, kind: 'block', C: C.t5,
-    spec: { kind: 'block', before, after: END, ind: 4, big: true, empty: C.t5.empty, url: 'index.html' },
-    init: () => ({ code: '' }),
-    check: (st) => {
-      const r = checkOwn(st.code);
-      if (!r.ok) return r;
-      const html = before.concat(st.code.split('\n').map((l) => '    ' + l)).concat(END).join('\n');
-      const pg = renderDoc(html);
-      return { ok: true, result: Object.assign({}, r.result, { html, page: pg.title, blocks: pg.blocks }) };
-    },
-    hint: (lv, st) => {
-      if (lv !== 2) return { text: C.t5.hints[lv - 1] };
-      const r = checkOwn(st.code);
-      return { text: C.t5.hint2[r.ok ? 'tag' : (r.cat || 'tag')] || C.t5.hints[1] };
-    },
-    fx: (rec) => (rec.solved ? null : { led: rec.hint >= 3 }),
-    aids: (rec, st) => <><Checklist items={items(st.code)} /><IslandFiles /></>,
-    h3: () => <CodeSample code={'<h1>' + pick(TXT.menuH) + '</h1>\n<ul>\n  <li>' + linkCode('cave.html', pick(TXT.cave)) + '</li>\n  …\n</ul>'} />,
-    drill: { make: () => ({
-      order: C.t5.drill,
-      spec: { kind: 'block', before, after: END, ind: 4, empty: C.t5.empty, url: 'index.html' },
-      init: () => ({ code: '' }),
-      check: (st) => {
-        const r = checkFrag(st.code, { strictText: true });
-        if (!r.ok) return fragFail(r);
-        const L = r.links.find((x) => x.href === 'index.html' && hasLetters(x.text));
-        if (!L) return fb(r.links.length ? 'needHome' : 'needA');
-        return { ok: true, result: {} };
-      }
-    }) }
-  };
-}
-
-const ST1 = ({ p }) => <TaskScreen p={p} make={cfgT1} />;
-const ST2 = ({ p }) => <TaskScreen p={p} make={cfgT2} />;
-const ST3 = ({ p }) => <TaskScreen p={p} make={cfgT3} />;
-const ST4 = ({ p }) => <TaskScreen p={p} make={cfgT4} />;
-const ST5 = ({ p }) => <TaskScreen p={p} make={cfgT5} />;
-
-// =============================================================================
-// ХУК — острова соединены мостами; одно касание «Шторм!»: острова вздрагивают,
-// флажки срывает, мосты-пунктиры рвутся, летят брызги (stop-motion, шорох).
-// =============================================================================
-function SIntro({ p }) {
-  const pick = usePick();
-  const store = useStore();
-  const c = C.intro;
-  const [done, setDone] = useState(() => !!(store.get('intro') || {}).done);
-  const [blown, setBlown] = useState(false);
-  const [speaker, , spoken, sayNow] = useVoice([{ text: done ? c.plan : c.say, pose: 'hello' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(done, spoken);
-  const led = useIdleLed(canTap && !done, 0);
-  const storm = () => {
-    if (!canTap || done) return;
-    sfx('pop', true);
-    setBlown(true);
-    setDone(true);
-    store.set('intro', { done: true });
-    sayNow(joinL(c.blown, c.plan), 'wonder');
-  };
-  return (
-    <PStage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={done ? c.plan : c.ask}
-      nav={<><BackBtn onPrev={p.prev} /><NextBtn disabled={!canGo} onClick={p.next} label={UI.start} /></>}>
-      <Sheet cls="pp-sheet pp-sheet-intro">
-        <PAsk text={done ? c.order : c.ask} />
-        <StreetMap whole={!done} blown={blown} />
-        {done ? <p className="pp-intro-note kz-piece">{pick(c.note)}</p> : (
-          <div className="pp-wind-row">
-            <button type="button" className={'kz-btn is-coral pp-wind' + (led ? ' is-led' : '')} disabled={!canTap} onClick={storm}>
-              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round">
-                <path d="M3 9c2-2 4-2 6 0s4 2 6 0 4-2 6 0M3 14c2-2 4-2 6 0s4 2 6 0 4-2 6 0M3 19c2-2 4-2 6 0s4 2 6 0 4-2 6 0" />
-              </svg>
-              {pick(UI.storm)}
-            </button>
-          </div>
-        )}
-      </Sheet>
-    </PStage>
-  );
-}
-
-// Переключатель «Страница / Код» на телефоне в выводе.
-function PSeg({ value, onChange }) {
-  const pick = usePick();
-  return (
-    <div className="pp-seg" role="radiogroup">
-      {[{ v: 'page', label: UI.page }, { v: 'code', label: UI.code }].map((o) => (
-        <button key={o.v} type="button" role="radio" aria-checked={value === o.v} className={'pp-seg-b' + (value === o.v ? ' is-on' : '')}
-          onClick={() => { sfx('tap', true); onChange(o.v); }}>{pick(o.label)}</button>
-      ))}
-    </div>
-  );
-}
-
-// ВЫВОД — острова горят, своё меню (ссылки можно нажать) и его код, умения, следующий урок.
-function SFin({ p }) {
-  const pick = usePick();
-  const store = useStore();
-  const c = C.fin;
-  const [speaker, , spoken] = useVoice([{ text: c.say, pose: 'celebrate' }]);
+  const c = C.s15;
+  const mine = useMine2();
+  const [speaker, , spoken] = useVoice(c.say.map((x, i) => ({ text: x.text, pose: i === c.say.length - 1 ? 'celebrate' : i === 0 ? 'wonder' : 'point' })));
   const canGo = useAdvanceGate(true, spoken);
-  const [view, setView] = useState('page');
-  const res = (store.get('t5') || {}).result;
   useEffect(() => { const t = setTimeout(() => celebrate(), 900); return () => clearTimeout(t); }, []);
+  const curK = (c.say.find((x) => x.text === speaker.text) || {}).k || null;
+  const bw = pick(C.s14.bword);
+  const blocks = [
+    { t: 'h1', parts: [mine.title], hl: curK === 'h' },
+    { t: 'p', parts: [{ b: bw }, ' ' + mine.text], hl: curK === 'p' ? true : curK === 'bi' ? 'b' : null }
+  ];
   return (
-    <PStage eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.say}
+    <Stage voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask}
       nav={<><BackBtn onPrev={p.prev} /><NextBtn disabled={!canGo} onClick={p.finish} label={UI.finish} /></>}>
-      <Sheet cls="pp-sheet pp-sheet-fin">
-        <StreetMap glow />
-        {res ? (
-          <div className="pp-fin">
-            <div className="pp-fin-top">
-              <span className="pp-stamp kz-piece"><Icon name="check" size={18} />{pick(UI.ready)}</span>
-              <span className="pp-only-narrow"><PSeg value={view} onChange={setView} /></span>
-            </div>
-            <div className={'pp-fin-pair view-' + view}>
-              <div className="pp-fin-b"><PageView title={res.page} blocks={res.blocks} url="index.html" /></div>
-              <div className="pp-fin-c"><Pad><CodeSample code={res.html} /></Pad></div>
-            </div>
-            <div className="pp-skills kz-piece">
-              {c.skills.map((sk, i) => (
-                <span className="pp-skill" key={i} style={{ '--dl': (0.2 + i * 0.12) + 's' }}><Icon name="check" size={13} />{pick(sk)}</span>
+      <Sheet cls="z2-sheet">
+        <div className="kz-scene kz-s15">
+          <div className="kz-col kz-s15-left">
+            <PaperBrowser title={pick(UI.mySite)} cls="z2-br"><PageDoc blocks={blocks} anim /></PaperBrowser>
+            <div className="kz-s15-man"><div className="kz-manbox kz-manbox-free"><PaperMan anim wave /></div></div>
+          </div>
+          <div className="kz-col kz-s15-side">
+            <div className="kz-roles">
+              {['h', 'p', 'bi'].map((k) => (
+                <span key={k} className={'kz-role' + (curK === k ? ' is-on' : '')} style={{ '--c': k === 'h' ? KZ.coral : k === 'p' ? KZ.teal : KZ.mustard }}>
+                  <i aria-hidden="true" />{pick(c.roles[k])}
+                </span>
               ))}
             </div>
             <div className="kz-next"><Icon name="doc" size={18} /><span>{pick(UI.nextLesson)}: <b>{pick(UI.next)}</b></span></div>
           </div>
-        ) : null}
+        </div>
       </Sheet>
-    </PStage>
+    </Stage>
   );
 }
 
 // =============================================================================
-// РЕЕСТР ЭКРАНОВ, АРТЕФАКТ, КОРЕНЬ
+// РЕЕСТР И КОРЕНЬ
 // =============================================================================
 const SCREENS = [
-  { id: 'intro', code: 'HOOK', Comp: SIntro },
-  { id: 't1', code: 'LEVEL-1', Comp: ST1 }, { id: 't2', code: 'LEVEL-2', Comp: ST2 },
-  { id: 't3', code: 'LEVEL-3', Comp: ST3 }, { id: 't4', code: 'CHECK-1', Comp: ST4 },
-  { id: 't5', code: 'RESULT', Comp: ST5 },
-  { id: 'fin', code: 'PREVIEW', Comp: SFin }
+  { id: 's1', code: 'HOOK', Comp: S1 }, { id: 's2', code: 'MISSION', Comp: S2 },
+  { id: 's3', code: 'SHOW', Comp: S3 }, { id: 's4', code: 'LEVEL-1', Comp: S4 }, { id: 's5', code: 'CHECK-1', Comp: S5 },
+  { id: 's6', code: 'SHOW', Comp: S6 }, { id: 's7', code: 'LEVEL-2', Comp: S7 }, { id: 's8', code: 'PREDICT', Comp: S8 },
+  { id: 's9', code: 'SHOW', Comp: S9 }, { id: 's10', code: 'LEVEL-3', Comp: S10 }, { id: 's11', code: 'CHECK-2', Comp: S11 },
+  { id: 's12', code: 'SHOW', Comp: S12 }, { id: 's13', code: 'LEVEL-4', Comp: S13 }, { id: 's13b', code: 'LEVEL-4B', Comp: S13B },
+  { id: 's14', code: 'CHECK-3', Comp: S14 },
+  { id: 'q1', code: 'CHECK-4', Comp: Q1 }, { id: 'q2', code: 'QUIZ', Comp: Q2 },
+  { id: 's15', code: 'ACHIEVEMENT', Comp: S15 }
 ];
+// «Повторить» стирает только экран; название и текст ученика (myTitle, myText) остаются.
+const SCREEN_RESET = { s1: ['s1'], s2: ['s2'], s3: ['s3'], s4: ['s4'], s5: ['s5'], s6: ['s6'], s7: ['s7'], s8: ['s8'], s9: ['s9'],
+  s10: ['s10'], s11: ['s11'], s12: ['s12'], s13: ['s13'], s13b: ['s13b'], s14: ['s14'], q1: ['q1'], q2: ['q2'] };
 
-// «Повторить» стирает только текущий экран.
-const SCREEN_RESET = { intro: ['intro'], t1: ['t1'], t2: ['t2'], t3: ['t3'], t4: ['t4'], t5: ['t5'], fin: [] };
-
-// Артефакт практики — страница со своим меню ссылок, как её написал ученик.
-function practiceArtifact(store) {
-  const r = (store.get('t5') || {}).result;
-  if (!r) return null;
-  return { type: 'html-page', title: r.title, text: (r.items || []).join(', '), items: r.items || [], html: r.html };
+// Артефакт урока — страница ученика: название на вкладке и в h1, абзац с жирным словом.
+function lesson2Artifact(store, lang) {
+  const t = store.get('myTitle'), x = store.get('myText');
+  if (!t && !x) return null;
+  const bw = C.s14.bword[lang] || C.s14.bword.ru;
+  return { type: 'html-page', title: t || '', text: x || '',
+    html: ['<!DOCTYPE html>', '<html>', '  <head>', '    <title>' + escHtml(t || '') + '</title>', '  </head>', '  <body>',
+      '    <h1>' + escHtml(t || '') + '</h1>', '    <p><b>' + escHtml(bw) + '</b> ' + escHtml(x || '') + '</p>', '  </body>', '</html>'].join('\n') };
 }
 
-export default function HtmlPractice04({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function HtmlZagolovki({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
     meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
-    extraPayload: (store) => ({ artifact: practiceArtifact(store) })
+    extraPayload: (store) => ({ artifact: lesson2Artifact(store, lang) })
   });
   useParallax();
   usePaperSound();
   const cur = SCREENS[R.i];
   const Comp = cur.Comp;
-  // Прогрев озвучки: реплики этого экрана и следующего — заранее.
   const nextId = SCREENS[R.i + 1] && SCREENS[R.i + 1].id;
   useEffect(() => {
     if (!R.audio || !R.audio.warm) return undefined;
@@ -9691,7 +10030,6 @@ export default function HtmlPractice04({ studentName, lang, ttsApiBase, voiceGen
     }, 700);
     return () => clearTimeout(t);
   }, [cur.id, nextId, R.lang]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Переход «разбор и сборка» — на «Дальше» и «Назад», как в уроке 1.
   const go = useKzTransition(cur.id + ':' + R.runN);
   const p = { screen: R.i, total: SCREENS.length, next: go(R.next), prev: R.i > 0 ? go(R.prev) : null, finish: R.finish, name: R.displayName };
   return (
@@ -9704,6 +10042,1057 @@ export default function HtmlPractice04({ studentName, lang, ttsApiBase, voiceGen
 }
 
 const LESSON_CSS = CANON_SCREEN_CSS + `
+.lesson-root { --ind: 1.2em; --gut: 2.3em; --cv-fs: clamp(12px, 3.3vw, 15px); }
+
+/* ══ КОД ═══════════════════════════════════════════════════════════
+   Светлая панель: цвета тегов подобраны тёмными, чтобы читались на белом
+   (контраст от 4.9:1). Слева — номера строк и цветные скобки вложенности. */
+.cv { position: relative; width: 100%; min-width: 0; text-align: left;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: var(--cv-fs); line-height: 1.5;
+  background: ${T.paper}; color: ${T.ink}; border-radius: 14px; padding: 6px 8px 6px 0;
+  box-shadow: 0 2px 0 rgba(${T.shadowBase},0.05), 0 12px 26px -16px rgba(${T.shadowBase},0.5),
+    inset 0 0 0 1.5px rgba(${T.shadowBase},0.08); }
+.cv-line { position: relative; display: flex; align-items: center; min-height: 1.5em; width: 100%;
+  padding-left: calc(var(--gut) + var(--d) * var(--ind)); padding-right: 4px; white-space: nowrap;
+  border-radius: 6px; transition: opacity .3s, background .3s; }
+.cv-line:has(.tk-btn) { min-height: 30px; }
+.cv-n { position: absolute; left: 0; width: 1.9em; text-align: right; color: ${T.ink3}; font-size: .78em; }
+.cv-bar { position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--c); opacity: .5;
+  left: calc(var(--gut) - .55em + var(--lv) * var(--ind)); }
+.cv-bar.is-first { top: 50%; } .cv-bar.is-last { bottom: 50%; } .cv-bar.is-first.is-last { display: none; }
+.cv-code { display: flex; align-items: center; flex-wrap: nowrap; min-width: 0; flex: 1 1 auto; gap: 0; }
+.cv-line.is-out { opacity: .32; }
+.cv-line.is-in { background: color-mix(in srgb, var(--hc) 8%, transparent); }
+.cv-note { margin-left: 10px; font: 700 11px/1 'Manrope', sans-serif; color: ${T.ink3}; white-space: nowrap;
+  text-transform: uppercase; letter-spacing: .05em; }
+.cv-line.is-new { animation: lineIn .55s cubic-bezier(.34,1.3,.5,1) both; }
+@keyframes lineIn { from { transform: translateX(-12px); background: rgba(255,79,40,.13); } to { transform: none; } }
+.cv-reveal .cv-line { animation: lineIn .45s cubic-bezier(.34,1.3,.5,1) both; }
+.cv-reveal .cv-line:nth-child(2) { animation-delay: .07s; } .cv-reveal .cv-line:nth-child(3) { animation-delay: .14s; }
+.cv-reveal .cv-line:nth-child(4) { animation-delay: .21s; } .cv-reveal .cv-line:nth-child(5) { animation-delay: .28s; }
+.cv-reveal .cv-line:nth-child(6) { animation-delay: .35s; } .cv-reveal .cv-line:nth-child(7) { animation-delay: .42s; }
+.cv-reveal .cv-line:nth-child(8) { animation-delay: .49s; } .cv-reveal .cv-line:nth-child(9) { animation-delay: .56s; }
+
+.tk { display: inline-flex; align-items: center; min-width: 0; border-radius: 6px; }
+.tk-tag { color: var(--c); font-weight: 700; white-space: nowrap; }
+.tk-br { opacity: .72; }
+.tk-sl { display: inline-block; border-radius: 4px; }
+.tk-doc { color: ${T.ink2}; }
+.tk-text { color: ${T.ink}; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+  font-family: 'Manrope', sans-serif; font-size: 1.02em; padding: 0 2px; border-radius: 5px; }
+.tk-slot { color: ${T.ink3}; }
+.tk.is-changed .tk-text, .tk-btn.is-changed .tk-text { background: ${T.hintSoft}; }
+.tk.is-pair { background: color-mix(in srgb, var(--c) 15%, #fff); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 45%, #fff); }
+.cv-line.is-title-pair { background: color-mix(in srgb, ${'#9F4471'} 7%, transparent); }
+
+/* Нажимаемый участок кода: подчёркнут цветом интерфейса — «сюда можно нажать». */
+.tk-btn { position: relative; font: inherit; color: inherit; border: none; cursor: pointer; margin: 1px 1px;
+  padding: 3px 5px; min-height: 26px; border-radius: 8px; background: rgba(255,79,40,.04);
+  box-shadow: inset 0 -2px 0 rgba(255,79,40,.25);
+  transition: background .2s, box-shadow .2s, transform .12s; }
+.tk-btn:hover:not(:disabled) { background: ${T.uiSoft}; }
+.tk-btn:active:not(:disabled) { transform: scale(.95); }
+.tk-btn:focus-visible { outline: 3px solid ${T.ui}; outline-offset: 1px; }
+.tk-btn.is-sel { background: color-mix(in srgb, var(--c) 18%, #fff); box-shadow: 0 0 0 2.5px var(--c); }
+.tk-btn:disabled { cursor: default; }
+/* Светодиод «нажми сюда» на коротком теге — в углу над токеном, не на тексте. */
+.tk-btn .led > i { top: -3px; right: -3px; width: 7px; height: 7px; }
+.chip-opt .led > i, .pool-chip .led > i, .nest-piece .led > i { top: 4px; right: 4px; width: 7px; height: 7px; }
+
+/* Поле прямо в строке кода. 16 px — меньше нельзя: iOS увеличит страницу. */
+.tk-input { flex: 1 1 0; min-width: 4.5ch; width: 100%; font: 600 16px/1.25 'Manrope', sans-serif; color: ${T.ink};
+  border: none; border-radius: 7px 7px 3px 3px; padding: 3px 7px; margin: 2px 2px; outline: none;
+  background: ${T.uiSoft}; box-shadow: inset 0 -2px 0 ${T.ui}; }
+.tk-input:focus { background: #fff; box-shadow: inset 0 0 0 2px ${T.ui}; }
+/* Поле растёт по тексту: перенос внутри, высота — по содержимому (InlineInput). */
+.tk-grow { display: block; resize: none; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere;
+  word-break: normal; min-height: 0; align-self: center; flex: 0 1 auto; width: auto; max-width: 100%; }
+/* В строке кода теги не сжимаются — сжимается (и переносит текст) только поле. */
+.cv-code > .tk:has(.tk-tag) { flex-shrink: 0; }
+.cv-code > .tk:has(.tk-grow) { flex: 0 1 auto; min-width: 4.5ch; }
+.tk-input::placeholder { color: ${T.ink3}; font-weight: 500; }
+.tk-input-tag { font-family: 'JetBrains Mono', ui-monospace, monospace; flex: 0 1 12ch; }
+.tk-input.is-led-in { animation: ledFrame 1.15s ease-in-out infinite; }
+
+.tt-caret { display: inline-block; width: 2px; height: 1em; margin-left: 1px; vertical-align: -.14em;
+  background: currentColor; animation: ttBlink .8s steps(2) infinite; }
+@keyframes ttBlink { 50% { opacity: 0; } }
+
+/* ══ МИНИ-БРАУЗЕР ════════════════════════════════════════════════
+   Рамка — интерфейс урока; страница внутри — HTML без CSS, как его рисует
+   браузер по умолчанию: шрифт с засечками, 16 px, чёрный на белом. */
+.mb { position: relative; width: 100%; background: #fff; border-radius: 14px; overflow: hidden;
+  box-shadow: 0 2px 0 rgba(${T.shadowBase},0.06), 0 14px 30px -18px rgba(${T.shadowBase},0.6),
+    inset 0 0 0 1.5px rgba(${T.shadowBase},0.10);
+  transition: box-shadow .3s; }
+.mb-top { position: relative; display: flex; align-items: flex-end; gap: 8px; height: clamp(30px, 4.6dvh, 40px);
+  padding: 0 10px; background: ${T.uiBar}; transition: background .3s, box-shadow .3s; }
+/* ВИД CHROME В WINDOWS (заказчик, 15.10.2026): вкладка от левого края с
+   крестиком, за ней «+», справа кнопки окна «— ▢ ✕» (у macOS — три точки
+   слева). Значки нарисованы линиями CSS, без картинок. */
+.mb-x { position: relative; width: 14px; height: 14px; flex: 0 0 auto; margin-left: 2px; border-radius: 50%; color: ${T.ink3}; }
+.mb-x::before, .mb-x::after, .mb-new::before, .mb-new::after, .mb-w-x::before, .mb-w-x::after {
+  content: ''; position: absolute; left: 50%; top: 50%; height: 1.5px; border-radius: 1px; background: currentColor; }
+.mb-x::before, .mb-x::after { width: 8px; margin: -0.75px 0 0 -4px; }
+.mb-x::before, .mb-w-x::before { transform: rotate(45deg); }
+.mb-x::after, .mb-w-x::after { transform: rotate(-45deg); }
+.mb-new { position: relative; align-self: center; width: 20px; height: 20px; flex: 0 0 auto; color: ${T.ink2}; }
+.mb-new::before, .mb-new::after { width: 10px; margin: -0.75px 0 0 -5px; }
+.mb-new::after { transform: rotate(90deg); }
+.mb-win { display: flex; align-self: stretch; margin: 0 -10px 0 auto; flex: 0 0 auto; color: ${T.ink2}; }
+.mb-label + .mb-new + .mb-win { margin-left: 4px; }
+.mb-win i { position: relative; width: 26px; }
+.mb-w-min::before { content: ''; position: absolute; left: 50%; top: 50%; width: 9px; height: 1.5px; margin-left: -4.5px; background: currentColor; }
+.mb-w-max::before { content: ''; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px;
+  border: 1.5px solid currentColor; border-radius: 1px; box-sizing: border-box; }
+.mb-w-x::before, .mb-w-x::after { width: 11px; margin: -0.75px 0 0 -5.5px; }
+@media (max-width: 380px) { .mb-win i { width: 22px; } .mb-new { width: 16px; } }
+.mb-tab { position: relative; display: flex; align-items: center; gap: 6px; max-width: 64%; min-width: 0; height: 78%;
+  padding: 0 12px; background: #fff; border-radius: 10px 10px 0 0;
+  font: 700 clamp(12px, 3.2vw, 14px)/1 'Manrope', sans-serif; color: ${T.ink}; transition: box-shadow .3s; }
+.mb-fav { width: 12px; height: 12px; border-radius: 3px; background: ${T.ui}; flex: 0 0 auto; }
+.mb-tab-t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.mb-tab-t.is-file { color: ${T.ink3}; font-weight: 600; font-style: italic; }
+.mb-page { position: relative; min-height: clamp(52px, 10dvh, 150px); padding: 8px 10px; background: #fff; transition: box-shadow .3s, background .3s; }
+.mb-doc { font-family: 'Times New Roman', Times, serif; font-size: 16px; line-height: 1.25; color: #000;
+  word-break: break-word; text-align: left; }
+.mb-compact .mb-page { min-height: clamp(40px, 7dvh, 96px); }
+.mb-tab.is-flash { animation: tabFlash 1s ease-out; }
+.mb-page.is-flash { animation: pageFlash 1s ease-out; }
+@keyframes tabFlash { 0% { background: #fff; } 25% { background: #FEEBF3; } 100% { background: #fff; } }
+@keyframes pageFlash { 0% { background: #fff; } 25% { background: #E4F4FF; } 100% { background: #fff; } }
+.mb-hl-html { box-shadow: 0 0 0 3px #586A83, 0 14px 30px -18px rgba(${T.shadowBase},0.6); }
+.mb-hl-head .mb-top { background: #F2EFFF; box-shadow: inset 0 0 0 2.5px #6F57AB; }
+.mb-hl-title .mb-tab { box-shadow: inset 0 0 0 2.5px #9F4471; }
+.mb-hl-body .mb-page { box-shadow: inset 0 0 0 2.5px #1171A0; background: #EEF7FF; }
+.mb-pin { position: absolute; z-index: 2; padding: 4px 8px; border-radius: 99px; background: ${T.ink}; color: #fff;
+  font: 800 10.5px/1 'Manrope', sans-serif; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap;
+  font-style: normal; }
+.mb-pin-tab { left: calc(100% + 8px); top: 50%; transform: translateY(-50%); }
+.mb-pin-page { right: 8px; bottom: 8px; background: rgba(14,14,16,.78); }
+.mb-info { position: absolute; z-index: 2; left: 10px; top: calc(clamp(30px, 4.6dvh, 40px) + 8px); display: flex; align-items: center;
+  gap: 6px; padding: 5px 9px; border-radius: 9px; background: #F2EFFF; color: #6F57AB;
+  font: 800 12px/1.2 'Manrope', sans-serif; box-shadow: 0 6px 14px -8px rgba(${T.shadowBase},.6); }
+
+/* ══ РАБОЧАЯ ОБЛАСТЬ: браузер + код ═══════════════════════════════ */
+.work { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(8px, 1.4dvh, 14px); width: 100%; }
+@media (min-width: 720px) { .work { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: center; gap: 22px; } }
+.wire { position: absolute; left: 0; top: 0; z-index: 6; pointer-events: none; overflow: visible; }
+.wire-path { fill: none; stroke: var(--c); stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: 100;
+  stroke-dashoffset: 100; animation: wireDraw .7s ease-out forwards, wireRest .8s ease 1.8s forwards; }
+.wire-dot { fill: var(--c); }
+.wire-end { animation: wireEnd .7s ease-out; transform-box: fill-box; transform-origin: center; }
+@keyframes wireDraw { to { stroke-dashoffset: 0; } }
+@keyframes wireRest { to { opacity: .35; } }
+@keyframes wireEnd { 0% { transform: scale(.2); } 60% { transform: scale(1.5); } 100% { transform: scale(1); } }
+
+/* ══ РУКА-ПОДСКАЗКА ════════════════════════════════════════════ */
+.demo-hand { position: absolute; left: 0; top: 0; z-index: 30; margin: -4px 0 0 -16px; pointer-events: none;
+  transition: transform .7s cubic-bezier(.4,0,.2,1); filter: drop-shadow(0 4px 6px rgba(0,0,0,.25)); }
+.demo-hand svg { display: block; transition: transform .18s; transform-origin: 40% 10%; }
+.demo-hand.is-tap svg { transform: scale(.86) translateY(3px); }
+.dh-ring { position: absolute; left: 16px; top: 4px; }
+.demo-hand.is-tap .dh-ring::after { content: ''; position: absolute; left: -17px; top: -17px; width: 34px; height: 34px;
+  border-radius: 50%; border: 3px solid ${T.ui}; animation: dhRing .6s ease-out both; }
+@keyframes dhRing { from { transform: scale(.3); } to { transform: scale(1.3); border-color: rgba(255,79,40,.0); } }
+
+/* ══ ОБЩЕЕ ═════════════════════════════════════════════════════ */
+.note-one { padding: 9px 13px; }
+.note-one .note-body { font-size: clamp(15px, 2vw, 18px); line-height: 1.35; }
+.note-one .note-lbl { margin-bottom: 3px; }
+.only-narrow { display: flex; justify-content: center; }
+@media (min-width: 720px) { .only-narrow { display: none !important; } }
+.seg2 { display: inline-flex; align-self: center; padding: 3px; border-radius: 99px; background: rgba(${T.shadowBase},0.08); }
+.seg2-b { min-height: 38px; padding: 0 16px; border: none; border-radius: 99px; background: transparent; cursor: pointer;
+  font: 700 14px 'Manrope', sans-serif; color: ${T.ink2}; transition: background .2s, color .2s; }
+.seg2-b.is-on { background: ${T.paper}; color: ${T.uiDk}; box-shadow: 0 1px 4px rgba(${T.shadowBase},0.18); }
+.seg2-b:focus-visible { outline: 3px solid ${T.ui}; outline-offset: 2px; }
+.key-b { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-width: 46px; min-height: 44px; padding: 0 12px; border: none; border-radius: 12px; cursor: pointer;
+  background: ${T.paper}; color: ${T.ink}; font: 800 20px/1 'JetBrains Mono', ui-monospace, monospace;
+  box-shadow: 0 2px 6px rgba(80,65,45,.1), inset 0 0 0 2px ${T.uiSoft}; transition: transform .12s; }
+.key-b:active:not(:disabled) { transform: scale(.94); }
+.key-b:disabled { opacity: .5; cursor: default; }
+.key-go { font: 800 15px/1 'Manrope', sans-serif; padding: 0 18px; color: ${T.uiDk}; }
+.key-go.is-ready { background: ${T.ui}; color: #fff; box-shadow: 0 3px 0 ${T.uiDk}; }
+
+/* ══ 1. КРЮЧОК ═════════════════════════════════════════════════ */
+.hook { position: relative; width: 100%; max-width: 520px; align-self: center; border-radius: 16px; cursor: default; }
+.hook .mb { pointer-events: none; }
+.hook.is-live { cursor: pointer; animation: hookBob 2.6s ease-in-out infinite; }
+.hook.is-live .mb { box-shadow: 0 0 0 3px ${T.uiSoft}, 0 18px 34px -16px rgba(255,79,40,.33); }
+@keyframes hookBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.hook-play { position: absolute; left: 50%; top: 62%; transform: translate(-50%, -50%); width: 58px; height: 58px;
+  border-radius: 50%; display: grid; place-items: center; background: ${T.ui}; color: #fff;
+  box-shadow: 0 4px 0 ${T.uiDk}, 0 14px 26px -10px rgba(255,79,40,.45); }
+.hook .mb-page { min-height: clamp(70px, 16dvh, 190px); }
+.hook .mb-doc { font-size: 18px; }
+.hook:focus-visible { outline: 3px solid ${T.ui}; outline-offset: 4px; }
+
+/* ══ 3. ЧТО ТАКОЕ ТЕГ ══════════════════════════════════════════ */
+.s3 { display: flex; flex-direction: column; align-items: center; gap: clamp(10px, 1.8dvh, 16px); width: 100%; }
+.s3 .mb { max-width: 420px; }
+.tp { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+.tp-line { display: flex; flex-wrap: wrap; justify-content: center; align-items: stretch; gap: 6px; padding: 10px;
+  background: ${T.paper}; border-radius: 18px; font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: clamp(17px, 4.6vw, 26px); box-shadow: 0 2px 0 rgba(${T.shadowBase},0.05), 0 12px 26px -16px rgba(${T.shadowBase},0.5); }
+.tp-part { position: relative; display: inline-flex; align-items: center; min-height: 50px; padding: 6px 10px;
+  border: none; border-radius: 12px; background: ${T.bg}; font: inherit; color: ${T.ink};
+  transition: background .3s, box-shadow .3s, transform .2s, opacity .3s; }
+button.tp-part { cursor: pointer; }
+button.tp-part:hover:not(:disabled) { background: ${T.uiSoft}; }
+.tp-content { font-family: 'Manrope', sans-serif; font-weight: 700; font-size: .82em; }
+.tp-part.is-lit { background: #E4F4FF; box-shadow: 0 0 0 3px #1171A0; transform: translateY(-3px); }
+.tp-part.is-slash .tk-sl { background: ${T.hint}; color: #fff; padding: 0 2px; }
+.tp-part.is-found { background: ${T.successSoft}; box-shadow: inset 0 0 0 2px ${T.success}; }
+.tp-line.is-ghost .tp-open, .tp-line.is-ghost .tp-close { opacity: .3; }
+.tp-labels { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.tp-lbl { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 99px;
+  background: rgba(${T.shadowBase},0.07); color: ${T.ink2}; font: 700 12.5px/1.1 'Manrope', sans-serif; }
+.tp-lbl b { font-size: 11px; }
+.tp-lbl.is-on { background: ${T.uiSoft}; color: ${T.uiDk}; box-shadow: inset 0 0 0 1.5px ${T.ui}; }
+.tp-lbl.is-done { background: ${T.successSoft}; color: ${T.success}; }
+
+/* ══ 4. СТРУКТУРА ══════════════════════════════════════════════ */
+.s4 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 10px; align-items: center; width: 100%; }
+.nb { width: 100%; }
+.nb-wait { min-height: 96px; border-radius: 14px; border: 2px dashed rgba(${T.shadowBase},0.14); }
+.nb-box { position: relative; border-radius: 14px; padding: 24px 8px 8px; transform-origin: top center;
+  background: color-mix(in srgb, var(--c) 8%, #fff); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--c) 50%, #fff);
+  animation: boxIn .55s cubic-bezier(.34,1.4,.5,1) both; transition: box-shadow .25s, transform .2s; }
+@keyframes boxIn { from { transform: scale(.55); } to { transform: none; } }
+.nb-in { display: flex; flex-direction: column; gap: 8px; }
+.nb-head, .nb-body { min-height: 50px; }
+.nb-lbl { position: absolute; top: 5px; left: 9px; display: inline-flex; align-items: center; gap: 4px;
+  font-size: 13px; font-weight: 800; color: var(--c); }
+.nb-sub { display: block; margin-top: 2px; font: 600 11.5px/1.2 'Manrope', sans-serif; color: ${T.ink2}; }
+.nb-box.is-tap { cursor: pointer; }
+.nb-box.is-tap:hover { transform: translateY(-1px); }
+.nb-box.is-sel { box-shadow: inset 0 0 0 3px var(--c), 0 0 0 4px color-mix(in srgb, var(--c) 22%, transparent); }
+.nb-box:focus-visible { outline: 3px solid ${T.ui}; outline-offset: 2px; }
+.cv-s4 { align-self: center; }
+@media (max-width: 560px) { .cv-s4 .cv-note { display: none; } .cv-s4 { --gut: 1.9em; } }
+
+/* ══ 5–6. ВЫБОР И СВОЁ ПРИВЕТСТВИЕ ════════════════════════════ */
+.choice-row, .word-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.chip-opt, .word-b { position: relative; min-height: 44px; padding: 0 16px; border: none; border-radius: 14px; cursor: pointer;
+  background: ${T.paper}; color: ${T.ink}; font: 700 15px/1.15 'Manrope', sans-serif;
+  box-shadow: 0 2px 8px rgba(80,65,45,.08), inset 0 0 0 2px ${T.uiSoft}; transition: box-shadow .2s, transform .12s; }
+.chip-opt:hover:not(:disabled), .word-b:hover:not(:disabled) { box-shadow: 0 2px 8px rgba(80,65,45,.08), inset 0 0 0 2px ${T.ui}; }
+.chip-opt:active:not(:disabled), .word-b:active:not(:disabled) { transform: scale(.95); }
+.chip-opt.is-on { background: #FEEBF3; box-shadow: inset 0 0 0 2.5px #9F4471; }
+/* Три варианта названия — одной строкой из трёх колонок: в два ряда они
+   выталкивали третий вариант за нижний край телефона. */
+.choice-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; max-width: 560px; align-self: center; }
+.choice-row .chip-opt { padding: 4px 8px; font-size: 14px; }
+@media (max-height: 700px) {
+  /* Без голоса реплика печатается в облаке. Облако невысокое, длинная
+     реплика листается внутри него — иначе задание уехало бы под кнопки.
+     (Размер Коди здесь больше не уменьшается: с 17.10.2026 он — кружок с
+     головой, и канон уже держит его маленьким.) */
+  .lesson-root .speaker-bubble { max-height: 92px; font-size: 15px; line-height: 1.35; }
+  .own-line { display: none; }
+  .nest .nest-tray-h { display: none; }
+  .nest .nest-slot { min-height: 40px; }
+  .nest .nest-inner .nest-slot { min-height: 36px; }
+  .nest .nest-piece { min-height: 44px; }
+}
+/* Невысокий телефон: в проверке видно только правило, над которым работаем;
+   выполненные правила возвращаются, когда структура готова целиком. */
+@media (max-width: 719px) and (max-height: 760px) {
+  .insp .insp-h { display: none; }
+  .insp:not(.insp-all) .insp-r.is-ok { display: none; }
+  /* Подсказка на экране — строка задания уступает ей место. */
+  .ask-sub { display: none; }
+  .cv.cv-build .cv-line { min-height: 21px; }
+  .cv.cv-build .cv-slot { min-height: 17px; }
+  .pool .nest-tray-h { display: none; }
+  .pool-chips .pool-chip { min-height: 34px; padding: 0 7px; font-size: 12px; }
+  .pool .pool-chips { gap: 5px; }
+  .lesson-root .s12 { gap: 7px; }
+  .lesson-root .s12.is-fill .mb-page { min-height: 30px; padding-block: 5px; }
+  .word-row .word-b { min-height: 36px; padding: 0 10px; font-size: 13.5px; }
+}
+.word-row { gap: 6px; }
+.word-b { min-height: 40px; padding: 0 12px; font-size: 14.5px; }
+.word-erase { display: inline-flex; align-items: center; color: ${T.ink2}; }
+.word-ok { color: ${T.uiDk}; }
+.word-ok.is-ready { background: ${T.ui}; color: #fff; box-shadow: 0 3px 0 ${T.uiDk}; }
+.chip-opt:disabled, .word-b:disabled { cursor: default; }
+
+/* ══ 7. ЦЕЛЬ ════════════════════════════════════════════════════ */
+.goal { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 14px; background: ${T.paper};
+  box-shadow: inset 3px 0 0 ${T.ui}, 0 2px 8px rgba(80,65,45,.07); animation: noteIn .25s ease-out both; text-align: left; }
+.goal-ic { flex: 0 0 auto; width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center;
+  background: ${T.uiSoft}; color: ${T.uiDk}; }
+.goal-t { display: flex; flex-direction: column; min-width: 0; }
+.goal-l { font: 800 11px/1.2 'Manrope', sans-serif; letter-spacing: .08em; text-transform: uppercase; color: ${T.ink2}; }
+.goal-t b { font-size: clamp(14.5px, 2.2vw, 18px); line-height: 1.3; }
+.goal-n { margin-left: auto; flex: 0 0 auto; font-size: 12.5px; font-weight: 700; color: ${T.ink2}; }
+.goal.is-done { box-shadow: inset 3px 0 0 ${T.success}, 0 2px 8px rgba(80,65,45,.07); }
+.goal.is-done .goal-ic { background: ${T.successSoft}; color: ${T.success}; }
+@media (max-width: 719px) {
+  .goal { padding: 7px 11px; gap: 8px; }
+  .goal-ic { display: none; }
+  .goal-t { display: block; }
+  .goal-l { display: inline; margin-right: 6px; }
+  .goal-t b { font-size: 15px; }
+}
+
+/* Пока видна подсказка, у браузера остаётся полоска вкладки: после неверной
+   попытки страница не менялась, а подсказке нужно место на телефоне. */
+@media (max-width: 719px) {
+  .work.has-note .work-b .mb { display: none; }
+  .note-wide { display: none; }
+}
+@media (min-width: 720px) { .note-narrow { display: none; } }
+
+/* ══ 8. СБОРКА ══════════════════════════════════════════════════ */
+.nest { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; width: 100%; }
+@media (min-width: 720px) { .nest { grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); align-items: center; gap: 22px; } }
+.nest-html { border-radius: 16px; padding: 6px 10px; text-align: left;
+  background: color-mix(in srgb, var(--c) 6%, #fff); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--c) 45%, #fff); }
+.nest-tag { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: var(--cv-fs); padding: 2px 0; }
+.nest-in { display: flex; flex-direction: column; gap: 8px; padding: 4px 0 4px 14px; }
+.nest-slot { position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+  min-height: 46px; border-radius: 12px; border: 2px dashed rgba(${T.shadowBase},0.26); background: rgba(255,255,255,.75);
+  font: 700 14px 'Manrope', sans-serif; color: ${T.ink3}; cursor: pointer; transition: border-color .2s, background .2s; }
+.nest-slot.is-open { border-color: ${T.ui}; color: ${T.uiDk}; background: ${T.uiSoft}; }
+.nest-plus { font-size: 20px; line-height: 1; }
+.nest-block { position: relative; border-radius: 12px; padding: 3px 8px; animation: boxIn .45s cubic-bezier(.34,1.4,.5,1) both;
+  background: color-mix(in srgb, var(--c) 9%, #fff); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--c) 52%, #fff); }
+.nest-inner { padding: 3px 0 3px 14px; min-width: 0; }
+.nest-inner .nest-slot { min-height: 40px; }
+.nest-title { display: flex; align-items: center; min-width: 0; padding: 5px 8px; border-radius: 9px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: var(--cv-fs);
+  background: color-mix(in srgb, var(--c) 12%, #fff); }
+.nest-txt { min-width: 0; padding: 0 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font: 600 1em 'Manrope', sans-serif; font-size: calc(var(--cv-fs) * 1.02); color: ${T.ink}; }
+.nest-dots { color: ${T.ink3}; padding: 0 2px; }
+.nest-body.is-target { cursor: pointer; box-shadow: inset 0 0 0 2px var(--c), 0 0 0 4px rgba(255,79,40,.14); }
+.nest-tray { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.nest-tray-h { font: 800 11.5px/1 'Manrope', sans-serif; letter-spacing: .08em; text-transform: uppercase; color: ${T.ink2}; }
+.nest-pieces { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.nest-piece, .nest-ghost { position: relative; display: inline-flex; align-items: center; min-height: 48px; padding: 0 12px;
+  border: none; border-radius: 14px; background: ${T.paper}; font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: var(--cv-fs); color: ${T.ink};
+  box-shadow: 0 2px 8px rgba(80,65,45,.1), inset 0 0 0 2px color-mix(in srgb, var(--c) 40%, #fff); }
+.nest-piece { cursor: grab; touch-action: none; transition: transform .15s, box-shadow .2s; }
+.nest-piece.is-sel { transform: translateY(-3px); box-shadow: 0 0 0 3px var(--c), 0 10px 20px -10px var(--c); }
+.nest-ghost { position: fixed; z-index: 90; pointer-events: none; transform: translate(-50%, -70%) rotate(-3deg);
+  box-shadow: 0 16px 30px -12px rgba(${T.shadowBase},.7), inset 0 0 0 2px var(--c); }
+.nest-code { min-width: 0; }
+@media (max-width: 719px) {
+  .nest.is-done.view-code .nest-scheme { display: none; }
+  .nest.is-done.view-scheme .nest-code { display: none; }
+}
+
+/* ══ 9. ПАРЫ ════════════════════════════════════════════════════ */
+.pairs-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.pair-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 99px;
+  font: 700 12.5px/1 'JetBrains Mono', ui-monospace, monospace; color: var(--c);
+  background: color-mix(in srgb, var(--c) 8%, #fff); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 40%, #fff); }
+/* Найденная пара — мягкая плашка в цвет тега, а не сплошная тёмная заливка. */
+.pair-chip.is-done { background: color-mix(in srgb, var(--c) 14%, #fff); color: var(--c);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 60%, #fff); }
+.pairs { position: relative; width: 100%; }
+
+/* ══ 10. ПОЧИНКА ════════════════════════════════════════════════ */
+.insp { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px 6px; }
+.insp-h { display: inline-flex; align-items: center; gap: 5px; width: 100%; justify-content: center;
+  font: 800 11px/1 'Manrope', sans-serif; letter-spacing: .07em; text-transform: uppercase; color: ${T.ink2}; }
+.insp-r { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px 4px 5px; border-radius: 99px;
+  background: ${T.paper}; color: ${T.ink2}; font: 700 12.5px/1.15 'Manrope', sans-serif;
+  box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.12); transition: background .3s, color .3s; }
+.insp-ic { width: 18px; height: 18px; flex: 0 0 auto; border-radius: 50%; display: grid; place-items: center;
+  box-shadow: inset 0 0 0 2px rgba(${T.shadowBase},0.25); }
+.insp-r.is-ok { color: ${T.success}; }
+.insp-r.is-ok .insp-ic { background: ${T.success}; color: #fff; box-shadow: none; }
+.insp-r.is-now { background: ${T.hintSoft}; color: #7A5600; box-shadow: inset 0 0 0 1.5px ${T.hint}; }
+.cv-tap { border: none; background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; min-height: 28px; }
+.cv-tap:hover:not(:disabled) { background: ${T.uiSoft}; }
+.cv-tap:focus-visible { outline: 3px solid ${T.ui}; outline-offset: -2px; }
+.cv-tap:disabled { cursor: default; }
+.cv-fix .cv-line.is-sel { background: #FEEBF3; box-shadow: inset 3px 0 0 #9F4471; }
+.cv-fix.is-picking .cv-line.is-drop { box-shadow: inset 0 -2px 0 rgba(255,79,40,.29); }
+.cv-line.is-typing { background: ${T.uiSoft}; min-height: 34px; }
+.keys { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+
+/* ══ 11. ПЕСОЧНИЦА ═════════════════════════════════════════════ */
+.sand-b { position: relative; }
+.sand-was { position: absolute; z-index: 3; top: 6px; right: 8px; padding: 4px 9px; border-radius: 99px;
+  background: ${T.ink}; color: #fff; font: 800 11px/1 'Manrope', sans-serif; letter-spacing: .05em; text-transform: uppercase; }
+.sand-tools { display: flex; flex-wrap: nowrap; align-items: center; justify-content: center; gap: 8px; }
+.sand-tools .btn-soft { padding: 0 14px; white-space: nowrap; }
+.sand-tools .seg2-b { padding: 0 13px; }
+
+/* ══ 12. САМ ════════════════════════════════════════════════════ */
+.s12 { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.cv-slot { display: inline-flex; align-items: center; width: 100%; min-height: 22px; padding-left: 8px; border-radius: 7px;
+  border: 1.5px dashed rgba(${T.shadowBase},0.26); color: ${T.ink3}; font-size: 11px; }
+.cv-line.is-next .cv-slot { border-color: ${T.ui}; background: ${T.uiSoft}; color: ${T.uiDk}; }
+.cv-line.is-bad { background: ${T.hintSoft}; box-shadow: inset 3px 0 0 ${T.hint}; }
+.cv-build .cv-line { min-height: 26px; }
+.chip-txt { font-family: 'Manrope', sans-serif; font-weight: 600; color: ${T.ink2}; font-size: .95em; padding: 0 2px; }
+.pool { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.pool-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.pool-chip { position: relative; display: inline-flex; align-items: center; min-height: 40px; padding: 0 10px; border: none;
+  border-radius: 12px; background: ${T.paper}; color: ${T.ink}; cursor: pointer;
+  font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: var(--cv-fs);
+  box-shadow: 0 2px 6px rgba(80,65,45,.1), inset 0 0 0 2px color-mix(in srgb, var(--c) 35%, #fff); transition: transform .12s; }
+.pool-chip:active:not(:disabled) { transform: scale(.95); }
+.s12-go { align-self: center; }
+
+/* ══ 13. МОЙ САЙТ ═══════════════════════════════════════════════ */
+.site-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.site-author { font-size: 14px; color: ${T.ink2}; }
+.site { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; width: 100%; }
+@media (min-width: 720px) { .site { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; } }
+@media (max-width: 719px) {
+  .site.view-result .site-c { display: none; }
+  .site.view-code .site-b { display: none; }
+}
+.site .mb-page { min-height: clamp(70px, 14dvh, 180px); }
+.bigbtn { position: relative; }
+.bigbtn-in { display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+.saved-stamp { align-self: center; display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border-radius: 99px;
+  background: ${T.successSoft}; color: ${T.success}; font-weight: 800; font-size: 16px; }
+
+/* ══ 14. ИТОГ ═══════════════════════════════════════════════════ */
+.recap { display: flex; flex-direction: column; align-items: center; gap: clamp(10px, 1.6dvh, 16px); width: 100%; }
+.recap-tree { width: min(100%, 300px); }
+/* Широкий экран: схема страницы и список умений — рядом, карточка следующего
+   урока под ними. В столбик итог не влезал в невысокий ноутбук (1280×720). */
+@media (min-width: 900px) {
+  .recap { flex-flow: row wrap; justify-content: center; column-gap: clamp(16px, 2.4vw, 32px); }
+  .recap .skills { flex: 0 1 480px; }
+  .recap .bye-next { flex-basis: 100%; }
+}
+.rt { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 22px 8px 8px; border-radius: 12px;
+  background: color-mix(in srgb, var(--c) 8%, #fff); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--c) 50%, #fff); }
+.rt-title, .rt-body { padding: 0; min-height: 26px; }
+.rt-l { position: absolute; top: 4px; left: 9px; font-size: 12px; font-weight: 800; color: var(--c); }
+.rt-title .rt-l, .rt-body .rt-l { top: 50%; transform: translateY(-50%); }
+/* Карточка следующего урока — светлая, как остальные карточки урока:
+   тёмная плашка канона была самым тёмным пятном экрана. */
+.bye-next.next-card { width: 100%; max-width: 420px; align-self: center; background: ${T.paper}; color: ${T.ink};
+  box-shadow: 0 2px 0 rgba(${T.shadowBase},0.05), 0 12px 26px -16px rgba(${T.shadowBase},0.5), inset 0 0 0 1.5px ${T.uiSoft}; }
+.next-card .bye-next-ic { background: ${T.uiSoft}; color: ${T.uiDk}; border: none; }
+.next-card .bye-next-t span { color: ${T.ink2}; }
+.next-card .bye-next-t b { color: ${T.ink}; }
+.next-tags { margin-left: auto; padding-left: 8px; color: ${T.uiDk}; font-size: 14px; font-weight: 700; }
+
+/* ══ ВЫСОТА И ШИРИНА ════════════════════════════════════════════ */
+@media (max-height: 700px) {
+  .lesson-root { --cv-fs: clamp(11.5px, 3.2vw, 13.5px); }
+  .cv { line-height: 1.42; }
+  .cv-line:has(.tk-btn) { min-height: 27px; }
+  .tk-btn { min-height: 24px; padding: 2px 4px; }
+  .mb-page { min-height: 40px; }
+  .hook .mb-page { min-height: 64px; }
+  .tp-part { min-height: 44px; }
+}
+@media (min-width: 760px) and (min-height: 700px) {
+  .lesson-root { --cv-fs: clamp(14px, 1.45vw, 17px); }
+  .mb-top { height: 42px; }
+  .mb-tab { font-size: 15px; }
+  .mb-doc { font-size: 18px; }
+  .tp-line { font-size: 28px; }
+  .chip-opt { min-height: 50px; font-size: 17px; }
+  .word-b { min-height: 46px; font-size: 16px; }
+  .insp-r { font-size: 14px; }
+}
+
+/* Совсем маленький телефон (320×568 и ниже): герой и код компактнее, чтобы
+   плотные экраны — проверка, починка, песочница — укладывались без прокрутки. */
+@media (max-height: 600px) {
+  .lesson-root { --cv-fs: 11px; }
+  .lesson-root .cv { line-height: 1.32; padding-block: 4px; }
+  .lesson-root .cv-line:has(.tk-btn) { min-height: 24px; }
+  .lesson-root .tk-btn { min-height: 22px; padding: 1px 4px; }
+  .lesson-root .tk-input { font-size: 16px; padding-block: 1px; }
+  .lesson-root .mb-top { height: 28px; }
+  .lesson-root .mb-page { min-height: 30px; padding: 5px 8px; }
+  .lesson-root .mb-doc { font-size: 15px; }
+  .lesson-root .goal { padding: 5px 10px; }
+  .lesson-root .goal-ic { width: 26px; height: 26px; }
+  .lesson-root .ask { font-size: 15px; }
+  .lesson-root .word-row .word-b { min-height: 32px; }
+  .lesson-root .key-b { min-height: 40px; }
+  .lesson-root .insp-r { padding-block: 2px; font-size: 11.5px; }
+  .lesson-root .cv.cv-build .cv-line { min-height: 18px; }
+  .lesson-root .work { gap: 6px; }
+}
+
+/* ══ КЛАВИАТУРА ТЕЛЕФОНА ОТКРЫТА ══════════════════════════════════
+   Видимой высоты остаётся около половины экрана. Пока ребёнок печатает, на
+   экране только то, что нужно для набора: код с полем, браузер с результатом
+   и кнопка проверки. Полоса героя и кнопки «Назад / Дальше» на это время
+   уходят (голос продолжает звучать), строки кода становятся плотнее.
+   Отправить можно клавишей Enter или кнопкой «Проверить» / «Готово». */
+.is-kbd .speaker-wrap { display: none; }
+.is-kbd .stage-nav { display: none; }
+.is-kbd .stage-content::before, .is-kbd .stage-content::after { max-height: 4px; }
+.is-kbd .cv { line-height: 1.28; padding-block: 3px; }
+.is-kbd .cv-line { min-height: 0; }
+.is-kbd .cv-line.is-typing { min-height: 30px; }
+.is-kbd .ask, .is-kbd .own-line, .is-kbd .insp, .is-kbd .choice-row, .is-kbd .sand-tools { display: none; }
+.is-kbd .word-row .word-b:not(.word-ok) { display: none; }
+.is-kbd .mb-top { height: 26px; }
+.is-kbd .mb-page { min-height: 28px; padding: 4px 8px; }
+.is-kbd .mb-doc { font-size: 15px; }
+.is-kbd .work { gap: 6px; }
+.is-kbd .note-one { padding: 5px 10px; }
+.is-kbd .note-one .note-lbl { display: none; }
+.is-kbd .demo-hand { display: none; }
+.is-kbd .stage-content { padding-bottom: 2px; }
+
+/* Меньше движения: смысл остаётся, движение уходит. */
+@media (prefers-reduced-motion: reduce) {
+  .demo-hand { transition: none; }
+  .wire-path { stroke-dashoffset: 0 !important; animation: none !important; opacity: .7; }
+  .hook.is-live, .nb-box, .nest-block, .cv-line.is-new, .cv-reveal .cv-line, .tk-input.is-led-in { animation: none !important; }
+  .tt-caret { animation: none !important; }
+}
+
+/* ═════════════════════════════════════════════════════════════════
+   УРОК 2. Ниже — только то, чего не было в уроке 1.
+   ═════════════════════════════════════════════════════════════════ */
+
+/* ══ КОД С ПЕРЕНОСОМ СТРОК ══════════════════════════════════════════
+   Строка с длинным абзацем переносится с висячим отступом; слева у блока —
+   тонкая полоска цвета его тега. Токены — строчные, чтобы текст тёк. */
+.src { position: relative; width: 100%; min-width: 0; text-align: left;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: var(--cv-fs); line-height: 1.55;
+  background: ${T.paper}; color: ${T.ink}; border-radius: 14px; padding: 6px 8px 6px 0;
+  box-shadow: 0 2px 0 rgba(${T.shadowBase},0.05), 0 12px 26px -16px rgba(${T.shadowBase},0.5),
+    inset 0 0 0 1.5px rgba(${T.shadowBase},0.08); }
+.src-line { position: relative; display: block; width: 100%; min-height: 1.55em; border-radius: 6px;
+  padding: 1px 4px 1px calc(var(--gut) + var(--d) * var(--ind)); transition: background .3s, opacity .3s; }
+.src-line.is-block::before { content: ''; position: absolute; top: 4px; bottom: 4px; width: 3px; border-radius: 2px;
+  left: calc(var(--gut) - .55em + var(--d) * var(--ind)); background: var(--c); opacity: .5; }
+.src-n { position: absolute; left: 0; top: 1px; width: 1.9em; text-align: right; color: ${T.ink3}; font-size: .78em; line-height: 2; }
+.src-code { display: inline; }
+.src .tk { display: inline; border-radius: 6px; }
+.src .tk-btn { display: inline-flex; vertical-align: middle; max-width: 100%; white-space: normal; text-align: left; }
+.tk-tx { font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 1.02em; color: ${T.ink};
+  white-space: normal; overflow-wrap: anywhere; padding: 0 2px; }
+.tk-tx.is-dim { color: ${T.ink3}; font-weight: 500; }
+.tk.is-changed .tk-tx, .tk-btn.is-changed .tk-tx { background: ${T.hintSoft}; border-radius: 5px; }
+.src-tap { border: none; background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.src-tap:hover:not(:disabled) { background: ${T.uiSoft}; }
+.src-tap:focus-visible { outline: 3px solid ${T.ui}; outline-offset: -2px; }
+.src-tap:disabled { cursor: default; }
+.src-line.is-hl { background: color-mix(in srgb, ${TAGC.h} 10%, transparent); }
+.src .tk-input { display: inline-block; vertical-align: middle; width: auto; max-width: calc(100% - 6.5em); flex: none; }
+.src-one { padding: 10px 12px; font-size: calc(var(--cv-fs) * 1.12); }
+.src-one .src-line { padding-left: 4px; }
+.src-one .src-line.is-block::before { display: none; }
+
+/* ══ СТРАНИЦА В БРАУЗЕРЕ ═════════════════════════════════════════
+   Размеры заголовков — как у браузера по умолчанию (2, 1.5, 1.17, 1, .83,
+   .67 em, все жирные). Отступы вдвое меньше настоящих — иначе страница не
+   помещается в окно телефона. b — жирный, i — курсив. */
+.pg { display: flow-root; }
+.pg-b { position: relative; border-radius: 5px; transition: background .4s; }
+.pg-h1, .pg-h2, .pg-h3, .pg-h4, .pg-h5, .pg-h6 { font-weight: bold; line-height: 1.18; }
+.pg-h1 { font-size: 2em; margin: .335em 0; }
+.pg-h2 { font-size: 1.5em; margin: .415em 0; }
+.pg-h3 { font-size: 1.17em; margin: .5em 0; }
+.pg-h4 { font-size: 1em; margin: .665em 0; }
+.pg-h5 { font-size: .83em; margin: .835em 0; }
+.pg-h6 { font-size: .67em; margin: 1.165em 0; }
+.pg-p { margin: .5em 0; }
+.pg-raw { margin: 0; }
+.pg > .pg-b:first-child { margin-top: 0; }
+.pg > .pg-b:last-child { margin-bottom: 0; }
+.pg-b.is-flash { animation: pgFlash 1.2s ease-out; }
+@keyframes pgFlash { 0% { background: color-mix(in srgb, var(--c) 24%, #fff); } 100% { background: transparent; } }
+.pg-b.is-new { animation: pgIn .6s cubic-bezier(.34,1.3,.5,1) both; transform-origin: left center; }
+@keyframes pgIn { from { opacity: 0; transform: translateY(-8px) scale(.97); } to { opacity: 1; transform: none; } }
+.pg > .pg-b.is-new:nth-child(2) { animation-delay: .08s; } .pg > .pg-b.is-new:nth-child(3) { animation-delay: .16s; }
+.pg > .pg-b.is-new:nth-child(4) { animation-delay: .24s; } .pg > .pg-b.is-new:nth-child(5) { animation-delay: .32s; }
+.pg > .pg-b.is-new:nth-child(6) { animation-delay: .4s; } .pg > .pg-b.is-new:nth-child(7) { animation-delay: .48s; }
+.pg > .pg-b.is-new:nth-child(8) { animation-delay: .56s; }
+.pg-b.is-hl { background: color-mix(in srgb, var(--c) 12%, #fff); }
+.pg-wait { display: grid; place-items: center; min-height: 54px; font: 800 34px/1 'Manrope', sans-serif; color: ${T.ink3}; }
+.mb-doc { font-size: 15px; }
+@media (min-width: 760px) and (min-height: 700px) { .mb-doc { font-size: 17px; } }
+
+/* ══ 1. КРЮЧОК ══════════════════════════════════════════════════ */
+.hook2 { width: 100%; max-width: 640px; align-self: center; }
+.mb-tall .mb-page { min-height: clamp(110px, 26dvh, 300px); }
+/* ПРЕДЛОЖЕНИЕ-КНОПКА (15.10.2026). Раньше предложение выделялось только
+   наведением мыши — на телефоне границ не было видно вовсе, а свечение при
+   бездействии (7 %) терялось. Теперь каждое предложение — своя плашка с
+   подчёркиванием: видно, где оно кончается и что на него можно нажать.
+   Соседние плашки чередуют оттенок, чтобы граница читалась и без пробела. */
+.wall-txt { line-height: 1.62; }
+.snt { cursor: pointer; border-radius: 5px; padding: 1px 3px; margin: 0 1px;
+  background: rgba(${T.shadowBase},.055); box-shadow: inset 0 -2px 0 rgba(255,79,40,.3);
+  transition: background .2s, box-shadow .2s;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.wall-txt .snt:nth-of-type(even) { background: rgba(255,79,40,.07); }
+.snt:hover, .snt:active { background: ${T.uiSoft}; box-shadow: inset 0 -2px 0 ${T.ui}; }
+.snt:focus-visible { outline: 2px solid ${T.ui}; outline-offset: 1px; }
+.snt[aria-disabled="true"] { cursor: default; }
+.snt.is-led, .wall-txt .snt.is-led { background: rgba(255,79,40,.15); box-shadow: inset 0 -2px 0 ${T.ui};
+  animation: sntLed 1.6s ease-in-out infinite; }
+@keyframes sntLed { 0%, 100% { background: rgba(255,79,40,.1); } 50% { background: rgba(255,79,40,.24); } }
+.snt.is-hit, .wall-txt .snt.is-hit { background: ${T.successSoft}; box-shadow: inset 0 -2px 0 ${T.success}; animation: none; }
+.snt.is-tip, .wall-txt .snt.is-tip { background: ${T.hintSoft}; box-shadow: inset 0 -2px 0 ${T.hint}; animation: none; }
+.snt.fx-no, .wall-txt .snt.fx-no { background: #FFD9CF; animation: none; }
+@media (prefers-reduced-motion: reduce) { .snt.is-led { animation: none; } }
+.hook2.is-clear .pg-h1 .snt, .hook2.is-clear .pg-h2 .snt, .hook2.is-clear .pg-h3 .snt { padding: 0 2px; }
+
+/* ══ 4. СБОРКА СТРОКИ ═══════════════════════════════════════════ */
+.build-line { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; vertical-align: middle; padding: 2px 0; }
+.bslot { display: inline-flex; align-items: center; justify-content: center; min-width: 46px; min-height: 32px; padding: 0 6px;
+  border: 1.5px dashed rgba(${T.shadowBase},0.28); border-radius: 9px; color: ${T.ink3};
+  font: 700 11px 'Manrope', sans-serif; background: rgba(255,255,255,.7); }
+.bslot.is-next { border-color: ${T.ui}; background: ${T.uiSoft}; color: ${T.uiDk}; }
+.bslot.is-full { border: none; cursor: pointer; background: ${T.paper}; font: inherit;
+  box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.16), 0 2px 6px rgba(80,65,45,.08); animation: boxIn .35s cubic-bezier(.34,1.4,.5,1) both; }
+.bslot.is-fixed { cursor: default; box-shadow: inset 0 0 0 1.5px ${T.success}; }
+.build-line.fx-no .bslot { background: #FFF1EC; }
+.src-s4 .tk-tx.is-dim { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* ══ 5. ШЕСТЬ УРОВНЕЙ ═══════════════════════════════════════════ */
+.s5 { position: relative; display: flex; flex-direction: column; gap: clamp(8px, 1.4dvh, 14px); width: 100%; }
+.s5-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 10px; align-items: start; }
+.s5-left { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.s5 .mb-page { min-height: clamp(92px, 17dvh, 180px); }
+.lvl-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); gap: 6px; width: 100%; max-width: 560px; align-self: center; }
+.lvl-b { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 3px; min-height: 44px;
+  border: none; border-radius: 12px; cursor: pointer; background: ${T.paper}; color: ${TAGC.h};
+  font: 800 15px/1 'JetBrains Mono', ui-monospace, monospace;
+  box-shadow: 0 2px 6px rgba(80,65,45,.08), inset 0 0 0 2px color-mix(in srgb, ${TAGC.h} 18%, #fff);
+  transition: background .2s, color .2s, transform .12s; }
+.lvl-b:active:not(:disabled) { transform: scale(.94); }
+.lvl-b.is-seen { box-shadow: 0 2px 6px rgba(80,65,45,.08), inset 0 0 0 2px color-mix(in srgb, ${TAGC.h} 45%, #fff); }
+.lvl-b.is-on { background: ${TAGC.h}; color: #fff; box-shadow: 0 3px 0 color-mix(in srgb, ${TAGC.h} 70%, #000); }
+.lvl-b:disabled { cursor: default; }
+.lvl-b .led > i { top: 4px; right: 4px; width: 7px; height: 7px; }
+.lad { display: flex; flex-direction: column; gap: 3px; padding: 8px; border-radius: 14px; background: ${T.paper};
+  box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.08); }
+.lad-h { font: 800 11px/1.2 'Manrope', sans-serif; letter-spacing: .07em; text-transform: uppercase; color: ${T.ink2}; margin-bottom: 2px; }
+.lad-r { display: flex; align-items: center; gap: 6px; padding: 3px 6px 3px calc(6px + var(--n) * 7px); border-radius: 8px;
+  font: 600 12px/1.2 'Manrope', sans-serif; color: ${T.ink3}; transition: background .25s, color .25s, box-shadow .25s; }
+.lad-r.is-seen { color: ${T.ink2}; }
+.lad-r.is-on { background: color-mix(in srgb, ${TAGC.h} 12%, #fff); color: ${T.ink}; box-shadow: inset 3px 0 0 ${TAGC.h}; }
+.lad-tag { flex: 0 0 auto; min-width: 1.9em; font-size: 11px; font-weight: 800; color: ${TAGC.h}; }
+
+/* ══ ЛЕСЕНКА ЗАГОЛОВКОВ (экраны 6–8) ═══════════════════════════════
+   Ступенька = уровень: каждая следующая строка сдвинута вправо, полоска
+   слева светлеет с уровнем. Цвет тега — синий заголовков. */
+.stairs { display: flex; flex-direction: column; gap: 5px; }
+.st-r { position: relative; display: flex; align-items: center; gap: 8px; min-height: 40px;
+  margin-left: calc(var(--n) * clamp(18px, 6vw, 30px)); padding: 4px 12px 4px 6px; border: none; border-radius: 11px;
+  background: #fff; text-align: left; font: inherit; color: ${T.ink};
+  box-shadow: 0 1px 0 rgba(${T.shadowBase},0.05), inset 0 0 0 1.5px rgba(${T.shadowBase},0.10);
+  transition: background .25s, box-shadow .25s, transform .15s; }
+.st-tap { cursor: pointer; }
+.st-tap:active:not(:disabled) { transform: scale(.98); }
+.st-tap:disabled { cursor: default; }
+.st-step { flex: 0 0 auto; align-self: stretch; width: 6px; border-radius: 3px; background: ${TAGC.h}; }
+.st-n1 .st-step { opacity: .62; } .st-n2 .st-step { opacity: .34; }
+.st-tag { flex: 0 0 auto; min-width: 2.1em; font-size: 14px; font-weight: 800; color: ${TAGC.h}; }
+.st-tag.is-hidden { color: ${T.ink3}; }
+.st-t { min-width: 0; font: 700 15px/1.2 'Manrope', sans-serif; }
+.st-r.is-hl { background: color-mix(in srgb, ${TAGC.h} 11%, #fff); box-shadow: inset 0 0 0 2px color-mix(in srgb, ${TAGC.h} 45%, #fff); }
+.st-r.is-q { background: color-mix(in srgb, ${TAGC.h} 8%, #fff); box-shadow: inset 0 0 0 2.5px ${TAGC.h}; }
+.st-r.is-ok { background: ${T.successSoft}; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, ${T.success} 45%, #fff); }
+.st-r.is-ok .st-tag { color: ${TAGC.h}; }
+.stairs.is-compact { gap: 3px; }
+.stairs.is-compact .st-r { min-height: 30px; padding-block: 2px; }
+.stairs.is-compact .st-t { font-size: 13.5px; }
+
+/* Подсказка на месте строки задания: экран не растёт от плашки. */
+.ask.ask-hint { padding: 6px 12px; border-radius: 12px; background: ${T.hintSoft}; color: ${T.hint}; font-size: clamp(14.5px, 2vw, 17px); }
+
+/* ══ 6. ЛЕСЕНКА + КОД ═══════════════════════════════════════════ */
+.s6 { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; width: 100%; }
+@media (min-width: 720px) { .s6 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 20px; } }
+.s6-map, .s6-code, .s7b-plan, .s7b-code { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.src-s6 .src-line.is-p { opacity: .55; min-height: 0; line-height: 1.3; font-size: .9em; }
+.src-s6 .src-line.is-hl { background: ${T.successSoft}; }
+
+/* ══ 7. КАКАЯ ЦИФРА? ════════════════════════════════════════════ */
+.s7q { width: 100%; max-width: 520px; align-self: center; animation: s7qIn .35s ease-out both; }
+@keyframes s7qIn { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+.s7q-n { display: inline-block; padding: 2px 8px; margin-right: 4px; border-radius: 99px; background: ${T.uiSoft};
+  color: ${T.uiDk}; font-size: 12.5px; vertical-align: 2px; }
+.s7q-lv, .s7b-lv { max-width: 420px; }
+.lvl-b.is-off { opacity: .35; }
+.lvl-b.is-tip { box-shadow: 0 0 0 3px ${T.hint}; }
+
+/* ══ 8. РАССТАВЬ САМ ════════════════════════════════════════════ */
+/* Готово: на телефоне — только страница (строки кода уже не нужны и не
+   влезали), на компьютере — страница и код рядом. */
+@media (max-width: 719px) { .s7b.is-done .s7b-code { display: none; } }
+.s7b { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; width: 100%; }
+@media (min-width: 720px) { .s7b { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 20px; } }
+.arch { display: flex; flex-direction: column; gap: 5px; }
+.arch-r { position: relative; display: flex; align-items: center; gap: 8px; width: 100%; min-height: 42px; padding: 4px 10px;
+  border: none; border-radius: 11px; background: ${T.paper}; text-align: left; cursor: pointer; font: inherit; color: inherit;
+  box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.12); transition: box-shadow .2s, background .2s; }
+.arch-r:disabled { cursor: default; }
+.arch-r.is-sel { box-shadow: inset 0 0 0 2.5px ${TAGC.h}, 0 6px 14px -8px ${TAGC.h}; }
+.arch-r.is-ok { background: ${T.successSoft}; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, ${T.success} 40%, #fff); }
+.arch-tag { flex: 0 0 auto; min-width: 3.4em; font: 800 var(--cv-fs)/1 'JetBrains Mono', ui-monospace, monospace; color: var(--c); }
+.arch-tag.is-empty { color: ${T.ink3}; }
+.arch-t { min-width: 0; flex: 1 1 auto; font: 700 14.5px/1.2 'Manrope', sans-serif; color: ${T.ink}; }
+.arch-ok { flex: 0 0 auto; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+  background: ${T.success}; color: #fff; }
+.arch-p { display: none; }
+
+/* ══ ПЕРЕКЛЮЧЕНИЕ «КОД / РЕЗУЛЬТАТ» НА ТЕЛЕФОНЕ ════════════════════ */
+@media (max-width: 719px) {
+  .work-v-code .work-b { display: none; }
+  .work-v-result .work-c { display: none; }
+}
+.only-narrow { position: relative; }
+.fresh-dot { position: absolute; top: 2px; right: calc(50% - 86px); width: 9px; height: 9px; border-radius: 50%;
+  background: ${T.ui}; box-shadow: 0 0 0 3px ${T.uiSoft}; }
+
+/* ══ 8. ПРОГНОЗ ═════════════════════════════════════════════════ */
+.guess-row { display: flex; flex-wrap: wrap; align-items: stretch; justify-content: center; gap: 8px; }
+.guess-b { position: relative; display: inline-flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 14px;
+  border: none; border-radius: 14px; cursor: pointer; background: ${T.paper}; color: ${T.ink};
+  font: 700 14.5px/1.2 'Manrope', sans-serif; box-shadow: 0 2px 8px rgba(80,65,45,.08), inset 0 0 0 2px ${T.uiSoft};
+  transition: box-shadow .2s, transform .12s; }
+.guess-b:active:not(:disabled) { transform: scale(.96); }
+.guess-b.is-on { background: ${T.uiSoft}; box-shadow: inset 0 0 0 2.5px ${T.ui}; }
+.guess-art { display: inline-flex; flex-direction: column; gap: 4px; width: 34px; flex: 0 0 auto; }
+.guess-art i { display: block; height: 4px; border-radius: 2px; background: ${T.ink3}; width: 70%; }
+.guess-art.is-one i { width: 100%; }
+.guess-art i.is-half { width: 55%; }
+.guess-row .key-go { min-height: 52px; gap: 6px; }
+.cmp-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.cmp-chip { padding: 6px 12px; border-radius: 99px; background: ${T.paper}; color: ${T.ink};
+  font: 600 13px/1.2 'Manrope', sans-serif; box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.14); }
+.cmp-chip.is-ok, .cmp-chip.is-real { background: ${T.successSoft}; box-shadow: inset 0 0 0 1.5px ${T.success}; }
+.src-tap.is-wrap::after { content: '+ <p>'; margin-left: 8px; padding: 1px 6px; border-radius: 6px; font-size: .82em; font-weight: 700;
+  color: ${TAGC.p}; background: color-mix(in srgb, ${TAGC.p} 10%, #fff); white-space: nowrap; }
+
+/* ══ 9. РАЗЛОЖИ ПО АБЗАЦАМ ═══════════════════════════════════════
+   Абзац-коробка под заголовком: в неё нажимают после предложения. Пока
+   предложение выбрано, коробки зовут (пунктир), страница справа живая. */
+.s9b { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; width: 100%; }
+@media (min-width: 720px) { .s9b { grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); align-items: start; gap: 20px; } }
+/* Телефон: живая страница видна всё время; когда всё разложено — только она. */
+@media (max-width: 719px) { .s9b.is-done .s9b-code { display: none; } .s9b-page .mb-page { max-height: 150px; overflow-y: auto; } }
+.s9b-code { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.pbox { position: relative; display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 8px 10px; border: none;
+  border-radius: 14px; background: ${T.paper}; text-align: left; font: 500 14px/1.35 'Manrope', sans-serif; color: ${T.ink};
+  box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.12); cursor: pointer; transition: box-shadow .2s, background .2s; }
+.pbox:disabled { cursor: default; }
+.pbox.is-target { box-shadow: inset 0 0 0 2px ${TAGC.p}; background: color-mix(in srgb, ${TAGC.p} 6%, #fff); }
+.pbox-h { display: flex; align-items: center; gap: 4px; font-weight: 800; }
+.pbox-ht { font-size: 15px; }
+.pbox-p { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding-left: 12px; }
+.pbox-s { padding: 2px 6px; border-radius: 6px; background: color-mix(in srgb, ${TAGC.p} 10%, #fff); }
+.pbox-slot { min-width: 64px; padding: 2px 8px; border-radius: 6px; border: 1.5px dashed rgba(${T.shadowBase},0.25); color: ${T.ink3}; text-align: center; }
+.pbox.is-target .pbox-slot { border-color: ${TAGC.p}; color: ${TAGC.p}; }
+.s9b-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; max-width: 560px; align-self: center; }
+.s9b-chip { position: relative; padding: 8px 12px; border: none; border-radius: 12px; background: #fff; cursor: pointer;
+  font: 700 14px/1.25 'Manrope', sans-serif; color: ${T.ink}; text-align: left;
+  box-shadow: 0 2px 0 rgba(${T.shadowBase},0.06), inset 0 0 0 1.5px rgba(${T.shadowBase},0.14); transition: box-shadow .2s, transform .12s; }
+.s9b-chip:active:not(:disabled) { transform: scale(.97); }
+.s9b-chip.is-sel { box-shadow: inset 0 0 0 2.5px ${T.ui}, 0 6px 14px -8px ${T.ui}; }
+/* Новая задача: на телефоне страница — когда афиша готова; строки с верным
+   тегом зеленеют. */
+@media (max-width: 719px) { .work-s16.is-done .work-c { display: none; } }
+.tr-r.is-ok { background: ${T.successSoft}; }
+/* Поле с подсказкой-образцом шире своего текста: образец виден целиком. */
+.tk-input.is-wide { min-width: min(13em, 100%); }
+/* Свой проект: строка, которую правят сейчас, — в рамке; пустые — образцом. */
+.prj-r.is-now { border-radius: 10px; background: color-mix(in srgb, ${T.ui} 6%, #fff); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, ${T.ui} 35%, #fff); }
+.prj-ph { color: ${T.ink3}; font-style: italic; }
+/* Телефон: страница проекта — окошко с прокруткой (видна её нижняя часть,
+   где идёт работа), строки кода плотнее, рамки body не нужны. */
+@media (max-width: 719px) {
+  .work-prj .mb-prj .mb-page { max-height: 150px; min-height: 0; }
+  .work-prj .prj-body { display: none; }
+  .work-prj .prj-r { min-height: 30px; padding-block: 1px; }
+}
+@media (max-width: 719px) and (max-height: 700px) { .work-prj .mb-prj .mb-page { max-height: 120px; } }
+
+/* ══ СЛОВА И ВЫДЕЛЕНИЕ ══════════════════════════════════════════ */
+.wl, .wl-line { display: inline; }
+.wl-w { display: inline-block; margin: 1px 0; padding: 2px 3px; border: none; border-radius: 6px; cursor: pointer;
+  background: transparent; color: ${T.ink}; font: 600 1.02em/1.3 'Manrope', sans-serif;
+  box-shadow: inset 0 -2px 0 rgba(255,79,40,.22); transition: background .15s, box-shadow .15s; }
+.wl-w:hover:not(:disabled) { background: ${T.uiSoft}; }
+.wl-w:disabled { cursor: default; box-shadow: none; }
+.wl-w.is-led { box-shadow: inset 0 -2px 0 ${T.ui}; }
+.wl-w.is-sel { background: ${T.uiSoft}; box-shadow: inset 0 0 0 2px ${T.ui}; }
+.wl-w.is-sel.is-a { border-top-right-radius: 2px; border-bottom-right-radius: 2px; }
+.wl-w.is-mark.is-b, .wl-sp.is-mark.is-b { font-weight: 800; }
+.wl-w.is-mark.is-i, .wl-sp.is-mark.is-i { font-style: italic; }
+.wl-w.is-mark, .wl-sp.is-mark { background: color-mix(in srgb, ${TAGC.em} 9%, #fff); }
+.wl-w.is-hlr, .wl-sp.is-hlr { background: ${T.hintSoft}; }
+.wl-sp { font: 600 1.02em/1.3 'Manrope', sans-serif; white-space: pre-wrap; }
+.mark-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.mark-b { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 16px; border: none;
+  border-radius: 14px; cursor: pointer; background: ${T.paper}; color: ${T.ink}; font: 600 15px/1 'Manrope', sans-serif;
+  box-shadow: 0 2px 8px rgba(80,65,45,.08), inset 0 0 0 2px color-mix(in srgb, ${TAGC.em} 18%, #fff); transition: transform .12s, box-shadow .2s; }
+.mark-b:active:not(:disabled) { transform: scale(.95); }
+.mark-b.is-ready { box-shadow: 0 2px 8px rgba(80,65,45,.08), inset 0 0 0 2.5px ${TAGC.em}; }
+.mark-b .tk-tag { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 14px; }
+.mark-b b, .mark-b i { font-family: 'Times New Roman', Times, serif; font-size: 17px; }
+.mark-b:disabled { opacity: .55; cursor: default; }
+.src-words { line-height: 1.9; }
+
+/* ══ 11. СРАВНЕНИЕ И ВОПРОС ═════════════════════════════════════ */
+.cmp-card { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 12px; background: ${T.paper};
+  font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px; opacity: .5; transition: opacity .3s;
+  box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.1); }
+.cmp-card.is-seen { opacity: 1; }
+.cmp-arrow { color: ${T.ink3}; }
+.cmp-s { font-family: 'Times New Roman', Times, serif; font-size: 17px; color: #000; }
+.cmp-q { color: ${T.ink3}; font-weight: 800; }
+.quiz-col { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 560px; align-self: center; }
+.quiz-b { position: relative; min-height: 46px; padding: 8px 14px; border: none; border-radius: 14px; cursor: pointer; text-align: left;
+  background: ${T.paper}; color: ${T.ink}; font: 700 14.5px/1.3 'Manrope', sans-serif;
+  box-shadow: 0 2px 8px rgba(80,65,45,.08), inset 0 0 0 2px ${T.uiSoft}; transition: box-shadow .2s, transform .12s; }
+.quiz-b:hover:not(:disabled) { box-shadow: 0 2px 8px rgba(80,65,45,.08), inset 0 0 0 2px ${T.ui}; }
+.quiz-b.is-wrong { background: ${T.hintSoft}; }
+.quiz-b .led > i { top: 6px; right: 6px; width: 7px; height: 7px; }
+
+/* ══ 13. ДЕТЕКТИВ ═══════════════════════════════════════════════ */
+.case-top { display: flex; align-items: center; gap: 8px; width: 100%; }
+.case-top .goal { flex: 1 1 auto; min-width: 0; }
+.case-n { flex: 0 0 auto; padding: 6px 10px; border-radius: 99px; background: ${T.paper}; font-size: 12px; font-weight: 800; color: ${T.ink2};
+  box-shadow: inset 0 0 0 1.5px rgba(${T.shadowBase},0.1); }
+.gap-b { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 24px; vertical-align: middle;
+  padding: 0; border: none; border-radius: 6px; cursor: pointer; background: transparent; color: ${T.ui}; font-size: 12px; }
+.gap-b:hover:not(:disabled), .gap-b.is-led { background: ${T.uiSoft}; }
+.src-s13.is-ok { box-shadow: 0 2px 0 rgba(${T.shadowBase},0.05), inset 0 0 0 2px ${T.success}; }
+.case-done { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+
+/* ══ 14. ПЕСОЧНИЦА ══════════════════════════════════════════════ */
+.tag-cycle { position: relative; display: inline-flex; align-items: center; padding: 2px 4px; border: none; border-radius: 7px; cursor: pointer;
+  background: color-mix(in srgb, ${TAGC.h} 7%, #fff); font: inherit; box-shadow: inset 0 -2px 0 rgba(255,79,40,.3); vertical-align: middle; }
+.tag-cycle:hover:not(:disabled) { background: ${T.uiSoft}; }
+.tag-cycle:active:not(:disabled) { transform: scale(.94); }
+.tag-cycle .led > i { top: -3px; right: -3px; width: 7px; height: 7px; }
+.add-b { min-height: 40px; padding: 0 12px; }
+.lesson-root .sand-tools { flex-wrap: wrap; }
+@media (max-width: 719px) { .sand-reset-t { display: none; } }
+.src-sand .src-line { padding-top: 2px; padding-bottom: 2px; }
+
+/* ══ 15. ПРОЕКТ ═════════════════════════════════════════════════ */
+.topic-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; max-width: 480px; align-self: center; }
+.topic-b { min-height: 58px; font-size: 16px; }
+.prj { padding: 6px 8px; }
+.prj-r { position: relative; display: flex; align-items: center; gap: 4px; min-height: 36px; padding: 2px 2px 2px 14px; border-radius: 9px;
+  transition: background .25s; }
+.prj-r::before { content: ''; position: absolute; left: 4px; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: var(--c); opacity: .5; }
+.prj-r .tk-input { flex: 1 1 auto; min-width: 0; width: 100%; max-width: none; }
+.prj-r.is-bad { background: ${T.hintSoft}; }
+.prj-r.is-marking { flex-wrap: wrap; background: ${T.uiSoft}; }
+.prj-words { flex: 1 1 100%; order: 2; padding: 2px 0 4px; line-height: 1.9; }
+.prj-r.is-marking > .tk:last-of-type { order: 3; }
+.prj-body { padding: 1px 4px; }
+.prj-rows { display: flex; flex-direction: column; gap: 3px; padding-left: 10px; max-height: 40dvh; overflow-y: auto; }
+.prj-mark { position: relative; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 2px; min-width: 38px; min-height: 32px; padding: 0 6px;
+  border: none; border-radius: 9px; cursor: pointer; background: ${T.paper}; color: ${TAGC.em};
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, ${TAGC.em} 40%, #fff); font: 16px/1 'Times New Roman', serif; }
+.prj-mark.is-led { animation: ledFrame 1.15s ease-in-out infinite; }
+.prj-x { flex: 0 0 auto; width: 30px; height: 32px; border: none; border-radius: 8px; cursor: pointer; background: transparent;
+  color: ${T.ink3}; font: 400 22px/1 'Manrope', sans-serif; }
+.prj-x:hover:not(:disabled) { background: rgba(${T.shadowBase},0.06); color: ${T.ink}; }
+.prj-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; }
+.mb-prj .mb-page { min-height: clamp(90px, 20dvh, 240px); }
+
+/* ══ 16. АФИША ══════════════════════════════════════════════════ */
+.tr { padding: 6px; }
+.tr-r { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 6px;
+  padding: 5px 6px; border-radius: 10px; transition: background .25s; }
+.tr-r + .tr-r { box-shadow: 0 -1px 0 rgba(${T.shadowBase},0.06); }
+.tr-r.is-bad { background: ${T.hintSoft}; }
+.tr-tag { min-width: 3.3em; font: 800 var(--cv-fs)/1 'JetBrains Mono', ui-monospace, monospace; color: var(--c); }
+.tr-t { min-width: 0; font: 600 14px/1.3 'Manrope', sans-serif; color: ${T.ink}; }
+.tr-seg { display: inline-flex; gap: 3px; }
+.tr-b { position: relative; min-width: 36px; min-height: 36px; padding: 0 4px; border: none; border-radius: 9px; cursor: pointer;
+  background: ${T.bg}; color: ${T.ink2}; font: 800 12px/1 'JetBrains Mono', ui-monospace, monospace; transition: background .2s, color .2s; }
+.tr-b.is-on { background: var(--c); color: #fff; }
+.tr-b.is-led { box-shadow: inset 0 0 0 1.5px ${T.ui}; }
+
+/* ══ 17–18 ══════════════════════════════════════════════════════ */
+.mb-site .mb-page { min-height: clamp(90px, 20dvh, 240px); }
+.recap-ol { display: flex; flex-direction: column; gap: 7px; width: min(100%, 300px); padding: 12px; border-radius: 14px; background: ${T.paper};
+  box-shadow: 0 2px 0 rgba(${T.shadowBase},0.05), 0 12px 26px -16px rgba(${T.shadowBase},0.5); }
+.ro-r { display: flex; align-items: center; gap: 8px; padding-left: calc(var(--n) * 16px); animation: pgIn .5s cubic-bezier(.34,1.3,.5,1) both; }
+.ro-r span { flex: 0 0 1.8em; font-size: 11px; font-weight: 800; color: var(--c); }
+.ro-r i { display: block; height: 10px; border-radius: 5px; background: var(--c); opacity: .75; }
+.ro-r.is-p i { height: 6px; opacity: .28; }
+.ro-r.w90 i { width: 90%; } .ro-r.w80 i { width: 80%; } .ro-r.w70 i { width: 70%; } .ro-r.w60 i { width: 60%; } .ro-r.w50 i { width: 50%; }
+
+/* ══ ВЫСОТА: невысокий телефон ══════════════════════════════════ */
+@media (max-height: 700px) {
+  .mb-doc { font-size: 14px; }
+  .lad-r { padding-block: 2px; font-size: 11.5px; }
+  .lvl-b { min-height: 40px; }
+  .arch-r { min-height: 36px; }
+  .arch-p { display: none; }
+  .tr-b { min-width: 32px; min-height: 32px; }
+  .mark-b { min-height: 42px; }
+  .guess-b { min-height: 46px; }
+  .prj-rows { max-height: 34dvh; }
+}
+@media (max-width: 719px) and (max-height: 760px) {
+  .lesson-root .s5 .mb-page { min-height: 70px; }
+  .lesson-root .mb-tall .mb-page { min-height: 90px; }
+}
+@media (max-width: 400px) {
+  .s5-grid { grid-template-columns: minmax(0, 1fr) minmax(0, .9fr); gap: 6px; }
+  .lad-t { font-size: 11px; }
+  .tr-r { grid-template-columns: auto minmax(0, 1fr); }
+  .tr-seg { grid-column: 1 / -1; justify-content: flex-end; }
+}
+
+/* ══ КЛАВИАТУРА ТЕЛЕФОНА ОТКРЫТА ═════════════════════════════════ */
+.is-kbd .mark-row, .is-kbd .guess-row, .is-kbd .lvl-row, .is-kbd .cmp-row, .is-kbd .insp, .is-kbd .only-narrow { display: none; }
+.is-kbd .prj-rows { max-height: 30dvh; }
+.is-kbd .work-v-code .work-b { display: none; }
+
+/* Меньше движения: смысл остаётся, движение уходит. */
+@media (prefers-reduced-motion: reduce) {
+  .pg-b.is-new, .pg-b.is-flash, .bslot.is-full, .ro-r, .prj-mark.is-led { animation: none !important; }
+}
+
+/* Экран 3: браузер виден и при подсказке — ошибка «правлю h1 ради вкладки»
+   объясняется подсветкой вкладки и страницы сразу. Подсказка — под кодом. */
+@media (max-width: 719px) and (max-height: 760px) {
+  .work-s3 .mb-page { min-height: 0; padding-block: 4px; }
+  .work-s3 .mb-doc { font-size: 12px; }
+  .src-s3 .src-line { min-height: 0; line-height: 1.38; }
+}
+
+/* Экран 4: стена текста — фон для нового заголовка, читать её не нужно.
+   В браузере — три строки, в коде — одна. */
+.work-s4 .pg-raw { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; color: #444; }
+@media (max-width: 719px) {
+  .work-s4 .pg-raw { -webkit-line-clamp: 2; }
+  .src-s4 .tk-tx.is-dim { -webkit-line-clamp: 1; }
+}
+@media (max-height: 700px) {
+  .bslot { min-height: 28px; }
+  .src-s4 .src-line { min-height: 0; line-height: 1.4; }
+  .work-s4 .mb-top { height: 28px; }
+}
+/* Экраны 6–8 на невысоком телефоне: лесенка и свёрнутые абзацы плотнее. */
+@media (max-height: 700px) {
+  .s6, .s7b { gap: 4px; }
+  .s6-map, .s6-code, .s7b-plan, .s7b-code { gap: 3px; }
+  .st-r { min-height: 32px; padding-block: 2px; }
+  .stairs.is-compact { gap: 2px; }
+  .stairs.is-compact .st-r { min-height: 24px; }
+  .arch { gap: 4px; }
+  .arch-r { min-height: 34px; padding-block: 2px; }
+  .ask.ask-hint { padding: 4px 10px; font-size: 14px; line-height: 1.3; }
+  .src-s6 .src-line { min-height: 0; line-height: 1.35; }
+  .src-s6 .src-line.is-p { line-height: 1.05; font-size: .8em; }
+}
+/* Экран 8: два варианта прогноза — в два столбца, «Запустить» — под ними. */
+.guess-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; max-width: 520px; align-self: center; }
+.guess-row .guess-b { padding: 6px 10px; gap: 8px; font-size: 14px; }
+.guess-row .key-go { grid-column: 1 / -1; justify-self: center; min-height: 46px; }
+/* Экран 16: строки выбираются касанием, как у архитектора. */
+.tr-r { grid-template-columns: auto minmax(0, 1fr); }
+.tr-r.is-tap { cursor: pointer; }
+.tr-r.is-tap:hover { background: ${T.uiSoft}; }
+.tr-r.is-sel { box-shadow: inset 0 0 0 2.5px ${T.ui}; background: #fff; }
+.tr-r .led > i { top: 6px; right: 6px; width: 7px; height: 7px; }
+@media (max-width: 400px) { .tr-r { grid-template-columns: auto minmax(0, 1fr); } }
+/* Экраны 9–10 на невысоком телефоне: на UZ и EN предложения длиннее. */
+@media (max-width: 719px) and (max-height: 700px) {
+  .work-s10 .mb-doc { font-size: 13px; }
+  .work-s10 .mb-page { min-height: 0; padding-block: 5px; }
+  .src-s10 { line-height: 1.42; }
+  .src-s10 .src-line { min-height: 0; }
+  .work-s10 .mb-top { height: 28px; }
+}
+@media (max-width: 719px) and (max-height: 700px) {
+  .insp:not(.insp-all) .insp-r:not(.is-now) { display: none; }
+}
+/* Клавиатура открыта: кнопки символов и браузер плотнее. */
+.is-kbd .key-b { min-height: 36px; }
+.is-kbd .mb-doc { font-size: 13px; }
+.is-kbd .pg-p { margin: .2em 0; }
+.is-kbd .src { line-height: 1.32; }
+.is-kbd .src-line { min-height: 0; }
+.is-kbd .lesson-root .work { gap: 4px; }
+.is-kbd .keys { gap: 4px; }
+.is-kbd .work-s10 .mb-page { padding-block: 3px; }
+/* Экран 10: пока печатают, страница не меняется — при клавиатуре её убираем. */
+.is-kbd .work-s10 .work-b { display: none; }
+/* Компьютер: подписи схем и механик крупнее — на широком экране мелкий
+   кегль терялся рядом с кодом и браузером. */
+@media (min-width: 760px) and (min-height: 700px) {
+  .lad { padding: 12px; gap: 5px; }
+  .lad-h { font-size: 12.5px; }
+  .lad-r { font-size: 15px; padding-block: 6px; padding-left: calc(8px + var(--n) * 12px); }
+  .lad-tag { font-size: 13px; }
+  .st-r { min-height: 46px; }
+  .st-t { font-size: 17px; }
+  .st-tag { font-size: 15px; }
+  .arch-t { font-size: 17px; }
+  .tr-t { font-size: 17px; }
+  .lvl-b { min-height: 50px; font-size: 17px; }
+  .mark-b, .quiz-b, .guess-b { font-size: 16.5px; }
+  .cmp-card, .cmp-chip { font-size: 15px; }
+  .wl-w, .wl-sp { font-size: 1.08em; }
+}
+/* Совсем маленький телефон (320×568 и ниже). */
+@media (max-height: 600px) {
+  .recap-ol { display: none; }
+  .mb-site .mb-page, .mb-prj .mb-page { min-height: 54px; }
+  .lad { padding: 5px; gap: 1px; }
+  .lad-r { padding-block: 1px; font-size: 10.5px; }
+  .lad-h { display: none; }
+  .s5 .mb-page { min-height: 48px; }
+  .lvl-b { min-height: 36px; font-size: 13px; }
+  .pg-wait { min-height: 36px; font-size: 26px; }
+  .guess-row .guess-b { min-height: 40px; padding: 4px 8px; font-size: 13px; }
+  .guess-row .key-go { min-height: 40px; }
+  .work-s10 .mb-doc { font-size: 12.5px; }
+  .src-sand .tk-input { padding-block: 1px; }
+  .add-b { min-height: 34px; }
+  .lesson-root .sand-tools .seg2-b { min-height: 34px; }
+  .mark-b, .quiz-b { min-height: 38px; }
+  .tr-r { padding-block: 3px; }
+}
+@media (max-height: 600px) {
+  .lesson-root { --cv-fs: 10.5px; }
+  .lesson-root .mb-top { height: 24px; }
+  .s5-grid { gap: 5px; }
+  .s5 .src-one { padding: 4px 8px; }
+  .s5 .pg-p { margin: .2em 0; }
+  .lesson-root .bigbtn { min-height: 46px; padding-top: 6px; padding-bottom: 6px; }
+  .mb-site .mb-page { min-height: 40px; }
+  .lesson-root .key-b { min-height: 36px; }
+  .work-s10 .mb-page { padding-block: 3px; }
+  .lesson-root .sand-tools { flex-wrap: nowrap; gap: 4px; }
+  .lesson-root .sand-tools .add-b { padding: 0 7px; }
+  .lesson-root .sand-tools .seg2-b { padding: 0 8px; font-size: 13px; }
+  .lesson-root .sand-tools .btn-soft { padding: 0 8px; }
+  .src-sand .src-line { padding-top: 0; padding-bottom: 0; }
+}
+@media (max-height: 600px) and (max-width: 380px) { .site-author { display: none; } }
+/* Страница ученика бывает любой длины: как в настоящем браузере, длинная
+   страница прокручивается внутри окна, а не раздвигает экран урока. */
+.mb-site .mb-page, .mb-prj .mb-page { max-height: 44dvh; overflow-y: auto; overscroll-behavior: contain; }
+@media (max-width: 719px) { .mb-site .mb-page, .mb-prj .mb-page { max-height: 34dvh; } }
+.src-site { max-height: 34dvh; overflow-y: auto; overscroll-behavior: contain; }
+@media (max-width: 719px) { .src-site { max-height: 40dvh; } }
+/* Проект: режим выделения — закрывающий тег после слов, кнопки в один ряд. */
+.prj-r.is-marking .prj-close { order: 3; }
+.prj-tools .mark-row.is-compact { flex-wrap: nowrap; gap: 6px; }
+.mark-row.is-compact .mark-b { padding: 0 12px; min-height: 42px; }
+.prj-tools:has(.mark-row) { flex-wrap: nowrap; }
 /* ── БУМАЖНЫЙ КОЛЛАЖ (урок 1 курса HTML — эталон, по ролику html.mp4) ─────────────────
    Стол — фон курса (как в остальных уроках, заказчик 20.10.2026; раньше был
    крафт #D8C4A1), лист — кремовая бумага с рваным краем, вырезки — цветная
@@ -9881,11 +11270,6 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .kz-br.is-hl-page .kz-cut.kz-br-paper { filter: drop-shadow(0 0 4px #2A8C7E) drop-shadow(0 4px 6px rgba(74, 48, 18, .2)); }
 .kz-br.is-hl-page .kz-br-page { outline: 3px solid #2A8C7E; outline-offset: 4px; border-radius: 4px; }
 .kz-br-text { position: relative; overflow-wrap: anywhere; }
-/* Адрес страницы (урок 4: ссылка открывает другой файл) и нажимаемая стрелка «назад». */
-.kz-br-url-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.kz-br-url.is-hl { background: #FFE9A8; box-shadow: 0 0 0 2px #F0B13F, 0 0 10px 2px rgba(240, 177, 63, .8); }
-.kz-ar-btn { position: relative; width: 10px; height: 10px; padding: 0; background: none; border: none; border-left: 2.6px solid #E0643F; border-bottom: 2.6px solid #E0643F; cursor: pointer; }
-.kz-ar-btn::before { content: ''; position: absolute; inset: -9px; }
 @media (max-width: 759px) {
   .kz-br-win { gap: 9px; }
   .kz-br-win i { width: 9px; height: 9px; }
@@ -10457,488 +11841,172 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 
 /* Экран «Сверху вниз» (s12) после показа: части коллажа нажимаются. */
 .kz-s12.is-explore .kz-collage, .kz-s12.is-explore .kz-collage * { cursor: pointer; }
-/* ── ПРАКТИКИ К УРОКАМ 4 И 5 (общий вид; копия вида практики 03p) ─────────────
-   Практика 05p подключает этот файл и добавляет свою карту и фото (p05.css). 
-   Лист, вырезки и бумажный браузер — из набора kollazh; здесь только то, что
-   есть у практики: редактор на бумажной подложке, заметки-листки, кнопки,
-   тропа с привалами-флажками, страница с заголовками, абзацами и списками (pg-).
-   Префикс pp- (и классы каркаса 01p: ed-, cv-, op-). */
-.lesson-root { --cv-fs: clamp(12.5px, 3.4vw, 15px); --ed-fs: 16px; --gw: 46px; }
-@media (min-width: 760px) and (min-height: 700px) {
-  .lesson-root { --cv-fs: clamp(14px, 1.45vw, 16px); --ed-fs: 17px; }
-}
+/* ── УРОК 2 «Заголовки и текст» — свои части поверх бумажного набора урока 1 ──
+   Префикс z2-. Страница в бумажном браузере — как браузер по умолчанию:
+   Times, заголовки жирные и убывают от h1 к h6, абзацы с отступом. */
 
-/* ══ ЛИСТ ПРАКТИКИ ═══════════════════════════════════════════════════════ */
-.pp-sheet .kz-sheet-body { gap: clamp(6px, 1.2dvh, 12px); padding: clamp(10px, 1.8dvh, 18px) clamp(10px, 2vw, 22px); }
-.pp-sheet-intro .kz-sheet-body, .pp-sheet-fin .kz-sheet-body { justify-content: center; }
-.pp-sheet-fin .kz-sheet-body { justify-content: flex-start; overflow: auto; scrollbar-width: thin; }
-.kz-cut.pp-pad-bg, .kz-cut.pp-road { inset: 0; }
-.pp-pad { position: relative; }
-.pp-pad > :not(.pp-pad-bg) { position: relative; z-index: 1; }
+/* Страница в окне бумажного браузера */
+/* Без прокрутки: страница помещается целиком (шрифт подгоняет useFitPage). */
+.z2-br .kz-br-page { overflow: hidden; }
+.z2-doc { display: flex; flex-direction: column; align-items: flex-start; gap: 0; overflow-wrap: anywhere; }
+.z2-blk { position: relative; max-width: 100%; transition: background .2s; border-radius: 3px; }
+.z2-h1 { font-size: 1.75em; font-weight: 700; line-height: 1.12; margin: 0 0 .32em; }
+.z2-h2 { font-size: 1.4em; font-weight: 700; line-height: 1.15; margin: .2em 0 .28em; }
+.z2-h3 { font-size: 1.17em; font-weight: 700; margin: .2em 0 .24em; }
+.z2-h4 { font-size: 1em; font-weight: 700; margin: .2em 0 .2em; }
+.z2-h5 { font-size: .83em; font-weight: 700; margin: .2em 0 .2em; }
+.z2-h6 { font-size: .7em; font-weight: 700; margin: .2em 0 .2em; }
+.z2-p { font-weight: 400; margin: 0 0 .62em; line-height: 1.32; }
+.z2-raw { font-weight: 400; line-height: 1.32; }
+.z2-p.z2-inh1 { font-size: 1.75em; font-weight: 700; line-height: 1.12; }   /* p внутри незакрытого h1 */
+.z2-big { font-size: 1.12em; }
+.z2-wall { display: block; font-weight: 400; line-height: 1.32; }   /* каша — слитный текст, а не столбик */
+.z2-b { font-weight: 700; }
+.z2-i { font-style: italic; }
+.z2-blk.is-hl, .z2-b.is-hl, .z2-i.is-hl { background: #FFE9A8; box-shadow: 0 0 0 3px #FFE9A8; }
+.z2-b.is-hl, .z2-i.is-hl { border-radius: 2px; }
+.z2-qmark { display: grid; place-items: center; height: 100%; min-height: 2em; font: 800 2em 'Manrope', sans-serif; color: #C9BFAA; }
 
-/* Строка задания — полоска урока 1. */
-.pp-ask-wrap { flex: 0 0 auto; }
-.kz-ask.pp-ask { font-size: clamp(14.5px, 2dvh, 17.5px); padding: 7px 14px 8px; }
-.pp-drill-tag { display: inline-block; margin-right: 8px; padding: 1px 8px; background: #2A8C7E; color: #FBF6EA; vertical-align: 1px;
-  font: 800 11.5px/18px 'Manrope', sans-serif; letter-spacing: .04em; text-transform: uppercase;
-  clip-path: polygon(0 10%, 8% 0, 92% 8%, 100% 0, 97% 55%, 100% 100%, 50% 92%, 4% 100%, 0 50%); }
-.pp-extra { flex: 0 0 auto; display: flex; justify-content: center; }
+/* s1 — полёт слов из каши на страницу. Страница стоит невидимой (её места меряются),
+   поверх неё — каша; куски ступенчато едут к своим местам и меняют размер. */
+.z2-s1-box { position: relative; }
+.z2-chunk { display: inline-block; transform-origin: 0 0; }
+.z2-ghostpage { visibility: hidden; }
+.z2-wall-fly { position: absolute; left: 0; top: 0; right: 0; }
+/* В полёте кусок — бумажка: светлая подложка и тень. */
+.z2-wall-fly .z2-chunk { background: #FFFDF5; box-shadow: 0 2px 4px rgba(74, 48, 18, .28); border-radius: 2px; }
+/* Горчичная полоска на «очень» — как в ролике: клеится, когда слово садится. */
+.z2-taped .z2-b { position: relative; z-index: 0; }
+.z2-taped .z2-b::before { content: ''; position: absolute; z-index: -1; left: -.18em; right: -.18em; top: .1em; bottom: -.04em; background: #F0B13F;
+  clip-path: polygon(0 12%, 6% 0, 50% 8%, 96% 0, 100% 14%, 98% 60%, 100% 92%, 92% 100%, 50% 90%, 5% 100%, 0 86%, 2% 48%); rotate: -1.5deg; }
+.z2-taped.is-fresh .z2-b::before { animation: kzStamp .5s steps(1, end) .1s both; }
 
-/* ══ РАБОЧАЯ ОБЛАСТЬ: браузер слева, редактор справа (на телефоне — в колонку) ═ */
-.kz-sheet-body > .op-work { flex: 0 1 auto; min-height: 0; }
-.kz-sheet-body > .pp-note { flex: 0 1 auto; min-height: 44px; overflow: auto; scrollbar-width: thin; }
-.op-work { display: flex; flex-direction: column; gap: clamp(6px, 1.2dvh, 12px); width: 100%; min-height: 0; }
-.op-side { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; min-width: 0; }
-.op-main { display: flex; flex-direction: column; gap: 8px; flex: 0 1 auto; min-height: 0; min-width: 0; }
-.op-main > .pp-edpad { flex: 0 1 auto; min-height: 64px; display: flex; flex-direction: column; }
-.pp-edpad > .ed, .pp-edpad > .cv { flex: 0 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; }
-/* Свой дом с нуля: рабочая область забирает свободную высоту, поле — всю рамку. */
-.kz-sheet-body > .op-work.is-big { flex: 1 1 auto; }
-.op-work.is-big .op-main { flex: 1 1 auto; }
-.op-work.is-big .op-main > .pp-edpad { flex: 1 1 auto; }
-.op-work.is-big .pp-edpad > .ed { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 8em; }
-.op-work.is-big .ed-edit { flex: 1 0 auto; }
-.op-work.is-big .pp-edpad > .ed > * { flex-shrink: 0; }   /* строки рамки не сжимаются — редактор прокручивается */
-@media (min-width: 720px) {
-  .op-work { flex-direction: row; align-items: stretch; gap: 20px; }
-  .op-side { flex: .9 1 0; min-height: 0; overflow: auto; }
-  .op-main, .op-work.is-big .op-main { flex: 1.1 1 0; }
-  /* Ноутбук: лист шире — крупнее задание, браузер и улица; содержимое по центру листа. */
-  .pp-sheet .kz-sheet-body { justify-content: safe center; padding: clamp(14px, 2.4dvh, 26px) clamp(40px, 4.5vw, 64px); }
-  .kz-ask.pp-ask { font-size: clamp(15.5px, 2.5dvh, 20px); padding: 8px 18px 9px; }
-  .pp-strip { padding: 0 6px; }
-  .pp-strip .pp-house.is-s { --hw: clamp(28px, 4.4dvh, 38px); }
-  .pp-br .kz-br-page { height: clamp(8em, 22dvh, 12em); font-size: clamp(14px, 2.1dvh, 18px); }
-  .pp-br .kz-br-page { margin: 10px 14px 12px; }
-  .pp-note-body { font-size: clamp(15px, 2.3dvh, 18px); }
-}
-
-/* ══ БУМАЖНЫЙ БРАУЗЕР В ПРАКТИКЕ — высота по содержимому ══════════════════ */
-.kz-br.pp-br { aspect-ratio: auto; max-width: none; flex: 0 0 auto; }
-.pp-br .kz-br-body { flex: 0 0 auto; }
-.pp-br .kz-br-page { position: relative; inset: auto; margin: 7px 10px 9px; }
-/* Страница без прокрутки: высота окна задана, не влезает — шрифт подгоняет useFitPage. */
-.pp-br .kz-br-page { height: 7em; overflow: hidden; }
-.pg-doc { display: flex; flex-direction: column; align-items: flex-start; font-weight: 400; overflow-wrap: anywhere; }
-.pg-doc.is-empty { color: #9C9384; font-style: italic; font-family: 'Manrope', sans-serif; font-weight: 600; font-size: .86em; }
-.pg-blk { max-width: 100%; }
-.pg-h1, .pg-in-h1 { font-size: 1.75em; font-weight: 700; line-height: 1.1; }
-.pg-h2, .pg-in-h2 { font-size: 1.4em; font-weight: 700; line-height: 1.14; }
-.pg-h3, .pg-in-h3 { font-size: 1.17em; font-weight: 700; line-height: 1.2; }
-.pg-h4, .pg-in-h4 { font-size: 1em; font-weight: 700; }
-.pg-h5, .pg-in-h5 { font-size: .83em; font-weight: 700; }
-.pg-h6, .pg-in-h6 { font-size: .7em; font-weight: 700; }
-.pg-h1 { margin: 0 0 .22em; } .pg-h2 { margin: .1em 0 .2em; } .pg-h3, .pg-h4, .pg-h5, .pg-h6 { margin: .1em 0 .16em; }
-.pg-p, .pg-raw { line-height: 1.28; } .pg-p { margin: 0 0 .42em; }
-.pg-doc b { font-weight: 700; } .pg-doc i { font-style: italic; }
-/* Списки — как браузер по умолчанию: отступ, точка или номер перед каждым li. */
-.pg-list { padding-left: 1.7em; margin: .05em 0 .35em; }
-.pg-li, .pg-txt { position: relative; line-height: 1.3; min-height: 1.3em; }
-.pg-mk { position: absolute; left: -1.25em; width: 1.05em; text-align: right; }
-.pg-ul > .pg-li > .pg-mk { text-align: center; font-size: 1.1em; line-height: 1.18; }
-.pg-list .pg-blk { margin: .12em 0; }
-.pg-stray { margin-left: .9em; }
-.pg-stray > .pg-mk { left: -.9em; width: .8em; text-align: center; }
-.pp-br .kz-br-tab { max-width: 74%; }
-.pp-br.is-hl-page .kz-br-page { outline-offset: 2px; }
-
-/* ══ КОД С ПОЛЯМИ (t1, t2) ══════════════════════════════════════════════ */
-.cv { position: relative; width: 100%; min-width: 0; text-align: left; padding: 8px 8px 8px 0;
-  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: var(--cv-fs); line-height: 1.55; color: #1F2A44; }
-.cv-line { position: relative; display: flex; align-items: center; min-height: 1.55em; width: 100%;
-  padding-left: calc(2.3em + var(--d) * 1.2em); padding-right: 4px; white-space: nowrap; transition: opacity .3s, background .3s; }
-.cv-n { position: absolute; left: 0; width: 1.9em; text-align: right; color: #A39A88; font-size: .78em; }
-.cv-bar { position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--c); opacity: .7;
-  left: calc(2.3em - .55em + var(--lv) * 1.2em); }
-.cv-bar.is-first { top: 50%; } .cv-bar.is-last { bottom: 50%; }
-.cv-code { display: flex; align-items: center; flex-wrap: nowrap; min-width: 0; flex: 1 1 auto; font-weight: 600; }
-.cv-code > .kz-tag { flex-shrink: 0; }
-.cv-line.is-out { opacity: .35; }
-.cv-line.is-in { background: #FFF1C9; }
-.pp-doc { color: #6E6758; }
-.pp-text { font: 700 1.02em/1.3 'Manrope', sans-serif; padding: 0 4px; white-space: normal; min-width: 0; overflow-wrap: anywhere; }
-/* Поле прямо в строке кода — как в уроке 1. 16 px — меньше нельзя: iOS увеличит страницу. */
-.tk-input { display: block; flex: 0 1 auto; min-width: 4.5ch; max-width: 100%; margin: 2px 3px; padding: 2px 7px; resize: none; overflow: hidden;
-  white-space: pre-wrap; overflow-wrap: anywhere; border: none; border-bottom: 2px dashed #E0643F; border-radius: 4px; outline: none;
-  background: #FFF8EC; color: #1F2A44; font: 700 16px/1.3 'Manrope', sans-serif; }
-.tk-input::placeholder { color: #A39A88; font-weight: 600; }
-.tk-input:focus { background: #fff; border-bottom-color: #1F2A44; }
-.tk-input.is-led-in { animation: kzLed 1.2s ease-in-out infinite; }
-
-/* ══ РЕДАКТОР ════════════════════════════════════════════════════════════
-   Прозрачная textarea лежит над подсвеченными строками. У обоих слоёв один
-   шрифт, кегль, межстрочный, отступы и правила переноса — иначе курсор
-   разойдётся с буквами. Лигатуры выключены по той же причине. */
-.ed { position: relative; width: 100%; min-width: 0; text-align: left; padding: 8px 0;
-  font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; font-size: var(--ed-fs); font-weight: 500;
-  line-height: 1.45; font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; color: #1F2A44; tab-size: 2; }
-.ed-line { position: relative; min-height: 1.45em; padding: 0 10px 0 var(--gw); white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; }
-.ed-line.is-static { color: #5B5446; }
-.ed-n { position: absolute; left: 0; top: 0; width: 24px; text-align: right; color: #A39A88; font-size: .72em; line-height: 2.01em; user-select: none; }
-.ed-br { color: #D2522C; }
-.ed-nm { color: #1F2A44; }
-.ed-line.is-static .ed-nm { color: #3D4559; }
-.ed-doc, .ed-unk { color: #5B5446; }
-.ed-edit { position: relative; display: grid; border-radius: 6px; transition: box-shadow .2s, background .2s; }
-.ed-edit.is-framed { background: #FFF1C9; box-shadow: inset 0 0 0 1.5px rgba(224, 100, 63, .45); }
-.ed-edit:focus-within { background: #fff; box-shadow: inset 0 0 0 2px #E0643F; }
-.ed-edit.is-led-in { animation: kzLed 1.2s ease-in-out infinite; }
-.ed-hl, .ed-ta { grid-area: 1 / 1; min-width: 0; }
-.ed-hl { pointer-events: none; }
-.ed-edit .ed-line { padding-left: calc(var(--gw) + var(--edi, 0ch)); }
-.ed-ta { position: relative; z-index: 1; display: block; width: 100%; height: 100%; min-height: 1.45em; margin: 0;
-  border: 0; border-radius: 6px; resize: none; overflow: hidden; outline: none;
-  padding: 0 10px 0 calc(var(--gw) + var(--edi, 0ch)); background: transparent;
-  color: transparent; -webkit-text-fill-color: transparent; caret-color: #1F2A44;
-  font: inherit; line-height: inherit; letter-spacing: inherit; tab-size: 2;
-  font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0;
-  white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; }
-.ed-ta::selection { background: rgba(224, 100, 63, .28); }
-/* Полоски вложенности: сплошная — часть закрыта, пунктир — не закрыта.
-   Цвет — цвет части в уроке 1, но смысл несёт форма. */
-.ed-bar { position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--c); opacity: .85;
-  left: calc(28px + var(--lv) * 6px); }
-.ed-bar.is-first { top: .45em; } .ed-bar.is-last { bottom: .45em; }
-.ed-bar.is-open { width: 0; background: none; border-left: 3px dashed var(--c); border-radius: 0; opacity: 1; }
-/* Строка, на которую указывает подсказка. */
-.ed-line.is-mark { background: #FFE4D8; box-shadow: inset 4px 0 0 #E0643F; }
-
-/* Места между строками (t6): нажимаешь щель — там раскрывается строка ввода. */
-.pp-gap { display: block; position: relative; width: calc(100% - var(--gw) + 10px); height: 18px; margin: -4px 0 -4px calc(var(--gw) - 10px);
-  padding: 0; border: none; background: none; cursor: pointer; z-index: 2; }
-.pp-gap-line { position: absolute; left: 0; right: 26px; top: 50%; height: 0; border-top: 2px dashed #E2D8C3; transition: border-color .15s; }
-.pp-gap::after { content: '+'; position: absolute; right: 6px; top: 50%; translate: 0 -52%; width: 15px; height: 15px; border-radius: 50%;
-  background: #FBF6EA; color: #B1A891; font: 800 13px/15px 'Manrope', sans-serif; text-align: center; box-shadow: inset 0 0 0 1.5px #D8CDB6; }
-.pp-gap:hover .pp-gap-line, .pp-gap:focus-visible .pp-gap-line { border-top-color: #E0643F; }
-.pp-gap:hover::after, .pp-gap:focus-visible::after { color: #E0643F; box-shadow: inset 0 0 0 1.5px #E0643F; }
-.pp-gap:focus-visible { outline: none; }
-.pp-gap.is-led .pp-gap-line { border-top-color: #E0643F; border-top-width: 3px; }
-.pp-gap.is-led { animation: kzLed 1.2s ease-in-out infinite; }
-
-/* Образец и код готовой страницы. */
-.sample { display: flex; flex-direction: column; gap: 4px; padding: 6px 10px; text-align: left; }
-.sample-lbl { font: 800 11.5px 'Manrope', sans-serif; letter-spacing: .05em; text-transform: uppercase; color: #8A6A1A; }
-.sample-code { font: 500 14px/1.4 'JetBrains Mono', ui-monospace, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; color: #1F2A44; }
-
-/* ══ КНОПКИ: символы и «Проверить» — бумажные ═══════════════════════════ */
-.op-tools { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
-.pp-sym { display: flex; gap: 5px; }
-.pp-key { min-width: 44px; min-height: 44px; padding: 0 8px; border: none; cursor: pointer; background: #FBF6EA; color: #1F2A44;
-  font: 800 20px/1 'JetBrains Mono', ui-monospace, monospace;
-  clip-path: polygon(0 8%, 10% 0, 50% 6%, 92% 0, 100% 10%, 96% 52%, 100% 92%, 90% 100%, 50% 94%, 8% 100%, 0 90%, 4% 48%);
-  box-shadow: inset 0 0 0 2px #E6DCC6; transition: transform .1s steps(2, end); }
-.pp-key:active { transform: translateY(2px) rotate(-2deg); }
-.pp-go { flex: 1 1 auto; max-width: 260px; margin-left: auto; min-height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 0 16px; border: none; cursor: pointer; background: #E0643F; color: #fff; font: 800 16px 'Manrope', sans-serif; rotate: -.6deg;
-  clip-path: polygon(0 8%, 6% 0, 50% 5%, 95% 0, 100% 10%, 98% 55%, 100% 92%, 94% 100%, 48% 95%, 5% 100%, 0 90%, 2% 45%); }
-.pp-go:active { transform: translateY(2px); }
-.pp-key:focus-visible, .pp-go:focus-visible { outline: 3px solid #1F2A44; outline-offset: 2px; }
-@media (max-width: 479px) {
-  .pp-key { min-width: 38px; }
-  .pp-go { padding: 0 10px; min-width: 96px; }
-}
-
-/* ══ ЗАМЕТКА ПОД РАБОТОЙ — бумажный листок ══════════════════════════════════
-   Разбор проверки — кремовый с коралловой кромкой (это не «ошибка»),
-   подсказка — жёлтый, похвала — бирюзовый. */
-.pp-note { padding: 8px 14px 9px; color: #1F2A44; text-align: left; rotate: -.3deg;
-  clip-path: polygon(0 5%, 4% 0, 32% 4%, 63% 0, 97% 3%, 100% 0, 99.4% 50%, 100% 100%, 70% 96%, 36% 100%, 3% 97%, 0 100%, .6% 50%);
-  animation: kzPop .45s steps(1, end) both; }
-.pp-note.is-fb { background: #FBF6EA; box-shadow: inset 4px 0 0 #E0643F, inset 0 0 0 1.5px #EADFC9; }
-.pp-note.is-hint { background: #FFF1C9; box-shadow: inset 4px 0 0 #F0B13F; }
-.pp-note.is-ok { background: #DCEFE8; box-shadow: inset 4px 0 0 #2A8C7E; }
-.pp-note-lbl { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; font: 800 11.5px 'Manrope', sans-serif;
-  letter-spacing: .05em; text-transform: uppercase; color: #8C5A2A; }
-.pp-note.is-hint .pp-note-lbl { color: #8A6A1A; }
-.pp-note.is-ok .pp-note-lbl { color: #1E6B5F; }
-.pp-note-step { margin-left: 2px; font-family: 'JetBrains Mono', monospace; }
-.pp-note-sub { margin-left: 4px; padding: 1px 7px; background: #FFE4D8; color: #8C3A1E; font-size: 10.5px; text-transform: none; letter-spacing: 0; border-radius: 3px; }
-.pp-note-fb { margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px dashed rgba(141, 94, 0, .3);
-  font: 600 clamp(13.5px, 1.7vw, 15px)/1.35 'Manrope', sans-serif; color: #8C3A1E; }
-.pp-note-body { font: 700 clamp(14.5px, 2dvh, 17px)/1.35 'Manrope', sans-serif; }
-.pp-note-extra { margin-top: 6px; background: rgba(255, 255, 255, .72); box-shadow: inset 0 0 0 1.5px rgba(141, 94, 0, .22); }
-
-/* ══ СЧЁТЧИК ПОЛОМОК (t4) ═════════════════════════════════════════════════ */
-.pp-left { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px 5px; background: #FFE4D8; color: #8C3A1E;
-  font: 800 13.5px 'Manrope', sans-serif; clip-path: polygon(0 10%, 6% 0, 94% 8%, 100% 0, 97% 55%, 100% 100%, 50% 92%, 4% 100%, 0 50%); }
-.pp-left.is-ok { background: #DCEFE8; color: #1E6B5F; }
-
-/* ══ ТРОПА ПОХОДА ═══════════════════════════════════════════════════════════
-   Привал — бумажный круг-флажок своего цвета с мини-списком (точки или номера).
-   Ждёт — выцвел и покосился, список размыт; готов — свой цвет, ровно, галочка.
-   Свой список до написания — пунктирный круг. */
-.pp-house { position: relative; display: inline-flex; flex-direction: column; align-items: center; gap: 3px; vertical-align: bottom; }
-.pp-h-art { position: relative; display: block; width: var(--hw, 30px); height: var(--hw, 30px); }
-.pp-house.is-s { --hw: 26px; }
-.pp-house.is-l { --hw: clamp(48px, 13vw, 68px); }
-.kz-cut.pp-stop-disc { inset: 0; z-index: 1; }
-.pp-stop-list { position: absolute; z-index: 2; left: 24%; right: 20%; top: 26%; bottom: 26%; display: flex; flex-direction: column; justify-content: space-between; }
-.pp-stop-list i { display: flex; align-items: center; gap: 8%; height: 22%; }
-.pp-stop-list b { flex: none; display: grid; place-items: center; width: 22%; aspect-ratio: 1; border-radius: 50%; background: #FBF6EA;
-  font: 800 calc(var(--hw) * .13)/1 'Manrope', sans-serif; color: #1F2A44; }
-.pp-stop-list.is-ol b { width: 30%; border-radius: 3px; }
-.pp-stop-list u { flex: 1 1 auto; height: 55%; background: #FBF6EA; border-radius: 1px; text-decoration: none; opacity: .92; }
-.pp-stop-list i:nth-child(2) u { flex-basis: 80%; max-width: 80%; } .pp-stop-list i:nth-child(3) u { max-width: 62%; }
-.pp-stop-list.is-mess i { translate: -14% 0; rotate: -10deg; opacity: .7; } .pp-stop-list.is-mess i:nth-child(2) { translate: 10% -30%; rotate: 8deg; }
-.pp-stop-list.is-mess b { opacity: 0; }
-.pp-stop-plan { position: absolute; inset: 6%; border: 2px dashed #8E9C7E; border-radius: 50%; background: rgba(251, 246, 234, .45); }
-.pp-house.is-lit .pp-h-art { filter: drop-shadow(0 0 5px rgba(255, 196, 70, .75)); }
-/* Ждёт — выцвела и покосилась; починили — свой цвет и висит ровно (ступеньками). */
-.pp-h-art { transition: rotate .5s steps(5, end), filter .5s steps(5, end); }
-.pp-house.is-wait .pp-h-art { rotate: var(--tilt, 0deg); filter: grayscale(.85) opacity(.78); }
-.pp-h-ok { position: absolute; top: -4px; right: -6px; z-index: 5; display: grid; place-items: center; width: 15px; height: 15px; border-radius: 50%;
-  background: #2A8C7E; color: #fff; box-shadow: 0 0 0 2px #FBF6EA; }
-.pp-house.is-cur .pp-h-art::after { content: ''; position: absolute; left: 50%; bottom: -7px; translate: -50% 0; width: 70%; height: 3px; background: #E0643F; border-radius: 2px; }
-.pp-h-name { max-width: calc(var(--hw) * 1.7); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center;
-  font: 800 clamp(10.5px, 1.5dvh, 12.5px)/1.2 'Manrope', sans-serif; color: #1F2A44; }
-.pp-house:not(.is-lit) .pp-h-name { color: #8C8476; }
-.pp-street .pp-house:not(.is-lit) .pp-h-name { color: #6B5A3E; }
-
-.pp-strip { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 0 0 auto; }
-.pp-strip-row { display: flex; align-items: flex-end; gap: clamp(6px, 1.2vw, 12px); }
-.pp-strip-cap { display: flex; flex-direction: column; align-items: flex-end; font: 700 12.5px/1.25 'Manrope', sans-serif; color: #5B5446; text-align: right; }
-.pp-strip-cap b { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: #8C8476; }
-.pp-strip-cap span { font-size: 14px; color: #1F2A44; font-weight: 800; }
-.pp-strip.is-mini .pp-strip-row { gap: 10px; }
-.pp-strip.is-mini .pp-house.is-s { --hw: 24px; }
-
-/* Большая тропа — лужайка, пунктирная тропинка, привалы вдоль неё. */
-.pp-street { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(10px, 2dvh, 18px) 8px; align-items: end;
-  justify-items: center; padding: clamp(14px, 2.4dvh, 22px) 12px clamp(10px, 2dvh, 18px); flex: 0 0 auto; width: 100%; max-width: 860px; align-self: center; }
-.pp-street .kz-cut.pp-board { z-index: 0; }
-.pp-trail-path { position: absolute; z-index: 0; left: 6%; right: 6%; top: 40%; height: 0;
-  border-top: 3px dashed rgba(122, 96, 60, .55); }
-.pp-street .pp-house.is-l .pp-h-art::before { content: ''; position: absolute; bottom: -12px; left: 50%; translate: -50% 0; z-index: 0; width: 3px; height: 14px;
-  background: #7A603C; border-radius: 2px; }
-.pp-street-h { position: relative; z-index: 1; animation: kzDrop .66s steps(1, end) both; animation-delay: var(--dl, 0s); }
-.pp-street.is-glow .pp-house.is-lit .pp-h-art { animation: kzStamp .5s steps(1, end) both; animation-delay: var(--dl, 0s); }
-@media (min-width: 720px) {
-  .pp-house.is-l { --hw: clamp(64px, 13dvh, 112px); }
-  .pp-sheet-fin .pp-house.is-l { --hw: clamp(48px, 8dvh, 76px); }
-}
-/* Хук: дождь — с флажков слетают капли (stop-motion, с шорохом — kzOut). */
-.kz-cut.pp-scrap { left: 34%; top: 0; width: 26%; height: 22%; z-index: 6; animation: kzOut .9s steps(1, end) both; animation-delay: calc(var(--i, 0) * .09s); }
-.pp-street.is-blown .pp-h-art { animation: kzShake .5s steps(1, end) both; animation-delay: calc(var(--i, 0) * .07s); }
-.pp-wind-row { display: flex; justify-content: center; flex: 0 0 auto; }
-.kz-btn.pp-wind { min-width: 180px; font-size: 18px; }
-@media (prefers-reduced-motion: reduce) { .kz-cut.pp-scrap { display: none; } .pp-street.is-blown .pp-h-art { animation: none; } }
-.pp-intro-note { margin: 0; align-self: center; max-width: 560px; padding: 6px 14px; background: #FFF1C9; color: #5B4300; text-align: center;
-  font: 700 clamp(13.5px, 1.9dvh, 15.5px)/1.35 'Manrope', sans-serif;
-  clip-path: polygon(0 6%, 4% 0, 96% 5%, 100% 0, 99% 50%, 100% 100%, 50% 95%, 0 100%, 1% 50%); }
-
-/* ══ НАГЛЯДНАЯ ПОМОЩЬ ЗАДАНИЙ 3–5 ═════════════════════════════════════════════ */
-/* «Как должно быть» (t3) — как список в браузере: Times, точки перед пунктами. */
-.pp-target { display: flex; flex-direction: column; gap: 1px; align-self: stretch; padding: 6px 14px 8px; background: #FBF6EA; text-align: left; rotate: -.8deg;
-  box-shadow: inset 0 0 0 1.5px #E6DCC6, inset 4px 0 0 #F0B13F;
-  clip-path: polygon(0 6%, 4% 0, 96% 5%, 100% 0, 99% 50%, 100% 100%, 50% 95%, 0 100%, 1% 50%); }
-.pp-target-h { font: 800 11px 'Manrope', sans-serif; letter-spacing: .05em; text-transform: uppercase; color: #8A6A1A; }
-.pp-target-s { font: 400 clamp(15px, 2.2dvh, 19px)/1.3 'Times New Roman', Times, serif; color: #1F2A44; }
-.pp-target-s { display: flex; flex-direction: column; padding-left: 1.4em; }
-.pp-target-li { position: relative; line-height: 1.3; }
-.pp-target-li > i { position: absolute; left: -1.2em; width: 1em; text-align: center; font-style: normal; }
-/* Живой список условий своей статьи (t5). */
-.pp-check { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; padding: 6px 12px 7px; background: #FBF6EA;
-  box-shadow: inset 0 0 0 1.5px #E6DCC6; clip-path: polygon(0 6%, 4% 0, 96% 5%, 100% 0, 99% 50%, 100% 100%, 50% 95%, 0 100%, 1% 50%); }
-.pp-check-i { display: flex; align-items: center; gap: 6px; min-width: 0; font: 700 13px/1.25 'Manrope', sans-serif; color: #7C7466; }
-.pp-check-i.is-ok { color: #1E6B5F; }
-.pp-check-box { flex: none; display: grid; place-items: center; width: 16px; height: 16px; border-radius: 4px; box-shadow: inset 0 0 0 1.5px #C9BFAA; }
-.pp-check-i.is-ok .pp-check-box { background: #2A8C7E; color: #fff; box-shadow: none; animation: kzStamp .4s steps(1, end) both; }
-.op-side > .pp-left { align-self: flex-start; }
-
-/* ══ ФИНАЛ ═══════════════════════════════════════════════════════════════ */
-.pp-fin { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 980px; align-self: center; }
-.pp-fin-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.pp-stamp { display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; background: #2A8C7E; color: #fff; font: 800 16px 'Manrope', sans-serif; rotate: -2deg;
-  clip-path: polygon(0 8%, 6% 0, 50% 5%, 95% 0, 100% 10%, 98% 55%, 100% 92%, 94% 100%, 48% 95%, 5% 100%, 0 90%, 2% 45%); animation: kzStamp .5s steps(1, end) .6s both; }
-.pp-fin-pair { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
-.pp-fin-c .sample-code { max-height: 30dvh; overflow: auto; }
-.pp-fin-c .pp-pad { padding: 4px 2px; }
-.pp-skills { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-.pp-skill { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: #FBF6EA; color: #1F2A44; font: 700 14px 'Manrope', sans-serif;
-  clip-path: polygon(0 8%, 5% 0, 60% 6%, 98% 0, 100% 50%, 98% 100%, 40% 94%, 2% 100%, 0 50%); box-shadow: inset 0 0 0 1.5px #E6DCC6;
-  animation: kzLeft .6s steps(1, end) both; animation-delay: var(--dl, 0s); }
-.pp-skill .ic { color: #2A8C7E; flex: none; }
-.pp-seg { display: inline-flex; padding: 3px; gap: 3px; background: #E6DCC6; }
-.pp-seg-b { min-height: 40px; padding: 0 16px; border: none; background: transparent; cursor: pointer; font: 700 14px 'Manrope', sans-serif; color: #5B5446; }
-.pp-seg-b.is-on { background: #FBF6EA; color: #1F2A44; }
-.pp-only-narrow { display: flex; justify-content: center; }
-@media (min-width: 720px) {
-  .pp-only-narrow { display: none !important; }
-  .pp-fin-pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
-  .pp-skills { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-@media (max-width: 719px) {
-  .pp-fin-pair.view-page .pp-fin-c, .pp-fin-pair.view-code .pp-fin-b { display: none; }
-  .pp-sheet-fin .pp-skills { display: none; }
-}
-
-/* ══ ШАПКА ПРАКТИКИ (PStage) ═════════════════════════════════════════════
-   Коди нет: о голосе говорит кружок с полосками. Телефон — три колонки:
-   голос и лампочка | три дома улицы | пауза и счётчик. */
-.p-top, .p-voice-l { display: none; }
-.p-voice-r { display: contents; }
-/* Коди в шапке — на любой ширине (канон показывает кружок только на телефоне,
-   а на ноутбуке ставит Коди с облаком справа снизу; в практике облака нет). */
-.p-stage .ctl-voice { display: grid; }
-.p-hidden-hero { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-@media (max-width: 719px) {
-  .p-stage .chrome { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
-  .p-stage .p-voice-l { display: flex; align-items: center; gap: clamp(4px, 1.2vw, 9px); grid-column: 1; justify-self: start; }
-  .p-stage .p-voice-r { display: none; }
-  .p-stage .p-top { display: flex; grid-column: 2; justify-self: center; min-width: 0; }
-  .p-stage .chrome-side { grid-column: 3; justify-self: end; }
-  .p-stage .chrome > .eyebrow { display: none; }
-  .p-stage .kz-sheet .pp-strip:not(.is-mini) { display: none; }
-}
-
-/* ══ ТЕЛЕФОН: главный — редактор ═══════════════════════════════════════════
-   Если места мало, первой ужимается колонка браузера с помощью
-   (прокручивается внутри), а редактор с кнопками держат высоту, при которой
-   видно строку ввода и «Проверить». */
-@media (max-width: 719px) {
-  /* Кружок в углу листа налезал бы на кнопки < / >: на телефоне в заданиях его нет. */
-  .pp-sheet:not(.pp-sheet-intro):not(.pp-sheet-fin) .kz-deco-dot { display: none; }
-  .pp-sheet .kz-sheet-body { padding: 10px 10px 12px; gap: 7px; }
-  .kz-sheet-body > .op-work { min-height: 168px; }
-  .op-side { flex: 0 1 auto; min-height: 46px; overflow: auto; scrollbar-width: none; }
-  /* Образец, счётчик и список условий — само условие задания: не сжимаются, ужимается редактор. */
-  /* Списки в окне — сам результат задания: колонка браузера не сжимается, ужимается редактор. */
-  .op-side { flex-shrink: 0; overflow: visible; }
-  .op-side + .op-main { min-height: 96px; }
-  .pp-target { flex-direction: row; flex-wrap: wrap; align-items: baseline; column-gap: 8px; }
-  .op-side::-webkit-scrollbar { display: none; }
-  .op-main { flex: 1 1 auto; min-height: 116px; }
-  .pp-br .kz-br-page { height: 7.4em; }
-  .pp-check { gap: 3px 8px; padding: 4px 10px 5px; } .pp-check-i { font-size: 12px; }
-  .pp-target { padding: 4px 12px 5px; } .pp-target-s { font-size: 15px; }
-  .pp-br .kz-br-page { margin: 5px 9px 7px; }
-  .ed-line.is-static { font-size: .9em; }
-  .ed-line.is-static .ed-n { font-size: .8em; line-height: 2.01em; }
-}
-@media (max-height: 700px) {
-  .lesson-root { --cv-fs: clamp(11.5px, 3.2vw, 13.5px); }
-  .cv { line-height: 1.42; }
-  .kz-ask.pp-ask { font-size: 14.5px; padding: 5px 12px 6px; }
-}
-/* Совсем маленький телефон (320×568 и ниже). */
-@media (max-height: 600px) {
-  .lesson-root { --cv-fs: 11px; }
-  .lesson-root .kz-ask.pp-ask { font-size: 14px; line-height: 1.25; }
-  .lesson-root .pp-key, .lesson-root .pp-go { min-height: 40px; }
-  .lesson-root .pp-note { padding: 5px 10px; }
-  .lesson-root .pp-note-body { font-size: 14px; }
-  .lesson-root .cv { line-height: 1.3; padding-block: 4px; }
-  .lesson-root .ed { padding-block: 4px; }
-}
-
-/* ══ КЛАВИАТУРА ТЕЛЕФОНА ОТКРЫТА ═══════════════════════════════════════════
-   Видимой высоты — около половины экрана. Пока ученик печатает, на листе
-   только браузер, редактор, кнопки и заметка: улица, задание и помощь,
-   «Назад / Дальше» на это время уходят (задание есть в голосе и вернётся). */
-.is-kbd .stage-nav, .is-kbd .kz-sheet .pp-strip, .is-kbd .pp-extra, .is-kbd .kz-deco, .is-kbd .pp-drill-tag { display: none; }
-.is-kbd .pp-sheet .kz-sheet-body { padding: 6px 8px; gap: 5px; }
-/* Задание остаётся на виду (требование к практике) — одной-двумя короткими строками. */
-.is-kbd .kz-ask.pp-ask { font-size: 13px; line-height: 1.25; padding: 3px 10px 4px; }
-.is-kbd .kz-br-bar { height: 22px; }
-.is-kbd .kz-br-tool { display: none; }
-.is-kbd .pp-br .kz-br-page { margin: 3px 8px 4px; }
-.is-kbd .pp-br .kz-br-page { height: 2.9em; font-size: 12.5px; }
-.is-kbd .pp-check, .is-kbd .op-side > .pp-left { display: none; }
-/* Клавиатура: образец остаётся, а редактор может стать ниже — строка ввода видна, он прокручивается. */
-.is-kbd .op-side + .op-main { min-height: 0; }
-.is-kbd .op-side:has(.pp-target) + .op-main > .pp-edpad, .is-kbd .op-work.is-big .op-main > .pp-edpad { min-height: 52px; }
-.is-kbd .op-work.is-big .pp-edpad > .ed { min-height: 3em; }
-.is-kbd .kz-sheet-body > .op-work.is-big, .is-kbd .op-work.is-big .op-main { min-height: 0; }
-.is-kbd .op-side:has(.pp-target) .kz-br-page { height: 2.4em; }
-.is-kbd .op-side:has(.pp-target) { gap: 4px; }
-.is-kbd .pp-target { padding: 3px 10px 4px; } .is-kbd .pp-target-h { display: none; } .is-kbd .pp-target-s { font-size: 14px; }
-.is-kbd .op-main > .pp-edpad { min-height: 84px; }
-.is-kbd .kz-sheet-body > .pp-note { max-height: 34%; }
-.is-kbd .op-work { gap: 5px; }
-.is-kbd .pp-key, .is-kbd .pp-go { min-height: 40px; }
-.is-kbd .pp-note { padding: 4px 10px; }
-.is-kbd .pp-note-lbl, .is-kbd .pp-note-fb { display: none; }
-.is-kbd .pp-note-body { font-size: 14px; }
-.is-kbd .stage-content { padding-bottom: 2px; }
-
-/* Меньше движения: смысл остаётся, движение уходит. */
-@media (prefers-reduced-motion: reduce) {
-  .pp-note, .pp-street-h, .pp-street.is-glow .pp-h-art, .pp-stamp, .pp-skill, .pp-gap.is-led, .ed-edit.is-led-in, .tk-input.is-led-in { animation: none !important; }
-}
-/* Клавиатура: образец списка — в одну строку, чтобы редактор и кнопки остались на виду. */
-.is-kbd .pp-target-s { flex-direction: row; flex-wrap: wrap; column-gap: 1.6em; padding-left: 1.2em; font-size: 13.5px; }
-.is-kbd .pp-target { padding: 2px 10px 3px; }
-
-/* ══ УРОКИ 4–5: АТРИБУТЫ, ССЫЛКИ, КАРТИНКИ ══════════════════════════════════ */
-/* Атрибут в коде: имя бирюзовое, «=» коралловый, значение горчично-коричневое. */
-.ed-an { color: #1C7A6C; }
-.ed-eq { color: #D2522C; }
-.ed-av { color: #8A5300; }
-.ed-line.is-static .ed-an { color: #2C7D71; }
-/* Ссылка на странице — как в настоящем браузере: синяя, подчёркнутая, нажимается. */
-.pg-a { display: inline; padding: 0; margin: 0; border: none; background: none; font: inherit; color: #1A0DAB; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; text-align: left; }
-span.pg-a { cursor: default; }
-.pg-a:focus-visible { outline: 2px solid #E0643F; outline-offset: 2px; }
-.pg-back { margin-top: .3em; font-size: .9em; }
-/* Страница острова, куда привела ссылка; «Файл не найден». */
-.pg-site { display: flex; flex-direction: column; align-items: flex-start; }
-.pg-site-pic { position: relative; display: block; width: 3em; height: 2.4em; margin: .1em 0 .3em; }
-.pg-site-pic i { position: absolute; display: block; }
-.pg-site-parrots i:nth-child(1) { left: 34%; top: 6%; width: 36%; height: 88%; border-radius: 50% 50% 42% 42%; background: #E0643F; }
-.pg-site-parrots i:nth-child(2) { left: 18%; top: 14%; width: 20%; height: 18%; background: #F0B13F; clip-path: polygon(100% 0, 100% 100%, 0 60%); }
-.pg-site-parrots i:nth-child(3) { left: 50%; top: 42%; width: 30%; height: 44%; border-radius: 10% 80% 60% 40%; background: #2A8C7E; }
-.pg-site-cave i:nth-child(1) { left: 0; top: 10%; width: 100%; height: 90%; border-radius: 50% 50% 4px 4px; background: #8C7A6B; }
-.pg-site-cave i:nth-child(2) { left: 32%; top: 46%; width: 36%; height: 54%; border-radius: 50% 50% 0 0; background: #1F2A44; }
-.pg-site-cave i:nth-child(3) { left: 44%; top: 70%; width: 14%; height: 14%; border-radius: 3px; background: #F0B13F; }
-.pg-site-volcano i:nth-child(1) { left: 0; top: 30%; width: 100%; height: 70%; background: #7A4A2A; clip-path: polygon(38% 0, 62% 0, 100% 100%, 0 100%); }
-.pg-site-volcano i:nth-child(2) { left: 36%; top: 26%; width: 28%; height: 14%; background: #E0643F; border-radius: 50%; }
-.pg-site-volcano i:nth-child(3) { left: 40%; top: 0; width: 20%; height: 26%; background: #C9BFAA; border-radius: 50%; opacity: .8; }
-.pg-site-light i:nth-child(1) { left: 38%; top: 22%; width: 24%; height: 78%; background: repeating-linear-gradient(#FBF6EA 0 20%, #E0643F 20% 40%); clip-path: polygon(20% 0, 80% 0, 100% 100%, 0 100%); }
-.pg-site-light i:nth-child(2) { left: 34%; top: 6%; width: 32%; height: 18%; background: #F0B13F; border-radius: 50% 50% 0 0; }
-.pg-site-light i:nth-child(3) { left: 0; top: 4%; width: 34%; height: 12%; background: linear-gradient(90deg, transparent, #F0B13F); opacity: .7; }
-.pg-site-map i:nth-child(1) { left: 0; top: 10%; width: 100%; height: 80%; background: #CFE6EE; border-radius: 4px; }
-.pg-site-map i:nth-child(2) { left: 14%; top: 30%; width: 30%; height: 30%; background: #F3DFA8; border-radius: 50%; }
-.pg-site-map i:nth-child(3) { left: 56%; top: 46%; width: 28%; height: 28%; background: #F3DFA8; border-radius: 50%; }
-.pg-nf { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .15em; width: 100%; min-height: 100%; font-family: 'Manrope', sans-serif; text-align: center; }
-.pg-nf b { font-size: 1.05em; }
-.pg-nf span { font: 600 .78em 'JetBrains Mono', monospace; color: #7E7666; }
-.pg-nf-ic { width: 1.8em; height: 1.8em; border-radius: 50%; background: #C9BFAA radial-gradient(circle at 36% 40%, #1F2A44 0 7%, transparent 8%), radial-gradient(circle at 64% 40%, #1F2A44 0 7%, transparent 8%); }
-/* Картинка на странице (урок 5): фото, текст alt, сломанная картинка. */
-.pg-alt { display: inline; }
-.pg-noimg { display: inline-block; width: 0; height: 1em; }
-.pg-broken { display: inline-flex; align-items: center; gap: .3em; vertical-align: bottom; }
-.pg-broken-ic { position: relative; display: inline-block; flex: none; width: 1em; height: 1.15em; background: #F2EEE4; border: 1.5px solid #8C8476; border-radius: 2px;
-  clip-path: polygon(0 0, 100% 0, 100% 62%, 80% 52%, 62% 70%, 40% 55%, 18% 72%, 0 60%); }
-.pg-broken-ic::after { content: ''; position: absolute; left: 18%; top: 18%; width: 36%; height: 30%; border-radius: 50%; background: #9EC9E0; }
-
-/* ══ ОСТРОВА (карта 04p) ═════════════════════════════════════════════════ */
-.pp-street.pp-trail .kz-cut.pp-board .kz-cut-in { background: #CFE6EE !important; }
-.pp-trail-path { border-top-color: rgba(31, 42, 68, .45) !important; }
-.pp-street.is-blown .pp-trail-path { opacity: .15; }
-.pp-isle { position: absolute; z-index: 2; inset: 0; }
-.pp-isle i { position: absolute; display: block; }
-.pp-isle i:nth-child(1) { left: 46%; top: 16%; width: 6%; height: 54%; background: #1F2A44; border-radius: 2px; }
-.pp-isle i:nth-child(2) { left: 52%; top: 16%; width: 30%; height: 22%; background: var(--hc); clip-path: polygon(0 0, 100% 50%, 0 100%); transition: rotate .4s steps(4, end); transform-origin: left center; }
-.pp-isle i:nth-child(3) { left: 18%; top: 54%; width: 30%; height: 26%; border-radius: 50% 50% 40% 40%; background: #2A8C7E; }
-.pp-isle.is-mess i:nth-child(2) { rotate: 70deg; opacity: .55; }
-/* Файлы островов — подсказка-шпаргалка рядом с браузером. */
-.pp-files { display: flex; flex-direction: column; gap: 4px; align-self: stretch; padding: 6px 12px 8px; background: #FBF6EA; rotate: .5deg;
-  clip-path: polygon(0 4%, 3% 0, 97% 3%, 100% 0, 99% 50%, 100% 100%, 50% 97%, 0 100%, 1% 50%); filter: drop-shadow(0 2px 2px rgba(74, 48, 18, .25)); }
-.pp-files-h { font: 800 11px 'Manrope', sans-serif; letter-spacing: .05em; text-transform: uppercase; color: #8A6A1A; }
-.pp-files-row { display: flex; flex-wrap: wrap; gap: 4px 10px; }
-.pp-file { display: inline-flex; align-items: center; gap: 5px; padding: 1px 4px; border-radius: 4px; }
-.pp-file i { width: 9px; height: 9px; border-radius: 50%; background: var(--hc); }
-.pp-file code { font: 700 clamp(11.5px, 1.7dvh, 13.5px) 'JetBrains Mono', ui-monospace, monospace; color: #1F2A44; }
-.pp-file.is-hl { background: #FFE9A8; }
-.pp-files-tip { font: 600 11.5px 'Manrope', sans-serif; color: #7E7666; }
-.is-kbd .pp-files { display: none; }
-/* Телефон: своя работа (t5) — окно ниже, шпаргалка с файлами компактной строкой. */
+/* s1 — человечек и страница рядом */
+.z2-s1 { align-items: center; }
+.z2-s1-man { height: min(100%, 38dvh); flex: 0 0 auto; }
+.z2-s1-page { max-width: 640px; flex: 1 1 0; }
 @media (max-width: 759px) {
-  .op-work.is-big .pp-br .kz-br-page { height: 4.6em; }
-  .op-work.is-big .pp-files { padding: 3px 9px 4px; gap: 2px; }
-  .op-work.is-big .pp-files-h, .op-work.is-big .pp-files-tip { display: none; }
-  .op-work.is-big .pp-files-row, .op-work.is-big .pp-shelf-row { gap: 1px 8px; }
+  .z2-s1 { flex-direction: column; }
+  .z2-s1-man { display: none; }
+  .z2-s1 .z2-s1-page { width: 100%; align-self: stretch; flex: 0 0 auto; }
+  .z2-s1 .z2-s1-page .kz-br.z2-br { --brh: 34dvh; }   /* правило набора для низких экранов (20dvh) здесь мелко */
 }
-/* Открытая клавиатура: счётчик «осталось исправить» не занимает строку. */
-.is-kbd .pp-left { display: none; }
+
+/* s3 — бирюзовый лист body с шестью полосками */
+.z2-body { position: relative; width: min(100%, 620px); align-self: center; padding: clamp(26px, 4.5dvh, 40px) clamp(12px, 3vw, 26px) clamp(14px, 2.4dvh, 22px); }
+.kz-cut.z2-body-cut { inset: 0; }
+.kz-label.z2-body-lbl { left: 16px; top: -10px; }
+.z2-body-in { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: flex-start; gap: clamp(5px, 1dvh, 9px); }
+.z2-hstrip { position: relative; display: inline-flex; border: none; background: none; padding: 0; cursor: default; rotate: var(--r, 0deg);
+  filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .3)) drop-shadow(0 4px 6px rgba(20, 60, 55, .25)); }
+.z2-hstrip.is-tap { cursor: pointer; }
+.z2-hstrip-paper { display: inline-flex; align-items: center; gap: .5em; padding: .22em .7em .26em .55em; background: #FBF6EA; color: #1F2A44;
+  clip-path: polygon(0 8%, 6% 0, 50% 5%, 96% 0, 100% 12%, 98% 55%, 100% 92%, 94% 100%, 48% 95%, 4% 100%, 0 88%, 2% 45%); }
+.z2-hstrip .kz-tag { font: 700 clamp(11px, 1.6dvh, 14px) 'JetBrains Mono', monospace; }
+.z2-hstrip-w { font: 800 calc(clamp(24px, 4.6dvh, 42px) * var(--hs, 1)) / 1.1 'Manrope', sans-serif; letter-spacing: -.01em; }
+.z2-hstrip.is-hl .z2-hstrip-paper { background: #FFE9A8; }
+.z2-hstrip .led { top: -4px; right: -4px; }
+.z2-star { position: absolute; right: -16px; top: -14px; font-size: 26px; color: #F0B13F; text-shadow: 0 2px 2px rgba(74, 48, 18, .3); }
+.z2-loupe { position: absolute; right: -30px; top: 50%; translate: 0 -55%; width: 18px; height: 18px; border-radius: 50%; border: 3px solid #1F2A44; background: rgba(251, 246, 234, .7); }
+.z2-loupe::after { content: ''; position: absolute; right: -8px; bottom: -8px; width: 4px; height: 10px; background: #1F2A44; rotate: -45deg; border-radius: 2px; }
+
+/* s5, s6, s12, s14 — код и браузер рядом (на телефоне — в колонку) */
+.z2-s5 { align-items: stretch; }
+.z2-s5 > .kz-col { justify-content: center; }
+@media (max-width: 759px) {
+  .z2-s5 { flex-direction: column; gap: 10px; }
+  .z2-s5 .kz-br.z2-br { --brh: 26dvh; }
+}
+.kz-line.z2-hline { background: #FBF0D2; }
+.kz-line.z2-hline.kz-tap:not(:disabled) { cursor: pointer; }
+.kz-line.is-hover { background: #FFF1C9; outline: 2px dashed #E0643F; outline-offset: 2px; }
+.kz-line.z2-later { opacity: .45; }
+
+/* s7, s10 — поля для тега */
+.z2-slot .tk-input { min-width: 3.6em; }
+.z2-slot.is-act .tk-input { border-bottom-color: #1F2A44; }
+.kz-txt.z2-target { background: #FFE9A8; padding: 0 3px; border-radius: 3px; }
+
+/* s8 — три ответа */
+.z2-pick3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.z2-pick3 .kz-btn { font-size: 22px; }
+
+/* s9 — карточка абзаца с бирками над словами (как в ролике) */
+.z2-pcard { position: relative; align-self: center; width: min(100%, 600px); padding: clamp(18px, 3dvh, 26px) clamp(14px, 3vw, 28px) clamp(12px, 2dvh, 18px); }
+.kz-cut.z2-pcard-cut { inset: 0; }
+.kz-label.z2-pcard-lbl { left: 14px; top: -12px; }
+.z2-pcard-text { position: relative; z-index: 1; margin: 0; padding-top: 1.1em; font: 400 clamp(18px, 2.9dvh, 28px)/2.7 'Times New Roman', Times, serif; color: #1F2A44; }
+@media (max-width: 759px) { .z2-pcard-text { font-size: clamp(16px, 4.6vw, 19px); line-height: 2.9; } }
+.z2-w { position: relative; display: inline-block; line-height: 1.2; }
+.kz-label.z2-w-lbl { left: 50%; bottom: 100%; translate: -50% -4px; rotate: -4deg; }
+.z2-w.is-i .kz-label.z2-w-lbl { rotate: 4deg; }
+.z2-w-lbl .kz-label-paper { font-size: clamp(14px, 2.3dvh, 19px); padding: 2px 9px 3px; }
+.z2-w-txt { position: relative; z-index: 0; display: inline-block; transition: transform .4s steps(4, end); }
+.z2-w.is-b.is-on .z2-w-txt { font-weight: 700; }
+.z2-w.is-b.is-on .z2-w-txt::before { content: ''; position: absolute; z-index: -1; left: -.16em; right: -.16em; top: .12em; bottom: .02em; background: #F0B13F;
+  clip-path: polygon(0 12%, 6% 0, 50% 8%, 96% 0, 100% 14%, 98% 60%, 100% 92%, 92% 100%, 50% 90%, 5% 100%, 0 86%, 2% 48%); rotate: -1.5deg;
+  animation: kzStamp .5s steps(1, end) both; }
+.z2-w.is-i.is-on .z2-w-txt { font-style: italic; transform: skewX(-4deg); }
+.z2-w.is-say .z2-w-txt { text-shadow: 0 0 1px #1F2A44; }
+
+/* s11 — карточка «как должно быть» и кнопки-теги */
+.z2-card { position: relative; padding: 10px 16px 8px; background: #FBF6EA; align-self: center; width: min(100%, 520px);
+  clip-path: polygon(0 6%, 4% 0, 96% 5%, 100% 0, 99% 50%, 100% 100%, 50% 95%, 0 100%, 1% 50%);
+  font: 400 clamp(14px, 2dvh, 18px)/1.35 'Times New Roman', Times, serif; color: #1F2A44; box-shadow: inset 0 0 0 2px #2A8C7E; }
+.z2-card-h { display: block; margin-bottom: 2px; font: 800 11.5px 'Manrope', sans-serif; letter-spacing: .05em; text-transform: uppercase; color: #1E6B5F; }
+.kz-btn.z2-tagbtn .kz-tag { font: 700 22px 'JetBrains Mono', monospace; }
+.kz-btn.z2-tagbtn.is-ghost .kz-tk-n { color: #1F2A44; }
+.kz-btn.z2-tagbtn:not(.is-ghost) .kz-tk-b, .kz-btn.z2-tagbtn:not(.is-ghost) .kz-tk-n { color: #fff; }
+
+/* Ноутбук: браузер крупнее, чтобы страница читалась (лист широкий). */
+@media (min-width: 760px) {
+  .z2-br.kz-br { --brh: 46dvh; }
+  .z2-br.kz-br.is-short { --brh: 34dvh; }
+  .z2-s5 .z2-br.kz-br, .z2-s5 .z2-br.kz-br.is-short { --brh: 50dvh; aspect-ratio: 16 / 11; }
+  .z2-s1 .z2-s1-page .kz-br { --brh: 56dvh; }
+  .kz-s15 .z2-br.kz-br { --brh: 52dvh; }
+  .z2-s5 > .kz-col { max-width: none; }
+  .z2-br .kz-br-page { font-size: clamp(14px, 2.4dvh, 21px); }
+  /* Экраны «браузер над кодом и кнопками»: браузер умеренный, чтобы всё влезло. */
+  .kz-scene-col .z2-br.kz-br.is-short { --brh: 25dvh; }
+}
+/* Клавиатура телефона открыта (видимая высота ~330 px): задание, поле и кнопки на
+   виду; браузер — полоска вкладок и одна строка страницы; строки body и декор уходят. */
+.is-kbd .kz-deco, .is-kbd .kz-line.z2-edge, .is-kbd .kz-line.z2-ctx { display: none; }
+.is-kbd .kz-sheet-body { padding: 6px 8px; gap: 6px; }
+.is-kbd .kz-ask { font-size: 13.5px; padding: 4px 10px 5px; }
+.is-kbd .z2-br.kz-br { aspect-ratio: auto; max-width: 100%; padding-bottom: 6px; }
+.is-kbd .z2-br .kz-br-tool { display: none; }
+.is-kbd .z2-br .kz-br-bar { height: 22px; }
+.is-kbd .z2-br .kz-br-body { flex: 0 0 auto; height: 34px; }
+.is-kbd .z2-br .kz-br-page { inset: 4px 8px; font-size: 13px; }
+.is-kbd .kz-code { gap: 3px; }
+.is-kbd .kz-line { min-height: 26px; padding-top: 2px; padding-bottom: 2px; }
+.is-kbd .keys .key-b { min-height: 38px; }
+/* ══ НОУТБУК: меньше пустого листа — содержимое по центру листа и крупнее ══ */
+@media (min-width: 760px) {
+  .z2-sheet .kz-scene-col { justify-content: center; }
+  .z2-sheet .kz-scene-col > .kz-col { width: min(100%, 760px); }
+  /* Браузер и код — в ряд: лист широкий, а снизу место занимает облако Коди. */
+  .z2-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) { flex-direction: row; align-items: center; gap: clamp(14px, 2vw, 26px); width: 100%; max-width: 1000px; }
+  .z2-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .kz-br { flex: 1 1 0; min-width: 0; --brh: 40dvh; aspect-ratio: 16 / 11; }
+  .z2-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .kz-code { flex: 1.15 1 0; min-width: 0; }
+  .z2-sheet .kz-code { font-size: clamp(15px, 2.3dvh, 20px); gap: 6px; }
+  .z2-sheet .kz-line { min-height: 34px; }
+  .z2-sheet .kz-code.kz-code-sm { font-size: clamp(14px, 2.05dvh, 18px); }
+}
+
+/* ══ ПОЛОМКА ЗАМЕТНЕЕ: браузер вздрагивает, пустое место мигает пунктиром с «?» ══ */
+.z2-broken.kz-br { animation: kzShake .5s steps(1, end) .3s 2; }
+.z2-miss { position: relative; }
+.kz-dash.z2-miss { animation: z2Miss 1.1s steps(1, end) infinite; }
+.z2-miss::after { content: '?'; position: absolute; right: -10px; top: -12px; width: 18px; height: 18px; border-radius: 50%; background: #E0643F; color: #fff;
+  font: 800 12px/18px 'Manrope', sans-serif; text-align: center; box-shadow: 0 0 0 2px #FBF6EA; animation: z2Q 1.1s steps(1, end) infinite; }
+@keyframes z2Miss { 0%, 100% { border-color: #E0643F; } 50% { border-color: rgba(224, 100, 63, .25); } }
+@keyframes z2Q { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .z2-broken.kz-br, .kz-dash.z2-miss, .z2-miss::after { animation: none !important; }
+  .z2-hstrip, .z2-star, .z2-loupe { animation: none !important; }
+}
 `;

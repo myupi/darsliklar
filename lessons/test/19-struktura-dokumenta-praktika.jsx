@@ -1,7 +1,7 @@
 // =============================================================================
-// КУРС «HTML» · Модуль 1 · Практика к уроку 3 — «Походный блокнот». Дети 10–14, проходят сами.
+// КУРС «HTML» · Модуль 1 · Практика к уроку 1 — «Бумажная улица». Дети 10–14, проходят сами.
 // Один самодостаточный JSX: канон курса (до пометки «УРОК») + практика.
-// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/praktika-03/p03.src.jsx lessons/html/03p-spiski.jsx
+// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/praktika-01/p01.src.jsx lessons/html/01p-struktura-dokumenta.jsx
 // =============================================================================
 // =============================================================================
 // КУРС «HTML» — КАНОН УРОКОВ v1 · дети 8–10 лет · UZ / RU / EN
@@ -6661,41 +6661,53 @@ const CANON_LIB_CSS = `
 const CANON_SCREEN_CSS = CANON_SCREEN_CSS_BASE + CANON_MECH_CSS + CANON_DZ_CSS + CANON_CRT_CSS + CANON_LIB_CSS;
 // ==============================  У Р О К  =====================================
 // =============================================================================
-// ===== ПРАКТИКА К УРОКУ 3 · «Походный блокнот» · модуль html-m1-osnovy =====
+// ===== ПРАКТИКА К УРОКУ 1 · «Бумажная улица» · модуль html-m1-osnovy =====
 //
-// ЗАМЫСЕЛ (22.10.2026; каркас и вид — практики 01p и 02p, бумажный стиль урока 1).
-// Продолжение похода из урока 3: в блокноте Коди пять привалов на тропе, у
-// каждого свой список. В хуке ученик нажимает «Дождь!» — дождь размывает теги
-// у списков. Ученик восстанавливает четыре списка и пишет свой пятый.
+// ЗАМЫСЕЛ (22.10.2026, переделка по эталону — урок 1 «Бумажная страница»).
+// Стиль урока 1: бумажный коллаж — лист с рваным краем, вырезки с фактурой и
+// тенью, stop-motion, шорох бумаги, переход «разбор и сборка», бумажный браузер.
+// Сюжет: бумажная улица, каждый дом на ней — веб-страница. Ветер (одно касание
+// в хуке) разметал её: у домов пропали названия, тексты и куски кода. Ученик
+// чинит четыре дома кодом, а пятый — свой — строит сам. Улица — индикатор
+// продвижения: дом загорается, когда его страница готова.
 //
-// СЕМЬ СЛАЙДОВ (заказчик, 22.10.2026): хук · пять заданий от лёгкого к сложному,
-// у каждого своя механика:
-//   t1 рюкзак — дописать новый пункт <li>компас</li> в готовый список (строка);
-//   t2 тропа — шаги маршрута в ul: поменять оба тега на ol (правка в двух местах);
-//   t3 привал — строку «шапка, вода, карта» превратить в список ul (из текста — в структуру);
-//   t4 палатка — найти и починить два сломанных пункта (текст без li, <li> вместо
-//      </li>); счётчик «осталось исправить»;
-//   t5 свой список — с нуля: название h1 (урок 2) и список с тремя пунктами, по живому
-//      списку условий.
-// Только материал уроков 1–3: готовые head и body вокруг кода, h1, ul, ol, li.
+// СЕМЬ СЛАЙДОВ (заказчик, 22.10.2026): хук · пять заданий от самого лёгкого к
+// сложному, без выхода за грань понимания 10–14 лет · вывод.
+//   t1 пекарня — своё название между готовыми тегами title (поле в строке)
+//   t2 почта — дописать </title>: без него весь текст честно уезжает на вкладку
+//   t3 кинотеатр — блок body со своим текстом (три строки)
+//   t4 школа — нажать место, где кончается head, и вписать </head>
+//   t5 свой дом — внутри готового html написать head с title и body с текстом
 //
-// ОСОБЫЕ ПРАВИЛА (как в 01p и 02p): Коди — голова в кружке в шапке, без облака с
-// текстом; пишет ученик; проверка по «Проверить» (одна причина, со второй неудачи
-// — ступень подсказки); три ступени по лампочке, после образца — ещё одна задача;
-// браузер честный и без прокрутки; код не исполняется; конфетти только в финале.
+// ОСОБЫЕ ПРАВИЛА ПРАКТИКИ (требования заказчика — навык praktika)
+//   · Коди — голова в кружке в шапке, как в уроке 1 на телефоне (22.10.2026); облака
+//     с текстом нет — задание всегда написано строкой-полоской на листе.
+//   · Пишет ученик; кнопки < / > только вставляют символ в место курсора.
+//   · Проверка — только по «Проверить»; браузер обновляется сразу и показывает
+//     честно (текст из незакрытого title уходит на вкладку вместе с тегами).
+//   · Неудача — одна причина; со второй неудачи подряд — ещё и ступень
+//     подсказки; лампочка открывает ступени по просьбе; после образца третьей
+//     ступени — короткая дополнительная задача с новым содержимым.
+//   · Код ученика не исполняется: из него извлекается только текст.
+//   · Тон — как в эталоне: коротко, спокойно, узбекский как живая речь
+//     (Siz; yorliq — вкладка, oyna — окно, sahifa nomi — название).
+//   · Конфетти — только в финале.
 // =============================================================================
+
 const META = {
-  lessonId: 'html-03p-pohodnyy-bloknot',
+  lessonId: 'test-19-struktura-dokumenta-praktika',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: '3-dars amaliyoti. Sayohat daftari',
-    ru: 'Практика к уроку 3. Походный блокнот',
-    en: 'Lesson 3 practice. The trip notebook'
+    uz: '1-dars amaliyoti. Qog‘oz ko‘cha',
+    ru: 'Практика к уроку 1. Бумажная улица',
+    en: 'Lesson 1 practice. Paper Street'
   }
 };
 
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
 
+// Подстановка в трёхъязычную строку: fillL(FB.openAgain, { tag: 'body' }).
+// Значение подстановки — строка или { uz, ru, en }.
 const fillL = (node, vars) => {
   const out = {};
   LANGS.forEach((l) => {
@@ -6711,49 +6723,36 @@ const fillL = (node, vars) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ТРОПА — пять привалов. Задание n восстанавливает список привала n; последний —
-// список ученика. ol: true — у привала список с номерами (на карте — цифры).
+// БУМАЖНАЯ УЛИЦА — пять домов. Задание n чинит дом n; последний — свой дом ученика.
 // ─────────────────────────────────────────────────────────────────────────────
 const STREET = [
-  { id: 'pack',  c: '#2A8C7E', name: L3('Ryukzak', 'Рюкзак', 'Backpack') },
-  { id: 'trail', c: '#F0B13F', ol: true, name: L3('So‘qmoq', 'Тропа', 'Trail') },
-  { id: 'rest',  c: '#E0643F', name: L3('Dam olish', 'Привал', 'Rest stop') },
-  { id: 'tent',  c: '#5E8FB8', ol: true, name: L3('Chodir', 'Палатка', 'Tent') },
-  { id: 'mine',  c: '#1F2A44', name: L3('Sizning ro‘yxatingiz', 'Твой список', 'Your list') }
+  { id: 'bakery', c: '#E0643F', name: L3('Novvoyxona', 'Пекарня', 'Bakery') },
+  { id: 'post',   c: '#F0B13F', name: L3('Pochta', 'Почта', 'Post office') },
+  { id: 'cinema', c: '#1F2A44', name: L3('Kinoteatr', 'Кинотеатр', 'Cinema') },
+  { id: 'school', c: '#2A8C7E', name: L3('Maktab', 'Школа', 'School') },
+  { id: 'home',   c: '#5E8FB8', name: L3('Sizning uyingiz', 'Твой дом', 'Your house') }
 ];
 const HOME = STREET.length - 1;
 
-// Содержимое списков и дополнительных задач.
+// Содержимое страниц домов и дополнительных задач.
 const TXT = {
-  hike: L3('Sayohat', 'Поход', 'Trip'),
-  packH: L3('Ryukzakda', 'В рюкзаке', 'In the backpack'),
-  pack: [L3('fonar', 'фонарик', 'flashlight'), L3('suv', 'вода', 'water')],
-  add: L3('kompas', 'компас', 'compass'),
-  pack2: [L3('qalpoq', 'шапка', 'hat'), L3('choynak', 'чайник', 'kettle')],
-  add2: L3('xarita', 'карта', 'map'),
-  sample1: L3('qalpoq', 'шапка', 'hat'),
-  routeH: L3('Yo‘l', 'Маршрут', 'Route'),
-  route: [L3('Lagerdan chiqing', 'Выйди из лагеря', 'Leave the camp'), L3('Ko‘prikdan o‘ting', 'Перейди мостик', 'Cross the bridge'), L3('Tepalikka chiqing', 'Поднимись на холм', 'Climb the hill')],
-  sandH: L3('Buterbrod', 'Бутерброд', 'Sandwich'),
-  sand: [L3('Non oling', 'Возьми хлеб', 'Take some bread'), L3('Pishloq qo‘ying', 'Положи сыр', 'Add cheese'), L3('Non bilan yoping', 'Накрой хлебом', 'Cover with bread')],
-  restH: L3('Dam olishga', 'На привал', 'For the rest stop'),
-  rest: [L3('qalpoq', 'шапка', 'hat'), L3('suv', 'вода', 'water'), L3('xarita', 'карта', 'map')],
-  gamesH: L3('O‘yinlar', 'Игры', 'Games'),
-  games: [L3('to‘p', 'мяч', 'ball'), L3('arqon', 'скакалка', 'jump rope')],
-  sample3: [L3('non', 'хлеб', 'bread'), L3('pishloq', 'сыр', 'cheese')],
-  tentH: L3('Chodir', 'Палатка', 'Tent'),
-  tent: [L3('Chodirni yoying', 'Расстели палатку', 'Spread out the tent'), L3('Qoziqlarni qoqing', 'Вбей колышки', 'Drive in the pegs'), L3('Arqonlarni torting', 'Натяни верёвки', 'Pull the ropes')],
-  dishH: L3('Idishlar', 'Посуда', 'Dishes'),
-  dish: [L3('krujka', 'кружка', 'mug'), L3('qoshiq', 'ложка', 'spoon'), L3('kosa', 'миска', 'bowl')],
-  books: L3('Kitoblarim', 'Мои книги', 'My books'),
-  booksL: [L3('ertaklar', 'сказки', 'fairy tales'), L3('sarguzashtlar', 'приключения', 'adventures'), L3('fantastika', 'фантастика', 'sci-fi')]
+  bakeryText: L3('Har kuni ertalab issiq non.', 'Свежий хлеб каждое утро.', 'Fresh bread every morning.'),
+  bikeText: L3('Bu yerda velosipedlar tuzatiladi.', 'Здесь чинят велосипеды.', 'Bikes get fixed here.'),
+  postText: L3('Xatlar va posilkalar shu yerda.', 'Здесь письма и посылки.', 'Letters and parcels are here.'),
+  stop: L3('Bekat', 'Остановка', 'Bus stop'),
+  stopText: L3('Avtobus tez-tez keladi.', 'Автобус приходит часто.', 'The bus comes often.'),
+  pool: L3('Basseyn', 'Бассейн', 'Pool'),
+  schoolText: L3('Darslar ertalab boshlanadi.', 'Уроки начинаются утром.', 'Lessons start in the morning.'),
+  cafe: L3('Kafe', 'Кафе', 'Cafe'),
+  cafeText: L3('Choy va pirog.', 'Чай и пирог.', 'Tea and pie.'),
+  workshop: L3('Ustaxona', 'Мастерская', 'Workshop')
 };
 
 // Подписи интерфейса практики. up, down, mySite, hello, play нужны бумажному набору.
 const UI = {
   task: L3('{n}-topshiriq', 'Задание {n}', 'Task {n}'),
-  houseOf: L3('{n}/5-to‘xtash', 'Привал {n} из 5', 'Stop {n} of 5'),
-  map: L3('Sayohat xaritasi', 'Карта похода', 'Trip map'),
+  houseOf: L3('{n}/5-uy', 'Дом {n} из 5', 'House {n} of 5'),
+  map: L3('Ko‘cha xaritasi', 'Карта улицы', 'Street map'),
   works: L3('tayyor', 'готов', 'ready'),
   off: L3('kutmoqda', 'ждёт', 'waiting'),
   now: L3('hozir shu yerda', 'сейчас здесь', 'you are here'),
@@ -6773,182 +6772,238 @@ const UI = {
   ready: L3('Ish tayyor', 'Работа готова', 'Work is ready'),
   drill: L3('Yana bitta', 'Ещё одна', 'One more'),
   gapHere: L3('shu yerda tugaydimi?', 'здесь кончается?', 'ends here?'),
-  rain: L3('Yomg‘ir!', 'Дождь!', 'Rain!'),
-  target: L3('Brauzerda shunday bo‘ladi', 'Как должно быть', 'How it should look'),
-  left: L3('Tuzatish kerak: {n}', 'Осталось исправить: {n}', 'Left to fix: {n}'),
-  allFixed: L3('Hammasi tuzatildi', 'Всё исправлено', 'All fixed'),
-  needH1: L3('h1 — ro‘yxat nomi', 'h1 — название списка', 'h1 — the list name'),
-  needList: L3('ul yoki ol — ro‘yxat', 'ul или ol — список', 'ul or ol — the list'),
-  need3: L3('kamida 3 ta li band', 'хотя бы 3 пункта li', 'at least 3 li items'),
-  needClosed: L3('hamma teglar yopilgan', 'все теги закрыты', 'all tags are closed'),
+  wind: L3('Shamol!', 'Ветер!', 'Wind!'),
+  given: L3('tayyor', 'уже есть', 'given'),
+  bpTitle: L3('uy nomi', 'название дома', 'house name'),
+  bpBody: L3('oynadagi matn', 'текст в окне', 'text in the window'),
   nextLesson: L3('Keyingi dars', 'Следующий урок', 'Next lesson'),
-  next: L3('Havolalar va atributlar', 'Ссылки и атрибуты', 'Links and attributes'),
+  next: L3('Sarlavhalar va matn', 'Заголовки и текст', 'Headings and text'),
+  part: {
+    open: L3('ochuvchi teg', 'открывающий тег', 'opening tag'),
+    name: L3('nom', 'название', 'name'),
+    text: L3('matn', 'текст', 'text'),
+    close: L3('yopuvchi teg', 'закрывающий тег', 'closing tag')
+  },
   up: L3('Yuqoriga', 'Вверх', 'Up'),
   down: L3('Pastga', 'Вниз', 'Down'),
-  mySite: L3('Mening ro‘yxatim', 'Мой список', 'My list'),
+  mySite: L3('Mening saytim', 'Мой сайт', 'My site'),
   hello: L3('Salom, dunyo!', 'Привет, мир!', 'Hello, world!'),
   play: L3('O‘ynash', 'Играть', 'Play')
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБРАТНАЯ СВЯЗЬ ПРОВЕРКИ. Одна проблема — одна короткая фраза: что не так и
-// что сделать. Без «ошибка», «неправильно», «xato», «noto‘g‘ri».
+// что сделать. Без «ошибка», «неправильно», «xato», «noto‘g‘ri». Говорим о
+// правилах нашей страницы, а не обо всём HTML. Знак — с названием рядом.
 // ─────────────────────────────────────────────────────────────────────────────
 const FB = {
-  // Запись тегов, пары и порядок (разбор фрагмента — checkFrag)
-  pairMismatch: L3('{a} tegi </{b}> bilan yopilgan. Juft bir xil bo‘lishi kerak: </{a}>.', '{a} закрыт тегом </{b}>. Пара должна совпадать: </{a}>.', '{a} is closed with </{b}>. The pair must match: </{a}>.'),
-  unclosedIn: L3('{tag} hali yopilmagan, {next} esa allaqachon tugayapti.', '{tag} ещё не закрыт, а {next} уже заканчивается.', '{tag} isn’t closed yet, but {next} is already ending.'),
-  blockInBlock: L3('{tag} hali tugamadi, {next} esa boshlanyapti. Avval {tag} ni yoping.', '{tag} ещё не закончился, а {next} уже начинается. Сначала закрой {tag}.', '{tag} hasn’t ended, but {next} is already starting. Close {tag} first.'),
-  inlineOutside: L3('{tag} so‘z atrofiga qo‘yiladi: xatboshi yoki sarlavha ichida.', '{tag} ставят вокруг слова — внутри абзаца или заголовка.', '{tag} goes around a word, inside a paragraph or a heading.'),
-  textOutside: L3('Matn teglardan tashqarida turibdi. Ro‘yxat bandini li ichiga qo‘ying.', 'Текст стоит снаружи тегов. Пункт списка поставь внутрь li.', 'The text is outside the tags. Put the list item inside li.'),
+  // Запись тега
   noGt: L3('{tag} tegi oxirida o‘ng «>» qavs yetishmayapti.', 'У тега {tag} в конце не хватает уголка «>».', 'The {tag} tag is missing the bracket “>” at the end.'),
   noLt: L3('{tag} oldida chap «<» qavs yetishmayapti.', 'Перед {tag} не хватает уголка «<».', 'The bracket “<” is missing before {tag}.'),
   unknown: L3('«{raw}» tegida harflar adashgan: {tag} kerak.', 'В теге «{raw}» перепутаны буквы: нужно {tag}.', 'The letters in “{raw}” are mixed up: it should be {tag}.'),
-  unknownFar: L3('«{raw}» tegi bizga notanish. Bizda h1–h6, p, b, i, ul, ol va li teglari bor.', 'Тег «{raw}» нам не знаком. У нас есть теги h1–h6, p, b, i, ul, ol и li.', 'We don’t know the tag “{raw}”. We have the tags h1–h6, p, b, i, ul, ol and li.'),
+  unknownFar: L3('«{raw}» tegi bizga notanish. Sahifamizda faqat html, head, title va body bor.', 'Тег «{raw}» нам не знаком. На нашей странице только html, head, title и body.', 'We don’t know the tag “{raw}”. Our page has only html, head, title and body.'),
   slashEnd: L3('Qiya chiziq boshqa joyda turibdi. Yopuvchi tegda u chap «<» qavsdan keyin keladi: </{tag}>.', 'Косая черта стоит не там. В закрывающем теге она идёт сразу после уголка «<»: </{tag}>.', 'The slash is in the wrong spot. In a closing tag it goes right after the bracket “<”: </{tag}>.'),
   backslash: L3('Yopuvchi tegda qiya chiziq «/» turadi, bu yerda esa teskari «\\» chiziq.', 'В закрывающем теге нужна косая черта «/», а здесь обратная «\\».', 'A closing tag needs a slash “/”, but here it is a backslash “\\”.'),
   junk: L3('Qavslar ichiga faqat teg nomini yozamiz, matn esa tashqarida turadi.', 'Внутри уголков пишем только имя тега, а текст — снаружи.', 'Inside the brackets we write only the tag name; the text goes outside.'),
   emptyTag: L3('Bu yerda bo‘sh qavslar. Ichida teg nomi bo‘lishi kerak.', 'Здесь пустые уголки. Внутри должно быть имя тега.', 'These brackets are empty. A tag name goes inside.'),
+  // Пары и вложенность
   openAgain: L3('Bu yerda ochuvchi {tag} yozilgan. Yopuvchi tegga qiya chiziq kerak.', 'Здесь написан открывающий {tag}. Закрывающему тегу нужна косая черта.', 'This is an opening {tag}. The closing tag needs a slash.'),
+  notClosedOpen: L3('{tag} hali tugamadi, {next} esa allaqachon boshlanyapti.', '{tag} ещё не закончился, а {next} уже начинается.', '{tag} hasn’t ended yet, but {next} is already starting.'),
+  notClosedClose: L3('{tag} hali tugamadi, {next} esa allaqachon yopilyapti. {tag} nima bilan tugashini tekshiring.', '{tag} ещё не закончился, а {next} уже закрывается. Проверь, чем заканчивается {tag}.', '{tag} hasn’t ended yet, but {next} is already closing. Check how {tag} ends.'),
   unclosedEnd: L3('{tag} nima bilan tugashini tekshiring: yopuvchi teg yo‘q.', 'Проверь, чем заканчивается {tag}: закрывающего тега нет.', 'Check how {tag} ends: there is no closing tag.'),
+  unclosedHtmlOk: L3('Nom ham, matn ham tayyor. html nima bilan tugashini tekshiring.', 'Название и текст готовы. Проверь, чем заканчивается html.', 'The name and the text are ready. Check how html ends.'),
+  twice: L3('{tag} yuqorida allaqachon ochilgan. Sahifamizda u bitta.', '{tag} уже открыт выше. На нашей странице он один.', '{tag} is already opened above. Our page has only one.'),
   closeWithoutOpen: L3('Bu yerda yopuvchi {tag} bor, ochuvchisi esa yo‘q.', 'Здесь закрывающий {tag}, а открывающего нет.', 'There is a closing {tag} here, but no opening one.'),
-  textSame: L3('Teglar joyida! Faqat so‘zlar o‘zgarib qoldi: teglarni tuzatamiz, matnni esa avvalgidek qoldiramiz.', 'Теги в порядке! Только слова изменились: чиним теги, а текст оставляем как был.', 'The tags are fine! Only the words changed: we fix the tags and leave the text as it was.'),
-  headEmpty: L3('Sarlavha teglari joyida, ichi esa bo‘sh. Ro‘yxat nomini yozing.', 'Теги заголовка на месте, а внутри пусто. Напиши название списка.', 'The heading tags are in place, but empty. Write the list name.'),
-  // Списки (урок 3)
-  listText: L3('Ro‘yxatda matn li siz turibdi: unda nuqta ham, raqam ham yo‘q. Uni li ga o‘rang.', 'В списке текст стоит без li — у него нет ни точки, ни номера. Оберни его в li.', 'There’s text in the list without li: it gets no dot or number. Wrap it in li.'),
-  liOutside: L3('li faqat ul yoki ol ichida yoziladi, bu esa ro‘yxatdan tashqarida turibdi.', 'li пишут только внутри ul или ol, а этот стоит снаружи списка.', 'li goes only inside ul or ol, but this one is outside the list.'),
-  listNotClosed: L3('{tag} ro‘yxati hali yopilmagan, {next} esa boshlanyapti. Avval ro‘yxatni yoping.', 'Список {tag} ещё не закрыт, а {next} уже начинается. Сначала закрой список.', 'The {tag} list isn’t closed yet, but {next} is already starting. Close the list first.'),
-  // t1 — новый пункт
-  needLi: L3('Band li jufti ichida yoziladi: ochuvchi li, so‘z, yopuvchi li.', 'Пункт пишут в паре li: открывающий li, слово, закрывающий li.', 'An item goes in an li pair: the opening li, the word, the closing li.'),
-  notLi: L3('Bu yerga ro‘yxat bandi kerak: {tag} emas, li.', 'Здесь нужен пункт списка: не {tag}, а li.', 'This needs a list item: li, not {tag}.'),
-  oneItem: L3('Bitta band qo‘shing: bitta li jufti.', 'Добавь один пункт — одну пару li.', 'Add one item: one li pair.'),
-  wordSame: L3('Teglar joyida! So‘zni tekshiring: «{w}» kerak.', 'Теги на месте! Проверь слово: нужно «{w}».', 'The tags are right! Check the word: it should be “{w}”.'),
-  // t2 — ul → ol
-  stillUl: L3('Hozir bu ul, ya’ni nuqtalar. Tartib bilan boriladigan qadamlarga ol kerak.', 'Сейчас это ul — точки. Для шагов по порядку нужен ol.', 'Right now it’s ul: dots. Steps in order need ol.'),
-  itemsSame: L3('Teg to‘g‘ri! Faqat qadamlar o‘zgarib qoldi: ularni avvalgidek qoldiring.', 'Тег верный! Только шаги изменились — оставь их как были.', 'The tag is right! Only the steps changed: leave them as they were.'),
-  noList: L3('Ro‘yxat yo‘qolib qoldi. Qadamlar ro‘yxat ichida, har biri o‘z li ida bo‘lsin.', 'Список пропал. Шаги должны стоять в списке, каждый в своём li.', 'The list is gone. The steps should be in a list, each in its own li.'),
-  // t3 — из строки в список
-  needUl: L3('Nuqtali ro‘yxat kerak: ul, uning ichida li bandlari.', 'Нужен список с точками: ul, а внутри — пункты li.', 'You need a list with dots: ul, with li items inside.'),
-  notOl: L3('Narsalar tartibi muhim emas: bu yerga ol emas, ul kerak.', 'Порядок вещей не важен — здесь нужен ul, а не ol.', 'The order of things doesn’t matter: this needs ul, not ol.'),
-  countN: L3('Bandlar {n} ta bo‘lishi kerak: har bir narsaga bittadan.', 'Пунктов должно быть {n} — по одному на каждую вещь.', 'There should be {n} items, one for each thing.'),
-  leftText: L3('Satrda hali so‘zlar qoldi. Har bir narsa o‘z li ida bo‘lsin, p satrini esa o‘chiring.', 'В строке ещё остались слова. Каждая вещь — в своём li, а строку p сотри.', 'There are still words in the line. Each thing goes in its own li; delete the p line.'),
-  itemsWrong: L3('Ro‘yxat tayyor! Bandlarni tekshiring: ularda {list} bo‘lishi kerak.', 'Список готов! Проверь пункты: в них должны быть {list}.', 'The list is ready! Check the items: they should be {list}.'),
-  // t4 — починить пункты
-  keepList: L3('Bandlar tuzaldi! Faqat avvalgidek qaytaring: {tag} ro‘yxati va o‘sha qadamlar.', 'Пункты починены! Только верни как было: список {tag} и те же шаги.', 'The items are fixed! Just keep it as it was: a {tag} list with the same steps.'),
-  // t5 — свой список
-  artEmpty: L3('Hozircha bo‘sh. Ro‘yxat nomini h1 ga yozishdan boshlang.', 'Пока пусто. Начни с названия списка в h1.', 'It’s empty so far. Start with the list name in h1.'),
-  needH1: L3('Tepaga h1 sarlavha kerak: ro‘yxatingiz nomi.', 'Сверху нужен заголовок h1 — название твоего списка.', 'You need an h1 heading on top: your list’s name.'),
-  needList: L3('Sarlavha ostiga ro‘yxat kerak: ul yoki ol.', 'Под заголовком нужен список: ul или ol.', 'Under the heading you need a list: ul or ol.'),
-  needItems: L3('Ro‘yxatda kamida uchta matnli li bandi bo‘lsin.', 'В списке нужно хотя бы три пункта li с текстом.', 'The list needs at least three li items with text.'),
-  needOl: L3('Qadamlar uchun raqamli ro‘yxat kerak: ol.', 'Для шагов нужен список с номерами — ol.', 'Steps need a numbered list: ol.')
+  closeTwice: L3('{tag} ikki marta yopilgan. Ortiqcha yopuvchi tegni o‘chiring.', '{tag} закрыт два раза. Лишний закрывающий тег сотри.', '{tag} is closed twice. Delete the extra closing tag.'),
+  titleOutsideHead: L3('title ni head ichiga yozamiz: bu sahifa haqidagi ma’lumot.', 'title пишем внутри head: это сведения о странице.', 'title goes inside head: it is information about the page.'),
+  noHtmlOpen: L3('html dan boshlang: birinchi qatordan keyin ochuvchi html kerak.', 'Начни с html: после первой строки нужен открывающий html.', 'Start with html: after the first line you need an opening html.'),
+  afterHtml: L3('{tag} yopuvchi html dan keyin turibdi. Hammasini html ichiga yozamiz.', '{tag} стоит после закрывающего html. Всё пишем внутри html.', '{tag} comes after the closing html. Everything goes inside html.'),
+  htmlInside: L3('html hamma qismlarni o‘z ichiga oladi, shuning uchun u hammasidan tashqarida turadi.', 'html объединяет все части, поэтому он стоит снаружи всех.', 'html holds all the parts, so it goes outside everything.'),
+  headAfterBody: L3('head body dan oldin turadi: avval sahifa haqida ma’lumot, keyin oynada ko‘rinadigan qism.', 'head стоит перед body: сначала сведения о странице, потом то, что видно в окне.', 'head comes before body: first the page information, then what you see in the window.'),
+  textOutNone: L3('Matn html dan tashqarida turibdi. Oynada ko‘rinadigan matnni body ichiga yozamiz.', 'Текст стоит снаружи html. Текст для окна пишем внутри body.', 'The text is outside html. Text for the window goes inside body.'),
+  textOutHtml: L3('Matn body dan tashqarida. Oynada ko‘rinadigan matnni body ichiga yozamiz.', 'Текст стоит вне body. Текст для окна пишем внутри body.', 'The text is outside body. Text for the window goes inside body.'),
+  textOutHead: L3('head ichida matnni faqat title ichiga yozamiz.', 'В head текст пишем только внутри title.', 'Inside head, text goes only inside title.'),
+  missHtml: L3('html jufti yo‘q. U birinchi qatordan keyin ochiladi va eng oxirida yopiladi.', 'Нет пары html. Она открывается после первой строки и закрывается в самом конце.', 'There is no html pair. It opens after the first line and closes at the very end.'),
+  missHead: L3('head qismi yo‘q. U html ichida, body dan oldin turadi. Unda title bo‘ladi.', 'Нет части head. Она стоит внутри html перед body, в ней — title.', 'There is no head part. It goes inside html before body, and title lives in it.'),
+  missTitle: L3('head ichiga nomli title qo‘ying.', 'В head нужен title с названием.', 'head needs a title with a name.'),
+  missBody: L3('body qismi yo‘q. U head dan keyin keladi.', 'Нет части body. Она идёт после head.', 'There is no body part. It comes after head.'),
+  titleEmpty: L3('title joyida, lekin bo‘sh. Teglar orasiga nom yozing.', 'title на месте, но пустой. Напиши название между тегами.', 'title is there, but it is empty. Write a name between the tags.'),
+  bodyEmpty: L3('body teglari joyida, ichi esa bo‘sh. Matn yozing.', 'Теги body на месте, а внутри пусто. Напиши текст.', 'The body tags are in place, but it is empty inside. Write the text.'),
+  noDoctype: L3('Birinchi qator yo‘qoldi. Boshiga <!DOCTYPE html> ni qaytaring.', 'Первая строка пропала. Верни <!DOCTYPE html> в начало.', 'The first line is gone. Put <!DOCTYPE html> back at the start.'),
+  textOnly: L3('Matn bor, lekin teglar yo‘q. Sahifa teglardan quriladi: html dan boshlang.', 'Текст есть, а тегов нет. Страница строится из тегов: начни с html.', 'There is text but no tags. A page is built from tags: start with html.'),
+  docEmpty: L3('Hozircha faqat birinchi qator bor. Ochuvchi html dan boshlang.', 'Пока есть только первая строка. Начни с открывающего html.', 'There is only the first line so far. Start with an opening html.'),
+  // Поля в строках (t1, t2)
+  fieldTags: L3('Teglar o‘z joyida turibdi. Bu yerga faqat so‘z yozing, qavslarsiz.', 'Теги уже стоят на месте. Здесь нужны только слова, без уголков.', 'The tags are already in place. Only words here, no brackets.'),
+  titleBlank: L3('title hozircha bo‘sh. Nomni title teglari orasiga yozing.', 'title пока пустой. Напиши название между тегами title.', 'title is empty so far. Write a name between the title tags.'),
+  fieldLetters: L3('Nomni harflar bilan yozing: kamida bitta so‘z.', 'Напиши название буквами — хотя бы одно слово.', 'Write the name in letters, at least one word.'),
+  // Строка title (t3, t4)
+  lineEmpty: L3('Qator hozircha bo‘sh. Unga title tegi, nom va yopuvchi tegni yozing.', 'Строка пока пустая. Напиши в ней тег title, название и закрывающий тег.', 'The line is empty so far. Write the title tag, the name and the closing tag.'),
+  lineTextOnly: L3('Hozircha bu yerda faqat matn. Sahifa nomi title teglari orasida turadi.', 'Пока здесь только текст. Название страницы стоит между тегами title.', 'There is only text here so far. The page name stands between title tags.'),
+  lineWrongTag: L3('Sahifa nomi title ichida yoziladi, bu yerda esa {tag} turibdi.', 'Название страницы пишут в title, а здесь стоит {tag}.', 'The page name goes in title, but here you have {tag}.'),
+  lineNoOpen: L3('Nomdan oldin ochuvchi title yo‘q.', 'Перед названием нет открывающего title.', 'There is no opening title before the name.'),
+  lineNoClose: L3('Nom bor. Endi uni yoping: nomdan keyin yopuvchi title kerak.', 'Название есть. Теперь закрой его: после названия нужен закрывающий title.', 'The name is there. Now close it: put a closing title after the name.'),
+  lineTextOutside: L3('Matnning bir qismi teglardan tashqarida. Nomni ochuvchi va yopuvchi title orasiga yozamiz.', 'Часть текста стоит снаружи тегов. Название пишем между открывающим и закрывающим title.', 'Part of the text is outside the tags. The name goes between the opening and the closing title.'),
+  lineOrder: L3('Avval ochuvchi title, keyin nom, keyin yopuvchi title.', 'Сначала открывающий title, потом название, потом закрывающий.', 'First the opening title, then the name, then the closing one.'),
+  lineNoName: L3('Teglar joyida, orasi esa bo‘sh. Sahifa nomini yozing.', 'Теги на месте, а между ними пусто. Напиши название страницы.', 'The tags are in place, but there is nothing between them. Write the page name.'),
+  lineWrongName: L3('Teglar joyida! Nomni tekshiring: «{name}» kerak.', 'Теги на месте! Проверь название: нужно «{name}».', 'The tags are right! Check the name: it should be “{name}”.'),
+  // Блок body (t5)
+  blockEmpty: L3('Bu yer hozircha bo‘sh. Matnli body qismini yozing.', 'Здесь пока пусто. Напиши часть body с текстом.', 'It is empty here so far. Write a body part with text.'),
+  blockTextOnly: L3('Matn bor, lekin unga o‘z qismi kerak. Uni body ichiga qo‘ying.', 'Текст есть, но ему нужна своя часть. Поставь его внутрь body.', 'The text is there, but it needs its own part. Put it inside body.'),
+  blockWrongTag: L3('Oynadagi matnni body ichiga yozamiz, bu yerda esa {tag} turibdi.', 'Текст для окна пишем в body, а здесь стоит {tag}.', 'Text for the window goes in body, but here you have {tag}.'),
+  blockOrder: L3('Avval ochuvchi body, keyin matn, keyin yopuvchi body.', 'Сначала открывающий body, потом текст, потом закрывающий body.', 'First the opening body, then the text, then the closing body.'),
+  // Один закрывающий тег (t6)
+  pickFirst: L3('Avval {tag} qayerda tugashi kerakligini bosing.', 'Сначала нажми место, где должен закончиться {tag}.', 'First tap the place where {tag} should end.'),
+  closeEmpty: L3('Qator hozircha bo‘sh. Bu yerga yopuvchi {tag} tegini yozing.', 'Строка пока пустая. Напиши здесь закрывающий тег {tag}.', 'The line is empty so far. Type the closing {tag} tag here.'),
+  closeOther: L3('Bu yerda {tag} tugaydi, shuning uchun yopuvchi {tag} kerak.', 'Здесь заканчивается {tag}, поэтому нужен закрывающий {tag}.', '{tag} ends here, so you need a closing {tag}.'),
+  closeText: L3('Bu qatorga faqat teg yoziladi, matn kerak emas.', 'В этой строке нужен только тег, без текста.', 'This line needs only the tag, no text.'),
+  closeOne: L3('Bitta yopuvchi {tag} yetarli.', 'Достаточно одного закрывающего {tag}.', 'One closing {tag} is enough.')
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ВСЕ ТЕКСТЫ ЭКРАНОВ. Реплики (say, hints, praise, done …) звучат; подписи
-// (eyebrow, order, ask, note, empty …) только печатаются.
+// ВСЕ ТЕКСТЫ ЭКРАНОВ. Реплики (say, cast, hints, praise, done, msgs …) звучат;
+// подписи (eyebrow, order, plan …) только печатаются.
 // ─────────────────────────────────────────────────────────────────────────────
 const C = {
-  // Хук: тропа целая → касание «Дождь!» → флажки выцветают, капли смывают теги.
+  // Хук: улица целая → касание «Ветер!» → дома выцветают и косятся, вывески улетают.
   intro: {
-    eyebrow: L3('Sayohat daftari', 'Походный блокнот', 'Trip notebook'),
-    say: L3('Bu mening sayohat daftarim: so‘qmoq bo‘yida beshta to‘xtash joyi, har birida o‘z ro‘yxati bor.',
-      'Это мой походный блокнот: пять привалов на тропе, у каждого свой список.',
-      'This is my trip notebook: five stops on the trail, each with its own list.'),
-    blown: L3('Voy! Yomg‘ir yog‘di va ro‘yxatlarning teglarini yuvib ketdi.', 'Ой! Пошёл дождь и размыл теги у списков.', 'Oh no! Rain came and washed the tags off the lists.'),
-    plan: L3('To‘rtta ro‘yxatni kod bilan tiklaymiz, beshinchisini esa o‘zingiz yozasiz. Har bir topshiriq oldingisidan biroz qiyinroq.',
-      'Восстановим четыре списка кодом, а пятый напишешь своими руками. Каждое задание чуть сложнее прошлого.',
-      'We’ll restore four lists with code, and you’ll write the fifth yourself. Each task is a bit harder than the last.'),
-    ask: L3('«Yomg‘ir!» tugmasini bosing', 'Нажми «Дождь!»', 'Tap “Rain!”'),
-    order: L3('To‘rtta ro‘yxatni tiklang, beshinchisini o‘zingiz yozing. Kodni siz yozasiz.', 'Восстанови четыре списка, а пятый напиши своими руками. Код пишешь ты.', 'Restore four lists and write the fifth yourself. You write the code.'),
-    note: L3('Ro‘yxati tayyor bo‘lgan to‘xtash joyi yonadi. Jarima yo‘q: xohlagancha tekshiring.', 'Привал загорается, когда его список готов. Штрафов нет — проверяй сколько хочешь.', 'A stop lights up when its list is ready. No penalties: check as often as you like.')
+    eyebrow: L3('Qog‘oz ko‘cha', 'Бумажная улица', 'Paper Street'),
+    say: L3('Bu qog‘oz ko‘cha. Undagi har bir uy veb-sahifa: yorliqda nomi, oynada matni.',
+      'Это бумажная улица. Каждый дом на ней — веб-страница: на вкладке название, в окне текст.',
+      'This is Paper Street. Every house on it is a web page: the name on the tab, the text in the window.'),
+    blown: L3('Voy, qarang! Shamol uylarning nomlari, matnlari va kod bo‘laklarini uchirib ketdi.',
+      'Ой! Ветер унёс у домов названия, тексты и куски кода.',
+      'Oh no! The wind blew away the houses’ names, texts and pieces of code.'),
+    plan: L3('To‘rtta uyni kod bilan tuzatamiz, beshinchisini esa o‘zingiz qurasiz. Har bir topshiriq oldingisidan biroz qiyinroq.',
+      'Починим четыре дома кодом, а пятый построишь своими руками. Каждое задание чуть сложнее прошлого.',
+      'We’ll fix four houses with code, and you’ll build the fifth yourself. Each task is a bit harder than the last.'),
+    ask: L3('«Shamol!» tugmasini bosing', 'Нажми «Ветер!»', 'Tap “Wind!”'),
+    order: L3('To‘rtta uyni tuzating, beshinchisini o‘zingiz quring. Kodni siz yozasiz.',
+      'Почини четыре дома, а пятый построй своими руками. Код пишешь ты.',
+      'Fix four houses and build the fifth yourself. You write the code.'),
+    note: L3('Sahifasi tayyor bo‘lgan uy yonadi. Jarima yo‘q: xohlagancha tekshiring.',
+      'Дом загорается, когда его страница готова. Штрафов нет — проверяй сколько хочешь.',
+      'A house lights up when its page is ready. No penalties: check as often as you like.')
   },
 
-  // 1 · самое лёгкое: один новый пункт в готовом списке.
+  // 1 · самое лёгкое: слово между готовыми тегами.
   t1: {
-    order: L3('Ro‘yxatga yana bitta band qo‘shing: kompas', 'Добавь в список ещё один пункт: компас', 'Add one more item to the list: compass'),
-    say: L3('Ryukzakka kompas ham kerak. Bo‘sh qatorga uni yangi band qilib yozing: li ichida.', 'В рюкзак нужен ещё компас. Напиши его в пустой строке новым пунктом — внутри li.', 'The backpack needs a compass too. Type it on the empty line as a new item, inside li.'),
+    order: L3('Novvoyxonaga nom o‘ylab toping va uni title ichiga yozing',
+      'Придумай пекарне название и напиши его внутри title',
+      'Make up a name for the bakery and type it inside title'),
+    say: L3('Bu novvoyxona sahifasi. Yorliqda faqat index.html turibdi, chunki sahifaning nomi yo‘q. Nom o‘ylab toping va uni title ichiga yozing.',
+      'Это страница пекарни. На вкладке только index.html: у страницы нет названия. Придумай его и напиши внутри title.',
+      'This is the bakery’s page. The tab only says index.html: the page has no name. Make one up and type it inside title.'),
     hints: [
-      L3('Ro‘yxatning har bir bandi alohida teglar juftida. Band tegi qaysi?', 'Каждый пункт списка — отдельная пара тегов. Какой тег у пункта?', 'Each list item is its own pair of tags. Which tag is an item?'),
-      L3('Bu li: ochuvchi li, so‘z va qiya chiziqli yopuvchi li.', 'Это li: открывающий li, слово и закрывающий li с косой чертой.', 'It’s li: the opening li, the word and the closing li with a slash.'),
-      L3('Mana boshqa band qanday yoziladi. Kompasni ham shunday yozing.', 'Вот как пишется другой пункт. Компас напиши так же.', 'Here’s how another item is written. Write the compass the same way.')
+      L3('Sahifa nomi brauzer yorlig‘ida ko‘rinadi. Qaysi teg bunga javob beradi?',
+        'Название страницы видно на вкладке браузера. Какой тег за него отвечает?',
+        'The page name shows on the browser tab. Which tag is in charge of it?'),
+      L3('head ichiga qarang: u yerda title qatori bor.', 'Посмотри внутрь head: там есть строка title.', 'Look inside head: there is a title line.'),
+      L3('title teglari orasidagi bo‘sh joyni bosing va nom yozing. Gul do‘koni «Guldasta» deb atalishi mumkin, nonvoyxonaga esa o‘zingiz nom o‘ylang.',
+        'Нажми на пустое место между тегами title и напиши название. У цветочного магазина могло быть «Букет», а пекарне придумай своё.',
+        'Tap the empty space between the title tags and type a name. A flower shop might be called “Bouquet”; make up one for the bakery.')
     ],
-    praise: L3('To‘g‘ri! Kompas oldida nuqta paydo bo‘ldi.', 'Есть! Перед компасом появилась точка.', 'Yes! A dot appeared before the compass.'),
-    done: L3('Ryukzak ro‘yxati tayyor.', 'Список рюкзака уже готов.', 'The backpack list is ready.'),
-    drill: L3('Bu ro‘yxatga xaritani qo‘shing: yangi li bandi.', 'Добавь в этот список карту — новым пунктом li.', 'Add a map to this list as a new li item.')
+    praise: L3('To‘g‘ri! Nom yorliqda chiqdi. Novvoyxona ochildi.', 'Есть! Название на вкладке — пекарня открылась.', 'Yes! The name is on the tab, and the bakery is open.'),
+    done: L3('Novvoyxonaning nomi bor.', 'У пекарни уже есть название.', 'The bakery already has a name.'),
+    drill: L3('Bu sahifaga ham nom bering: uni title ichiga yozing.', 'Дай название и этой странице: напиши его внутри title.', 'Name this page too: type the name inside title.')
   },
 
-  // 2 · правка в двух местах: ul → ol.
+  // 2 · один тег: дописать </title>.
   t2: {
-    order: L3('Yo‘l qadamlarini raqamli ro‘yxat qiling', 'Сделай шаги маршрута списком с номерами', 'Make the route steps a numbered list'),
-    say: L3('Bu so‘qmoq bo‘ylab yo‘l. Qadamlar tartib bilan bajariladi, lekin ro‘yxat nuqtali. Uni raqamli qiling: ikkala tegni almashtiring.',
-      'Это маршрут по тропе. Шаги идут по порядку, а список с точками. Сделай его с номерами: поменяй оба тега.',
-      'This is the route along the trail. The steps go in order, but the list has dots. Make it numbered: change both tags.'),
+    order: L3('Qator oxiriga yopuvchi title tegini yozing', 'Допиши в конце строки закрывающий тег title', 'Add the closing title tag at the end of the line'),
+    say: L3('Qarang: pochta sahifasining hamma matni yorliqqa chiqib ketdi. title boshlangan, lekin yopilmagan. Qator oxiriga yopuvchi title tegini yozing.',
+      'Смотри: весь текст почты уехал на вкладку. title начался, но не закрылся. Допиши в конце строки закрывающий тег title.',
+      'Look: all the post office text ended up on the tab. title started but never closed. Add the closing title tag at the end of the line.'),
     hints: [
-      L3('Qaysi teg raqamli ro‘yxat yasaydi?', 'Какой тег делает список с номерами?', 'Which tag makes a numbered list?'),
-      L3('Bu ol. ul ni ol ga ikki joyda almashtiring: ochuvchi va yopuvchi tegda.', 'Это ol. Поменяй ul на ol в двух местах: в открывающем и закрывающем теге.', 'It’s ol. Change ul to ol in two places: the opening and the closing tag.'),
-      L3('Mana raqamli ro‘yxatning boshi va oxiri. Bandlar o‘rtada qoladi.', 'Вот начало и конец списка с номерами. Пункты остаются посередине.', 'Here are the start and end of a numbered list. The items stay in the middle.')
+      L3('Nom boshlandi, lekin tugamadi. Qator oxirida nima yetishmayapti?',
+        'Название началось, но не закончилось. Чего не хватает в конце строки?',
+        'The name started but didn’t end. What is missing at the end of the line?'),
+      L3('Yopuvchi teg ochuvchisi bilan bir xil so‘z. Faqat chap «<» qavsdan keyin qiya chiziq «/» turadi.',
+        'Закрывающий тег — то же слово, только после уголка «<» стоит косая черта «/».',
+        'A closing tag is the same word, just with a slash “/” after the bracket “<”.'),
+      L3('Mana boshqa teg qanday yopiladi. title ni ham shunday yoping.', 'Вот как закрывается другой тег. title закрой так же.', 'Here is how another tag closes. Close title the same way.')
     ],
-    praise: L3('To‘g‘ri! Qadamlar raqamlandi: endi yo‘l aniq.', 'Верно! У шагов номера — теперь маршрут понятен.', 'Right! The steps have numbers: now the route is clear.'),
-    done: L3('Yo‘l ro‘yxati raqamlangan.', 'Маршрут уже с номерами.', 'The route already has numbers.'),
-    drill: L3('Buterbrod retsepti ham nuqtali. Uni ham raqamli qiling.', 'Рецепт бутерброда тоже с точками. Сделай и его с номерами.', 'The sandwich recipe has dots too. Make it numbered as well.')
+    praise: L3('To‘g‘ri! title yopildi, matn yana oynaga qaytdi.', 'Есть! title закрылся, и текст вернулся в окно.', 'Yes! title is closed, and the text is back in the window.'),
+    done: L3('Pochta sahifasi joyida.', 'Страница почты в порядке.', 'The post office page is fine.'),
+    drill: L3('Bu yerda ham title yopilmagan. Qator oxiriga yopuvchi tegni yozing.', 'И здесь title не закрыт. Допиши закрывающий тег в конце строки.', 'title isn’t closed here either. Add the closing tag at the end of the line.')
   },
 
-  // 3 · из текста — в структуру: строка через запятую → список ul.
+  // 3 · блок из трёх строк: body со своим текстом.
   t3: {
-    order: L3('Satrdagi narsalarni nuqtali ro‘yxatga ajrating', 'Разложи вещи из строки в список с точками', 'Turn the things in the line into a list with dots'),
-    say: L3('Dam olish uchun narsalar bitta satrda vergul bilan yozilgan. Ulardan nuqtali ro‘yxat yasang: ul, ichida har bir narsa o‘z li ida.',
-      'Вещи для привала записаны одной строкой через запятую. Сделай из них список с точками: ul, а внутри каждая вещь в своём li.',
-      'The things for the rest stop are written in one line with commas. Make them a list with dots: ul, with each thing in its own li.'),
+    order: L3('body qismini yozing: bugun kinoda nima bor?', 'Напиши часть body: что сегодня в кино?', 'Write the body part: what’s on at the cinema today?'),
+    say: L3('Kinoteatr oynasi bo‘m-bo‘sh, chunki body qismi yo‘q. Uni o‘zingiz yozing: ochuvchi body, matn va yopuvchi body.',
+      'Окно кинотеатра пустое: части body нет. Напиши её: открывающий body, текст и закрывающий body.',
+      'The cinema window is empty: there is no body part. Write it: the opening body, the text and the closing body.'),
+    empty: L3('Matn shu yerda chiqadi', 'Здесь появится текст', 'The text will appear here'),
     hints: [
-      L3('Satrda nechta narsa bo‘lsa, shuncha li bandi bo‘ladi.', 'Сколько вещей в строке — столько пунктов li.', 'As many things as in the line, as many li items.'),
-      L3('Avval ul ni oching, ichiga uchta li yozing, oxirida ul ni yoping. p satrini o‘chirsa bo‘ladi.', 'Сначала открой ul, внутри напиши три li, в конце закрой ul. Строку p можно стереть.', 'First open ul, write three li inside, then close ul. You can delete the p line.'),
-      L3('Mana boshqa narsalar bilan ro‘yxat. Siznikini ham shunday tuzing.', 'Вот список с другими вещами. Свой построй так же.', 'Here’s a list with other things. Build yours the same way.')
+      L3('Oynadagi matn hujjatning o‘z qismida turadi. U teg bilan boshlanib, teg bilan tugaydi.',
+        'Текст в окне стоит в своей части документа. Она начинается тегом и заканчивается тегом.',
+        'Window text sits in its own part of the document. It starts with a tag and ends with a tag.'),
+      L3('Bu qism body. U head dan keyin boshlanadi va html yopilishidan oldin tugaydi.',
+        'Это часть body. Она начинается после head и заканчивается до закрытия html.',
+        'This part is body. It starts after head and ends before html closes.'),
+      L3('Mana boshqa matnli namuna. Kinoteatr uchun ham shunday yozing.', 'Вот образец с другим текстом. Для кинотеатра напиши так же.', 'Here’s a sample with other text. Write the cinema one the same way.')
     ],
-    praise: L3('Ajoyib! Narsalar endi ro‘yxatda, har birida nuqta.', 'Здорово! Вещи теперь в списке, у каждой точка.', 'Nice! The things are in a list now, each with a dot.'),
-    done: L3('Dam olish ro‘yxati tayyor.', 'Список для привала уже готов.', 'The rest stop list is ready.'),
-    drill: L3('O‘yinlar uchun narsalarni ham ro‘yxatga ajrating.', 'Разложи в список и вещи для игр.', 'Turn the things for games into a list too.')
+    praise: L3('To‘g‘ri! Matn oynada. Kinoteatr ochildi.', 'Верно! Текст в окне — кинотеатр открыт.', 'Right! The text is in the window, and the cinema is open.'),
+    done: L3('Kinoteatr oynasida matn bor.', 'В окне кинотеатра уже есть текст.', 'The cinema window already has text.'),
+    drill: L3('Basseyn oynasi ham bo‘sh. Unga matnli body yozing.', 'Окно бассейна тоже пустое. Напиши для него body с текстом.', 'The pool window is empty too. Write it a body with text.')
   },
 
-  // 4 · найти и починить два сломанных пункта; счётчик «осталось исправить».
+  // 4 · найти место в чужом коде и дописать </head>.
   t4: {
-    order: L3('Ikkita buzilgan bandni toping va tuzating', 'Найди и почини два сломанных пункта', 'Find and fix two broken items'),
-    say: L3('Chodir qadamlari chalkashib ketdi: bir qadamda raqam yo‘q, oxirida esa bo‘sh band paydo bo‘ldi. Bunga ikkita buzilgan band sabab. Ularni toping va tuzating.',
-      'Шаги с палаткой поехали: у одного шага нет номера, а в конце появился пустой пункт. Виноваты два сломанных пункта. Найди и почини их.',
-      'The tent steps went wrong: one step has no number, and an empty item appeared at the end. Two broken items are to blame. Find and fix them.'),
+    order: L3('head qayerda tugashi kerakligini bosing', 'Нажми место, где должен закончиться head', 'Tap the place where head should end'),
+    order2: L3('Shu joyga yopuvchi head tegini yozing', 'Напиши здесь закрывающий тег head', 'Type the closing head tag here'),
+    say: L3('Maktab sahifasida head ochilgan, lekin yopilmagan: chap tomondagi chizig‘i punktir. Avval head qayerda tugashi kerakligini bosing.',
+      'В странице школы head открыт, но не закрыт: его полоска слева — пунктиром. Сначала нажми место, где head должен закончиться.',
+      'On the school page head is opened but not closed: its bar on the left is dashed. First tap the place where head should end.'),
+    picked: L3('To‘g‘ri joy! Endi shu yerga yopuvchi head tegini yozing.', 'Верное место! Теперь напиши здесь закрывающий тег head.', 'Right spot! Now type the closing head tag here.'),
+    miss: {
+      before: L3('Bu yerda head hali boshlanmagan.', 'Здесь head ещё не начался.', 'head hasn’t started here yet.'),
+      inside: L3('head endi boshlandi: uning ichida hali title bor.', 'head только начался: внутри него ещё title.', 'head has just started: title is still inside it.'),
+      after: L3('Bu yerda body boshlangan. head esa body dan oldin tugashi kerak.', 'Здесь уже идёт body. А head должен закончиться до начала body.', 'body has already started here. head must end before body begins.')
+    },
     hints: [
-      L3('Har bir band ochuvchi li bilan boshlanib, yopuvchi li bilan tugaydi. Har bir qatorni tekshiring.', 'Каждый пункт начинается открывающим li и заканчивается закрывающим. Проверь каждую строку.', 'Each item starts with an opening li and ends with a closing li. Check every line.'),
-      L3('{n}-qatorga qarang: undagi bandda nimadir joyida emas.', 'Посмотри на строку {n}: с пунктом в ней что-то не так.', 'Look at line {n}: something’s off with the item there.'),
-      L3('Band — bu ochuvchi li, matn va yopuvchi li. Mana to‘g‘ri ro‘yxat.', 'Пункт — это открывающий li, текст и закрывающий li. Вот правильный список.', 'An item is the opening li, the text and the closing li. Here’s a correct list.')
+      L3('head nima bilan tugashini tekshiring. U qayerda tugashi kerak?', 'Проверь, чем заканчивается head. Где он должен закончиться?', 'Check how head ends. Where should it end?'),
+      L3('head body boshlanishidan oldin tugaydi. title esa head ichida qoladi.', 'head заканчивается до начала body. А title остаётся внутри head.', 'head ends before body starts. title stays inside head.'),
+      L3('title qatoridan keyingi joyni bosing va u yerga yopuvchi head yozing.', 'Нажми место после строки title и напиши там закрывающий head.', 'Tap the place after the title line and type the closing head there.')
     ],
-    hintLine: L3('Hammasi tuzaldi — «Tekshirish»ni bosing.', 'Всё починено — нажми «Проверить».', 'Everything is fixed — tap “Check”.'),
-    hintKeep: L3('Boshlanishi bilan solishtiring: ro‘yxat ol edi va unda o‘sha qadamlar bor edi.', 'Сравни с тем, что было: список был ol, и в нём те же шаги.', 'Compare with how it was: the list was ol with the same steps.'),
-    hintTags: L3('Teglarni tekshiring: har bir ochilgan teg o‘z jufti bilan yopilishi kerak.', 'Проверь теги: каждый открытый тег должен закрыться своей парой.', 'Check the tags: every opened tag must close with its pair.'),
-    praise: L3('To‘g‘ri! Ikkala band tuzaldi, chodirni tiksa bo‘ladi.', 'Есть! Оба пункта починены — палатку можно ставить.', 'Yes! Both items are fixed: time to pitch the tent.'),
-    done: L3('Chodir ro‘yxati tuzatilgan.', 'Список палатки уже починен.', 'The tent list is fixed.'),
-    drill: L3('Idishlar ro‘yxati ham buzilgan: bu yerda ham ikkita band. Toping va tuzating.', 'Список посуды тоже сломан: и здесь два пункта. Найди и почини.', 'The dishes list is broken too: two items here as well. Find and fix them.')
+    praise: L3('To‘g‘ri! head yopildi, chizig‘i ham butun bo‘ldi.', 'Есть! head закрыт — полоска стала сплошной.', 'Yes! head is closed, and its bar is solid now.'),
+    done: L3('Maktab sahifasida head yopiq.', 'В странице школы head уже закрыт.', 'On the school page head is already closed.'),
+    drill: L3('Bu yerda body yopilmagan. U qayerda tugashini bosing va yopuvchi tegni yozing.', 'А здесь не закрыт body. Нажми, где он заканчивается, и допиши закрывающий тег.', 'Here body isn’t closed. Tap where it ends and type the closing tag.'),
+    drill2: L3('Shu joyga yopuvchi body tegini yozing', 'Напиши здесь закрывающий тег body', 'Type the closing body tag here'),
+    drillMiss: {
+      before: L3('Bu yerda body hali boshlanmagan.', 'Здесь body ещё не начался.', 'body hasn’t started here yet.'),
+      inside: L3('body hali davom etyapti: pastda uning matni bor.', 'body ещё продолжается: ниже его текст.', 'body still goes on: its text is below.')
+    }
   },
 
-  // 5 · своё с нуля: h1 (урок 2) и список с тремя пунктами — по живому списку.
+  // 5 · самое сложное, но посильное: внутри готового html — head с title и body с текстом.
   t5: {
-    order: L3('O‘z ro‘yxatingizni yozing: h1 nom, ro‘yxat va kamida uchta band', 'Напиши свой список: название h1, список и хотя бы три пункта', 'Write your list: an h1 name, a list and at least three items'),
-    say: L3('So‘qmoq tiklandi! Endi sizning ro‘yxatingiz. Mavzuni o‘zingiz tanlang: h1 nom yozing, ostiga ul yoki ol ro‘yxat, unda kamida uchta li band.',
-      'Тропа восстановлена! Теперь твой список. Тему выбери любую: напиши название h1, под ним список ul или ol, а в нём хотя бы три пункта li.',
-      'The trail is restored! Now your list. Pick any topic: type a name in h1, then a ul or ol list under it, with at least three li items.'),
-    empty: L3('Ro‘yxatingiz shu yerda chiqadi', 'Здесь появится твой список', 'Your list will appear here'),
+    order: L3('html ichiga ikki qism yozing: nomli title bilan head, keyin matnli body',
+      'Внутри html напиши две части: head с title и body с текстом',
+      'Inside html, write two parts: head with title, then body with text'),
+    say: L3('Ko‘cha tuzaldi! Endi o‘z uyingiz. html ramkasi tayyor. Uning ichiga head va title bilan uy nomini, keyin body va matnni yozing.',
+      'Улица починена! Теперь твой дом. Рамка html уже есть. Внутри напиши head с title — это название дома, а потом body с текстом.',
+      'The street is fixed! Now your house. The html frame is ready. Inside it, write head with title for the house name, then body with text.'),
     hints: [
-      L3('Sahifa sarlavhadan boshlanadi, ostida ro‘yxat. Tartib muhim bo‘lsa ol, bo‘lmasa ul.', 'Страница начинается с заголовка, под ним список. Важен порядок — ol, не важен — ul.', 'The page starts with a heading, the list goes under it. If order matters, use ol; if not, ul.'),
-      L3('h1 juftidan boshlang va ichiga ro‘yxat nomini yozing.', 'Начни с пары h1 и напиши внутри название списка.', 'Start with an h1 pair and type the list name inside.'),
-      L3('Mana boshqa ro‘yxat. O‘zingiznikini ham shunday tuzing, faqat o‘z mavzuingizda.', 'Вот другой список. Свой построй так же, но о своём.', 'Here’s another list. Build yours the same way, about your own topic.')
+      L3('html ichida ikki qism bo‘ladi: avval head, keyin body.', 'Внутри html две части: сначала head, потом body.', 'Inside html there are two parts: first head, then body.'),
+      L3('head ichida title qatori bo‘ladi. head yopilgach body ochiladi va html tugashidan oldin yopiladi.',
+        'В head — строка title. Когда head закрыт, открывается body, и он закрывается до конца html.',
+        'Inside head goes the title line. After head closes, body opens and closes before html ends.'),
+      L3('Mana boshqa uyda bu qanday ko‘rinadi. O‘zingiznikini ham shunday yozing.', 'Вот как это выглядит у другого дома. Свою часть напиши так же.', 'Here is how it looks for another house. Write yours the same way.')
     ],
+    praise: L3('Uyingiz qurildi! Uning sahifasini o‘zingiz yozdingiz.', 'Дом построен! Его страница написана твоими руками.', 'Your house is built! You wrote its page yourself.'),
+    done: L3('Uyingiz qurilgan.', 'Твой дом уже построен.', 'Your house is already built.'),
+    drill: L3('Ustaxona uchun body yozing: u yerda nima qilinadi?', 'Напиши body для мастерской: что там делают?', 'Write a body for the workshop: what happens there?')
+  },
+
+  // Подсказка 2 своего дома — по той части, где сейчас затруднение.
+  house: {
     hint2: {
-      h1: L3('h1 juftidan boshlang va ichiga ro‘yxat nomini yozing.', 'Начни с пары h1 и напиши внутри название списка.', 'Start with an h1 pair and type the list name inside.'),
-      list: L3('Sarlavhadan keyin ul yoki ol ni oching, oxirida uni yoping.', 'После заголовка открой ul или ol, а в конце закрой.', 'After the heading, open ul or ol, and close it at the end.'),
-      items: L3('Ro‘yxat ichiga uchta li yozing: har birida bitta band.', 'Внутри списка напиши три li — в каждом по пункту.', 'Inside the list, write three li, one item in each.'),
-      tag: L3('Teglarni tekshiring: har bir ochilgan teg o‘z jufti bilan yopilishi kerak.', 'Проверь теги: каждый открытый тег должен закрыться своей парой.', 'Check the tags: every opened tag must close with its pair.')
-    },
-    praise: L3('Ro‘yxatingiz tayyor! Uning kodini boshidan oxirigacha o‘zingiz yozdingiz.', 'Твой список готов! Его код — целиком твой, от первой до последней строки.', 'Your list is ready! You wrote its code yourself, start to finish.'),
-    done: L3('Ro‘yxatingiz tayyor.', 'Твой список уже готов.', 'Your list is already done.'),
-    drill: L3('Choy damlash qadamlarini ol ro‘yxati qilib yozing: kamida uchta qadam.', 'Напиши шаги, как заварить чай, списком ol — хотя бы три шага.', 'Write the steps to make tea as an ol list: at least three steps.')
+      html: L3('html juftini tekshiring: ochuvchi html birinchi qatordan keyin, yopuvchisi eng oxirida.', 'Проверь пару html: открывающий — после первой строки, закрывающий — в самом конце.', 'Check the html pair: the opening one after the first line, the closing one at the very end.'),
+      head: L3('head juftini tekshiring: u html ichida, title esa uning ichida.', 'Проверь пару head: она внутри html, а title — внутри неё.', 'Check the head pair: it is inside html, and title is inside it.'),
+      body: L3('body juftini tekshiring: u head dan keyin ochiladi va html tugashidan oldin yopiladi.', 'Проверь пару body: она открывается после head и закрывается до конца html.', 'Check the body pair: it opens after head and closes before html ends.'),
+      tag: L3('Teglar qanday yozilganini tekshiring: qavslar, qiya chiziq va harflar.', 'Проверь, как написаны теги: уголки, косая черта и буквы.', 'Check how the tags are written: brackets, slash and letters.')
+    }
   },
 
   drill: {
@@ -6957,14 +7012,16 @@ const C = {
   },
 
   fin: {
-    eyebrow: L3('So‘qmoq tiklandi', 'Тропа восстановлена', 'The trail is restored'),
-    say: L3('Tabriklayman! Sayohat daftari yana tartibda. Oxirgi ro‘yxat esa sizniki.', 'Ура! Походный блокнот снова в порядке. А последний список — твой.', 'Hooray! The trip notebook is in order again. And the last list is yours.'),
+    eyebrow: L3('Ko‘cha yana tirik', 'Улица снова живая', 'The street is alive again'),
+    say: L3('Tabriklayman! Ko‘cha yana tirik. Oxirgi uy esa sizniki: uning sahifasini o‘zingiz yozdingiz.',
+      'Ура! Улица снова живая. А последний дом — твой: в нём твоё название и твой текст.',
+      'Hooray! The street is alive again. And the last house is yours: you wrote its page yourself.'),
     skills: [
-      L3('Ro‘yxatga li band qo‘shaman', 'Добавляю пункт li в список', 'I add an li item to a list'),
-      L3('ul ni ol ga almashtiraman', 'Меняю ul на ol', 'I change ul to ol'),
-      L3('Satrdan ro‘yxat yasayman', 'Делаю список из строки', 'I turn a line into a list'),
-      L3('Buzilgan bandlarni tuzataman', 'Чиню сломанные пункты', 'I fix broken items'),
-      L3('Sarlavhali o‘z ro‘yxatimni yozaman', 'Пишу свой список с заголовком', 'I write my own list with a heading')
+      L3('title ichiga sahifa nomini yozaman', 'Пишу название страницы в title', 'I write the page name in title'),
+      L3('Yopuvchi tegni yozaman', 'Пишу закрывающий тег', 'I write a closing tag'),
+      L3('Matnli body yozaman', 'Пишу body с текстом', 'I write body with text'),
+      L3('head qayerda tugashini topaman', 'Нахожу, где заканчивается head', 'I find where head ends'),
+      L3('head va body bilan sahifa yozaman', 'Пишу страницу из head и body', 'I write a page with head and body')
     ]
   }
 };
@@ -7849,9 +7906,7 @@ function useKzTransition(screenKey) {
 }
 
 // =============================================================================
-// МЕХАНИКА ПРАКТИКИ 3 (копия механики практики 02p; под тему урока 3 — списки
-// ul, ol, li вместе с тегами уроков 1–2, честная страница со списками, проверка
-// фрагментов, карта — тропа похода с пятью привалами). Каркас — практика 01p (разбор кода, редактор, ход задания,
+// МЕХАНИКА ПРАКТИКИ. Каркас — практика 01p (разбор кода, редактор, ход задания,
 // экран без Коди); вид — бумажный набор урока 1 (лист, вырезки, бумажный браузер).
 // =============================================================================
 
@@ -7862,13 +7917,10 @@ function useKzTransition(screenKey) {
 // ─────────────────────────────────────────────────────────────────────────────
 const TAG_SAY = {
   ru: { html: 'HTML', head: 'head', title: 'title', body: 'body', doctype: 'doctype',
-    h1: 'H one', h2: 'H two', h3: 'H three', h4: 'H four', h5: 'H five', h6: 'H six', p: 'P', b: 'B', i: 'I', ul: 'U L', ol: 'O L', li: 'L I',
     close: 'закрывающий тег', lt: 'уголок', gt: 'уголок', slash: 'косая черта' },
   uz: { html: 'HTML', head: 'head', title: 'title', body: 'body', doctype: 'doctype',
-    h1: 'H one', h2: 'H two', h3: 'H three', h4: 'H four', h5: 'H five', h6: 'H six', p: 'P', b: 'B', i: 'I', ul: 'U L', ol: 'O L', li: 'L I',
     close: 'yopuvchi teg', lt: 'chap qavs', gt: 'o‘ng qavs', slash: 'qiya chiziq' },
   en: { html: 'H T M L', head: 'head', title: 'title', body: 'body', doctype: 'doctype',
-    h1: 'H one', h2: 'H two', h3: 'H three', h4: 'H four', h5: 'H five', h6: 'H six', p: 'P', b: 'B', i: 'I', ul: 'U L', ol: 'O L', li: 'L I',
     close: 'closing tag', lt: 'less-than sign', gt: 'greater-than sign', slash: 'slash' }
 };
 function spokenHtml(text, lang) {
@@ -7876,15 +7928,11 @@ function spokenHtml(text, lang) {
   const word = (t) => m[String(t).toLowerCase()] || t;
   let s = String(text || '');
   s = s.replace(/<!DOCTYPE\s+html>/gi, m.doctype + ' ' + m.html);
-  s = s.replace(/<\s*\/\s*([a-z][a-z0-9]*)\s*>/gi, (all, t) => ' ' + m.close + ' ' + word(t) + ' ');
-  s = s.replace(/<\s*([a-z][a-z0-9]*)\s*>/gi, (all, t) => ' ' + word(t) + ' ');
-  s = s.replace(/\b(html|HTML|head|title|body|DOCTYPE|h[1-6])\b/g, (w) => word(w));
-  // Одиночные латинские p, b, i — имена тегов (как в уроке 2): других в репликах нет.
-  s = s.replace(/(^|[\s(«“"])([pbi])(?=[\s,.!?:;)»”"]|$)/g, (all, pre, t) => pre + word(t));
-  // Голые ul, ol, li (урок 3) — тоже словами.
-  s = s.replace(/(^|[^A-Za-z‘’'ʻʼ])(ul|ol|li)(?=[^A-Za-z‘’'ʻʼ]|$)/g, (all, pre, t) => pre + word(t));
+  s = s.replace(/<\s*\/\s*([a-z][a-z0-9]*)\s*>/gi, (all, t) => m.close + ' ' + word(t));
+  s = s.replace(/<\s*([a-z][a-z0-9]*)\s*>/gi, (all, t) => word(t));
+  s = s.replace(/\b(html|HTML|head|title|body|DOCTYPE)\b/g, (w) => word(w));
   s = s.replace(/</g, ' ' + m.lt + ' ').replace(/>/g, ' ' + m.gt + ' ').replace(/\s\/\s/g, ' ' + m.slash + ' ');
-  return s.replace(/\s+/g, ' ').replace(/\s+([.,!?;:])/g, '$1').trim();
+  return s.replace(/\s+/g, ' ').trim();
 }
 // Реплики в данных экрана — для прогрева озвучки. Подписи, которые только
 // печатаются, пропускаем; шаблоны с подстановкой {…} — тоже.
@@ -7916,21 +7964,16 @@ function SpokenTags({ children }) {
 // (сплошная — закрыто, пунктир — нет), а теги в коде — коралловые уголки и
 // имя чернилами, как на бумажках урока.
 // ─────────────────────────────────────────────────────────────────────────────
-const TAGC = { html: '#E0643F', head: '#D39A1E', title: '#D39A1E', body: '#2A8C7E',
-  h1: '#E0643F', h2: '#E0643F', h3: '#E0643F', h4: '#E0643F', h5: '#E0643F', h6: '#E0643F', p: '#2A8C7E', b: '#D39A1E', i: '#D39A1E', ul: '#2A8C7E', ol: '#D39A1E', li: '#E0643F' };
-const HEADS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
-const KNOWN = ['html', 'head', 'title', 'body'].concat(HEADS, ['p', 'b', 'i', 'ul', 'ol', 'li']);
-const catOf = (tag) => (tag === 'html' ? 'html' : tag === 'head' || tag === 'title' ? 'head' : 'body');
-const isHead = (t) => /^h[1-6]$/.test(t);
-const isBlock = (t) => isHead(t) || t === 'p';
-const isInline = (t) => t === 'b' || t === 'i';
-const isList = (t) => t === 'ul' || t === 'ol';
+const TAGC = { html: '#E0643F', head: '#D39A1E', title: '#D39A1E', body: '#2A8C7E' };
+const KNOWN = ['html', 'head', 'title', 'body'];
+const PARENT = { html: null, head: 'html', body: 'html', title: 'head' };
+const catOf = (tag) => (tag === 'html' ? 'html' : tag === 'body' ? 'body' : 'head');
 
 // Осмысленный текст: хотя бы две буквы любого алфавита.
 const LETTER_RE = /\p{L}/gu;
 const hasLetters = (s) => (String(s || '').match(LETTER_RE) || []).length >= 2;
 // Похоже на тег: «<» с буквой, «/» или «!» после него, либо знакомый тег без «<».
-const hasTags = (s) => /<\s*[A-Za-z\/!\\]/.test(String(s || '')) || /\b(html|head|title|body|h[1-6]|ul|ol|li)\s*>/i.test(String(s || ''));
+const hasTags = (s) => /<\s*[A-Za-z\/!\\]/.test(String(s || '')) || /\b(html|head|title|body)\s*>/i.test(String(s || ''));
 const squash = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 // Сравнение заданных надписей: регистр, ё/е, кавычки и знаки по краям не важны.
 const normName = (s) => String(s || '').toLowerCase().replace(/ё/g, 'е')
@@ -7981,7 +8024,7 @@ function lexDoc(src) {
   // Текст без «<». Внутри ищем знакомый тег без открывающего уголка: «title>».
   const pushText = (from, to) => {
     const part = s.slice(from, to);
-    const re = /(\/?)[ \t]*\b(html|head|title|body|h[1-6]|ul|ol|li)[ \t]*>/gi;
+    const re = /(\/?)[ \t]*\b(html|head|title|body)[ \t]*>/gi;
     let last = 0;
     let m;
     while ((m = re.exec(part))) {
@@ -8062,6 +8105,187 @@ function badFb(t) {
   return r(near ? fb('unknown', { raw: t.raw, tag: near }, catOf(near)) : fb('unknownFar', { raw: t.raw }, 'tag'));
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ПРОВЕРКА ДОКУМЕНТА. Правила нашей страницы: html снаружи всех; внутри —
+// head, потом body; в head — title с названием; в body — текст. Обход идёт по
+// порядку записи и запоминает ПЕРВУЮ проблему. Неверная запись тега
+// проверяется раньше структуры. need — какие части уже нужны (свой дом
+// строится по шагам: сначала html, потом head с title, потом body).
+// ─────────────────────────────────────────────────────────────────────────────
+function analyzeDoc(src, need) {
+  const N = Object.assign({ head: true, body: true }, need || {});
+  const toks = lexDoc(src);
+  const bad = toks.find((t) => t.k === 'bad');
+  if (bad) return badFb(bad);
+  const stack = [];
+  const seen = {};
+  const closed = {};
+  let titleText = '';
+  let bodyText = '';
+  let first = null;
+  const flag = (key, vars, cat) => { if (!first) first = fb(key, vars, cat); };
+  toks.forEach((t) => {
+    const top = stack[stack.length - 1];
+    if (t.k === 'text') {
+      if (top === 'title') titleText += t.v;
+      else if (top === 'body') bodyText += t.v;
+      else if (hasLetters(t.v)) {
+        if (top === 'head') flag('textOutHead', null, 'head');
+        else if (top === 'html') flag('textOutHtml', null, 'body');
+        else flag('textOutNone', null, 'html');
+      }
+      return;
+    }
+    if (t.k === 'open') {
+      const X = t.name;
+      if (seen[X]) {
+        if (top === X) { flag('openAgain', { tag: X }, catOf(X)); stack.pop(); closed[X] = true; return; }
+        flag('twice', { tag: X }, catOf(X));
+      } else if (X === 'html') {
+        if (stack.length) flag('htmlInside', null, 'html');
+      } else {
+        const par = PARENT[X];
+        if (top === par) { if (X === 'head' && seen.body) flag('headAfterBody', null, 'head'); }
+        else if (stack.indexOf(par) >= 0) flag('notClosedOpen', { tag: top, next: X }, catOf(top));
+        else if (X === 'title') flag('titleOutsideHead', null, 'head');
+        else if (closed.html) flag('afterHtml', { tag: X }, 'html');
+        else flag('noHtmlOpen', null, 'html');
+      }
+      seen[X] = (seen[X] || 0) + 1;
+      stack.push(X);
+      return;
+    }
+    if (t.k === 'close') {
+      const X = t.name;
+      if (top === X) { stack.pop(); closed[X] = true; return; }
+      const at = stack.lastIndexOf(X);
+      if (at >= 0) { flag('notClosedClose', { tag: top, next: X }, catOf(top)); stack.length = at; closed[X] = true; return; }
+      if (closed[X]) flag('closeTwice', { tag: X }, catOf(X));
+      else flag('closeWithoutOpen', { tag: X }, catOf(X));
+    }
+  });
+  if (first) return first;
+  // Дальше — «чего-то не хватает»: под заметкой пометка «документ собран не полностью».
+  const miss = (key, vars, cat) => Object.assign(fb(key, vars, cat), { sub: true });
+  if (!seen.html) return miss('missHtml', null, 'html');
+  if (N.head && !seen.head) return miss('missHead', null, 'head');
+  if (N.head && !seen.title) return miss('missTitle', null, 'head');
+  if (N.body && !seen.body) return miss('missBody', null, 'body');
+  if (stack.length) {
+    const tag = stack[stack.length - 1];
+    if (tag === 'html' && N.body && hasLetters(titleText) && hasLetters(bodyText)) return miss('unclosedHtmlOk', null, 'html');
+    return miss('unclosedEnd', { tag }, catOf(tag));
+  }
+  if ((N.head || seen.title) && !hasLetters(titleText)) return miss('titleEmpty', null, 'head');
+  if ((N.body || seen.body) && !hasLetters(bodyText)) return miss('bodyEmpty', null, 'body');
+  return { ok: true, result: { title: squash(titleText), text: squash(bodyText), html: String(src) } };
+}
+
+// Документ целиком (t7–t10): первая строка, теги вообще, потом структура.
+function checkDoc(code, need) {
+  const toks = lexDoc(code);
+  if (!toks.some((t) => t.k === 'doctype')) return fb('noDoctype', null, 'html');
+  const tags = toks.filter((t) => t.k === 'open' || t.k === 'close' || t.k === 'bad');
+  if (!tags.length) return fb(toks.some((t) => t.k === 'text' && hasLetters(t.v)) ? 'textOnly' : 'docEmpty', null, 'html');
+  return analyzeDoc(code, need);
+}
+
+// Строка title (t3, t4 и их дополнительные задачи). target — { uz, ru, en }.
+function checkLine(line, target, lang) {
+  if (!String(line || '').trim()) return fb('lineEmpty', null, 'head');
+  const toks = lexDoc(line).filter((t) => !(t.k === 'text' && !t.v.trim()));
+  const bad = toks.find((t) => t.k === 'bad');
+  if (bad) return badFb(bad);
+  const tags = toks.filter((t) => t.k === 'open' || t.k === 'close');
+  if (!tags.length) return fb('lineTextOnly', null, 'head');
+  const other = tags.find((t) => t.name !== 'title');
+  if (other) return fb('lineWrongTag', { tag: other.name }, 'head');
+  const opens = tags.filter((t) => t.k === 'open');
+  const closes = tags.filter((t) => t.k === 'close');
+  if (opens.length >= 2 && !closes.length) return fb('openAgain', { tag: 'title' }, 'head');
+  if (!opens.length) return fb('lineNoOpen', null, 'head');
+  if (!closes.length) return fb('lineNoClose', null, 'head');
+  if (opens.length > 1) return fb('twice', { tag: 'title' }, 'head');
+  if (closes.length > 1) return fb('closeTwice', { tag: 'title' }, 'head');
+  const io = toks.indexOf(opens[0]);
+  const ic = toks.indexOf(closes[0]);
+  if (ic < io) return fb('lineOrder', null, 'head');
+  if (toks.some((t, k) => t.k === 'text' && (k < io || k > ic))) return fb('lineTextOutside', null, 'head');
+  const inner = squash(toks.slice(io + 1, ic).map((t) => t.v).join(''));
+  if (!hasLetters(inner)) return fb('lineNoName', null, 'head');
+  if (target && normName(inner) !== normName(pickOf(target, lang))) return fb('lineWrongName', { name: target }, 'head');
+  return { ok: true, result: { title: inner } };
+}
+
+// Блок body (t5 и дополнительные задачи): открывающий тег, свой текст,
+// закрывающий тег — в любом количестве строк.
+function checkBlock(area) {
+  if (!String(area || '').trim()) return fb('blockEmpty', null, 'body');
+  const toks = lexDoc(area);
+  const bad = toks.find((t) => t.k === 'bad');
+  if (bad) return badFb(bad);
+  const tags = toks.filter((t) => t.k === 'open' || t.k === 'close');
+  if (!tags.length) return fb(hasLetters(area) ? 'blockTextOnly' : 'blockEmpty', null, 'body');
+  const other = tags.find((t) => t.name !== 'body');
+  if (other) return fb('blockWrongTag', { tag: other.name }, 'body');
+  const opens = tags.filter((t) => t.k === 'open');
+  const closes = tags.filter((t) => t.k === 'close');
+  if (opens.length >= 2 && !closes.length) return fb('openAgain', { tag: 'body' }, 'body');
+  if (!opens.length) return fb('closeWithoutOpen', { tag: 'body' }, 'body');
+  if (!closes.length) return fb('unclosedEnd', { tag: 'body' }, 'body');
+  if (opens.length > 1) return fb('twice', { tag: 'body' }, 'body');
+  if (closes.length > 1) return fb('closeTwice', { tag: 'body' }, 'body');
+  const io = toks.indexOf(opens[0]);
+  const ic = toks.indexOf(closes[0]);
+  if (ic < io) return fb('blockOrder', null, 'body');
+  if (toks.some((t, k) => t.k === 'text' && (k < io || k > ic) && hasLetters(t.v))) return fb('textOutHtml', null, 'body');
+  const inner = squash(toks.slice(io + 1, ic).map((t) => t.v).join(''));
+  if (!hasLetters(inner)) return fb('bodyEmpty', null, 'body');
+  return { ok: true, result: { text: inner } };
+}
+
+// Один закрывающий тег на своей строке (t6): </head> или </body>.
+function checkCloseTag(code, tag) {
+  if (!String(code || '').trim()) return fb('closeEmpty', { tag }, catOf(tag));
+  const toks = lexDoc(code).filter((t) => !(t.k === 'text' && !t.v.trim()));
+  const bad = toks.find((t) => t.k === 'bad');
+  if (bad) return badFb(bad);
+  const tags = toks.filter((t) => t.k === 'open' || t.k === 'close');
+  if (!tags.length) return fb('closeText', null, catOf(tag));
+  if (tags.length > 1) return tags.every((t) => t.k === 'close' && t.name === tag) ? fb('closeOne', { tag }, catOf(tag)) : fb('closeOther', { tag }, catOf(tag));
+  const t = tags[0];
+  if (t.name === tag && t.k === 'open') return fb('openAgain', { tag }, catOf(tag));
+  if (t.name !== tag) return fb('closeOther', { tag }, catOf(tag));
+  if (toks.some((x) => x.k === 'text' && hasLetters(x.v))) return fb('closeText', null, catOf(tag));
+  return { ok: true, result: {} };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ЧТО ПОКАЖЕТ БРАУЗЕР — честно, как настоящий: всё, что после <title>, до
+// </title> — название на вкладке (если </title> нет, туда уезжает и остальной
+// код вместе с тегами, как в уроке 1); остальной текст — в окне, даже если
+// структура собрана не до конца. Всё — строки; React рисует их как текст.
+// ─────────────────────────────────────────────────────────────────────────────
+function pageOf(src) {
+  const toks = lexDoc(src);
+  let inTitle = false;
+  let titleSeen = false;
+  let title = '';
+  const page = [];
+  toks.forEach((t) => {
+    if (inTitle) {
+      if (t.k === 'close' && t.name === 'title') { inTitle = false; return; }
+      title += t.k === 'text' ? t.v : ' ' + (t.raw || '') + ' ';
+      return;
+    }
+    if (t.k === 'open' && t.name === 'title') { inTitle = true; titleSeen = true; return; }
+    if (t.k === 'text') { page.push(t.v); return; }
+    // Это браузер не считает тегом и показывает в окне как есть: «title>», «<\body>», «<>».
+    if (t.k === 'bad' && (t.bad === 'noLt' || t.bad === 'backslash' || t.bad === 'emptyTag')) page.push(t.raw);
+  });
+  return { title: titleSeen ? squash(title) : null, text: squash(page.join(' ')) };
+}
+
 // Полоски вложенности: какой контейнер на каких строках и закрыт ли он.
 // Незакрытый тянется до места, где его закрыли бы, или до конца кода.
 // title — строчный, полоска ему не нужна.
@@ -8100,8 +8324,8 @@ function hlLine(str) {
     const raw = m[0];
     const nm = ((/[A-Za-z][A-Za-z0-9]*/.exec(raw.replace(/^<\s*[\/\\]?\s*/, '')) || [''])[0]).toLowerCase();
     if (/^<!/.test(raw)) out.push(<span key={'g' + m.index} className="ed-doc">{raw}</span>);
-    else if (KNOWN.indexOf(nm) >= 0 && /^<\s*\/?\s*[A-Za-z][A-Za-z0-9]*\s*>$/.test(raw)) {
-      const mm = /^(<\s*\/?\s*)([A-Za-z][A-Za-z0-9]*)(\s*>)$/.exec(raw);
+    else if (KNOWN.indexOf(nm) >= 0 && /^<\s*\/?\s*[A-Za-z]+\s*>$/.test(raw)) {
+      const mm = /^(<\s*\/?\s*)([A-Za-z]+)(\s*>)$/.exec(raw);
       out.push(<span key={'g' + m.index} className="ed-tag"><span className="ed-br">{mm[1]}</span><span className="ed-nm">{mm[2]}</span><span className="ed-br">{mm[3]}</span></span>);
     } else out.push(<span key={'g' + m.index} className="ed-unk">{raw}</span>);
     last = m.index + raw.length;
@@ -8321,264 +8545,49 @@ function CodeSample({ code, label, cls }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ЧТО ПОКАЖЕТ БРАУЗЕР (уроки 2–3) — честно, как настоящий, для наших тегов:
-//   · title — на вкладку (незакрытый уносит на вкладку остальной код);
-//   · h1–h6 и p — блоки; p внутри незакрытого заголовка — шрифтом заголовка;
-//   · b и i — жирный и курсив; незакрытый b / i тянется дальше;
-//   · ul / ol — список; точку или номер ставит только li; текст в списке без
-//     li — без точки; <li> вместо </li> даёт пустой пункт; li вне списка — без
-//     отступа; p в незакрытом списке сдвинут, как список;
-//   · текст без тегов — отдельной строкой в окне.
-// Возвращает { title, blocks } — только текст. Блок: { t: 'h1'…'h6' | 'p' | 'raw'
-// | 'stray', parts } или { t: 'ul' | 'ol', kids: [{ li, parts } | { txt: parts } | { p: parts }] }.
-// ─────────────────────────────────────────────────────────────────────────────
-function renderDoc(src) {
-  const toks = lexDoc(src);
-  let title = null;
-  let inTitle = false;
-  let tt = '';
-  const blocks = [];
-  let cur = null;        // куда идёт текст: блок, пункт или кусок текста в списке
-  let list = null;       // открытый список
-  const fmt = { b: 0, i: 0 };
-  let openHead = null;
-  const part = (v) => ({ s: v, b: fmt.b > 0, i: fmt.i > 0 });
-  const open = (t, inh) => { cur = { t, inh: inh || null, parts: [] }; blocks.push(cur); };
-  const text = (v) => {
-    if (cur) { cur.parts.push(part(v)); return; }
-    if (!v.trim()) return;
-    if (list) { cur = { txt: true, parts: [part(v)] }; list.kids.push(cur); return; }
-    open('raw'); cur.parts.push(part(v));
-  };
-  toks.forEach((t) => {
-    if (inTitle) {
-      if (t.k === 'close' && t.name === 'title') { inTitle = false; title = squash(tt); return; }
-      tt += t.k === 'text' ? t.v : ' ' + (t.raw || '') + ' ';
-      return;
-    }
-    if (t.k === 'open' && t.name === 'title') { inTitle = true; tt = ''; return; }
-    if (t.k === 'text') { text(t.v); return; }
-    if (t.k === 'bad') { if (t.bad === 'noLt' || t.bad === 'backslash' || t.bad === 'emptyTag') text(t.raw); return; }
-    if (t.k === 'open') {
-      if (isList(t.name)) { list = { t: t.name, kids: [] }; blocks.push(list); cur = null; openHead = null; return; }
-      if (t.name === 'li') {
-        if (list) { cur = { li: true, parts: [] }; list.kids.push(cur); }
-        else open('stray');
-        return;
-      }
-      if (isHead(t.name) || t.name === 'p') {
-        if (list) { cur = { p: true, t: t.name, parts: [] }; list.kids.push(cur); return; }
-        if (isHead(t.name)) { open(t.name); openHead = t.name; return; }
-        open('p', openHead); return;
-      }
-      if (isInline(t.name)) { fmt[t.name] += 1; return; }
-      return;
-    }
-    if (t.k === 'close') {
-      if (isInline(t.name)) { fmt[t.name] = Math.max(0, fmt[t.name] - 1); return; }
-      if (isList(t.name)) { if (list) { list = null; cur = null; } return; }
-      if (t.name === 'li') { if (cur && (cur.li || cur.t === 'stray')) cur = null; return; }
-      if (isHead(t.name)) openHead = null;
-      if ((isBlock(t.name)) && cur) { cur = null; }
-      if (cur && cur.txt) cur = null;
-    }
-  });
-  if (inTitle) title = squash(tt);
-  const has = (ps) => ps.some((x) => x.s.trim());
-  return {
-    title,
-    blocks: blocks.filter((bk) => (bk.kids ? true : has(bk.parts)))
-      .map((bk) => (bk.kids ? Object.assign({}, bk, { kids: bk.kids.filter((k) => k.li || has(k.parts)) }) : bk))
-  };
-}
-
-// ПРОВЕРКА ФРАГМЕНТА (теги уроков 2–3). Обход по порядку записи; первая проблема —
-// фраза, всего проблем — для счётчика «осталось исправить» (по строкам с поломкой).
-//   · блоки h1–h6 и p стоят друг за другом; b и i — внутри блока или пункта;
-//   · список ul / ol, внутри только пункты li; пары совпадают;
-//   · strictText — текст вне блоков и списков тоже проблема (своя работа).
-// lists: [{ t, items: [{ text, marks }], line }], blocks: [{ t, text, marks }].
-function checkFrag(code, opts) {
-  const o = opts || {};
-  const toks = lexDoc(code);
-  const issues = [];
-  const add = (key, vars, line) => issues.push({ key, vars: vars || null, line });
-  const stack = [];
-  const blocks = [];
-  const lists = [];
-  const strays = [];
-  let cur = null;
-  let list = null;
-  const bare = (idx) => {
-    for (let k = idx + 1; k < toks.length; k += 1) {
-      if (toks[k].k !== 'text') return true;
-      if (hasLetters(toks[k].v)) return false;
-    }
-    return true;
-  };
-  const top = () => stack[stack.length - 1];
-  // Строка текста — там, где его первая буква (кусок может начинаться с переноса).
-  const textLine = (t) => t.line + (String(t.v).slice(0, String(t.v).search(/\S|$/)).match(/\n/g) || []).length;
-  toks.forEach((t, idx) => {
-    if (t.k === 'bad') { issues.push(Object.assign(badFb(t), { line: t.line, bad: true })); return; }
-    if (t.k === 'doctype' || ((t.k === 'open' || t.k === 'close') && !isBlock(t.name) && !isInline(t.name) && !isList(t.name) && t.name !== 'li')) return;
-    if (t.k === 'text') {
-      if (cur) {
-        cur.text += t.v;
-        stack.filter(isInline).forEach((x) => { cur.marks.push({ tag: x, v: t.v }); });
-      } else if (hasLetters(t.v)) {
-        if (isList(top())) add('listText', { tag: top() }, textLine(t));
-        else if (o.strictText) add('textOutside', null, textLine(t));
-      }
-      return;
-    }
-    if (t.k === 'open') {
-      if (isList(t.name)) {
-        if (cur && !stack.some(isList)) { add('blockInBlock', { tag: stack.find(isBlock) || top(), next: t.name }, t.line); stack.length = 0; cur = null; }
-        stack.push(t.name);
-        list = { t: t.name, items: [], line: t.line };
-        lists.push(list);
-        return;
-      }
-      if (t.name === 'li') {
-        if (top() === 'li') {
-          if (bare(idx)) { add('openAgain', { tag: 'li' }, t.line); stack.pop(); cur = null; return; }
-          add('unclosedIn', { tag: 'li', next: 'li' }, t.line); stack.pop();
-        }
-        cur = { text: '', marks: [], line: t.line };
-        if (isList(top())) list.items.push(cur);
-        else { add('liOutside', null, t.line); strays.push(cur); }
-        stack.push('li');
-        return;
-      }
-      if (isBlock(t.name)) {
-        if (isList(top())) { add('listNotClosed', { tag: top(), next: t.name }, t.line); stack.length = 0; list = null; }
-        else if (top() === t.name && stack.length === 1 && bare(idx)) { add('openAgain', { tag: t.name }, t.line); stack.length = 0; cur = null; return; }
-        else if (stack.length) add('blockInBlock', { tag: stack.find(isBlock) || top(), next: t.name }, t.line);
-        stack.length = 0;
-        cur = { t: t.name, text: '', marks: [], line: t.line };
-        blocks.push(cur);
-        stack.push(t.name);
-        return;
-      }
-      if (!cur) add('inlineOutside', { tag: t.name }, t.line);
-      stack.push(t.name);
-      return;
-    }
-    const tp = top();
-    if (tp === t.name) {
-      stack.pop();
-      if (isBlock(t.name) || t.name === 'li') cur = null;
-      if (isList(t.name)) { list = null; cur = null; }
-      return;
-    }
-    if ((tp && isHead(tp) && isHead(t.name)) || (isList(tp) && isList(t.name))) { add('pairMismatch', { a: tp, b: t.name }, t.line); stack.pop(); cur = null; if (isList(tp)) list = null; return; }
-    const at = stack.lastIndexOf(t.name);
-    if (at >= 0) {
-      for (let k = stack.length - 1; k > at; k -= 1) add('unclosedIn', { tag: stack[k], next: t.name }, t.line);
-      stack.length = at;
-      if (isBlock(t.name) || isList(t.name) || t.name === 'li') cur = null;
-      if (isList(t.name)) list = null;
-      return;
-    }
-    add('closeWithoutOpen', { tag: t.name }, t.line);
-  });
-  for (let k = stack.length - 1; k >= 0; k -= 1) add('unclosedEnd', { tag: stack[k] }, null);
-  const first = issues[0];
-  const msg = first ? (first.bad ? first.msg : fillL(FB[first.key], first.vars || {})) : null;
-  const lines = {};
-  issues.forEach((x, k) => { lines[x.line == null ? 'n' + k : x.line] = 1; });
-  return { ok: !issues.length, msg, line: first ? first.line : null, count: Object.keys(lines).length, blocks, lists, strays };
-}
-
-// Страница всегда помещается в окно целиком, без прокрутки (правило эталона):
-// не влезает — шрифт страницы ступеньками уменьшается (не меньше 56 %). Ещё раз —
-// после «штампа» (пока он идёт, страница кажется выше).
-function useFitPage(dep) {
-  const ref = useRef(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    const page = el && el.closest('.kz-br-page');
-    if (!el || !page) return undefined;
-    const fit = () => {
-      let k = 1;
-      el.style.fontSize = '';
-      while (page.scrollHeight > page.clientHeight + 1 && k > 0.56) { k -= 0.06; el.style.fontSize = k.toFixed(2) + 'em'; }
-    };
-    fit();
-    const tm = setTimeout(fit, 700);
-    if (typeof ResizeObserver === 'undefined') return () => clearTimeout(tm);
-    const ro = new ResizeObserver(() => fit());
-    ro.observe(page);
-    return () => { clearTimeout(tm); ro.disconnect(); };
-  }, [dep]); // eslint-disable-line react-hooks/exhaustive-deps
-  return ref;
-}
-
-// Кусочки текста с b и i.
-const pgParts = (parts) => parts.map((x, k) => {
-  const inner = x.i ? <i>{x.s}</i> : x.s;
-  return x.b ? <b key={k}>{inner}</b> : <React.Fragment key={k}>{inner}</React.Fragment>;
-});
-
-// Бумажный браузер урока 1 со страницей уроков 2–3. Классы pg- (pp-doc занят
-// строкой DOCTYPE в коде с полями).
-function PageView({ title, blocks, empty, flash, hl }) {
+// Бумажный браузер урока 1 со страницей: текст из body — в окне.
+function PageView({ title, text, empty, flash, hl }) {
   const pick = usePick();
-  const list = blocks || [];
-  const ref = useFitPage(JSON.stringify(list) + (flash || 0));
+  const t = String(text || '').trim();
   return (
-    <PaperBrowser title={title} stamp={flash} tabHl={hl === 'title'} pageHl={hl === 'body'} cls="pp-br kz-piece">
-      <div ref={ref} key={'pg' + (flash || 0)} className={'pg-doc' + (list.length ? '' : ' is-empty') + (flash ? ' kz-a-pop' : '')}>
-        {list.length ? list.map((bk, j) => {
-          if (bk.kids) {
-            let n = 0;
-            const rows = [];
-            bk.kids.forEach((kid, q) => {
-              if (kid.li) { n += 1; rows.push(<div key={q} className="pg-li"><span className="pg-mk" aria-hidden="true">{bk.t === 'ol' ? n + '.' : '•'}</span><span>{kid.parts.length && kid.parts.some((x) => x.s.trim()) ? pgParts(kid.parts) : ' '}</span></div>); }
-              else if (kid.p) rows.push(<div key={q} className={'pg-blk pg-' + (kid.t || 'p')}>{pgParts(kid.parts)}</div>);
-              else rows.push(<div key={q} className="pg-txt">{pgParts(kid.parts)}</div>);
-            });
-            return <div key={j} className={'pg-list pg-' + bk.t}>{rows}</div>;
-          }
-          if (bk.t === 'stray') return <div key={j} className="pg-li pg-stray"><span className="pg-mk" aria-hidden="true">•</span><span>{pgParts(bk.parts)}</span></div>;
-          return <div key={j} className={'pg-blk pg-' + bk.t + (bk.inh ? ' pg-in-' + bk.inh : '')}>{pgParts(bk.parts)}</div>;
-        }) : (empty ? pick(empty) : ' ')}
+    <PaperBrowser title={title} stamp={flash} tabHl={hl === 'title' || hl === 'head'} pageHl={hl === 'body'} cls="pp-br kz-piece">
+      <div key={'pg' + (flash || 0)} className={'pp-page' + (t ? '' : ' is-empty') + (flash ? ' kz-a-pop' : '')}>
+        {t || (empty ? pick(empty) : ' ')}
       </div>
     </PaperBrowser>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ТРОПА ПОХОДА — карта продвижения: пять привалов на бумажной тропе. Привал —
-// бумажный флажок-круг с мини-списком (точки или номера). Ждёт — выцвел и
-// покосился, список размыт; готов — свой цвет, ровно, галочка. Свой список до
-// написания — пунктирный круг; потом — его название.
-// (houseLit / houseName / StreetStrip / StreetMap — устройство карты 01p.)
+// БУМАЖНАЯ УЛИЦА. Дом — вырезки: стены, крыша, окно, дверь. Ждёт — выцвел,
+// покосился от ветра, окно тёмное; готов — свой цвет, стоит ровно, окно
+// светится, галочка. Свой дом до постройки — пунктирный план. У пекарни и
+// своего дома на вывеске — название, которое придумал ученик.
 // ─────────────────────────────────────────────────────────────────────────────
+const ROOF = 'polygon(50% 0%, 58% 6%, 74% 22%, 88% 38%, 100% 52%, 96% 100%, 50% 96%, 4% 100%, 0% 52%, 14% 36%, 30% 20%, 42% 7%)';
 const houseLit = (store, i) => !!(store.get('t' + (i + 1)) || {}).solved;
 const houseName = (store, i, pick) => {
-  const own = i === HOME ? ((store.get('t' + (i + 1)) || {}).result || {}).title : null;
+  const own = i === 0 || i === HOME ? ((store.get('t' + (i + 1)) || {}).result || {}).title : null;
   return own && houseLit(store, i) ? own : pick(STREET[i].name);
 };
-const TILT = [-8, 6, -6, 8, 0];
-function Clipping({ i, lit, cur, name, size, pop, whole }) {
+// Наклон дома, который разметал ветер: у каждого свой; готовый дом стоит ровно.
+const TILT = [-7, 5, -5, 7, 0];
+function PaperHouse({ i, lit, cur, name, size, pop, whole }) {
   const h = STREET[i];
   const home = i === HOME;
   const on = lit || (whole && !home);
   const ghost = home && !lit;
   const wait = !on && !home;
   return (
-    <span className={'pp-house pp-stop' + (on ? ' is-lit' : '') + (wait ? ' is-wait' : '') + (cur ? ' is-cur' : '') + (ghost ? ' is-ghost' : '') + (pop ? ' kz-a-stamp' : '') + (size ? ' is-' + size : '')}
+    <span className={'pp-house' + (on ? ' is-lit' : '') + (wait ? ' is-wait' : '') + (cur ? ' is-cur' : '') + (ghost ? ' is-ghost' : '') + (pop ? ' kz-a-stamp' : '') + (size ? ' is-' + size : '')}
       style={{ '--hc': h.c, '--tilt': TILT[i % TILT.length] + 'deg' }}>
       <span className="pp-h-art" aria-hidden="true">
-        {ghost ? <span className="pp-stop-plan" /> : (
+        {ghost ? <span className="pp-h-plan" /> : (
           <>
-            <Cut c={h.c} round seed={80 + i} n={7} amp={4} cls="pp-stop-disc" />
-            <span className={'pp-stop-list' + (on ? '' : ' is-mess') + (h.ol ? ' is-ol' : '')}>
-              {[1, 2, 3].map((k) => <i key={k}><b>{h.ol ? k : ''}</b><u /></i>)}
-            </span>
+            <Cut c={h.c} clip={ROOF} cls="pp-h-roof" />
+            <Cut c="#FBF6EA" seed={80 + i} n={6} amp={4} asp={0.9} cls="pp-h-wall" />
+            <Cut c={on ? '#FFD46B' : '#5B6070'} seed={90 + i} n={4} amp={8} cls="pp-h-win" />
+            <Cut c={h.c} seed={100 + i} n={4} amp={8} asp={0.6} cls="pp-h-door" />
           </>
         )}
       </span>
@@ -8588,8 +8597,8 @@ function Clipping({ i, lit, cur, name, size, pop, whole }) {
   );
 }
 
-// Полоса тропы над заданием: пять привалов и подпись текущего. mini — для шапки
-// телефона: только предыдущий, текущий и следующий, без подписи.
+// Полоса улицы над заданием: восемь домов и подпись текущего. mini — для шапки
+// телефона: только предыдущий, текущий и следующий дом, без подписи.
 function StreetStrip({ cur, pop, mini }) {
   const pick = usePick();
   const store = useStore();
@@ -8601,7 +8610,7 @@ function StreetStrip({ cur, pop, mini }) {
         {shown.map((i) => (
           <span key={STREET[i].id} role="listitem" title={nm(i)}
             aria-label={nm(i) + ' — ' + pick(houseLit(store, i) ? UI.works : UI.off) + (i === cur ? ', ' + pick(UI.now) : '')}>
-            <Clipping i={i} lit={houseLit(store, i)} cur={i === cur} size="s" pop={pop && i === cur} />
+            <PaperHouse i={i} lit={houseLit(store, i)} cur={i === cur} size="s" pop={pop && i === cur} />
           </span>
         ))}
       </div>
@@ -8612,23 +8621,22 @@ function StreetStrip({ cur, pop, mini }) {
   );
 }
 
-// Большая тропа — на вступлении и в финале: привалы вдоль пунктирной тропинки.
-// whole — до дождя (хук): все привалы целые; blown — дождь только что прошёл:
-// с флажков слетают капли-клочки.
+// Большая улица — на вступлении и в финале: дома стоят на бумажной мостовой.
+// whole — улица до ветра (хук): все дома целые; blown — ветер только что
+// прошёл: с домов слетают бумажки-вывески.
 function StreetMap({ glow, whole, blown }) {
   const pick = usePick();
   const store = useStore();
   return (
-    <div className={'pp-street pp-trail kz-piece' + (glow ? ' is-glow' : '') + (blown ? ' is-blown' : '')} role="list" aria-label={pick(UI.map)}>
-      <Cut c="#DCE8CF" seed={120} n={20} amp={5} asp={6} cls="pp-road pp-board" />
-      <span className="pp-trail-path" aria-hidden="true" />
+    <div className={'pp-street kz-piece' + (glow ? ' is-glow' : '') + (blown ? ' is-blown' : '')} role="list" aria-label={pick(UI.map)}>
+      <Cut c="#E6DCC6" seed={120} n={20} amp={10} asp={14} cls="pp-road" />
       {STREET.map((s, i) => {
         const lit = houseLit(store, i);
         return (
           <span key={s.id} role="listitem" className="pp-street-h" style={{ '--dl': (glow ? 0.15 + i * 0.12 : i * 0.06) + 's', '--i': i }}
             aria-label={houseName(store, i, pick) + ' — ' + pick(lit || (whole && i !== HOME) ? UI.works : UI.off)}>
-            <Clipping i={i} lit={lit} whole={whole} name={houseName(store, i, pick)} size="l" />
-            {blown && i !== HOME ? <Cut c="#7FB3D5" round seed={140 + i} n={5} amp={10} cls="pp-scrap pp-drop" /> : null}
+            <PaperHouse i={i} lit={lit} whole={whole} name={houseName(store, i, pick)} size="l" />
+            {blown && i !== HOME ? <Cut c="var(--kz-piece)" seed={140 + i} n={5} amp={10} asp={2.6} cls="pp-scrap" /> : null}
           </span>
         );
       })}
@@ -8639,37 +8647,36 @@ function StreetMap({ glow, whole, blown }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // НАГЛЯДНАЯ ПОМОЩЬ — видна сразу, подписана названиями тегов.
 // ─────────────────────────────────────────────────────────────────────────────
-// Как должно выглядеть в браузере (t3): список с точками или номерами.
-function ListTarget({ kind, items }) {
+// Три места строки или блока: открывающий тег · название (текст) · закрывающий.
+function Slots3({ mid }) {
   const pick = usePick();
   return (
-    <div className="pp-target kz-piece">
-      <span className="pp-target-h">{pick(UI.target)}</span>
-      <span className="pp-target-s">
-        {items.map((x, k) => <span key={k} className="pp-target-li"><i aria-hidden="true">{kind === 'ol' ? (k + 1) + '.' : '•'}</i>{x}</span>)}
-      </span>
-    </div>
-  );
-}
-// Сколько ещё сломанных строк (t4): живой счётчик — условие видно.
-function FixLeft({ n }) {
-  const pick = usePick();
-  return (
-    <div className={'pp-left kz-piece' + (n ? '' : ' is-ok')} aria-live="polite">
-      {n ? pick(fillL(UI.left, { n })) : <><Icon name="check" size={13} />{pick(UI.allFixed)}</>}
-    </div>
-  );
-}
-// Что должно быть в своей работе (t5) — галочки загораются по ходу набора.
-function Checklist({ items }) {
-  const pick = usePick();
-  return (
-    <div className="pp-check kz-piece">
-      {items.map((it) => (
-        <span key={it.k} className={'pp-check-i' + (it.ok ? ' is-ok' : '')}>
-          <span className="pp-check-box">{it.ok ? <Icon name="check" size={11} /> : null}</span>{pick(it.text)}
-        </span>
+    <div className="pp-slots kz-piece" aria-label={pick(UI.sample)}>
+      {['open', mid || 'name', 'close'].map((k, n) => (
+        <span key={k} className={'pp-slot is-' + k}><b>{n + 1}</b>{pick(UI.part[k])}</span>
       ))}
+    </div>
+  );
+}
+// Чертёж своего дома (t5): дерево частей; html уже есть, head с title и body — пишет ученик.
+function Blueprint() {
+  const pick = usePick();
+  const row = (pre, tag, note, given) => (
+    <div className={'pp-bp-row' + (given ? ' is-done' : ' is-cur')}>
+      <span className="pp-bp-pre" aria-hidden="true">{pre}</span>
+      <span className="pp-bp-tag" style={{ '--c': TAGC[tag] }}>{tag}</span>
+      {note ? <span className="pp-bp-note">— {pick(note)}</span> : null}
+      {given ? <span className="pp-bp-ok" title={pick(UI.given)}><Icon name="check" size={11} /></span> : null}
+    </div>
+  );
+  return (
+    <div className="pp-bp kz-piece" translate="no">
+      <div className="pp-bp-tree">
+        {row('', 'html', UI.given, true)}
+        {row('├─ ', 'head')}
+        {row('│  └─ ', 'title', UI.bpTitle)}
+        {row('└─ ', 'body', UI.bpBody)}
+      </div>
     </div>
   );
 }
@@ -8921,17 +8928,17 @@ function Workbench({ spec, st, setSt, inputRef, fx, aids, tools, flash, onPick }
         hl={f.hl} led={f.led} titleRef={inputRef} bodyRef={inputRef} focusBody={!!spec.focusBody} ph={spec.ph} />
     );
   } else if (spec.kind === 'gap' && st.at == null) {
-    const pg = renderDoc(spec.lines.join('\n'));
+    const pg = pageOf(spec.lines.join('\n'));
     title = pg.title;
-    text = pg.blocks;
+    text = pg.text;
     editor = <GapPick lines={spec.lines} gaps={spec.gaps} onPick={onPick} led={f.ledGap} miss={st.miss} />;
   } else {
     const before = spec.kind === 'gap' ? spec.lines.slice(0, st.at + 1) : spec.before;
     const after = spec.kind === 'gap' ? spec.lines.slice(st.at + 1) : spec.after;
     const full = (before || []).concat([st.code]).concat(after || []).join('\n');
-    const pg = renderDoc(full);
+    const pg = pageOf(full);
     title = pg.title;
-    text = pg.blocks;
+    text = pg.text;
     editor = (
       <CodeEditor value={st.code} onChange={(v) => setSt(Object.assign({}, st, { code: v }))}
         before={before} after={after} single={spec.kind === 'line' || spec.kind === 'gap'} ind={spec.ind}
@@ -8941,7 +8948,7 @@ function Workbench({ spec, st, setSt, inputRef, fx, aids, tools, flash, onPick }
   return (
     <div className={'op-work' + (spec.big ? ' is-big' : '')}>
       <div className="op-side">
-        <PageView title={title} blocks={spec.kind === 'fields' ? null : text} empty={spec.empty} flash={flash} hl={f.hl} />
+        <PageView title={title} text={text} empty={spec.empty} flash={flash} hl={f.hl} />
         {aids || null}
       </div>
       <div className="op-main">
@@ -9072,248 +9079,138 @@ function TaskScreen({ p, make }) {
 }
 
 // =============================================================================
-// ХУК, ПЯТЬ ЗАДАНИЙ, ВЫВОД И КОРЕНЬ ПРАКТИКИ «ПОХОДНЫЙ БЛОКНОТ»
-// Семь слайдов (заказчик, 22.10.2026). У каждого задания своя механика:
-// дописать пункт → правка в двух местах (ul → ol) → строка в список → найти и
-// починить пункты (счётчик) → свой список с нуля (живой список условий).
+// ХУК, ПЯТЬ ЗАДАНИЙ, ВЫВОД И КОРЕНЬ ПРАКТИКИ «БУМАЖНАЯ УЛИЦА»
+// Семь слайдов (заказчик, 22.10.2026): задания идут от самого лёгкого к
+// сложному — слово между тегами → один тег → блок из трёх строк → найти место
+// в чужом коде → своя страница внутри готового html.
 // =============================================================================
 const DOCTYPE = '<!DOCTYPE html>';
-// Готовая рамка документа (урок 1): head с title и открытый body; extra — строки в body.
-const frame = (title, extra) => [DOCTYPE, '<html>', '  <head>', '    <title>' + title + '</title>', '  </head>', '  <body>'].concat(extra || []);
-const END = ['  </body>', '</html>'];
-const same = (a, b) => normName(a) === normName(b);
-const sameList = (a, b) => a.length === b.length && a.every((x, i) => same(x, b[i]));
-const sameSet = (a, b) => sameList(a.map(normName).sort(), b.map(normName).sort());
-// Разбор нашёл поломку записи или пар — его фраза; line — где она.
-const fragFail = (r) => ({ ok: false, msg: r.msg, cat: 'tag', line: r.line });
-const itemsOf = (ls) => ls.items.map((x) => squash(x.text));
-// Список кодом: открывающий тег, пункты с отступом, закрывающий.
-const listCode = (tag, items) => ['<' + tag + '>'].concat(items.map((x) => '  <li>' + x + '</li>'), ['</' + tag + '>']).join('\n');
+const headWith = (title) => [DOCTYPE, '<html>', '  <head>', '    <title>' + title + '</title>', '  </head>'];
+const bodyWith = (text) => ['  <body>', '    ' + text, '  </body>', '</html>'];
+const HEAD_OPEN = [DOCTYPE, '<html>', '  <head>'];
+const afterTitle = (text) => ['  </head>'].concat(bodyWith(text));
 
-// t1 — один новый пункт li с нужным словом (в коде он стоит внутри ul).
-function checkAddItem(code, w) {
-  if (!String(code || '').trim()) return fb('needLi');
-  const other = lexDoc(code).find((t) => (t.k === 'open' || t.k === 'close') && t.name !== 'li');
-  if (other) return fb('notLi', { tag: other.name });
-  const r = checkFrag('<ul>' + code + '</ul>');
-  if (!r.ok) return fragFail(r);
-  const items = r.lists[0] ? r.lists[0].items : [];
-  if (!items.length) return fb('needLi');
-  if (items.length > 1) return fb('oneItem');
-  if (!same(items[0].text, w)) return fb('wordSame', { w });
-  return { ok: true, result: {} };
+// Поле в строке кода (t1): пишется только слово, теги уже стоят.
+function checkTitleField(st) {
+  if (hasTags(st.title)) return fb('fieldTags', null, 'head');
+  if (!st.title.trim()) return fb('titleBlank', null, 'head');
+  if (!hasLetters(st.title)) return fb('fieldLetters', null, 'head');
+  return { ok: true, result: { title: squash(st.title), text: squash(st.body) } };
 }
 
-// t2 — тот же список, но ol; шаги прежние.
-function checkToOl(code, items) {
-  const r = checkFrag(code, { strictText: true });
-  if (!r.ok) return fragFail(r);
-  if (r.lists.length !== 1) return fb('noList');
-  if (r.lists[0].t !== 'ol') return fb('stillUl');
-  if (!sameList(itemsOf(r.lists[0]), items)) return fb('itemsSame');
-  return { ok: true, result: {} };
-}
-
-// t3 — строка вещей → список ul: по пункту на вещь, строки p не осталось.
-function checkFromText(code, words) {
-  const r = checkFrag(code, { strictText: true });
-  if (!r.ok) return fragFail(r);
-  if (!r.lists.length) return fb('needUl');
-  if (r.blocks.some((x) => hasLetters(x.text))) return fb('leftText');
-  const ls = r.lists[0];
-  if (r.lists.length > 1) return fb('countN', { n: words.length });
-  if (ls.t !== 'ul') return fb('notOl');
-  if (ls.items.length !== words.length) return fb('countN', { n: words.length });
-  if (!sameSet(itemsOf(ls), words)) return fb('itemsWrong', { list: words.join(', ') });
-  return { ok: true, result: {} };
-}
-
-// t4 — пункты починены, а список прежний: тот же тег и те же шаги.
-// В ul порядок пунктов не важен, в ol — важен.
-function checkFix(code, want) {
-  const r = checkFrag(code, { strictText: true });
-  if (!r.ok) return fragFail(r);
-  const ls = r.lists;
-  const got = ls.length === 1 ? itemsOf(ls[0]) : [];
-  const textOk = want.tag === 'ol' ? sameList(got, want.items) : sameSet(got, want.items);
-  if (ls.length === 1 && ls[0].t === want.tag && textOk && !r.blocks.length) return { ok: true, result: {} };
-  const all = [].concat(...ls.map(itemsOf));
-  if (sameSet(all, want.items)) return fb('keepList', { tag: want.tag });
-  return fb('textSame');
-}
-// Сколько строк с поломкой осталось — для счётчика. Пусто — не «всё исправлено».
-const brokenLeft = (code) => {
-  const r = checkFrag(code, { strictText: true });
-  return r.ok && r.lists.length ? 0 : Math.max(1, r.count);
+// Образцы третьей ступени своего дома — по части, где затруднение; всегда для другого дома.
+const FRAG = {
+  head: (pick) => '<head>\n  <title>' + pick(TXT.workshop) + '</title>\n</head>',
+  body: (pick) => '<body>\n  ' + pick(TXT.bikeText) + '\n</body>'
 };
-
-// t5 — свой список: h1 с названием, список ul или ol, три пункта с текстом, всё закрыто.
-function listPageOf(code) {
-  const r = checkFrag(code, { strictText: true });
-  const h1 = r.blocks.find((x) => x.t === 'h1' && hasLetters(x.text));
-  const ls = r.lists.find((x) => x.items.filter((it) => hasLetters(it.text)).length >= 3) || r.lists[0] || null;
-  const n = ls ? ls.items.filter((it) => hasLetters(it.text)).length : 0;
-  return { r, h1, ls, n, closed: r.ok && (r.blocks.length > 0 || r.lists.length > 0) };
-}
-function checkOwn(code) {
-  if (!String(code || '').trim()) return fb('artEmpty', null, 'h1');
-  const a = listPageOf(code);
-  if (!a.r.ok) return fragFail(a.r);
-  if (!a.r.blocks.some((x) => x.t === 'h1')) return fb('needH1', null, 'h1');
-  if (!a.h1) return fb('headEmpty', null, 'h1');
-  if (!a.ls) return fb('needList', null, 'list');
-  if (a.n < 3) return fb('needItems', null, 'items');
-  return { ok: true, result: { title: squash(a.h1.text), kind: a.ls.t, items: a.ls.items.filter((it) => hasLetters(it.text)).map((it) => squash(it.text)) } };
-}
+const fragCat = (r) => (r.ok || r.cat === 'body' ? 'body' : 'head');
 
 // =============================================================================
-// ПЯТЬ ЗАДАНИЙ. num — номер задания и привал тропы, который оно восстанавливает.
+// ПЯТЬ ЗАДАНИЙ. Каждое — описание: что в редакторе, как проверить, какие
+// подсказки и наглядная помощь, какая дополнительная задача.
+// num — номер задания и дом улицы, который оно чинит.
 // =============================================================================
-// 1 · Рюкзак — дописать в готовый ul новый пункт <li>компас</li>.
+// 1 · Пекарня — своё название между готовыми тегами title.
 function cfgT1(pick) {
-  const top = pick(TXT.hike);
-  const w = pick(TXT.add), w2 = pick(TXT.add2);
-  const pre = (items, h) => frame(top, ['    <h2>' + h + '</h2>', '    <ul>'].concat(items.map((x) => '      <li>' + pick(x) + '</li>')));
-  const post = ['    </ul>'].concat(END);
   return {
-    id: 't1', num: 1, kind: 'line', C: C.t1,
-    spec: { kind: 'line', before: pre(TXT.pack, pick(TXT.packH)), after: post, ind: 6 },
-    init: () => ({ code: '' }),
-    check: (st) => checkAddItem(st.code, w),
+    id: 't1', num: 1, kind: 'fields', C: C.t1,
+    spec: { kind: 'fields', editBody: false, ph: { title: L3('nom', 'название', 'name') } },
+    init: () => ({ title: '', body: pick(TXT.bakeryText) }),
+    check: checkTitleField,
     hint: (lv) => ({ text: C.t1.hints[lv - 1] }),
-    fx: (rec) => (rec.solved ? null : { led: rec.hint >= 3 }),
-    h3: () => <CodeSample code={'<li>' + pick(TXT.sample1) + '</li>'} />,
+    fx: (rec) => (rec.solved ? null : { hl: rec.hint >= 2 ? 'head' : null, led: rec.hint >= 3 ? 'title' : null }),
     drill: { make: () => ({
-      order: C.t1.drill,
-      spec: { kind: 'line', before: pre(TXT.pack2, pick(TXT.packH)), after: post, ind: 6 },
-      init: () => ({ code: '' }), check: (st) => checkAddItem(st.code, w2)
+      order: C.t1.drill, spec: { kind: 'fields', editBody: false },
+      init: () => ({ title: '', body: pick(TXT.bikeText) }), check: checkTitleField
     }) }
   };
 }
 
-// 2 · Тропа — шаги маршрута в ul: поменять оба тега на ol.
-function cfgT2(pick) {
-  const top = pick(TXT.hike);
-  const route = TXT.route.map(pick), sand = TXT.sand.map(pick);
+// 2 · Почта — дописать </title>. Пока его нет, браузер честно уносит на вкладку
+// весь код после <title>.
+function cfgT2(pick, store, lang) {
   return {
-    id: 't2', num: 2, kind: 'block', C: C.t2,
-    spec: { kind: 'block', before: frame(top, ['    <h2>' + pick(TXT.routeH) + '</h2>']), after: END, ind: 4 },
-    init: () => ({ code: listCode('ul', route) }),
-    check: (st) => checkToOl(st.code, route),
+    id: 't2', num: 2, kind: 'line', C: C.t2,
+    spec: { kind: 'line', before: HEAD_OPEN, after: afterTitle(pick(TXT.postText)), ind: 4 },
+    init: () => ({ code: '<title>' + pick(STREET[1].name) }),
+    check: (st) => checkLine(st.code, STREET[1].name, lang),
     hint: (lv) => ({ text: C.t2.hints[lv - 1] }),
     fx: (rec) => (rec.solved ? null : { led: rec.hint >= 3 }),
-    h3: () => <CodeSample code={'<ol>\n  …\n</ol>'} />,
+    h3: () => <CodeSample code={'<body>\n  …\n</body>'} />,
     drill: { make: () => ({
       order: C.t2.drill,
-      spec: { kind: 'block', before: frame(top, ['    <h2>' + pick(TXT.sandH) + '</h2>']), after: END, ind: 4 },
-      init: () => ({ code: listCode('ul', sand) }), check: (st) => checkToOl(st.code, sand)
+      spec: { kind: 'line', before: HEAD_OPEN, after: afterTitle(pick(TXT.stopText)), ind: 4 },
+      init: () => ({ code: '<title>' + pick(TXT.stop) }), check: (st) => checkLine(st.code, TXT.stop, lang)
     }) }
   };
 }
 
-// 3 · Привал — строка «шапка, вода, карта» → список ul. Рядом — как должно быть.
+// 3 · Кинотеатр — блок body со своим текстом; схема «1 · 2 · 3» видна сразу.
 function cfgT3(pick) {
-  const top = pick(TXT.hike);
-  const rest = TXT.rest.map(pick), games = TXT.games.map(pick);
   return {
     id: 't3', num: 3, kind: 'block', C: C.t3,
-    spec: { kind: 'block', before: frame(top, ['    <h2>' + pick(TXT.restH) + '</h2>']), after: END, ind: 4 },
-    init: () => ({ code: '<p>' + rest.join(', ') + '</p>' }),
-    check: (st) => checkFromText(st.code, rest),
+    spec: { kind: 'block', before: headWith(pick(STREET[2].name)), after: ['</html>'], ind: 2, empty: C.t3.empty },
+    init: () => ({ code: '' }),
+    check: (st) => checkBlock(st.code),
     hint: (lv) => ({ text: C.t3.hints[lv - 1] }),
     fx: (rec) => (rec.solved ? null : { led: rec.hint >= 3 }),
-    aids: <ListTarget kind="ul" items={rest} />,
-    h3: () => <CodeSample code={listCode('ul', TXT.sample3.map(pick))} />,
+    orderExtra: <Slots3 mid="text" />,
+    h3: () => <CodeSample code={'<body>\n  ' + pick(TXT.bikeText) + '\n</body>'} />,
     drill: { make: () => ({
       order: C.t3.drill,
-      spec: { kind: 'block', before: frame(top, ['    <h2>' + pick(TXT.gamesH) + '</h2>']), after: END, ind: 4 },
-      init: () => ({ code: '<p>' + games.join(', ') + '</p>' }), check: (st) => checkFromText(st.code, games),
-      aids: <ListTarget kind="ul" items={games} />
+      spec: { kind: 'block', before: headWith(pick(TXT.pool)), after: ['</html>'], ind: 2, empty: C.t3.empty },
+      init: () => ({ code: '' }), check: (st) => checkBlock(st.code), orderExtra: <Slots3 mid="text" />
     }) }
   };
 }
 
-// 4 · Палатка — два сломанных пункта: текст без <li> и <li> вместо </li>.
-// Браузер честно показывает обе поломки: шаг без номера и лишний пустой пункт.
+// 4 · Школа — нажать место, где кончается head, и вписать </head>.
 function cfgT4(pick) {
-  const top = pick(TXT.hike);
-  const tent = TXT.tent.map(pick), dish = TXT.dish.map(pick);
-  const before = frame(top, ['    <h2>' + pick(TXT.tentH) + '</h2>']);
-  const dbefore = frame(top, ['    <h2>' + pick(TXT.dishH) + '</h2>']);
-  const want = { tag: 'ol', items: tent };
-  const dwant = { tag: 'ul', items: dish };
-  const lineOf = (code) => { const r = checkFrag(code, { strictText: true }); return r.ok || r.line == null ? null : before.length + r.line; };
+  const lines = [DOCTYPE, '<html>', '  <head>', '    <title>' + pick(STREET[3].name) + '</title>',
+    '  <body>', '    ' + pick(TXT.schoolText), '  </body>', '</html>'];
+  const m = C.t4.miss;
+  const dlines = headWith(pick(TXT.cafe)).concat(['  <body>', '    ' + pick(TXT.cafeText), '</html>']);
+  const dm = C.t4.drillMiss;
   return {
-    id: 't4', num: 4, kind: 'block', C: C.t4,
-    spec: { kind: 'block', before, after: END, ind: 4 },
-    init: () => ({ code: ['<ol>', '  <li>' + tent[0] + '</li>', '  ' + tent[1] + '</li>', '  <li>' + tent[2] + '<li>', '</ol>'].join('\n') }),
-    check: (st) => checkFix(st.code, want),
-    hint: (lv, st) => {
-      if (lv !== 2) return { text: C.t4.hints[lv - 1] };
-      const at = lineOf(st.code);
-      if (at != null) return { text: fillL(C.t4.hints[1], { n: at + 1 }) };
-      if (brokenLeft(st.code)) return { text: C.t4.hintTags };
-      return { text: checkFix(st.code, want).ok ? C.t4.hintLine : C.t4.hintKeep };
-    },
-    fx: (rec) => (rec.solved ? null : { markLine: rec.hint >= 2 ? lineOf(rec.st.code) : null }),
-    aids: (rec, st) => <FixLeft n={brokenLeft(st.code)} />,
-    h3: () => <CodeSample code={listCode('ol', TXT.sand.map(pick))} />,
+    id: 't4', num: 4, kind: 'gap', C: C.t4,
+    spec: { kind: 'gap', lines, gaps: [1, 2, 3, 4, 5, 6], ind: 2, bars: true },
+    init: () => ({ at: null, code: '', miss: null }),
+    pick: (i) => (i === 3 ? { ok: true, say: C.t4.picked } : { ok: false, msg: i < 2 ? m.before : i === 2 ? m.inside : m.after }),
+    orderOf: (st) => (st.at == null ? C.t4.order : C.t4.order2),
+    check: (st) => (st.at == null ? fb('pickFirst', { tag: 'head' }, 'head') : checkCloseTag(st.code, 'head')),
+    hint: (lv) => ({ text: C.t4.hints[lv - 1] }),
+    fx: (rec) => (rec.solved ? null : { ledGap: rec.hint >= 3 && rec.st.at == null ? 3 : null, led: rec.hint >= 3 && rec.st.at != null }),
     drill: { make: () => ({
       order: C.t4.drill,
-      spec: { kind: 'block', before: dbefore, after: END, ind: 4 },
-      init: () => ({ code: ['<ul>', '  <li>' + dish[0] + '</li>', '  ' + dish[1], '</ul>', '<li>' + dish[2] + '</li>'].join('\n') }),
-      check: (st) => checkFix(st.code, dwant),
-      aids: (d, st) => <FixLeft n={brokenLeft(st.code)} />
+      orderOf: (st) => (st.at == null ? C.t4.drill : C.t4.drill2),
+      spec: { kind: 'gap', lines: dlines, gaps: [4, 5, 6], ind: 2, bars: true },
+      init: () => ({ at: null, code: '', miss: null }),
+      pick: (i) => (i === 6 ? { ok: true, say: C.t4.drill2 } : { ok: false, msg: i === 4 ? dm.before : dm.inside }),
+      check: (st) => (st.at == null ? fb('pickFirst', { tag: 'body' }, 'body') : checkCloseTag(st.code, 'body'))
     }) }
   };
 }
 
-// 5 · Свой список — с нуля внутри body: h1 и список с тремя пунктами.
-// Список условий загорается по ходу набора; редактор во всё свободное место.
+// 5 · Свой дом — внутри готового html: head с title (своё название) и body
+// со своим текстом. Редактор во всё свободное место; чертёж виден сразу.
 function cfgT5(pick) {
-  const top = pick(TXT.hike);
-  const before = frame(top);
-  const items = (code) => {
-    const a = listPageOf(code);
-    return [
-      { k: 'h1', ok: !!a.h1, text: UI.needH1 },
-      { k: 'list', ok: !!a.ls, text: UI.needList },
-      { k: 'n', ok: a.n >= 3, text: UI.need3 },
-      { k: 'cl', ok: a.closed, text: UI.needClosed }
-    ];
-  };
   return {
-    id: 't5', num: 5, kind: 'block', C: C.t5,
-    spec: { kind: 'block', before, after: END, ind: 4, big: true, empty: C.t5.empty },
-    init: () => ({ code: '' }),
-    check: (st) => {
-      const r = checkOwn(st.code);
-      if (!r.ok) return r;
-      const html = before.concat(st.code.split('\n').map((l) => '    ' + l)).concat(END).join('\n');
-      const pg = renderDoc(html);
-      return { ok: true, result: Object.assign({}, r.result, { html, page: pg.title, blocks: pg.blocks }) };
-    },
+    id: 't5', num: 5, kind: 'doc', C: C.t5,
+    spec: { kind: 'doc', big: true, bars: true },
+    init: () => ({ code: [DOCTYPE, '<html>', '  ', '</html>'].join('\n') }),
+    check: (st) => checkDoc(st.code),
     hint: (lv, st) => {
-      if (lv !== 2) return { text: C.t5.hints[lv - 1] };
-      const r = checkOwn(st.code);
-      const cat = r.ok ? 'tag' : r.cat === 'tag' && !listPageOf(st.code).r.blocks.length && !listPageOf(st.code).r.lists.length ? 'h1' : (r.cat || 'tag');
-      return { text: C.t5.hint2[cat] || C.t5.hints[1] };
+      if (lv === 1) return { text: C.t5.hints[0] };
+      const r = checkDoc(st.code);
+      if (lv === 2) return { text: !r.ok && C.house.hint2[r.cat] ? C.house.hint2[r.cat] : C.t5.hints[1] };
+      return { text: C.t5.hints[2], cat: fragCat(r) };
     },
-    fx: (rec) => (rec.solved ? null : { led: rec.hint >= 3 }),
-    aids: (rec, st) => <Checklist items={items(st.code)} />,
-    h3: () => <CodeSample code={'<h1>' + pick(TXT.books) + '</h1>\n' + listCode('ul', TXT.booksL.map(pick))} />,
+    orderExtra: <Blueprint />,
+    h3: (rec) => <CodeSample code={FRAG[rec.hcat || 'head'](pick)} />,
     drill: { make: () => ({
       order: C.t5.drill,
-      spec: { kind: 'block', before, after: END, ind: 4, empty: C.t5.empty },
-      init: () => ({ code: '' }),
-      check: (st) => {
-        const r = checkFrag(st.code, { strictText: true });
-        if (!r.ok) return fragFail(r);
-        const ls = r.lists[0];
-        if (!ls || ls.t !== 'ol') return fb('needOl');
-        if (ls.items.filter((it) => hasLetters(it.text)).length < 3) return fb('needItems');
-        return { ok: true, result: {} };
-      }
+      spec: { kind: 'block', before: headWith(pick(TXT.workshop)), after: ['</html>'], ind: 2, empty: C.t3.empty },
+      init: () => ({ code: '' }), check: (st) => checkBlock(st.code)
     }) }
   };
 }
@@ -9325,8 +9222,8 @@ const ST4 = ({ p }) => <TaskScreen p={p} make={cfgT4} />;
 const ST5 = ({ p }) => <TaskScreen p={p} make={cfgT5} />;
 
 // =============================================================================
-// ХУК — тропа целая; одно касание «Дождь!»: флажки привалов вздрагивают,
-// выцветают и косятся, капли слетают (stop-motion, шорох). Потом Коди называет задачу.
+// ХУК — улица целая; одно касание «Ветер!»: дома выцветают и косятся, с них
+// слетают бумажки-вывески (stop-motion, шорох). Потом Коди называет задачу.
 // =============================================================================
 function SIntro({ p }) {
   const pick = usePick();
@@ -9338,7 +9235,7 @@ function SIntro({ p }) {
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(done, spoken);
   const led = useIdleLed(canTap && !done, 0);
-  const rain = () => {
+  const blow = () => {
     if (!canTap || done) return;
     sfx('pop', true);
     setBlown(true);
@@ -9354,11 +9251,11 @@ function SIntro({ p }) {
         <StreetMap whole={!done} blown={blown} />
         {done ? <p className="pp-intro-note kz-piece">{pick(c.note)}</p> : (
           <div className="pp-wind-row">
-            <button type="button" className={'kz-btn is-coral pp-wind' + (led ? ' is-led' : '')} disabled={!canTap} onClick={rain}>
-              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round">
-                <path d="M7 15a4 4 0 0 1-.6-8A5.5 5.5 0 0 1 17 7.5a3.8 3.8 0 0 1 .5 7.5H7zM8 18l-1 3M12 18l-1 3M16 18l-1 3" />
+            <button type="button" className={'kz-btn is-coral pp-wind' + (led ? ' is-led' : '')} disabled={!canTap} onClick={blow}>
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <path d="M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7" />
               </svg>
-              {pick(UI.rain)}
+              {pick(UI.wind)}
             </button>
           </div>
         )}
@@ -9380,7 +9277,7 @@ function PSeg({ value, onChange }) {
   );
 }
 
-// ВЫВОД — тропа горит, свой список и его код, что ученик теперь умеет, следующий урок.
+// ВЫВОД — улица горит, своя страница и её код, что ученик теперь умеет, следующий урок.
 function SFin({ p }) {
   const pick = usePick();
   const store = useStore();
@@ -9402,7 +9299,7 @@ function SFin({ p }) {
               <span className="pp-only-narrow"><PSeg value={view} onChange={setView} /></span>
             </div>
             <div className={'pp-fin-pair view-' + view}>
-              <div className="pp-fin-b"><PageView title={res.page} blocks={res.blocks} /></div>
+              <div className="pp-fin-b"><PageView title={res.title} text={res.text} /></div>
               <div className="pp-fin-c"><Pad><CodeSample code={res.html} /></Pad></div>
             </div>
             <div className="pp-skills kz-piece">
@@ -9432,14 +9329,14 @@ const SCREENS = [
 // «Повторить» стирает только текущий экран.
 const SCREEN_RESET = { intro: ['intro'], t1: ['t1'], t2: ['t2'], t3: ['t3'], t4: ['t4'], t5: ['t5'], fin: [] };
 
-// Артефакт практики — страница со своим списком, как её написал ученик.
+// Артефакт практики — страница своего дома, как её написал ученик.
 function practiceArtifact(store) {
   const r = (store.get('t5') || {}).result;
   if (!r) return null;
-  return { type: 'html-page', title: r.title, text: (r.items || []).join(', '), items: r.items || [], html: r.html };
+  return { type: 'html-page', title: r.title, text: r.text, html: r.html };
 }
 
-export default function HtmlPractice03({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function HtmlPractice01({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
     meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
@@ -10219,11 +10116,10 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 
 /* Экран «Сверху вниз» (s12) после показа: части коллажа нажимаются. */
 .kz-s12.is-explore .kz-collage, .kz-s12.is-explore .kz-collage * { cursor: pointer; }
-/* ── ПРАКТИКА К УРОКУ 3 «Походный блокнот» — бумажный вид урока 1 ───────────
+/* ── ПРАКТИКА К УРОКУ 1 «Бумажная улица» — бумажный вид урока 1 ─────────────
    Лист, вырезки и бумажный браузер — из набора kollazh; здесь только то, что
    есть у практики: редактор на бумажной подложке, заметки-листки, кнопки,
-   тропа с привалами-флажками, страница с заголовками, абзацами и списками (pg-).
-   Префикс pp- (и классы каркаса 01p: ed-, cv-, op-). */
+   улица из бумажных домов. Префикс pp- (и классы каркаса 01p: ed-, cv-, op-). */
 .lesson-root { --cv-fs: clamp(12.5px, 3.4vw, 15px); --ed-fs: 16px; --gw: 46px; }
 @media (min-width: 760px) and (min-height: 700px) {
   .lesson-root { --cv-fs: clamp(14px, 1.45vw, 16px); --ed-fs: 17px; }
@@ -10258,18 +10154,17 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .op-work.is-big .op-main { flex: 1 1 auto; }
 .op-work.is-big .op-main > .pp-edpad { flex: 1 1 auto; }
 .op-work.is-big .pp-edpad > .ed { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 8em; }
-.op-work.is-big .ed-edit { flex: 1 0 auto; }
-.op-work.is-big .pp-edpad > .ed > * { flex-shrink: 0; }   /* строки рамки не сжимаются — редактор прокручивается */
+.op-work.is-big .ed-edit { flex: 1 1 auto; }
 @media (min-width: 720px) {
   .op-work { flex-direction: row; align-items: stretch; gap: 20px; }
   .op-side { flex: .9 1 0; min-height: 0; overflow: auto; }
-  .op-main, .op-work.is-big .op-main { flex: 1.1 1 0; }
+  .op-main { flex: 1.1 1 0; }
   /* Ноутбук: лист шире — крупнее задание, браузер и улица; содержимое по центру листа. */
   .pp-sheet .kz-sheet-body { justify-content: safe center; padding: clamp(14px, 2.4dvh, 26px) clamp(40px, 4.5vw, 64px); }
   .kz-ask.pp-ask { font-size: clamp(15.5px, 2.5dvh, 20px); padding: 8px 18px 9px; }
   .pp-strip { padding: 0 6px; }
   .pp-strip .pp-house.is-s { --hw: clamp(28px, 4.4dvh, 38px); }
-  .pp-br .kz-br-page { height: clamp(8em, 22dvh, 12em); font-size: clamp(14px, 2.1dvh, 18px); }
+  .pp-page { min-height: 4.2em; max-height: 9em; font-size: clamp(15px, 2.3dvh, 19px); }
   .pp-br .kz-br-page { margin: 10px 14px 12px; }
   .pp-note-body { font-size: clamp(15px, 2.3dvh, 18px); }
 }
@@ -10278,28 +10173,8 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .kz-br.pp-br { aspect-ratio: auto; max-width: none; flex: 0 0 auto; }
 .pp-br .kz-br-body { flex: 0 0 auto; }
 .pp-br .kz-br-page { position: relative; inset: auto; margin: 7px 10px 9px; }
-/* Страница без прокрутки: высота окна задана, не влезает — шрифт подгоняет useFitPage. */
-.pp-br .kz-br-page { height: 7em; overflow: hidden; }
-.pg-doc { display: flex; flex-direction: column; align-items: flex-start; font-weight: 400; overflow-wrap: anywhere; }
-.pg-doc.is-empty { color: #9C9384; font-style: italic; font-family: 'Manrope', sans-serif; font-weight: 600; font-size: .86em; }
-.pg-blk { max-width: 100%; }
-.pg-h1, .pg-in-h1 { font-size: 1.75em; font-weight: 700; line-height: 1.1; }
-.pg-h2, .pg-in-h2 { font-size: 1.4em; font-weight: 700; line-height: 1.14; }
-.pg-h3, .pg-in-h3 { font-size: 1.17em; font-weight: 700; line-height: 1.2; }
-.pg-h4, .pg-in-h4 { font-size: 1em; font-weight: 700; }
-.pg-h5, .pg-in-h5 { font-size: .83em; font-weight: 700; }
-.pg-h6, .pg-in-h6 { font-size: .7em; font-weight: 700; }
-.pg-h1 { margin: 0 0 .22em; } .pg-h2 { margin: .1em 0 .2em; } .pg-h3, .pg-h4, .pg-h5, .pg-h6 { margin: .1em 0 .16em; }
-.pg-p, .pg-raw { line-height: 1.28; } .pg-p { margin: 0 0 .42em; }
-.pg-doc b { font-weight: 700; } .pg-doc i { font-style: italic; }
-/* Списки — как браузер по умолчанию: отступ, точка или номер перед каждым li. */
-.pg-list { padding-left: 1.7em; margin: .05em 0 .35em; }
-.pg-li, .pg-txt { position: relative; line-height: 1.3; min-height: 1.3em; }
-.pg-mk { position: absolute; left: -1.25em; width: 1.05em; text-align: right; }
-.pg-ul > .pg-li > .pg-mk { text-align: center; font-size: 1.1em; line-height: 1.18; }
-.pg-list .pg-blk { margin: .12em 0; }
-.pg-stray { margin-left: .9em; }
-.pg-stray > .pg-mk { left: -.9em; width: .8em; text-align: center; }
+.pp-page { min-height: 1.5em; max-height: 5.6em; overflow: auto; overflow-wrap: anywhere; scrollbar-width: thin; }
+.pp-page.is-empty { color: #9C9384; font-style: italic; font-family: 'Manrope', sans-serif; font-weight: 600; font-size: .86em; }
 .pp-br .kz-br-tab { max-width: 74%; }
 .pp-br.is-hl-page .kz-br-page { outline-offset: 2px; }
 
@@ -10419,41 +10294,52 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .pp-note-body { font: 700 clamp(14.5px, 2dvh, 17px)/1.35 'Manrope', sans-serif; }
 .pp-note-extra { margin-top: 6px; background: rgba(255, 255, 255, .72); box-shadow: inset 0 0 0 1.5px rgba(141, 94, 0, .22); }
 
-/* ══ СЧЁТЧИК ПОЛОМОК (t4) ═════════════════════════════════════════════════ */
+/* ══ НАГЛЯДНАЯ ПОМОЩЬ ══════════════════════════════════════════════════════ */
+.pp-slots { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.pp-slot { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px 5px; background: #FBF6EA; color: #1F2A44;
+  font: 700 13.5px 'Manrope', sans-serif; box-shadow: inset 0 0 0 1.5px #E6DCC6;
+  clip-path: polygon(0 10%, 6% 0, 94% 8%, 100% 0, 97% 55%, 100% 100%, 50% 92%, 4% 100%, 0 50%); }
+.pp-slot b { display: inline-grid; place-items: center; width: 18px; height: 18px; background: #1F2A44; color: #FBF6EA; font: 800 11px 'JetBrains Mono', monospace; border-radius: 4px; }
+.pp-slot.is-name, .pp-slot.is-text { background: #FFF1C9; }
 .pp-left { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px 5px; background: #FFE4D8; color: #8C3A1E;
   font: 800 13.5px 'Manrope', sans-serif; clip-path: polygon(0 10%, 6% 0, 94% 8%, 100% 0, 97% 55%, 100% 100%, 50% 92%, 4% 100%, 0 50%); }
 .pp-left.is-ok { background: #DCEFE8; color: #1E6B5F; }
+.pp-bp { display: flex; align-items: center; gap: 12px; padding: 6px 14px 7px; background: #FBF6EA; box-shadow: inset 0 0 0 1.5px #E6DCC6;
+  clip-path: polygon(0 6%, 4% 0, 96% 5%, 100% 0, 99% 50%, 100% 100%, 50% 95%, 0 100%, 1% 50%); }
+.pp-bp-step { flex: none; padding: 2px 9px; background: #1F2A44; color: #FBF6EA; font: 800 12px 'Manrope', sans-serif; border-radius: 4px; }
+.pp-bp-tree { font: 600 13.5px/1.4 'JetBrains Mono', ui-monospace, monospace; color: #1F2A44; }
+.pp-bp-row { display: flex; align-items: center; gap: 4px; opacity: .55; }
+.pp-bp-row.is-cur, .pp-bp-row.is-done { opacity: 1; }
+.pp-bp-row.is-cur .pp-bp-tag { background: #FFF1C9; box-shadow: inset 0 -2px 0 var(--c); }
+.pp-bp-pre { white-space: pre; color: #A39A88; }
+.pp-bp-tag { padding: 0 4px; font-weight: 800; border-radius: 3px; }
+.pp-bp-note { font: 600 12.5px 'Manrope', sans-serif; color: #5B5446; }
+.pp-bp-ok { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; background: #2A8C7E; color: #fff; margin-left: 3px; }
 
-/* ══ ТРОПА ПОХОДА ═══════════════════════════════════════════════════════════
-   Привал — бумажный круг-флажок своего цвета с мини-списком (точки или номера).
-   Ждёт — выцвел и покосился, список размыт; готов — свой цвет, ровно, галочка.
-   Свой список до написания — пунктирный круг. */
+/* ══ БУМАЖНАЯ УЛИЦА ═════════════════════════════════════════════════════════
+   Дом — вырезки: крыша, стена, окно, дверь. Ждёт — выцветший, окно тёмное;
+   готов — свой цвет, окно светится, галочка. Свой дом до постройки — пунктир. */
 .pp-house { position: relative; display: inline-flex; flex-direction: column; align-items: center; gap: 3px; vertical-align: bottom; }
-.pp-h-art { position: relative; display: block; width: var(--hw, 30px); height: var(--hw, 30px); }
+.pp-h-art { position: relative; display: block; width: var(--hw, 30px); height: calc(var(--hw, 30px) * 1.04); }
 .pp-house.is-s { --hw: 26px; }
-.pp-house.is-l { --hw: clamp(48px, 13vw, 68px); }
-.kz-cut.pp-stop-disc { inset: 0; z-index: 1; }
-.pp-stop-list { position: absolute; z-index: 2; left: 24%; right: 20%; top: 26%; bottom: 26%; display: flex; flex-direction: column; justify-content: space-between; }
-.pp-stop-list i { display: flex; align-items: center; gap: 8%; height: 22%; }
-.pp-stop-list b { flex: none; display: grid; place-items: center; width: 22%; aspect-ratio: 1; border-radius: 50%; background: #FBF6EA;
-  font: 800 calc(var(--hw) * .13)/1 'Manrope', sans-serif; color: #1F2A44; }
-.pp-stop-list.is-ol b { width: 30%; border-radius: 3px; }
-.pp-stop-list u { flex: 1 1 auto; height: 55%; background: #FBF6EA; border-radius: 1px; text-decoration: none; opacity: .92; }
-.pp-stop-list i:nth-child(2) u { flex-basis: 80%; max-width: 80%; } .pp-stop-list i:nth-child(3) u { max-width: 62%; }
-.pp-stop-list.is-mess i { translate: -14% 0; rotate: -10deg; opacity: .7; } .pp-stop-list.is-mess i:nth-child(2) { translate: 10% -30%; rotate: 8deg; }
-.pp-stop-list.is-mess b { opacity: 0; }
-.pp-stop-plan { position: absolute; inset: 6%; border: 2px dashed #8E9C7E; border-radius: 50%; background: rgba(251, 246, 234, .45); }
-.pp-house.is-lit .pp-h-art { filter: drop-shadow(0 0 5px rgba(255, 196, 70, .75)); }
-/* Ждёт — выцвела и покосилась; починили — свой цвет и висит ровно (ступеньками). */
+.pp-house.is-l { --hw: clamp(46px, 12.5vw, 66px); }
+.kz-cut.pp-h-roof { left: -8%; top: 0; width: 116%; height: 46%; z-index: 2; }
+.kz-cut.pp-h-wall { left: 6%; top: 38%; width: 88%; height: 62%; z-index: 1; }
+.kz-cut.pp-h-win { left: 18%; top: 52%; width: 30%; height: 24%; z-index: 3; }
+.kz-cut.pp-h-door { left: 58%; top: 62%; width: 24%; height: 38%; z-index: 3; }
+.pp-h-winplan { position: absolute; left: 18%; top: 52%; width: 30%; height: 24%; z-index: 3; border: 1.5px dashed #B1A891; border-radius: 2px; }
+.pp-h-plan { position: absolute; inset: 8% 6% 0; border: 2px dashed #B1A891; border-radius: 3px;
+  clip-path: polygon(50% 0, 100% 38%, 100% 100%, 0 100%, 0 38%); background: rgba(216, 205, 182, .25); }
+.pp-house.is-lit .kz-cut.pp-h-win { filter: drop-shadow(0 0 4px rgba(255, 196, 70, .95)) drop-shadow(0 1px 1px rgba(74, 48, 18, .3)); }
+/* Ждёт — выцвел и покосился от ветра; починили — свой цвет и стоит ровно (ступеньками). */
 .pp-h-art { transition: rotate .5s steps(5, end), filter .5s steps(5, end); }
-.pp-house.is-wait .pp-h-art { rotate: var(--tilt, 0deg); filter: grayscale(.85) opacity(.78); }
+.pp-house.is-wait .pp-h-art { rotate: var(--tilt, 0deg); filter: grayscale(.8) opacity(.78); }
 .pp-h-ok { position: absolute; top: -4px; right: -6px; z-index: 5; display: grid; place-items: center; width: 15px; height: 15px; border-radius: 50%;
   background: #2A8C7E; color: #fff; box-shadow: 0 0 0 2px #FBF6EA; }
 .pp-house.is-cur .pp-h-art::after { content: ''; position: absolute; left: 50%; bottom: -7px; translate: -50% 0; width: 70%; height: 3px; background: #E0643F; border-radius: 2px; }
 .pp-h-name { max-width: calc(var(--hw) * 1.7); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center;
   font: 800 clamp(10.5px, 1.5dvh, 12.5px)/1.2 'Manrope', sans-serif; color: #1F2A44; }
 .pp-house:not(.is-lit) .pp-h-name { color: #8C8476; }
-.pp-street .pp-house:not(.is-lit) .pp-h-name { color: #6B5A3E; }
 
 .pp-strip { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 0 0 auto; }
 .pp-strip-row { display: flex; align-items: flex-end; gap: clamp(6px, 1.2vw, 12px); }
@@ -10463,22 +10349,17 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .pp-strip.is-mini .pp-strip-row { gap: 10px; }
 .pp-strip.is-mini .pp-house.is-s { --hw: 24px; }
 
-/* Большая тропа — лужайка, пунктирная тропинка, привалы вдоль неё. */
 .pp-street { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(10px, 2dvh, 18px) 8px; align-items: end;
-  justify-items: center; padding: clamp(14px, 2.4dvh, 22px) 12px clamp(10px, 2dvh, 18px); flex: 0 0 auto; width: 100%; max-width: 860px; align-self: center; }
-.pp-street .kz-cut.pp-board { z-index: 0; }
-.pp-trail-path { position: absolute; z-index: 0; left: 6%; right: 6%; top: 40%; height: 0;
-  border-top: 3px dashed rgba(122, 96, 60, .55); }
-.pp-street .pp-house.is-l .pp-h-art::before { content: ''; position: absolute; bottom: -12px; left: 50%; translate: -50% 0; z-index: 0; width: 3px; height: 14px;
-  background: #7A603C; border-radius: 2px; }
+  justify-items: center; padding: 6px 10px 14px; flex: 0 0 auto; width: 100%; max-width: 860px; align-self: center; }
+.pp-street .pp-road { z-index: 0; top: auto !important; bottom: 0; height: 12px; }
 .pp-street-h { position: relative; z-index: 1; animation: kzDrop .66s steps(1, end) both; animation-delay: var(--dl, 0s); }
 .pp-street.is-glow .pp-house.is-lit .pp-h-art { animation: kzStamp .5s steps(1, end) both; animation-delay: var(--dl, 0s); }
 @media (min-width: 720px) {
   .pp-house.is-l { --hw: clamp(64px, 13dvh, 112px); }
   .pp-sheet-fin .pp-house.is-l { --hw: clamp(48px, 8dvh, 76px); }
 }
-/* Хук: дождь — с флажков слетают капли (stop-motion, с шорохом — kzOut). */
-.kz-cut.pp-scrap { left: 34%; top: 0; width: 26%; height: 22%; z-index: 6; animation: kzOut .9s steps(1, end) both; animation-delay: calc(var(--i, 0) * .09s); }
+/* Хук: ветер сдувает с домов бумажки-вывески (stop-motion, с шорохом — kzOut). */
+.kz-cut.pp-scrap { left: 30%; top: 2%; width: 44%; height: 16%; z-index: 6; animation: kzOut .9s steps(1, end) both; animation-delay: calc(var(--i, 0) * .09s); }
 .pp-street.is-blown .pp-h-art { animation: kzShake .5s steps(1, end) both; animation-delay: calc(var(--i, 0) * .07s); }
 .pp-wind-row { display: flex; justify-content: center; flex: 0 0 auto; }
 .kz-btn.pp-wind { min-width: 180px; font-size: 18px; }
@@ -10486,25 +10367,6 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .pp-intro-note { margin: 0; align-self: center; max-width: 560px; padding: 6px 14px; background: #FFF1C9; color: #5B4300; text-align: center;
   font: 700 clamp(13.5px, 1.9dvh, 15.5px)/1.35 'Manrope', sans-serif;
   clip-path: polygon(0 6%, 4% 0, 96% 5%, 100% 0, 99% 50%, 100% 100%, 50% 95%, 0 100%, 1% 50%); }
-
-/* ══ НАГЛЯДНАЯ ПОМОЩЬ ЗАДАНИЙ 3–5 ═════════════════════════════════════════════ */
-/* «Как должно быть» (t3) — как список в браузере: Times, точки перед пунктами. */
-.pp-target { display: flex; flex-direction: column; gap: 1px; align-self: stretch; padding: 6px 14px 8px; background: #FBF6EA; text-align: left; rotate: -.8deg;
-  box-shadow: inset 0 0 0 1.5px #E6DCC6, inset 4px 0 0 #F0B13F;
-  clip-path: polygon(0 6%, 4% 0, 96% 5%, 100% 0, 99% 50%, 100% 100%, 50% 95%, 0 100%, 1% 50%); }
-.pp-target-h { font: 800 11px 'Manrope', sans-serif; letter-spacing: .05em; text-transform: uppercase; color: #8A6A1A; }
-.pp-target-s { font: 400 clamp(15px, 2.2dvh, 19px)/1.3 'Times New Roman', Times, serif; color: #1F2A44; }
-.pp-target-s { display: flex; flex-direction: column; padding-left: 1.4em; }
-.pp-target-li { position: relative; line-height: 1.3; }
-.pp-target-li > i { position: absolute; left: -1.2em; width: 1em; text-align: center; font-style: normal; }
-/* Живой список условий своей статьи (t5). */
-.pp-check { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; padding: 6px 12px 7px; background: #FBF6EA;
-  box-shadow: inset 0 0 0 1.5px #E6DCC6; clip-path: polygon(0 6%, 4% 0, 96% 5%, 100% 0, 99% 50%, 100% 100%, 50% 95%, 0 100%, 1% 50%); }
-.pp-check-i { display: flex; align-items: center; gap: 6px; min-width: 0; font: 700 13px/1.25 'Manrope', sans-serif; color: #7C7466; }
-.pp-check-i.is-ok { color: #1E6B5F; }
-.pp-check-box { flex: none; display: grid; place-items: center; width: 16px; height: 16px; border-radius: 4px; box-shadow: inset 0 0 0 1.5px #C9BFAA; }
-.pp-check-i.is-ok .pp-check-box { background: #2A8C7E; color: #fff; box-shadow: none; animation: kzStamp .4s steps(1, end) both; }
-.op-side > .pp-left { align-self: flex-start; }
 
 /* ══ ФИНАЛ ═══════════════════════════════════════════════════════════════ */
 .pp-fin { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 980px; align-self: center; }
@@ -10562,19 +10424,20 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
   .pp-sheet .kz-sheet-body { padding: 10px 10px 12px; gap: 7px; }
   .kz-sheet-body > .op-work { min-height: 168px; }
   .op-side { flex: 0 1 auto; min-height: 46px; overflow: auto; scrollbar-width: none; }
-  /* Образец, счётчик и список условий — само условие задания: не сжимаются, ужимается редактор. */
-  /* Списки в окне — сам результат задания: колонка браузера не сжимается, ужимается редактор. */
-  .op-side { flex-shrink: 0; overflow: visible; }
-  .op-side + .op-main { min-height: 96px; }
-  .pp-target { flex-direction: row; flex-wrap: wrap; align-items: baseline; column-gap: 8px; }
   .op-side::-webkit-scrollbar { display: none; }
   .op-main { flex: 1 1 auto; min-height: 116px; }
-  .pp-br .kz-br-page { height: 7.4em; }
-  .pp-check { gap: 3px 8px; padding: 4px 10px 5px; } .pp-check-i { font-size: 12px; }
-  .pp-target { padding: 4px 12px 5px; } .pp-target-s { font-size: 15px; }
+  .pp-page { max-height: 3.9em; }
   .pp-br .kz-br-page { margin: 5px 9px 7px; }
   .ed-line.is-static { font-size: .9em; }
   .ed-line.is-static .ed-n { font-size: .8em; line-height: 2.01em; }
+  .pp-bp { padding: 4px 10px; gap: 8px; }
+  .pp-bp-tree { font-size: 12.5px; line-height: 1.32; }
+  .pp-slot { font-size: 12.5px; padding: 3px 9px 4px; }
+  .pp-slots { gap: 4px; }
+}
+@media (max-width: 400px) {
+  .pp-slot { font-size: 11.5px; padding: 2px 7px 3px; gap: 4px; }
+  .pp-slot b { width: 15px; height: 15px; font-size: 10px; }
 }
 @media (max-height: 700px) {
   .lesson-root { --cv-fs: clamp(11.5px, 3.2vw, 13.5px); }
@@ -10590,6 +10453,7 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
   .lesson-root .pp-note-body { font-size: 14px; }
   .lesson-root .cv { line-height: 1.3; padding-block: 4px; }
   .lesson-root .ed { padding-block: 4px; }
+  .lesson-root .pp-bp-note { display: none; }
 }
 
 /* ══ КЛАВИАТУРА ТЕЛЕФОНА ОТКРЫТА ═══════════════════════════════════════════
@@ -10603,16 +10467,7 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .is-kbd .kz-br-bar { height: 22px; }
 .is-kbd .kz-br-tool { display: none; }
 .is-kbd .pp-br .kz-br-page { margin: 3px 8px 4px; }
-.is-kbd .pp-br .kz-br-page { height: 2.9em; font-size: 12.5px; }
-.is-kbd .pp-check, .is-kbd .op-side > .pp-left { display: none; }
-/* Клавиатура: образец остаётся, а редактор может стать ниже — строка ввода видна, он прокручивается. */
-.is-kbd .op-side + .op-main { min-height: 0; }
-.is-kbd .op-side:has(.pp-target) + .op-main > .pp-edpad, .is-kbd .op-work.is-big .op-main > .pp-edpad { min-height: 52px; }
-.is-kbd .op-work.is-big .pp-edpad > .ed { min-height: 3em; }
-.is-kbd .kz-sheet-body > .op-work.is-big, .is-kbd .op-work.is-big .op-main { min-height: 0; }
-.is-kbd .op-side:has(.pp-target) .kz-br-page { height: 2.4em; }
-.is-kbd .op-side:has(.pp-target) { gap: 4px; }
-.is-kbd .pp-target { padding: 3px 10px 4px; } .is-kbd .pp-target-h { display: none; } .is-kbd .pp-target-s { font-size: 14px; }
+.is-kbd .pp-page { min-height: 1.3em; max-height: 1.4em; font-size: 14px; line-height: 1.3; }
 .is-kbd .op-main > .pp-edpad { min-height: 84px; }
 .is-kbd .kz-sheet-body > .pp-note { max-height: 34%; }
 .is-kbd .op-work { gap: 5px; }
@@ -10626,7 +10481,4 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 @media (prefers-reduced-motion: reduce) {
   .pp-note, .pp-street-h, .pp-street.is-glow .pp-h-art, .pp-stamp, .pp-skill, .pp-gap.is-led, .ed-edit.is-led-in, .tk-input.is-led-in { animation: none !important; }
 }
-/* Клавиатура: образец списка — в одну строку, чтобы редактор и кнопки остались на виду. */
-.is-kbd .pp-target-s { flex-direction: row; flex-wrap: wrap; column-gap: 1.6em; padding-left: 1.2em; font-size: 13.5px; }
-.is-kbd .pp-target { padding: 2px 10px 3px; }
 `;

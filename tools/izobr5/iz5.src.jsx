@@ -2,7 +2,7 @@
 // КУРС «HTML» · Модуль 1 «Основы разметки» · Урок 5 — «Изображения»
 // (бумажный коллаж, по эталону урока 1). Дети 10–14, проходят сами.
 // Один самодостаточный JSX: канон курса (до пометки «УРОК») + урок.
-// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/izobr5/iz5.src.jsx lessons/html/05-izobrazheniya.jsx
+// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/izobr5/iz5.src.jsx lessons/test/26-izobrazheniya.jsx
 // =============================================================================
 /*@CANON@*/
 // =============================================================================
@@ -40,7 +40,7 @@
 // ОБРАЩЕНИЕ: UZ — Siz, RU — «ты» без рода, EN — «you».
 // =============================================================================
 const META = {
-  lessonId: 'html-05-izobrazheniya',
+  lessonId: 'test-26-izobrazheniya',
   module: 'html-m1-osnovy',
   lessonTitle: {
     uz: '5-dars. Rasmlar',

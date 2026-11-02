@@ -1,8 +1,10 @@
 // =============================================================================
-// КУРС «HTML» · Модуль 1 «Основы разметки» · Урок 1 — «Структура HTML-документа»
-// («Бумажная страница», ЭТАЛОН КУРСА с 22.10.2026). Дети 10–14, проходят сами.
-// Один самодостаточный JSX: канон курса (до пометки «УРОК») + урок.
-// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/kollazh/kollazh.src.jsx lessons/html/01-struktura-dokumenta.jsx
+// Прежний урок 1 «Бумажная страница» (эталон курса 22.10–02.11.2026; теперь тестовый 18).
+// Урок 1 курса и эталон с 02.11.2026 — облик «Kodi playground» (tools/problemitas17/build.mjs),
+// он собирается из этого исходника и бумажного набора (tools/kollazh/), поэтому META здесь —
+// урока 1 курса (lessonId html-01-struktura-dokumenta), и набор отсюда не удалять.
+// Сборка тестового 18: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/kollazh/kollazh.src.jsx lessons/test/18-struktura-dokumenta.jsx
+// и в собранном файле lessonId — test-18-struktura-dokumenta (чтобы не делить прогресс с уроком 1 курса).
 // (звук бумаги: node tools/kollazh/paper-data.mjs → kollazh-paper-data.jsx, потом сборка).
 // =============================================================================
 /*@CANON@*/

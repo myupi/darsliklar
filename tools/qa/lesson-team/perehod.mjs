@@ -1,5 +1,5 @@
 // Проверка перехода «разбор и сборка» в бумажных уроках и практиках.
-// Запуск (нужен дев-сервер на 5173, npm run dev): node tools/qa/lesson-team/perehod.mjs html/03-spiski 15 360x640 [lang]
+// Запуск (нужен дев-сервер на 5173, npm run dev): node tools/qa/lesson-team/perehod.mjs test/22-spiski 15 360x640 [lang]
 // Аргументы: файл урока, число экранов, размер. На каждом экране i нажимается «Назад» и ловится:
 // в снимке старого листа — видимое, что не разлетается; в новом листе — видимое без влёта. ✗ — переход сломан.
 import { launchChrome, openPage } from '/Users/mac/Documents/darsliklar/tools/qa/lesson-team/lib/chrome.mjs';

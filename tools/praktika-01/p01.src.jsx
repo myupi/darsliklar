@@ -1,7 +1,7 @@
 // =============================================================================
 // КУРС «HTML» · Модуль 1 · Практика к уроку 1 — «Бумажная улица». Дети 10–14, проходят сами.
 // Один самодостаточный JSX: канон курса (до пометки «УРОК») + практика.
-// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/praktika-01/p01.src.jsx lessons/html/01p-struktura-dokumenta.jsx
+// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/praktika-01/p01.src.jsx lessons/test/19-struktura-dokumenta-praktika.jsx
 // =============================================================================
 /*@CANON@*/
 // =============================================================================
@@ -39,7 +39,7 @@
 // =============================================================================
 
 const META = {
-  lessonId: 'html-01p-bumazhnaya-ulica',
+  lessonId: 'test-19-struktura-dokumenta-praktika',
   module: 'html-m1-osnovy',
   lessonTitle: {
     uz: '1-dars amaliyoti. Qog‘oz ko‘cha',

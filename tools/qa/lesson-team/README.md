@@ -22,7 +22,7 @@ node tools/qa/lesson-team/run.mjs --file test/10-zagolovki-i-tekst-turnir-pixel 
 Только общие проверки, без сценария (сценарий получит `not-run`):
 
 ```bash
-node tools/qa/lesson-team/run.mjs --file html/02-zagolovki-i-tekst --checks load,screens,voice --sizes 360x640,1280x720
+node tools/qa/lesson-team/run.mjs --file html/01-struktura-dokumenta --checks load,screens,voice --sizes 360x640,1280x720
 ```
 
 Самопроверка инструментов на изолированной странице (не уроке):

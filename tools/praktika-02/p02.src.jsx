@@ -1,7 +1,7 @@
 // =============================================================================
 // КУРС «HTML» · Модуль 1 · Практика к уроку 2 — «Стенгазета». Дети 10–14, проходят сами.
 // Один самодостаточный JSX: канон курса (до пометки «УРОК») + практика.
-// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/praktika-02/p02.src.jsx lessons/html/02p-zagolovki-i-tekst.jsx
+// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/praktika-02/p02.src.jsx lessons/test/21-zagolovki-i-tekst-praktika.jsx
 // =============================================================================
 /*@CANON@*/
 // =============================================================================
@@ -29,7 +29,7 @@
 // =============================================================================
 
 const META = {
-  lessonId: 'html-02p-stengazeta',
+  lessonId: 'test-21-zagolovki-i-tekst-praktika',
   module: 'html-m1-osnovy',
   lessonTitle: {
     uz: '2-dars amaliyoti. Devoriy gazeta',

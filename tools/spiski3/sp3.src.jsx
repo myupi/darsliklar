@@ -2,7 +2,7 @@
 // КУРС «HTML» · Модуль 1 «Основы разметки» · Урок 3 — «Списки»
 // (бумажный коллаж, по эталону урока 1). Дети 10–14, проходят сами.
 // Один самодостаточный JSX: канон курса (до пометки «УРОК») + урок.
-// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/spiski3/sp3.src.jsx lessons/html/03-spiski.jsx
+// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/spiski3/sp3.src.jsx lessons/test/22-spiski.jsx
 // =============================================================================
 /*@CANON@*/
 // =============================================================================
@@ -37,7 +37,7 @@
 // ОБРАЩЕНИЕ: UZ — Siz, RU — «ты» без рода, EN — «you».
 // =============================================================================
 const META = {
-  lessonId: 'html-03-spiski',
+  lessonId: 'test-22-spiski',
   module: 'html-m1-osnovy',
   lessonTitle: {
     uz: '3-dars. Ro‘yxatlar',

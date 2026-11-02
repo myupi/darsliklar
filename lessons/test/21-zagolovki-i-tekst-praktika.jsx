@@ -6685,7 +6685,7 @@ const CANON_SCREEN_CSS = CANON_SCREEN_CSS_BASE + CANON_MECH_CSS + CANON_DZ_CSS +
 // =============================================================================
 
 const META = {
-  lessonId: 'html-02p-stengazeta',
+  lessonId: 'test-21-zagolovki-i-tekst-praktika',
   module: 'html-m1-osnovy',
   lessonTitle: {
     uz: '2-dars amaliyoti. Devoriy gazeta',

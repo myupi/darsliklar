@@ -1,7 +1,7 @@
 // =============================================================================
-// КУРС «HTML» · Модуль 1 · Практика к уроку 5 — «Выставка». Дети 10–14, проходят сами.
+// КУРС «HTML» · Модуль 1 · Практика к уроку 4 — «Острова». Дети 10–14, проходят сами.
 // Один самодостаточный JSX: канон курса (до пометки «УРОК») + практика.
-// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/praktika-05/p05.src.jsx lessons/html/05p-izobrazheniya.jsx
+// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/praktika-04/p04.src.jsx lessons/html/04p-ssylki-i-atributy.jsx
 // =============================================================================
 // =============================================================================
 // КУРС «HTML» — КАНОН УРОКОВ v1 · дети 8–10 лет · UZ / RU / EN
@@ -6661,38 +6661,36 @@ const CANON_LIB_CSS = `
 const CANON_SCREEN_CSS = CANON_SCREEN_CSS_BASE + CANON_MECH_CSS + CANON_DZ_CSS + CANON_CRT_CSS + CANON_LIB_CSS;
 // ==============================  У Р О К  =====================================
 // =============================================================================
-// ===== ПРАКТИКА К УРОКУ 5 · «Выставка» · модуль html-m1-osnovy =====
+// ===== ПРАКТИКА К УРОКУ 4 · «Острова» · модуль html-m1-osnovy =====
 //
-// ЗАМЫСЕЛ (26.10.2026; каркас — практики 01p–04p, механика — общий движок 04p
-// с атрибутами, бумажный стиль урока 1). Выставка рисунков класса: пять рам на
-// стене. В хуке ученик нажимает «Открыть выставку» — картинки выпадают из рам.
-// Ученик возвращает их кодом: даёт файлы, чинит имена, пишет подписи alt,
-// чинит сломанные теги и собирает свою галерею. Картинки в бумажном браузере
-// честные: файл есть — фото; нет src — только alt; нет файла — сломанная картинка.
+// ЗАМЫСЕЛ (26.10.2026; каркас и вид — практики 01p–03p, бумажный стиль урока 1).
+// Сайт островов: у каждого острова своя страница, между ними мосты-ссылки. В
+// хуке ученик нажимает «Шторм!» — шторм рвёт мосты. Ученик чинит четыре моста
+// кодом и пишет своё меню островов. Ссылки в бумажном браузере честные: их
+// можно нажать — откроется страница острова (или «Файл не найден»).
 //
 // СЕМЬ СЛАЙДОВ (заказчик, 22.10.2026): хук · пять заданий от лёгкого к сложному,
 // у каждого своя механика:
-//   t1 кот — у картинки есть alt, но нет src: дописать src="cat.jpg";
-//   t2 попугай и рыбка — опечатки в именах файлов: сверить с полкой файлов;
-//   t3 подписи — две картинки без alt: написать описания словами (программа
-//      чтения экрана сразу их «читает»);
-//   t4 витрина — найти и починить два сломанных тега (scr вместо src, href у
-//      img); счётчик «осталось исправить»;
-//   t5 своя галерея — с нуля: h1 и p (урок 2) и две картинки с src и alt.
-// Только материал уроков 1–5: готовые head и body вокруг кода, h1, h2, p, img, src, alt.
+//   t1 попугаи — у готовой ссылки нет адреса: дописать href="parrots.html";
+//   t2 указатели — две ссылки ведут не туда: поменять значения href (проверить нажатием);
+//   t3 вулкан — с пустой строки написать ссылку целиком;
+//   t4 после шторма — найти и починить две сломанные ссылки (опечатка в href,
+//      нет </a> — абзац ниже стал ссылкой); счётчик «осталось исправить»;
+//   t5 своё меню — с нуля: h1 (урок 2), список ul (урок 3) и три ссылки на острова.
+// Только материал уроков 1–4: готовые head и body вокруг кода, h1, h2, p, ul, li, a, href.
 //
-// ОСОБЫЕ ПРАВИЛА (как в 01p–04p): Коди — голова в кружке в шапке, без облака с
+// ОСОБЫЕ ПРАВИЛА (как в 01p–03p): Коди — голова в кружке в шапке, без облака с
 // текстом; пишет ученик; проверка по «Проверить» (одна причина, со второй неудачи
 // — ступень подсказки); три ступени по лампочке, после образца — ещё одна задача;
 // браузер честный и без прокрутки; код не исполняется; конфетти только в финале.
 // =============================================================================
 const META = {
-  lessonId: 'html-05p-korgazma',
+  lessonId: 'test-25-ssylki-i-atributy-praktika',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: '5-dars amaliyoti. Ko‘rgazma',
-    ru: 'Практика к уроку 5. Выставка',
-    en: 'Lesson 5 practice. The exhibition'
+    uz: '4-dars amaliyoti. Orollar',
+    ru: 'Практика к уроку 4. Острова',
+    en: 'Lesson 4 practice. The islands'
   }
 };
 
@@ -6713,53 +6711,50 @@ const fillL = (node, vars) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// РАМЫ ВЫСТАВКИ — пять мест на стене. Задание n возвращает картинку в раму n;
-// последняя — галерея ученика. pic — что в раме, когда она готова.
+// ОСТРОВА — пять мест карты. Задание n чинит мост к острову n; последний — меню
+// ученика. file — страница острова.
 // ─────────────────────────────────────────────────────────────────────────────
 const STREET = [
-  { id: 'cat', c: '#F0B13F', pic: 'cat.jpg', name: L3('Mushuk', 'Кот', 'Cat') },
-  { id: 'parrot', c: '#E0643F', pic: 'parrot.png', name: L3('To‘tiqush', 'Попугай', 'Parrot') },
-  { id: 'sun', c: '#2A8C7E', pic: 'sun.png', name: L3('Tavsiflar', 'Описания', 'Descriptions') },
-  { id: 'fish', c: '#5E8FB8', pic: 'fish.jpg', name: L3('Vitrina', 'Витрина', 'Showcase') },
-  { id: 'mine', c: '#1F2A44', name: L3('Sizning galereyangiz', 'Твоя галерея', 'Your gallery') }
+  { id: 'parrots', c: '#2A8C7E', file: 'parrots.html', name: L3('To‘tiqushlar', 'Попугаи', 'Parrots') },
+  { id: 'cave', c: '#7B6A9E', file: 'cave.html', name: L3('G‘or', 'Пещера', 'Cave') },
+  { id: 'volcano', c: '#E0643F', file: 'volcano.html', name: L3('Vulqon', 'Вулкан', 'Volcano') },
+  { id: 'light', c: '#F0B13F', file: 'lighthouse.html', name: L3('Mayoq', 'Маяк', 'Lighthouse') },
+  { id: 'mine', c: '#1F2A44', name: L3('Sizning menyuingiz', 'Твоё меню', 'Your menu') }
 ];
 const HOME = STREET.length - 1;
-// Файлы картинок выставки: файл → рисунок и фон бумажного фото.
-const PHOTO_FILES = {
-  'cat.jpg': { pic: 'cat', bg: '#F0B13F', seed: 501 },
-  'dog.jpg': { pic: 'dog', bg: '#8FCFC3', seed: 502 },
-  'parrot.png': { pic: 'parrot', bg: '#F6DFAE', seed: 503 },
-  'fish.jpg': { pic: 'fish', bg: '#9EC9E0', seed: 504 },
-  'sun.png': { pic: 'sun', bg: '#BFE0F0', seed: 505 },
-  'flower.jpg': { pic: 'flower', bg: '#DCE8CF', seed: 506 }
+// Фото-файлов в этой практике нет (картинки — урок 5).
+const PHOTO_FILES = {};
+// Страницы сайта: куда ведут ссылки.
+const SITE_PAGES = {
+  'index.html': { title: L3('Orollar xaritasi', 'Карта островов', 'Island map'), text: L3('Qayerga suzamiz?', 'Куда поплывём?', 'Where shall we sail?'), pic: 'map' },
+  'parrots.html': { title: L3('To‘tiqushlar oroli', 'Остров попугаев', 'Parrot Island'), text: L3('Bu yerda to‘tiqushlar qo‘shiq aytadi.', 'Здесь попугаи поют песни.', 'Parrots sing songs here.'), pic: 'parrots' },
+  'cave.html': { title: L3('G‘or', 'Пещера', 'Cave'), text: L3('G‘orda qadimiy xazina yashiringan.', 'В пещере спрятан старинный клад.', 'An old treasure is hidden in the cave.'), pic: 'cave' },
+  'volcano.html': { title: L3('Vulqon', 'Вулкан', 'Volcano'), text: L3('Vulqon uxlayapti, lekin issiq.', 'Вулкан спит, но он горячий.', 'The volcano is asleep, but it’s hot.'), pic: 'volcano' },
+  'lighthouse.html': { title: L3('Mayoq', 'Маяк', 'Lighthouse'), text: L3('Mayoq kemalarga yo‘l ko‘rsatadi.', 'Маяк показывает кораблям дорогу.', 'The lighthouse shows ships the way.'), pic: 'light' }
 };
-const FILE_LIST = Object.keys(PHOTO_FILES);
-// Ссылок в этой практике нет (страницы сайта — урок 4).
-const SITE_PAGES = {};
 
-// Слова картинок и страниц.
+// Слова ссылок и страниц.
 const TXT = {
-  top: L3('Ko‘rgazma', 'Выставка', 'Exhibition'),
-  hallH: L3('Sinfimiz rasmlari', 'Рисунки нашего класса', 'Our class drawings'),
-  cat: L3('Sariq mushuk', 'Рыжий кот', 'A ginger cat'),
-  dog: L3('Quvnoq it', 'Весёлая собака', 'A happy dog'),
-  parrot: L3('To‘tiqush', 'Попугай', 'A parrot'),
-  fish: L3('Baliq', 'Рыбка', 'A fish'),
-  sun: L3('Quyosh', 'Солнце', 'The sun'),
-  catS: L3('Mushuk', 'Кот', 'A cat'),
-  galH: L3('Mening galereyam', 'Моя галерея', 'My gallery'),
-  galP: L3('Bu mening sevimli rasmlarim.', 'Это мои любимые картинки.', 'These are my favorite pictures.'),
-  // Слова, которые ничего не говорят о картинке (t3).
-  generic: ['rasm', 'surat', 'foto', 'картинка', 'фото', 'рисунок', 'изображение', 'picture', 'photo', 'image', 'drawing']
+  top: L3('Orollar', 'Острова', 'Islands'),
+  parrots: L3('To‘tiqushlar oroli', 'Остров попугаев', 'Parrot Island'),
+  cave: L3('G‘or', 'Пещера', 'Cave'),
+  light: L3('Mayoq', 'Маяк', 'Lighthouse'),
+  volcano: L3('Vulqon', 'Вулкан', 'Volcano'),
+  parrotsS: L3('To‘tiqushlar', 'Попугаи', 'Parrots'),
+  whereH: L3('Qayerga suzamiz?', 'Куда поплывём?', 'Where shall we sail?'),
+  wish: L3('Yaxshi sayohat!', 'Счастливого пути!', 'Have a good trip!'),
+  wish2: L3('Ehtiyot bo‘ling, to‘lqinlar!', 'Осторожно, волны!', 'Watch out for the waves!'),
+  menuH: L3('Mening orollarim', 'Мои острова', 'My islands'),
+  home: L3('Bosh sahifa', 'Главная', 'Home')
 };
 
 // Подписи интерфейса практики. up, down, mySite, hello, play нужны бумажному набору.
 const UI = {
   task: L3('{n}-topshiriq', 'Задание {n}', 'Task {n}'),
-  houseOf: L3('{n}/5-rom', 'Рама {n} из 5', 'Frame {n} of 5'),
-  map: L3('Ko‘rgazma devori', 'Стена выставки', 'Exhibition wall'),
-  works: L3('rasm joyida', 'картинка на месте', 'picture in place'),
-  off: L3('bo‘sh', 'пусто', 'empty'),
+  houseOf: L3('{n}/5-orol', 'Остров {n} из 5', 'Island {n} of 5'),
+  map: L3('Orollar xaritasi', 'Карта островов', 'Island map'),
+  works: L3('ko‘prik bor', 'мост есть', 'bridge ready'),
+  off: L3('kutmoqda', 'ждёт', 'waiting'),
   now: L3('hozir shu yerda', 'сейчас здесь', 'you are here'),
   check: L3('Tekshirish', 'Проверить', 'Check'),
   keys: L3('Teg belgilari', 'Символы для тегов', 'Tag symbols'),
@@ -6777,21 +6772,20 @@ const UI = {
   ready: L3('Ish tayyor', 'Работа готова', 'Work is ready'),
   drill: L3('Yana bitta', 'Ещё одна', 'One more'),
   gapHere: L3('shu yerda tugaydimi?', 'здесь кончается?', 'ends here?'),
-  open: L3('Ko‘rgazmani ochish', 'Открыть выставку', 'Open the exhibition'),
-  files: L3('Rasm fayllari', 'Файлы картинок', 'Picture files'),
-  reader: L3('Ekranni o‘qiydigan dastur aytadi', 'Программа чтения экрана скажет', 'The screen reader will say'),
-  noAlt: L3('alt yo‘q', 'нет alt', 'no alt'),
+  storm: L3('Bo‘ron!', 'Шторм!', 'Storm!'),
+  files: L3('Orollar fayllari', 'Файлы островов', 'Island files'),
+  tryLink: L3('Havolani bosib tekshiring', 'Нажми ссылку — проверь', 'Tap a link to test it'),
   left: L3('Tuzatish kerak: {n}', 'Осталось исправить: {n}', 'Left to fix: {n}'),
   allFixed: L3('Hammasi tuzatildi', 'Всё исправлено', 'All fixed'),
-  needH1: L3('h1 — galereya nomi', 'h1 — название галереи', 'h1 — the gallery name'),
-  needP: L3('p — bir jumla', 'p — одна фраза', 'p — one sentence'),
-  need2: L3('fayllardan 2 ta rasm', '2 картинки из файлов', '2 pictures from the files'),
-  needAlts: L3('har bir rasmda alt bor', 'у каждой картинки alt', 'every picture has alt'),
+  needH1: L3('h1 — menyu nomi', 'h1 — название меню', 'h1 — the menu name'),
+  needList: L3('ul yoki ol — ro‘yxat', 'ul или ol — список', 'ul or ol — the list'),
+  need3: L3('li ichida kamida 3 ta havola', 'хотя бы 3 ссылки в li', 'at least 3 links in li'),
+  needReal: L3('havolalar orollarga olib boradi', 'ссылки ведут на острова', 'the links lead to islands'),
   needClosed: L3('hamma teglar yopilgan', 'все теги закрыты', 'all tags are closed'),
   notFound: L3('Fayl topilmadi', 'Файл не найден', 'File not found'),
   back: L3('← Orqaga', '← Назад', '← Back'),
   nextLesson: L3('Keyingi dars', 'Следующий урок', 'Next lesson'),
-  next: L3('Formalar', 'Формы', 'Forms'),
+  next: L3('Rasmlar', 'Изображения', 'Images'),
   up: L3('Yuqoriga', 'Вверх', 'Up'),
   down: L3('Pastga', 'Вниз', 'Down'),
   mySite: L3('Mening saytim', 'Мой сайт', 'My site'),
@@ -6801,8 +6795,8 @@ const UI = {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБРАТНАЯ СВЯЗЬ ПРОВЕРКИ. Одна проблема — одна короткая фраза: что не так и
-// что сделать. Фразы про атрибуты (имя, «=», кавычки, href у img, </img>) —
-// общие, в движке 04p.
+// что сделать. Без «ошибка», «неправильно», «xato», «noto‘g‘ri». Фразы про
+// атрибуты (имя, «=», кавычки, атрибут в закрывающем теге) — общие, в движке.
 // ─────────────────────────────────────────────────────────────────────────────
 const FB = {
   // Запись тегов, пары и порядок (разбор фрагмента — checkFrag)
@@ -6828,30 +6822,25 @@ const FB = {
   listText: L3('Ro‘yxatda matn li siz turibdi: unda nuqta ham, raqam ham yo‘q. Uni li ga o‘rang.', 'В списке текст стоит без li — у него нет ни точки, ни номера. Оберни его в li.', 'There’s text in the list without li: it gets no dot or number. Wrap it in li.'),
   liOutside: L3('li faqat ul yoki ol ichida yoziladi, bu esa ro‘yxatdan tashqarida turibdi.', 'li пишут только внутри ul или ol, а этот стоит снаружи списка.', 'li goes only inside ul or ol, but this one is outside the list.'),
   listNotClosed: L3('{tag} ro‘yxati hali yopilmagan, {next} esa boshlanyapti. Avval ro‘yxatni yoping.', 'Список {tag} ещё не закрыт, а {next} уже начинается. Сначала закрой список.', 'The {tag} list isn’t closed yet, but {next} is already starting. Close the list first.'),
-  // Картинки (урок 5)
-  needImg: L3('Bu yerda rasm kerak: img tegi.', 'Здесь нужна картинка — тег img.', 'This needs a picture: the img tag.'),
-  oneImg: L3('Bitta rasm yozing: bitta img tegi.', 'Напиши одну картинку — один тег img.', 'Write one picture: one img tag.'),
-  noSrc: L3('Rasmda src yo‘q: brauzer qaysi faylni ochishni bilmaydi. src atributini yozing.', 'У картинки нет src — браузер не знает, какой файл открыть. Допиши атрибут src.', 'The picture has no src: the browser doesn’t know which file to open. Add the src attribute.'),
-  srcEmpty: L3('src ichi bo‘sh: qo‘shtirnoq ichiga fayl nomini yozing.', 'В src пусто: впиши между кавычками имя файла.', 'src is empty: type the file name between the quotes.'),
-  srcWrong: L3('src da {src} turibdi, bizga esa {want} kerak.', 'В src стоит {src}, а нужен {want}.', 'src says {src}, but we need {want}.'),
-  altKeep: L3('Fayl to‘g‘ri! alt ni avvalgidek qoldiring: «{w}».', 'Файл верный! alt оставь прежним: «{w}».', 'The file is right! Keep alt as it was: “{w}”.'),
-  imgNoFile: L3('«{alt}» rasmi {src} faylini qidiryapti, lekin bunday fayl yo‘q. Nomni fayllar bilan solishtiring.', 'Картинка «{alt}» ищет файл {src}, а такого файла нет. Сверь имя с файлами.', 'The “{alt}” picture looks for the file {src}, but there’s no such file. Compare the name with the files.'),
-  imgTo: L3('«{alt}» rasmi {src} ni ko‘rsatyapti, bizga esa {want} kerak.', 'Картинка «{alt}» показывает {src}, а нужен {want}.', 'The “{alt}” picture shows {src}, but we need {want}.'),
-  keepImgs: L3('Teglar joyida! Faqat rasmlarni avvalgidek qoldiring: o‘sha fayllar va o‘sha alt.', 'Теги в порядке! Только оставь картинки как были: те же файлы и те же alt.', 'The tags are fine! Just keep the pictures as they were: the same files and alts.'),
-  twoImgs: L3('Ikkala rasm joyida qolsin.', 'Пусть обе картинки останутся на месте.', 'Keep both pictures in place.'),
-  needAlt: L3('{src} rasmida alt yo‘q. So‘z bilan tavsif yozing.', 'У картинки {src} нет alt. Допиши описание словами.', 'The {src} picture has no alt. Add a description in words.'),
-  altEmpty: L3('{src} rasmida alt bo‘sh. Qo‘shtirnoq ichiga rasmda nima borligini yozing.', 'У картинки {src} пустой alt. Впиши между кавычками, что на картинке.', 'The {src} picture has an empty alt. Type what’s in the picture between the quotes.'),
-  altFile: L3('alt da fayl nomi turibdi. alt esa rasmni so‘z bilan tasvirlaydi: unda nima bor?', 'В alt стоит имя файла. А alt описывает картинку словами: что на ней?', 'alt has a file name. alt describes the picture in words: what’s in it?'),
-  altGeneric: L3('«{w}» so‘zi rasm haqida hech narsa aytmaydi. Unda nima borligini yozing.', 'Слово «{w}» ничего не говорит о картинке. Напиши, что на ней.', 'The word “{w}” says nothing about the picture. Write what’s in it.'),
-  keepSrc: L3('Tavsiflar bor! Faqat src ni avvalgidek qoldiring.', 'Описания есть! Только имена файлов в src оставь прежними.', 'The descriptions are there! Just keep src as it was.'),
-  // t5 — своя галерея
-  artEmpty: L3('Hozircha bo‘sh. Galereya nomini h1 ga yozishdan boshlang.', 'Пока пусто. Начни с названия галереи в h1.', 'It’s empty so far. Start with the gallery name in h1.'),
-  needH1: L3('Tepaga h1 sarlavha kerak: galereyangiz nomi.', 'Сверху нужен заголовок h1 — название твоей галереи.', 'You need an h1 heading on top: your gallery’s name.'),
-  galHeadEmpty: L3('Sarlavha teglari joyida, ichi esa bo‘sh. Galereya nomini yozing.', 'Теги заголовка на месте, а внутри пусто. Напиши название галереи.', 'The heading tags are in place, but empty. Write the gallery name.'),
-  needP: L3('Sarlavha ostiga p xatboshi yozing: bitta jumla.', 'Под заголовком напиши абзац p — одну фразу.', 'Under the heading, write a p paragraph: one sentence.'),
-  needTwo: L3('Galereyada fayllardan kamida ikkita rasm bo‘lsin.', 'В галерее нужно хотя бы две картинки — из файлов.', 'The gallery needs at least two pictures from the files.'),
-  noFile: L3('{src} degan fayl yo‘q. Rasm fayllaridan birini yozing.', 'Файла {src} нет. Впиши один из файлов картинок.', 'There’s no file {src}. Type one of the picture files.'),
-  needAlts: L3('Har bir rasmga so‘z bilan alt yozing.', 'У каждой картинки должен быть alt со словами.', 'Every picture needs an alt with words.')
+  // Ссылки (урок 4)
+  needA: L3('Bu yerda havola kerak: a tegi.', 'Здесь нужна ссылка — тег a.', 'This needs a link: the a tag.'),
+  oneLink: L3('Bitta havola yozing: bitta a jufti.', 'Напиши одну ссылку — одну пару a.', 'Write just one link: one opening a and one closing a.'),
+  noHref: L3('Havolada manzil yo‘q: ochuvchi a tegiga href atributini yozing.', 'У ссылки нет адреса: допиши в открывающий тег a атрибут href.', 'The link has no address: add the href attribute to the opening a tag.'),
+  hrefEmpty: L3('href ichi bo‘sh: qo‘shtirnoq ichiga sahifa manzilini yozing.', 'В href пусто: впиши между кавычками адрес страницы.', 'href is empty: type the page address between the quotes.'),
+  hrefWrong: L3('Bu havola {href} ga olib boradi, bizga esa {want} kerak.', 'Эта ссылка ведёт на {href}, а нужен {want}.', 'This link leads to {href}, but we need {want}.'),
+  textKeep: L3('Manzil to‘g‘ri! Havola so‘zlarini avvalgidek qoldiring: «{w}».', 'Адрес верный! Слова ссылки оставь прежними: «{w}».', 'The address is right! Keep the link words as they were: “{w}”.'),
+  linkTo: L3('«{text}» havolasi {href} ga olib boryapti. «{text}» orolining sahifasi esa {want}.', '«{text}» ведёт на {href}, а страница острова «{text}» — {want}.', 'The “{text}” link leads to {href}, but the “{text}” island page is {want}.'),
+  twoLinks: L3('Ikkala havola joyida qolsin: har biri o‘z oroliga.', 'Пусть обе ссылки останутся — каждая на свой остров.', 'Keep both links, each pointing to its island.'),
+  needText: L3('Teglar orasiga sahifada ko‘rinadigan so‘zlarni yozing.', 'Между тегами напиши слова, которые увидят на странице.', 'Between the tags, type the words people will see on the page.'),
+  keepLinks: L3('Teglar tuzaldi! Faqat havolalarni avvalgidek qoldiring: o‘sha so‘zlar va o‘sha manzillar.', 'Теги починены! Только оставь ссылки как были: те же слова и те же адреса.', 'The tags are fixed! Just keep the links as they were: the same words and addresses.'),
+  notReal: L3('{href} degan sahifa yo‘q. Orollar fayllaridan birini yozing.', 'Страницы {href} нет. Впиши файл одного из островов.', 'There’s no page {href}. Type one of the island files.'),
+  // t5 — своё меню
+  artEmpty: L3('Hozircha bo‘sh. Menyu nomini h1 ga yozishdan boshlang.', 'Пока пусто. Начни с названия меню в h1.', 'It’s empty so far. Start with the menu name in h1.'),
+  needH1: L3('Tepaga h1 sarlavha kerak: menyuingiz nomi.', 'Сверху нужен заголовок h1 — название твоего меню.', 'You need an h1 heading on top: your menu’s name.'),
+  menuHeadEmpty: L3('Sarlavha teglari joyida, ichi esa bo‘sh. Menyu nomini yozing.', 'Теги заголовка на месте, а внутри пусто. Напиши название меню.', 'The heading tags are in place, but empty. Write the menu name.'),
+  needList: L3('Sarlavha ostiga ro‘yxat kerak: ul yoki ol.', 'Под заголовком нужен список: ul или ol.', 'Under the heading you need a list: ul or ol.'),
+  needLinks: L3('Ro‘yxatda kamida uchta havola bo‘lsin: har bir li ichida bittadan.', 'В списке нужно хотя бы три ссылки — по одной в каждом li.', 'The list needs at least three links, one in each li.'),
+  needHome: L3('index.html ga olib boradigan havola kerak.', 'Нужна ссылка, которая ведёт на index.html.', 'You need a link that leads to index.html.')
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -6860,111 +6849,110 @@ const FB = {
 // репликах нет тире: движок отдаёт его сервису точкой.
 // ─────────────────────────────────────────────────────────────────────────────
 const C = {
-  // Хук: рамы с картинками → касание «Открыть выставку» → картинки выпадают из рам.
+  // Хук: острова соединены мостами → касание «Шторм!» → мосты рвутся, флажки гаснут.
   intro: {
-    eyebrow: L3('Ko‘rgazma', 'Выставка', 'Exhibition'),
-    say: L3('Bugun sinfimizda rasmlar ko‘rgazmasi. Devorda beshta rom bor, hammasi tayyor.',
-      'Сегодня выставка рисунков нашего класса. На стене пять рам, всё готово.',
-      'Today is our class drawing exhibition. There are five frames on the wall, all ready.'),
-    blown: L3('Voy! Eshik ochilganda shamol kirdi va rasmlar romlardan tushib ketdi.', 'Ой! Открыли дверь, подул ветер, и картинки выпали из рам.', 'Oh no! We opened the door, the wind blew in, and the pictures fell out of the frames.'),
-    plan: L3('To‘rtta rasmni kod bilan joyiga qaytaramiz, beshinchi romga esa o‘z galereyangizni yozasiz. Har bir topshiriq oldingisidan biroz qiyinroq.',
-      'Вернём четыре картинки кодом, а в пятую раму ты напишешь свою галерею. Каждое задание чуть сложнее прошлого.',
-      'We’ll put four pictures back with code, and you’ll write your own gallery for the fifth frame. Each task is a bit harder than the last.'),
-    ask: L3('«Ko‘rgazmani ochish» tugmasini bosing', 'Нажми «Открыть выставку»', 'Tap “Open the exhibition”'),
-    order: L3('To‘rtta rasmni qaytaring va o‘z galereyangizni yozing. Kodni siz yozasiz.', 'Верни четыре картинки и напиши свою галерею. Код пишешь ты.', 'Put four pictures back and write your own gallery. You write the code.'),
-    note: L3('Rasmi qaytgan rom yonadi. Jarima yo‘q: xohlagancha tekshiring.', 'Рама загорается, когда картинка вернулась. Штрафов нет — проверяй сколько хочешь.', 'A frame lights up when its picture is back. No penalties: check as often as you like.')
+    eyebrow: L3('Orollar', 'Острова', 'Islands'),
+    say: L3('Bu orollar sayti: har bir orolning o‘z sahifasi bor, orollar orasida esa havolalar ko‘prik bo‘lib turibdi.',
+      'Это сайт островов: у каждого острова своя страница, а между ними мосты-ссылки.',
+      'This is an islands website: each island has its own page, and link bridges connect them.'),
+    blown: L3('Voy! Bo‘ron ko‘priklarni uzib yubordi: havolalar ishlamayapti.', 'Ой! Шторм порвал мосты — ссылки не работают.', 'Oh no! The storm broke the bridges: the links don’t work.'),
+    plan: L3('To‘rtta ko‘prikni kod bilan tiklaymiz, beshinchi orolga esa o‘z menyuingizni yozasiz. Har bir topshiriq oldingisidan biroz qiyinroq.',
+      'Починим четыре моста кодом, а для пятого острова ты напишешь своё меню. Каждое задание чуть сложнее прошлого.',
+      'We’ll fix four bridges with code, and you’ll write your own menu for the fifth island. Each task is a bit harder than the last.'),
+    ask: L3('«Bo‘ron!» tugmasini bosing', 'Нажми «Шторм!»', 'Tap “Storm!”'),
+    order: L3('To‘rtta ko‘prikni tiklang va o‘z menyuingizni yozing. Kodni siz yozasiz.', 'Почини четыре моста и напиши своё меню. Код пишешь ты.', 'Fix four bridges and write your own menu. You write the code.'),
+    note: L3('Ko‘prigi tiklangan orol yonadi. Havolani bosib tekshirsa bo‘ladi: brauzer o‘sha sahifani ochadi.', 'Остров загорается, когда его мост готов. Ссылку можно нажать и проверить — браузер откроет страницу.', 'An island lights up when its bridge is ready. You can tap a link to test it: the browser opens that page.')
   },
 
-  // 1 · самое лёгкое: у картинки есть alt, но нет src.
+  // 1 · самое лёгкое: у готовой ссылки нет адреса.
   t1: {
-    order: L3('Rasmga fayl bering: cat.jpg', 'Дай картинке файл: cat.jpg', 'Give the picture a file: cat.jpg'),
-    say: L3('Mushuk rasmida alt bor, src esa yo‘q: shuning uchun sahifada faqat so‘zlar ko‘rinyapti. img tegiga src atributini yozing.',
-      'У картинки с котом есть alt, а src нет — поэтому на странице только слова. Допиши в тег img атрибут src.',
-      'The cat picture has alt but no src, so only words show on the page. Add the src attribute to the img tag.'),
+    order: L3('Havolaga manzil bering: parrots.html', 'Дай ссылке адрес: parrots.html', 'Give the link an address: parrots.html'),
+    say: L3('To‘tiqushlar oroliga havola bor, lekin manzili yo‘q: so‘zlar qora. Ochuvchi a tegiga href atributini yozing.',
+      'Ссылка на остров попугаев есть, а адреса нет — слова чёрные. Допиши в открывающий тег a атрибут href.',
+      'There’s a link to Parrot Island, but it has no address: the words are black. Add the href attribute to the opening a tag.'),
     hints: [
-      L3('Brauzerga qaysi faylni ochishni qaysi atribut aytadi?', 'Какой атрибут говорит браузеру, какой файл открыть?', 'Which attribute tells the browser which file to open?'),
-      L3('Bu src. U img tegi ichida yoziladi: nomi, tenglik belgisi va qo‘shtirnoq ichida fayl nomi.', 'Это src. Его пишут внутри тега img: имя, знак равно и имя файла в кавычках.', 'It’s src. It goes inside the img tag: the name, an equals sign and the file name in quotes.'),
-      L3('Mana boshqa rasmda src qanday yozilgan. Mushukni ham shunday yozing.', 'Вот как записан src у другой картинки. Кота запиши так же.', 'Here’s how another picture’s src is written. Write the cat the same way.')
+      L3('Havolaga qaysi atribut manzil beradi?', 'Какой атрибут даёт ссылке адрес?', 'Which attribute gives a link its address?'),
+      L3('Bu href. U ochuvchi tegda, a dan keyin yoziladi: nomi, tenglik belgisi va qo‘shtirnoq ichida manzil.', 'Это href. Его пишут в открывающем теге после a: имя, знак равно и адрес в кавычках.', 'It’s href. It goes in the opening tag, right after the letter a: the name, an equals sign and the address in quotes.'),
+      L3('Mana boshqa havolaning manzili qanday yozilgan. To‘tiqushlarni ham shunday yozing.', 'Вот как записан адрес у другой ссылки. Попугаев запиши так же.', 'Here’s how another link’s address is written. Write the parrots the same way.')
     ],
-    praise: L3('Mana mushuk! Rasm romiga qaytdi.', 'Вот и кот! Картинка вернулась в раму.', 'There’s the cat! The picture is back in its frame.'),
-    done: L3('Mushuk joyida.', 'Кот на месте.', 'The cat is in place.'),
-    drill: L3('It rasmiga ham fayl bering: dog.jpg.', 'Дай файл и картинке с собакой: dog.jpg.', 'Give the dog picture a file too: dog.jpg.')
+    praise: L3('Zo‘r! Ko‘prik tiklandi: havolani bosib ko‘ring.', 'Огонь! Мост восстановлен — нажми ссылку и проверь.', 'Awesome! The bridge is back: tap the link to try it.'),
+    done: L3('To‘tiqushlarga ko‘prik tayyor.', 'Мост к попугаям готов.', 'The bridge to the parrots is ready.'),
+    drill: L3('G‘or havolasiga ham manzil bering: cave.html.', 'Дай адрес и ссылке на пещеру: cave.html.', 'Give the cave link an address too: cave.html.')
   },
 
-  // 2 · опечатки в именах файлов: сверить с полкой файлов.
+  // 2 · две ссылки ведут не туда: поменять значения href.
   t2: {
-    order: L3('Fayl nomlaridagi xatolarni tuzating', 'Исправь имена файлов', 'Fix the file names'),
-    say: L3('Ikkala rasm singan: fayl nomlarida xato bor. Ularni fayllar ro‘yxati bilan solishtiring va tuzating.',
-      'Обе картинки сломаны: в именах файлов опечатки. Сверь их со списком файлов и исправь.',
-      'Both pictures are broken: the file names have typos. Compare them with the file list and fix them.'),
+    order: L3('Ikkala havolani o‘z oroliga yo‘naltiring', 'Направь обе ссылки на их острова', 'Point both links to their islands'),
+    say: L3('Bo‘ron ko‘rsatkichlarni aralashtirib yubordi: «G‘or» mayoqqa, «Mayoq» esa g‘orga olib boryapti. Manzillarni tuzating. Havolani bosib tekshirib ko‘rishingiz mumkin.',
+      'Шторм перепутал указатели: «Пещера» ведёт на маяк, а «Маяк» — в пещеру. Исправь адреса. Ссылку можно нажать и проверить.',
+      'The storm mixed up the signposts: “Cave” leads to the lighthouse, and “Lighthouse” leads to the cave. Fix the addresses. You can tap a link to test it.'),
     hints: [
-      L3('Har bir src ni fayllar ro‘yxati bilan harfma-harf solishtiring.', 'Сравни каждый src со списком файлов — буква за буквой.', 'Compare each src with the file list, letter by letter.'),
-      L3('To‘tiqush fayli parrot.png, baliqniki esa fish.jpg. Ikkala src ni tuzating.', 'Попугай — parrot.png, рыбка — fish.jpg. Поправь оба src.', 'The parrot is parrot.png, the fish is fish.jpg. Fix both src values.'),
-      L3('Mana to‘g‘ri rasm. Ikkinchisini ham shunday tuzating.', 'Вот правильная картинка. Вторую поправь так же.', 'Here’s a correct picture. Fix the second one the same way.')
+      L3('Har bir havolani bosing: u qayerga olib boradi?', 'Нажми каждую ссылку: куда она ведёт?', 'Tap each link: where does it lead?'),
+      L3('G‘or sahifasi cave.html, mayoqniki esa lighthouse.html. href qiymatlarini almashtiring.', 'Пещера — cave.html, маяк — lighthouse.html. Поменяй значения href местами.', 'The cave is cave.html, the lighthouse is lighthouse.html. Swap the href values.'),
+      L3('Mana to‘g‘ri havola. Ikkinchisini ham shunday tuzating.', 'Вот правильная ссылка. Вторую поправь так же.', 'Here’s a correct link. Fix the second one the same way.')
     ],
-    praise: L3('Zo‘r! Ikkala rasm yana ko‘rinyapti.', 'Огонь! Обе картинки снова видны.', 'Awesome! Both pictures show again.'),
-    done: L3('Fayl nomlari tuzatildi.', 'Имена файлов исправлены.', 'The file names are fixed.'),
-    drill: L3('Bu yerda ham ikkita xato nom bor. Tuzating.', 'И здесь два имени с опечатками. Исправь.', 'Two names have typos here too. Fix them.')
+    praise: L3('To‘g‘ri! Endi har bir ko‘rsatkich o‘z oroliga olib boradi.', 'Верно! Теперь каждый указатель ведёт на свой остров.', 'Right! Now each signpost leads to its own island.'),
+    done: L3('Ko‘rsatkichlar joyida.', 'Указатели на месте.', 'The signposts are right.'),
+    drill: L3('Bu yerda ham aralash: «To‘tiqushlar» va «Vulqon». Tuzating.', 'И здесь путаница: «Попугаи» и «Вулкан». Исправь.', 'They’re mixed up here too: “Parrots” and “Volcano”. Fix them.')
   },
 
-  // 3 · подписи alt для двух картинок (свои слова).
+  // 3 · ссылка целиком с пустой строки.
   t3: {
-    order: L3('Ikkala rasmga alt tavsifini yozing', 'Напиши обеим картинкам описание alt', 'Write an alt description for both pictures'),
-    say: L3('Ko‘rgazmaga ko‘zi ojiz mehmon keldi. Uning dasturi rasmlarni o‘qiy olmayapti: ularda alt yo‘q. Har bir rasmga so‘z bilan tavsif yozing.',
-      'На выставку пришёл незрячий гость. Его программа не может прочитать картинки — у них нет alt. Напиши каждой картинке описание словами.',
-      'A blind visitor came to the exhibition. Their program can’t read the pictures: they have no alt. Write a description in words for each picture.'),
+    order: L3('Vulqonga havolani to‘liq yozing', 'Напиши ссылку на вулкан целиком', 'Write a whole link to the volcano'),
+    say: L3('Vulqonga ko‘prik umuman yo‘q. Bo‘sh qatorga havolani to‘liq yozing: a tegi, volcano.html manzilli href va o‘z so‘zlaringiz.',
+      'К вулкану моста совсем нет. Напиши в пустой строке ссылку целиком: тег a, href с адресом volcano.html и свои слова.',
+      'There’s no bridge to the volcano at all. Write a whole link on the empty line: the a tag, href with the address volcano.html, and your own words.'),
     hints: [
-      L3('Rasmga qarang: unda kim yoki nima bor?', 'Посмотри на картинку: кто или что на ней?', 'Look at the picture: who or what is in it?'),
-      L3('img tegi ichiga alt atributini yozing: qo‘shtirnoq ichida bir necha so‘z.', 'Впиши в тег img атрибут alt: несколько слов в кавычках.', 'Add the alt attribute to the img tag: a few words in quotes.'),
-      L3('Mana boshqa rasmdagi alt. Siznikini ham shunday yozing, o‘z so‘zlaringiz bilan.', 'Вот alt у другой картинки. Свои напиши так же, своими словами.', 'Here’s another picture’s alt. Write yours the same way, in your own words.')
+      L3('Havola uch qismdan iborat: ochuvchi teg, so‘zlar va yopuvchi teg.', 'Ссылка из трёх частей: открывающий тег, слова и закрывающий тег.', 'A link has three parts: the opening tag, the words and the closing tag.'),
+      L3('Ochuvchi tegga volcano.html manzilli href atributini yozing, oxirida a ni yoping.', 'В открывающий тег впиши href с адресом volcano.html, а в конце закрой a.', 'Put href with the address volcano.html in the opening tag, and close the a at the end.'),
+      L3('Mana boshqa orolga havola. Vulqonga ham shunday yozing.', 'Вот ссылка на другой остров. На вулкан напиши так же.', 'Here’s a link to another island. Write the volcano one the same way.')
     ],
-    praise: L3('Ajoyib! Endi dastur mehmonga har bir rasmni aytib beradi.', 'Здорово! Теперь программа расскажет гостю про каждую картинку.', 'Great! Now the program will tell the visitor about each picture.'),
-    done: L3('Tavsiflar tayyor.', 'Описания готовы.', 'The descriptions are ready.'),
-    drill: L3('Gul rasmiga ham alt yozing.', 'Напиши alt и картинке с цветком.', 'Write an alt for the flower picture too.')
+    praise: L3('Ajoyib! Vulqonga yangi ko‘prik qurildi.', 'Здорово! К вулкану построен новый мост.', 'Great! A new bridge to the volcano is built.'),
+    done: L3('Vulqonga ko‘prik tayyor.', 'Мост к вулкану готов.', 'The bridge to the volcano is ready.'),
+    drill: L3('Endi mayoqqa havolani to‘liq yozing: lighthouse.html.', 'Теперь напиши целиком ссылку на маяк: lighthouse.html.', 'Now write a whole link to the lighthouse: lighthouse.html.')
   },
 
-  // 4 · найти и починить два сломанных тега; счётчик «осталось исправить».
+  // 4 · найти и починить две сломанные ссылки; счётчик «осталось исправить».
   t4: {
-    order: L3('Ikkita buzilgan rasm tegini toping va tuzating', 'Почини два сломанных тега картинки', 'Find and fix two broken picture tags'),
-    say: L3('Vitrinada ikkita rasm o‘rniga faqat so‘zlar turibdi. Teglarda ikkita xato bor. Ularni toping va tuzating.',
-      'На витрине вместо двух картинок одни слова. В тегах две ошибки. Найди и почини их.',
-      'In the showcase there are only words instead of two pictures. There are two mistakes in the tags. Find and fix them.'),
+    order: L3('Ikkita buzilgan havolani toping va tuzating', 'Найди и почини две сломанные ссылки', 'Find and fix two broken links'),
+    say: L3('Bo‘ron ikkita havolani buzdi: «Mayoq» qora bo‘lib qoldi, pastdagi tilak esa ko‘k. Buzilgan joylarni toping va tuzating.',
+      'Шторм сломал две ссылки: «Маяк» стал чёрным, а пожелание внизу — синим. Найди поломки и почини.',
+      'The storm broke two links: “Lighthouse” turned black, and the wish below turned blue. Find the breaks and fix them.'),
     hints: [
-      L3('Har bir img ni tekshiring: atribut nomlari to‘g‘rimi?', 'Проверь каждый img: верны ли имена атрибутов?', 'Check each img: are the attribute names right?'),
-      L3('{n}-qatorga qarang: undagi rasm tegida nimadir joyida emas.', 'Посмотри на строку {n}: с тегом картинки в ней что-то не так.', 'Look at line {n}: something’s off with the picture tag there.'),
-      L3('Rasm tegi: img, fayl nomli src va alt. Mana to‘g‘ri teglar.', 'Тег картинки — это img, src с именем файла и alt. Вот правильные теги.', 'A picture tag is img, src with the file name, and alt. Here are correct tags.')
+      L3('Har bir havolani tekshiring: atribut nomi to‘g‘rimi, havola yopilganmi?', 'Проверь каждую ссылку: верно ли имя атрибута, закрыта ли ссылка?', 'Check each link: is the attribute name right, is the link closed?'),
+      L3('{n}-qatorga qarang: undagi havolada nimadir joyida emas.', 'Посмотри на строку {n}: со ссылкой в ней что-то не так.', 'Look at line {n}: something’s off with the link there.'),
+      L3('Havola: href bilan ochuvchi a, so‘zlar va yopuvchi a. Mana to‘g‘ri havolalar.', 'Ссылка — это открывающий a с href, слова и закрывающий a. Вот правильные ссылки.', 'A link is the opening a with href, the words and the closing a. Here are correct links.')
     ],
     hintLine: L3('Hammasi tuzaldi, «Tekshirish»ni bosing.', 'Всё починено — нажми «Проверить».', 'Everything is fixed — tap “Check”.'),
-    hintKeep: L3('Avvalgi kod bilan solishtiring: o‘sha fayllar va o‘sha alt qolishi kerak.', 'Сравни с тем, что было: те же файлы и те же alt.', 'Compare with how it was: the same files and alts.'),
-    hintTags: L3('Teglarni tekshiring: atribut nomlari va qo‘shtirnoqlar joyidami?', 'Проверь теги: на месте ли имена атрибутов и кавычки?', 'Check the tags: are the attribute names and quotes in place?'),
-    praise: L3('Qutqardingiz! Vitrinada yana rasmlar.', 'Спасено! На витрине снова картинки.', 'Saved! The showcase has pictures again.'),
-    done: L3('Vitrina tuzatildi.', 'Витрина починена.', 'The showcase is fixed.'),
-    drill: L3('Bu yerda ham tuzatiladigan ikkita joy bor. Toping va tuzating.', 'И здесь два места надо поправить. Найди и почини.', 'Two spots need fixing here too. Find and fix them.')
+    hintKeep: L3('Avvalgi kod bilan solishtiring: o‘sha havolalar va o‘sha manzillar qolishi kerak.', 'Сравни с тем, что было: те же ссылки и те же адреса.', 'Compare with how it was: the same links and the same addresses.'),
+    hintTags: L3('Teglarni tekshiring: har bir ochilgan teg o‘z jufti bilan yopilishi kerak.', 'Проверь теги: каждый открытый тег должен закрыться своей парой.', 'Check the tags: every opened tag must close with its pair.'),
+    praise: L3('Qutqardingiz! Ikkala havola yana ishlaydi.', 'Спасено! Обе ссылки снова работают.', 'Saved! Both links work again.'),
+    done: L3('Havolalar tuzatildi.', 'Ссылки починены.', 'The links are fixed.'),
+    drill: L3('Bu yerda ham ikkita havola buzilgan. Toping va tuzating.', 'И здесь две ссылки сломаны. Найди и почини.', 'Two links are broken here too. Find and fix them.')
   },
 
-  // 5 · своя галерея с нуля: h1 и p (урок 2), две картинки с src и alt.
+  // 5 · своё меню с нуля: h1 (урок 2), список (урок 3) и три ссылки на острова.
   t5: {
-    order: L3('O‘z galereyangizni yozing: h1, p va ikkita rasm — har birida alt', 'Напиши свою галерею: h1, p и две картинки с alt', 'Write your gallery: h1, p and two pictures with alt'),
-    say: L3('Rasmlar joyida! Endi o‘z galereyangizni yozing: h1 da nom, p da bitta jumla va fayllardan kamida ikkita rasm, har birida alt.',
-      'Картинки на месте! Теперь напиши свою галерею: название h1, одну фразу в p и хотя бы две картинки из файлов, у каждой alt.',
-      'The pictures are back! Now write your own gallery: an h1 name, one sentence in p, and at least two pictures from the files, each with alt.'),
-    empty: L3('Galereyangiz shu yerda chiqadi', 'Здесь появится твоя галерея', 'Your gallery will appear here'),
+    order: L3('O‘z menyuingizni yozing: h1 nom, ro‘yxat va kamida uchta havola', 'Напиши своё меню: название h1, список и хотя бы три ссылки', 'Write your menu: an h1 name, a list and at least three links'),
+    say: L3('Ko‘priklar tiklandi! Endi orollar menyusini o‘zingiz yozing: h1 da nom, ostida ro‘yxat, unda kamida uchta li, har birida orolga havola.',
+      'Мосты восстановлены! Теперь напиши своё меню островов: название h1, под ним список, а в нём хотя бы три li, в каждом ссылка на остров.',
+      'The bridges are back! Now write your own island menu: an h1 name, a list under it, with at least three li, each with a link to an island.'),
+    empty: L3('Menyuingiz shu yerda chiqadi', 'Здесь появится твоё меню', 'Your menu will appear here'),
     hints: [
-      L3('Sahifa sarlavhadan boshlanadi, ostida xatboshi, keyin rasmlar.', 'Страница начинается с заголовка, под ним абзац, потом картинки.', 'The page starts with a heading, then a paragraph, then pictures.'),
-      L3('h1 juftidan boshlang va ichiga galereya nomini yozing.', 'Начни с пары h1 и напиши внутри название галереи.', 'Start with an h1 pair and type the gallery name inside.'),
-      L3('Mana boshqa galereya. O‘zingiznikini ham shunday tuzing.', 'Вот другая галерея. Свою построй так же.', 'Here’s another gallery. Build yours the same way.')
+      L3('Sahifa sarlavhadan boshlanadi, ostida ro‘yxat, ro‘yxatda havolalar.', 'Страница начинается с заголовка, под ним список, в списке ссылки.', 'The page starts with a heading, then a list, with links in the list.'),
+      L3('h1 juftidan boshlang va ichiga menyu nomini yozing.', 'Начни с пары h1 и напиши внутри название меню.', 'Start with an h1 pair and type the menu name inside.'),
+      L3('Mana boshqa menyu. O‘zingiznikini ham shunday tuzing.', 'Вот другое меню. Своё построй так же.', 'Here’s another menu. Build yours the same way.')
     ],
     hint2: {
-      h1: L3('h1 juftidan boshlang va ichiga galereya nomini yozing.', 'Начни с пары h1 и напиши внутри название галереи.', 'Start with an h1 pair and type the gallery name inside.'),
-      p: L3('Sarlavha ostiga p juftini yozing: ichida bitta jumla.', 'Под заголовком напиши пару p — внутри одна фраза.', 'Under the heading, write a p pair with one sentence inside.'),
-      img: L3('Keyin ikkita img yozing: src da fayl nomi, alt da tavsif.', 'Дальше напиши два img: в src имя файла, в alt описание.', 'Then write two img tags: the file name in src, a description in alt.'),
-      file: L3('Fayllar ro‘yxatiga qarang: src da faqat bor fayllar bo‘lsin.', 'Посмотри на список файлов: в src — только существующие файлы.', 'Look at the file list: src should only have files that exist.'),
-      alt: L3('Har bir img ga so‘z bilan alt yozing.', 'В каждый img допиши alt со словами.', 'Add an alt with words to each img.'),
+      h1: L3('h1 juftidan boshlang va ichiga menyu nomini yozing.', 'Начни с пары h1 и напиши внутри название меню.', 'Start with an h1 pair and type the menu name inside.'),
+      list: L3('Sarlavhadan keyin ul ni oching, oxirida uni yoping.', 'После заголовка открой ul, а в конце закрой.', 'After the heading, open ul, and close it at the end.'),
+      links: L3('Har bir li ichiga havola yozing: a, href da orol fayli va so‘zlar.', 'В каждый li впиши ссылку: a, в href файл острова и слова.', 'In each li, write a link: the a tag with an island file in href, and the words.'),
+      real: L3('Orollar fayllariga qarang: href da faqat bor sahifalar bo‘lsin.', 'Посмотри на файлы островов: в href — только существующие страницы.', 'Look at the island files: href should only have pages that exist.'),
       tag: L3('Teglarni tekshiring: har bir ochilgan teg o‘z jufti bilan yopilishi kerak.', 'Проверь теги: каждый открытый тег должен закрыться своей парой.', 'Check the tags: every opened tag must close with its pair.')
     },
-    praise: L3('Galereyangiz tayyor! Uning kodini boshidan oxirigacha o‘zingiz yozdingiz.', 'Твоя галерея готова! Её код — целиком твой, от первой до последней строки.', 'Your gallery is ready! You wrote its code yourself, start to finish.'),
-    done: L3('Galereyangiz tayyor.', 'Твоя галерея уже готова.', 'Your gallery is already done.'),
-    drill: L3('Yana bitta rasm qo‘shing: gul, flower.jpg, alt bilan.', 'Добавь ещё одну картинку — цветок, flower.jpg, с alt.', 'Add one more picture: the flower, flower.jpg, with alt.')
+    praise: L3('Menyuingiz tayyor! Havolalarni bosib ko‘ring: har biri o‘z oroliga olib boradi.', 'Твоё меню готово! Нажми ссылки — каждая ведёт на свой остров.', 'Your menu is ready! Tap the links: each one leads to its island.'),
+    done: L3('Menyuingiz tayyor.', 'Твоё меню уже готово.', 'Your menu is already done.'),
+    drill: L3('Menyu ostiga bosh sahifaga havola qo‘shing: index.html.', 'Добавь под меню ссылку на главную: index.html.', 'Add a link to the home page under the menu: index.html.')
   },
 
   drill: {
@@ -6973,14 +6961,14 @@ const C = {
   },
 
   fin: {
-    eyebrow: L3('Ko‘rgazma ochiq', 'Выставка открыта', 'The exhibition is open'),
-    say: L3('Tabriklayman! Hamma rasmlar joyida. Oxirgi rom esa sizning galereyangiz.', 'Ура! Все картинки на местах. А последняя рама — твоя галерея.', 'Hooray! All the pictures are in place. And the last frame is your gallery.'),
+    eyebrow: L3('Ko‘priklar tiklandi', 'Мосты восстановлены', 'The bridges are back'),
+    say: L3('Tabriklayman! Orollar yana bog‘langan. Menyu esa sizniki.', 'Ура! Острова снова связаны. А меню — твоё.', 'Hooray! The islands are connected again. And the menu is yours.'),
     skills: [
-      L3('Rasmga src bilan fayl beraman', 'Даю картинке файл атрибутом src', 'I give a picture a file with src'),
-      L3('Fayl nomidagi xatoni topaman', 'Нахожу опечатку в имени файла', 'I find a typo in a file name'),
-      L3('Rasmga alt tavsifini yozaman', 'Пишу картинке описание alt', 'I write an alt description'),
-      L3('Buzilgan rasm tegini tuzataman', 'Чиню сломанный тег картинки', 'I fix a broken picture tag'),
-      L3('Rasmli o‘z sahifamni yozaman', 'Пишу свою страницу с картинками', 'I write my own page with pictures')
+      L3('Havolaga href bilan manzil beraman', 'Даю ссылке адрес атрибутом href', 'I give a link an address with href'),
+      L3('Noto‘g‘ri manzilni tuzataman', 'Исправляю неверный адрес', 'I fix a wrong address'),
+      L3('Havolani to‘liq yozaman', 'Пишу ссылку целиком', 'I write a whole link'),
+      L3('Buzilgan havolalarni tuzataman', 'Чиню сломанные ссылки', 'I fix broken links'),
+      L3('Havolali menyu yozaman', 'Пишу меню со ссылками', 'I write a menu with links')
     ]
   }
 };
@@ -9286,11 +9274,11 @@ function TaskScreen({ p, make }) {
 }
 
 // =============================================================================
-// ХУК, ПЯТЬ ЗАДАНИЙ, ВЫВОД И КОРЕНЬ ПРАКТИКИ «ВЫСТАВКА»
+// ХУК, ПЯТЬ ЗАДАНИЙ, ВЫВОД И КОРЕНЬ ПРАКТИКИ «ОСТРОВА»
 // Семь слайдов (заказчик, 22.10.2026). У каждого задания своя механика:
-// дописать src → исправить имена файлов → написать подписи alt (их «читает»
-// программа чтения экрана) → найти и починить два тега (счётчик) → своя
-// галерея с нуля (живой список условий).
+// дописать href → поменять адреса двух ссылок (проверить нажатием) → ссылка
+// целиком с пустой строки → найти и починить две ссылки (счётчик) → своё меню
+// с нуля (живой список условий).
 // =============================================================================
 const DOCTYPE = '<!DOCTYPE html>';
 // Готовая рамка документа (урок 1): head с title и открытый body; extra — строки в body.
@@ -9299,253 +9287,239 @@ const END = ['  </body>', '</html>'];
 const same = (a, b) => normName(a) === normName(b);
 // Разбор нашёл поломку записи, пар или атрибутов — его фраза; line — где она.
 const fragFail = (r) => ({ ok: false, msg: r.msg, cat: 'tag', line: r.line });
-const imgCode = (src, alt) => '<img' + (src != null ? ' src="' + src + '"' : '') + (alt != null ? ' alt="' + alt + '"' : '') + '>';
-const isFile = (s) => !!PHOTO_FILES[String(s || '').trim()];
+const linkCode = (href, text) => '<a href="' + href + '">' + text + '</a>';
+const isReal = (href) => !!SITE_PAGES[String(href || '').trim()];
 
-// Карта: рама на стене. Готова — в ней картинка; ждёт — пустая, со знаком «?».
+// Карта: остров — песчаный круг, на нём флажок своего цвета и пальма. Ждёт —
+// флажок сорван и выцвел; готов — флажок поднят.
 function stopArt(h, i, on) {
   return (
     <>
-      <Cut c="#1F2A44" seed={80 + i} n={8} amp={2.4} cls="pp-stop-disc pp-frame" />
-      <span className={'pp-frame-in' + (on ? '' : ' is-mess')}>{on && h.pic ? <PgPhoto file={h.pic} /> : on ? <b className="is-star" aria-hidden="true">★</b> : <b aria-hidden="true">?</b>}</span>
+      <Cut c="#F3DFA8" round seed={80 + i} n={7} amp={4} cls="pp-stop-disc" />
+      <span className={'pp-isle' + (on ? '' : ' is-mess')} style={{ '--hc': h.c }}><i /><i /><i /></span>
     </>
   );
 }
 
-// Файлы картинок — видны сразу (наглядная помощь): маленькое фото и имя файла.
-function FileShelf({ hl }) {
+// Файлы островов — видны сразу (наглядная помощь): картинка острова и его файл.
+function IslandFiles({ hl }) {
   const pick = usePick();
   return (
-    <div className="pp-files pp-shelf kz-piece" aria-label={pick(UI.files)}>
+    <div className="pp-files kz-piece" aria-label={pick(UI.files)}>
       <span className="pp-files-h">{pick(UI.files)}</span>
-      <span className="pp-shelf-row">
-        {FILE_LIST.map((f) => (
-          <span key={f} className={'pp-shelf-f' + (hl === f ? ' is-hl' : '')}><PgPhoto file={f} /><code translate="no">{f}</code></span>
+      <span className="pp-files-row">
+        {STREET.filter((s) => s.file).map((s) => (
+          <span key={s.id} className={'pp-file' + (hl === s.file ? ' is-hl' : '')} style={{ '--hc': s.c }}>
+            <i aria-hidden="true" /><code translate="no">{s.file}</code>
+          </span>
         ))}
       </span>
-    </div>
-  );
-}
-// Что скажет программа чтения экрана — alt каждой картинки на странице (t3).
-function ReaderList({ code }) {
-  const pick = usePick();
-  const imgs = checkFrag(code).imgs;
-  return (
-    <div className="pp-reader kz-piece" aria-live="polite">
-      <span className="pp-files-h">{pick(UI.reader)}</span>
-      {imgs.map((I, k) => (
-        <span key={k} className={'pp-reader-l' + (I.alt && hasLetters(I.alt) ? ' is-ok' : '')}>
-          <i className="pp-spk" aria-hidden="true" />{I.alt && I.alt.trim() ? '«' + I.alt + '»' : pick(UI.noAlt)}
-        </span>
-      ))}
+      <span className="pp-files-tip">{pick(UI.tryLink)}</span>
     </div>
   );
 }
 
-// t1 — у картинки появился нужный файл, alt прежний.
-function checkAddSrc(code, want, alt) {
+// t1 — у ссылки появился нужный адрес, слова прежние.
+function checkAddHref(code, w, want) {
   const r = checkFrag(code);
   if (!r.ok) return fragFail(r);
-  if (!r.imgs.length) return fb('needImg');
-  if (r.imgs.length > 1) return fb('oneImg');
-  const I = r.imgs[0];
-  if (I.src === undefined) return fb('noSrc');
-  if (!I.src) return fb('srcEmpty');
-  if (I.src !== want) return fb('srcWrong', { src: I.src, want });
-  if (!same(I.alt, alt)) return fb('altKeep', { w: alt });
+  if (!r.links.length) return fb('needA');
+  if (r.links.length > 1) return fb('oneLink');
+  const L = r.links[0];
+  if (L.href === undefined) return fb('noHref');
+  if (!L.href) return fb('hrefEmpty');
+  if (L.href !== want) return fb('hrefWrong', { href: L.href, want });
+  if (!same(L.text, w)) return fb('textKeep', { w });
   return { ok: true, result: {} };
 }
-// t2, t4 — у каждой картинки (по её alt) свой файл.
-function checkImgMap(r, map) {
-  if (r.imgs.length !== map.length) return fb('twoImgs');
+// t2, t4 — каждая ссылка со своими словами ведёт на свою страницу.
+function checkLinkMap(r, map) {
+  if (r.links.length !== map.length) return fb('twoLinks');
   for (let k = 0; k < map.length; k += 1) {
     const m = map[k];
-    const I = r.imgs.find((x) => same(x.alt, m.alt));
-    if (!I) return fb('keepImgs');
-    if (I.src === undefined) return fb('noSrc');
-    if (!I.src) return fb('srcEmpty');
-    if (I.src !== m.src) return fb(isFile(I.src) ? 'imgTo' : 'imgNoFile', { alt: m.alt, src: I.src, want: m.src });
+    const L = r.links.find((x) => same(x.text, m.text));
+    if (!L) return fb('keepLinks');
+    if (L.href === undefined) return fb('noHref');
+    if (!L.href) return fb('hrefEmpty');
+    if (L.href !== m.href) return fb('linkTo', { text: m.text, href: L.href, want: m.href });
   }
   return { ok: true, result: {} };
 }
-function checkNames(code, map) {
+function checkSwap(code, map) {
   const r = checkFrag(code, { strictText: true });
   if (!r.ok) return fragFail(r);
-  return checkImgMap(r, map);
+  return checkLinkMap(r, map);
 }
-// t3 — у каждой картинки описание словами: не пусто, не имя файла, не «картинка».
-function altIssue(I) {
-  if (I.alt === undefined) return fb('needAlt', { src: I.src });
-  const a = String(I.alt).trim();
-  if (!a) return fb('altEmpty', { src: I.src });
-  if (/\.(jpe?g|png|gif)\b/i.test(a)) return fb('altFile');
-  if (TXT.generic.indexOf(normName(a)) >= 0) return fb('altGeneric', { w: a });
-  if (!hasLetters(a)) return fb('altEmpty', { src: I.src });
-  return null;
-}
-function checkAlts(code, srcs) {
-  const r = checkFrag(code, { strictText: true });
+// t3 — одна ссылка целиком: a, href с нужным адресом, свои слова.
+function checkNewLink(code, want) {
+  const s = String(code || '').trim();
+  if (!s) return fb('needA');
+  const r = checkFrag(code);
   if (!r.ok) return fragFail(r);
-  if (r.imgs.length !== srcs.length) return fb('twoImgs');
-  for (let k = 0; k < srcs.length; k += 1) {
-    const I = r.imgs.find((x) => x.src === srcs[k]);
-    if (!I) return fb('keepSrc');
-    const bad = altIssue(I);
-    if (bad) return bad;
-  }
+  if (!r.links.length) return fb('needA');
+  if (r.links.length > 1) return fb('oneLink');
+  const L = r.links[0];
+  if (L.href === undefined) return fb('noHref');
+  if (!L.href) return fb('hrefEmpty');
+  if (L.href !== want) return fb('hrefWrong', { href: L.href, want });
+  if (!hasLetters(L.text)) return fb('needText');
   return { ok: true, result: {} };
+}
+// t4 — сломанные ссылки починены; ссылки и абзацы прежние.
+function checkFixLinks(code, map) {
+  const r = checkFrag(code, { strictText: true });
+  if (!r.ok) return fragFail(r);
+  return checkLinkMap(r, map);
 }
 const brokenLeft = (code) => { const r = checkFrag(code, { strictText: true }); return r.ok ? 0 : Math.max(1, r.count); };
 
-// t5 — своя галерея: h1, p, хотя бы две картинки из файлов, у каждой alt.
-function galOf(code) {
+// t5 — своё меню: h1 с названием, список, хотя бы три ссылки в li — на настоящие страницы.
+function menuOf(code) {
   const r = checkFrag(code, { strictText: true });
   const h1 = r.blocks.find((x) => x.t === 'h1' && hasLetters(x.text));
-  const p = r.blocks.find((x) => x.t === 'p' && hasLetters(x.text));
-  const files = r.imgs.filter((I) => isFile(I.src));
-  const alts = r.imgs.length > 0 && r.imgs.every((I) => !altIssue(I));
-  return { r, h1, p, n: files.length, alts, closed: r.ok && (r.blocks.length > 0 || r.lists.length > 0) };
+  const ls = r.lists[0] || null;
+  const inLi = r.links.filter((L) => L.inLi && hasLetters(L.text) && L.href !== undefined);
+  const real = inLi.length > 0 && inLi.every((L) => isReal(L.href));
+  return { r, h1, ls, n: inLi.length, inLi, real, closed: r.ok && (r.blocks.length > 0 || r.lists.length > 0) };
 }
 function checkOwn(code) {
   if (!String(code || '').trim()) return fb('artEmpty', null, 'h1');
-  const a = galOf(code);
+  const a = menuOf(code);
   if (!a.r.ok) return fragFail(a.r);
   if (!a.r.blocks.some((x) => x.t === 'h1')) return fb('needH1', null, 'h1');
-  if (!a.h1) return fb('galHeadEmpty', null, 'h1');
-  if (!a.p) return fb('needP', null, 'p');
-  if (a.r.imgs.length < 2) return fb('needTwo', null, 'img');
-  const badF = a.r.imgs.find((I) => !isFile(I.src));
-  if (badF) return badF.src ? fb('noFile', { src: badF.src }, 'file') : fb('noSrc', null, 'file');
-  const badA = a.r.imgs.find((I) => altIssue(I));
-  if (badA) return Object.assign(altIssue(badA), { cat: 'alt' });
-  return { ok: true, result: { title: squash(a.h1.text), items: a.r.imgs.map((I) => squash(I.alt)), images: a.r.imgs.map((I) => ({ src: I.src, alt: squash(I.alt) })) } };
+  if (!a.h1) return fb('menuHeadEmpty', null, 'h1');
+  if (!a.ls) return fb('needList', null, 'list');
+  if (a.n < 3) return fb('needLinks', null, 'links');
+  const bad = a.inLi.find((L) => !isReal(L.href));
+  if (bad) return fb(bad.href ? 'notReal' : 'hrefEmpty', { href: bad.href }, 'real');
+  return { ok: true, result: { title: squash(a.h1.text), items: a.inLi.map((L) => squash(L.text)) } };
 }
 
 // =============================================================================
-// ПЯТЬ ЗАДАНИЙ. num — номер задания и рама на стене, куда оно возвращает картинку.
+// ПЯТЬ ЗАДАНИЙ. num — номер задания и остров, к которому оно чинит мост.
 // =============================================================================
-// 1 · Кот — у картинки есть alt, но нет src: дописать src="cat.jpg".
+// 1 · Попугаи — у готовой ссылки нет адреса: дописать href.
 function cfgT1(pick) {
   const top = pick(TXT.top);
-  const before = frame(top, ['    <h2>' + pick(TXT.hallH) + '</h2>']);
-  const cat = pick(TXT.cat), dog = pick(TXT.dog);
+  const before = frame(top, ['    <h2>' + pick(TXT.whereH) + '</h2>']);
+  const w = pick(TXT.parrots), w2 = pick(TXT.cave);
   return {
     id: 't1', num: 1, kind: 'line', C: C.t1,
-    spec: { kind: 'line', before, after: END, ind: 4, url: 'gallery.html' },
-    init: () => ({ code: imgCode(null, cat) }),
-    check: (st) => checkAddSrc(st.code, 'cat.jpg', cat),
+    spec: { kind: 'line', before, after: END, ind: 4, url: 'index.html' },
+    init: () => ({ code: '<a>' + w + '</a>' }),
+    check: (st) => checkAddHref(st.code, w, 'parrots.html'),
     hint: (lv) => ({ text: C.t1.hints[lv - 1] }),
     fx: (rec) => (rec.solved ? null : { led: rec.hint >= 3 }),
-    aids: <FileShelf hl="cat.jpg" />,
-    h3: () => <CodeSample code={imgCode('sun.png', pick(TXT.sun))} />,
+    aids: <IslandFiles hl="parrots.html" />,
+    h3: () => <CodeSample code={linkCode('lighthouse.html', pick(TXT.light))} />,
     drill: { make: () => ({
       order: C.t1.drill,
-      spec: { kind: 'line', before, after: END, ind: 4, url: 'gallery.html' },
-      init: () => ({ code: imgCode(null, dog) }), check: (st) => checkAddSrc(st.code, 'dog.jpg', dog),
-      aids: <FileShelf hl="dog.jpg" />
+      spec: { kind: 'line', before, after: END, ind: 4, url: 'index.html' },
+      init: () => ({ code: '<a>' + w2 + '</a>' }), check: (st) => checkAddHref(st.code, w2, 'cave.html'),
+      aids: <IslandFiles hl="cave.html" />
     }) }
   };
 }
 
-// 2 · Попугай и рыбка — опечатки в именах файлов: сломанные картинки.
+// 2 · Указатели — «Пещера» и «Маяк» ведут не туда: поменять значения href.
 function cfgT2(pick) {
   const top = pick(TXT.top);
-  const before = frame(top, ['    <h2>' + pick(TXT.hallH) + '</h2>']);
-  const par = pick(TXT.parrot), fish = pick(TXT.fish), dog = pick(TXT.dog), cat = pick(TXT.catS);
-  const map = [{ alt: par, src: 'parrot.png' }, { alt: fish, src: 'fish.jpg' }];
-  const map2 = [{ alt: dog, src: 'dog.jpg' }, { alt: cat, src: 'cat.jpg' }];
+  const before = frame(top, ['    <h2>' + pick(TXT.whereH) + '</h2>']);
+  const cave = pick(TXT.cave), light = pick(TXT.light), par = pick(TXT.parrotsS), vol = pick(TXT.volcano);
+  const map = [{ text: cave, href: 'cave.html' }, { text: light, href: 'lighthouse.html' }];
+  const map2 = [{ text: par, href: 'parrots.html' }, { text: vol, href: 'volcano.html' }];
   return {
     id: 't2', num: 2, kind: 'block', C: C.t2,
-    spec: { kind: 'block', before, after: END, ind: 4, url: 'gallery.html' },
-    init: () => ({ code: [imgCode('parot.png', par), imgCode('fish.jpeg', fish)].join('\n') }),
-    check: (st) => checkNames(st.code, map),
+    spec: { kind: 'block', before, after: END, ind: 4, url: 'index.html' },
+    init: () => ({ code: [linkCode('lighthouse.html', cave), linkCode('cave.html', light)].join('\n') }),
+    check: (st) => checkSwap(st.code, map),
     hint: (lv) => ({ text: C.t2.hints[lv - 1] }),
     fx: (rec) => (rec.solved ? null : { led: rec.hint >= 3 }),
-    aids: <FileShelf />,
-    h3: () => <CodeSample code={imgCode('parrot.png', par)} />,
+    aids: <IslandFiles />,
+    h3: () => <CodeSample code={linkCode('cave.html', cave)} />,
     drill: { make: () => ({
       order: C.t2.drill,
-      spec: { kind: 'block', before, after: END, ind: 4, url: 'gallery.html' },
-      init: () => ({ code: [imgCode('dgo.jpg', dog), imgCode('cat.png', cat)].join('\n') }), check: (st) => checkNames(st.code, map2),
-      aids: <FileShelf />
+      spec: { kind: 'block', before, after: END, ind: 4, url: 'index.html' },
+      init: () => ({ code: [linkCode('volcano.html', par), linkCode('parrots.html', vol)].join('\n') }), check: (st) => checkSwap(st.code, map2),
+      aids: <IslandFiles />
     }) }
   };
 }
 
-// 3 · Подписи — две картинки без alt: описания словами. Рядом — что «скажет»
-// программа чтения экрана.
+// 3 · Вулкан — ссылка целиком с пустой строки.
 function cfgT3(pick) {
   const top = pick(TXT.top);
-  const before = frame(top, ['    <h2>' + pick(TXT.hallH) + '</h2>']);
+  const before = frame(top, ['    <h2>' + pick(TXT.whereH) + '</h2>', '    ' + linkCode('parrots.html', pick(TXT.parrots))]);
   return {
-    id: 't3', num: 3, kind: 'block', C: C.t3,
-    spec: { kind: 'block', before, after: END, ind: 4, url: 'gallery.html' },
-    init: () => ({ code: [imgCode('parrot.png'), imgCode('sun.png')].join('\n') }),
-    check: (st) => checkAlts(st.code, ['parrot.png', 'sun.png']),
+    id: 't3', num: 3, kind: 'line', C: C.t3,
+    spec: { kind: 'line', before, after: END, ind: 4, url: 'index.html' },
+    init: () => ({ code: '' }),
+    check: (st) => checkNewLink(st.code, 'volcano.html'),
     hint: (lv) => ({ text: C.t3.hints[lv - 1] }),
     fx: (rec) => (rec.solved ? null : { led: rec.hint >= 3 }),
-    aids: (rec, st) => <ReaderList code={st.code} />,
-    h3: () => <CodeSample code={imgCode('dog.jpg', pick(TXT.dog))} />,
+    aids: <IslandFiles hl="volcano.html" />,
+    h3: () => <CodeSample code={linkCode('cave.html', pick(TXT.cave))} />,
     drill: { make: () => ({
       order: C.t3.drill,
-      spec: { kind: 'block', before, after: END, ind: 4, url: 'gallery.html' },
-      init: () => ({ code: imgCode('flower.jpg') }), check: (st) => checkAlts(st.code, ['flower.jpg']),
-      aids: (d, st) => <ReaderList code={st.code} />
+      spec: { kind: 'line', before, after: END, ind: 4, url: 'index.html' },
+      init: () => ({ code: '' }), check: (st) => checkNewLink(st.code, 'lighthouse.html'),
+      aids: <IslandFiles hl="lighthouse.html" />
     }) }
   };
 }
 
-// 4 · Витрина — scr вместо src и href у img: на странице только тексты alt.
+// 4 · После шторма — опечатка в имени атрибута (ссылка стала чёрной) и нет </a>
+// (абзац ниже стал синим). Браузер честно показывает обе поломки.
 function cfgT4(pick) {
   const top = pick(TXT.top);
-  const before = frame(top, ['    <h2>' + pick(TXT.hallH) + '</h2>']);
-  const fish = pick(TXT.fish), dog = pick(TXT.dog), cat = pick(TXT.catS), sun = pick(TXT.sun);
-  const map = [{ alt: fish, src: 'fish.jpg' }, { alt: dog, src: 'dog.jpg' }];
-  const map2 = [{ alt: cat, src: 'cat.jpg' }, { alt: sun, src: 'sun.png' }];
+  const before = frame(top, ['    <h2>' + pick(TXT.whereH) + '</h2>']);
+  const light = pick(TXT.light), vol = pick(TXT.volcano), cave = pick(TXT.cave), par = pick(TXT.parrotsS);
+  const map = [{ text: light, href: 'lighthouse.html' }, { text: vol, href: 'volcano.html' }];
+  const map2 = [{ text: cave, href: 'cave.html' }, { text: par, href: 'parrots.html' }];
   const lineOf = (code) => { const r = checkFrag(code, { strictText: true }); return r.ok || r.line == null ? null : before.length + r.line; };
   return {
     id: 't4', num: 4, kind: 'block', C: C.t4,
-    spec: { kind: 'block', before, after: END, ind: 4, url: 'gallery.html' },
-    init: () => ({ code: ['<img scr="fish.jpg" alt="' + fish + '">', '<img href="dog.jpg" alt="' + dog + '">'].join('\n') }),
-    check: (st) => checkNames(st.code, map),
+    spec: { kind: 'block', before, after: END, ind: 4, url: 'index.html' },
+    init: () => ({ code: ['<a hrf="lighthouse.html">' + light + '</a>', '<a href="volcano.html">' + vol, '<p>' + pick(TXT.wish) + '</p>'].join('\n') }),
+    check: (st) => checkFixLinks(st.code, map),
     hint: (lv, st) => {
       if (lv !== 2) return { text: C.t4.hints[lv - 1] };
       const at = lineOf(st.code);
       if (at != null) return { text: fillL(C.t4.hints[1], { n: at + 1 }) };
       if (brokenLeft(st.code)) return { text: C.t4.hintTags };
-      return { text: checkNames(st.code, map).ok ? C.t4.hintLine : C.t4.hintKeep };
+      return { text: checkFixLinks(st.code, map).ok ? C.t4.hintLine : C.t4.hintKeep };
     },
     fx: (rec) => (rec.solved ? null : { markLine: rec.hint >= 2 ? lineOf(rec.st.code) : null }),
     aids: (rec, st) => <FixLeft n={brokenLeft(st.code)} />,
-    h3: () => <CodeSample code={[imgCode('cat.jpg', cat), imgCode('sun.png', sun)].join('\n')} />,
+    h3: () => <CodeSample code={[linkCode('cave.html', cave), linkCode('parrots.html', par)].join('\n')} />,
     drill: { make: () => ({
       order: C.t4.drill,
-      spec: { kind: 'block', before, after: END, ind: 4, url: 'gallery.html' },
-      init: () => ({ code: ['<img sr="cat.jpg" alt="' + cat + '">', '<img src="sun.png" alt="' + sun + '"></img>'].join('\n') }),
-      check: (st) => checkNames(st.code, map2),
+      spec: { kind: 'block', before, after: END, ind: 4, url: 'index.html' },
+      init: () => ({ code: ['<a href="cave.html">' + cave, '<p>' + pick(TXT.wish2) + '</p>', '<a hreff="parrots.html">' + par + '</a>'].join('\n') }),
+      check: (st) => checkFixLinks(st.code, map2),
       aids: (d, st) => <FixLeft n={brokenLeft(st.code)} />
     }) }
   };
 }
 
-// 5 · Своя галерея — с нуля внутри body: h1, p и две картинки с src и alt.
+// 5 · Своё меню — с нуля внутри body: h1, список и три ссылки на острова.
 // Список условий загорается по ходу набора; редактор во всё свободное место.
 function cfgT5(pick) {
   const top = pick(TXT.top);
   const before = frame(top);
   const items = (code) => {
-    const a = galOf(code);
+    const a = menuOf(code);
     return [
       { k: 'h1', ok: !!a.h1, text: UI.needH1 },
-      { k: 'p', ok: !!a.p, text: UI.needP },
-      { k: 'n', ok: a.n >= 2, text: UI.need2 },
-      { k: 'alt', ok: a.n >= 1 && a.alts, text: UI.needAlts },
+      { k: 'list', ok: !!a.ls, text: UI.needList },
+      { k: 'n', ok: a.n >= 3, text: UI.need3 },
+      { k: 'real', ok: a.n >= 1 && a.real, text: UI.needReal },
       { k: 'cl', ok: a.closed, text: UI.needClosed }
     ];
   };
   return {
     id: 't5', num: 5, kind: 'block', C: C.t5,
-    spec: { kind: 'block', before, after: END, ind: 4, big: true, empty: C.t5.empty, url: 'gallery.html' },
+    spec: { kind: 'block', before, after: END, ind: 4, big: true, empty: C.t5.empty, url: 'index.html' },
     init: () => ({ code: '' }),
     check: (st) => {
       const r = checkOwn(st.code);
@@ -9560,22 +9534,19 @@ function cfgT5(pick) {
       return { text: C.t5.hint2[r.ok ? 'tag' : (r.cat || 'tag')] || C.t5.hints[1] };
     },
     fx: (rec) => (rec.solved ? null : { led: rec.hint >= 3 }),
-    aids: (rec, st) => <><Checklist items={items(st.code)} /><FileShelf /></>,
-    h3: () => <CodeSample code={'<h1>' + pick(TXT.galH) + '</h1>\n<p>' + pick(TXT.galP) + '</p>\n' + imgCode('sun.png', pick(TXT.sun)) + '\n…'} />,
+    aids: (rec, st) => <><Checklist items={items(st.code)} /><IslandFiles /></>,
+    h3: () => <CodeSample code={'<h1>' + pick(TXT.menuH) + '</h1>\n<ul>\n  <li>' + linkCode('cave.html', pick(TXT.cave)) + '</li>\n  …\n</ul>'} />,
     drill: { make: () => ({
       order: C.t5.drill,
-      spec: { kind: 'block', before, after: END, ind: 4, empty: C.t5.empty, url: 'gallery.html' },
+      spec: { kind: 'block', before, after: END, ind: 4, empty: C.t5.empty, url: 'index.html' },
       init: () => ({ code: '' }),
       check: (st) => {
         const r = checkFrag(st.code, { strictText: true });
         if (!r.ok) return fragFail(r);
-        const I = r.imgs[0];
-        if (!I) return fb('needImg');
-        if (I.src !== 'flower.jpg') return I.src ? fb('srcWrong', { src: I.src, want: 'flower.jpg' }) : fb('noSrc');
-        const bad = altIssue(I);
-        return bad || { ok: true, result: {} };
-      },
-      aids: <FileShelf hl="flower.jpg" />
+        const L = r.links.find((x) => x.href === 'index.html' && hasLetters(x.text));
+        if (!L) return fb(r.links.length ? 'needHome' : 'needA');
+        return { ok: true, result: {} };
+      }
     }) }
   };
 }
@@ -9587,8 +9558,8 @@ const ST4 = ({ p }) => <TaskScreen p={p} make={cfgT4} />;
 const ST5 = ({ p }) => <TaskScreen p={p} make={cfgT5} />;
 
 // =============================================================================
-// ХУК — рамы с картинками; одно касание «Открыть выставку»: рамы вздрагивают,
-// картинки выпадают (stop-motion, шорох), в рамах остаётся «?».
+// ХУК — острова соединены мостами; одно касание «Шторм!»: острова вздрагивают,
+// флажки срывает, мосты-пунктиры рвутся, летят брызги (stop-motion, шорох).
 // =============================================================================
 function SIntro({ p }) {
   const pick = usePick();
@@ -9600,7 +9571,7 @@ function SIntro({ p }) {
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(done, spoken);
   const led = useIdleLed(canTap && !done, 0);
-  const openIt = () => {
+  const storm = () => {
     if (!canTap || done) return;
     sfx('pop', true);
     setBlown(true);
@@ -9616,11 +9587,11 @@ function SIntro({ p }) {
         <StreetMap whole={!done} blown={blown} />
         {done ? <p className="pp-intro-note kz-piece">{pick(c.note)}</p> : (
           <div className="pp-wind-row">
-            <button type="button" className={'kz-btn is-coral pp-wind' + (led ? ' is-led' : '')} disabled={!canTap} onClick={openIt}>
+            <button type="button" className={'kz-btn is-coral pp-wind' + (led ? ' is-led' : '')} disabled={!canTap} onClick={storm}>
               <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round">
-                <path d="M4 21V5l8-2v18M12 3l8 2v16M4 21h16M9 12h.01" />
+                <path d="M3 9c2-2 4-2 6 0s4 2 6 0 4-2 6 0M3 14c2-2 4-2 6 0s4 2 6 0 4-2 6 0M3 19c2-2 4-2 6 0s4 2 6 0 4-2 6 0" />
               </svg>
-              {pick(UI.open)}
+              {pick(UI.storm)}
             </button>
           </div>
         )}
@@ -9642,7 +9613,7 @@ function PSeg({ value, onChange }) {
   );
 }
 
-// ВЫВОД — рамы горят, своя галерея и её код, умения, следующий урок.
+// ВЫВОД — острова горят, своё меню (ссылки можно нажать) и его код, умения, следующий урок.
 function SFin({ p }) {
   const pick = usePick();
   const store = useStore();
@@ -9664,7 +9635,7 @@ function SFin({ p }) {
               <span className="pp-only-narrow"><PSeg value={view} onChange={setView} /></span>
             </div>
             <div className={'pp-fin-pair view-' + view}>
-              <div className="pp-fin-b"><PageView title={res.page} blocks={res.blocks} url="gallery.html" /></div>
+              <div className="pp-fin-b"><PageView title={res.page} blocks={res.blocks} url="index.html" /></div>
               <div className="pp-fin-c"><Pad><CodeSample code={res.html} /></Pad></div>
             </div>
             <div className="pp-skills kz-piece">
@@ -9694,14 +9665,14 @@ const SCREENS = [
 // «Повторить» стирает только текущий экран.
 const SCREEN_RESET = { intro: ['intro'], t1: ['t1'], t2: ['t2'], t3: ['t3'], t4: ['t4'], t5: ['t5'], fin: [] };
 
-// Артефакт практики — своя галерея, как её написал ученик.
+// Артефакт практики — страница со своим меню ссылок, как её написал ученик.
 function practiceArtifact(store) {
   const r = (store.get('t5') || {}).result;
   if (!r) return null;
-  return { type: 'html-page', title: r.title, text: (r.items || []).join(', '), items: r.items || [], images: r.images || [], html: r.html };
+  return { type: 'html-page', title: r.title, text: (r.items || []).join(', '), items: r.items || [], html: r.html };
 }
 
-export default function HtmlPractice05({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function HtmlPractice04({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
     meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
@@ -10970,72 +10941,4 @@ span.pg-a { cursor: default; }
 }
 /* Открытая клавиатура: счётчик «осталось исправить» не занимает строку. */
 .is-kbd .pp-left { display: none; }
-/* ── ПРАКТИКА К УРОКУ 5 «Выставка» — поверх общего вида практик 4–5 (p04.css) ──
-   Бумажные фото картинок (как в уроке 5), рамы на стене выставки, полка файлов,
-   что «скажет» программа чтения экрана. */
-
-/* ══ БУМАЖНОЕ ФОТО ═════════════════════════════════════════════════════════ */
-.pg-photo { position: relative; display: inline-block; flex: none; width: 5.6em; height: 4.1em; vertical-align: bottom; margin: .1em .15em .1em 0; }
-.kz-cut.pg-photo-cut { inset: 0; }
-.pg-photo .pg-pic { position: absolute; left: 50%; top: 52%; translate: -50% -50%; font-size: 1.2em; margin: 0; }
-.pg-pic { position: relative; display: block; flex: none; width: 2.6em; height: 2.2em; filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .3)); }
-.pg-pic i { position: absolute; display: block; }
-/* кот: голова, уши (спит — глаза-чёрточки) */
-.pg-pic-cat i:nth-child(1) { left: 14%; top: 22%; width: 72%; height: 78%; border-radius: 50%; background: #E0643F;
-  background-image: linear-gradient(#1F2A44, #1F2A44), linear-gradient(#1F2A44, #1F2A44), radial-gradient(ellipse at 50% 70%, #F2D7BC 0 9%, transparent 10%);
-  background-size: 22% 6%, 22% 6%, 100% 100%; background-position: 24% 46%, 76% 46%, 0 0; background-repeat: no-repeat; }
-.pg-pic-cat i:nth-child(2) { left: 14%; top: 0; width: 30%; height: 42%; background: #E0643F; clip-path: polygon(0 100%, 30% 0, 100% 80%); }
-.pg-pic-cat i:nth-child(3) { right: 14%; top: 0; width: 30%; height: 42%; background: #E0643F; clip-path: polygon(100% 100%, 70% 0, 0 80%); }
-/* собака: голова, висячие уши */
-.pg-pic-dog i:nth-child(1) { left: 20%; top: 8%; width: 60%; height: 86%; border-radius: 46% 46% 50% 50%; background: #F2D7BC;
-  background-image: radial-gradient(circle at 36% 42%, #1F2A44 0 7%, transparent 8%), radial-gradient(circle at 64% 42%, #1F2A44 0 7%, transparent 8%), radial-gradient(ellipse at 50% 68%, #1F2A44 0 10%, transparent 11%); }
-.pg-pic-dog i:nth-child(2) { left: 4%; top: 10%; width: 24%; height: 60%; border-radius: 50%; background: #7A4A2A; rotate: 14deg; }
-.pg-pic-dog i:nth-child(3) { right: 4%; top: 10%; width: 24%; height: 60%; border-radius: 50%; background: #7A4A2A; rotate: -14deg; }
-/* попугай: тело, клюв, крыло */
-.pg-pic-parrot i:nth-child(1) { left: 30%; top: 4%; width: 42%; height: 90%; border-radius: 50% 50% 42% 42%; background: #E0643F;
-  background-image: radial-gradient(circle at 42% 20%, #FBF6EA 0 9%, transparent 10%), radial-gradient(circle at 42% 20%, #1F2A44 0 14%, transparent 15%); }
-.pg-pic-parrot i:nth-child(2) { left: 12%; top: 12%; width: 22%; height: 20%; background: #F0B13F; clip-path: polygon(100% 0, 100% 100%, 0 60%); }
-.pg-pic-parrot i:nth-child(3) { left: 46%; top: 40%; width: 34%; height: 46%; border-radius: 10% 80% 60% 40%; background: #2A8C7E; }
-/* рыбка: тело, хвост, пузырьки */
-.pg-pic-fish i:nth-child(1) { left: 10%; top: 24%; width: 62%; height: 56%; border-radius: 50%; background: #F0B13F;
-  background-image: radial-gradient(circle at 26% 42%, #1F2A44 0 8%, transparent 9%); }
-.pg-pic-fish i:nth-child(2) { left: 66%; top: 26%; width: 30%; height: 52%; background: #E0643F; clip-path: polygon(0 50%, 100% 0, 85% 50%, 100% 100%); }
-.pg-pic-fish i:nth-child(3) { left: 4%; top: 0; width: 30%; height: 26%; background: radial-gradient(circle at 30% 70%, #FBF6EA 0 18%, transparent 20%), radial-gradient(circle at 75% 25%, #FBF6EA 0 14%, transparent 16%); }
-
-/* солнце: круг, лучи, облачко */
-.pg-pic-sun i:nth-child(1) { left: 26%; top: 14%; width: 48%; height: 56%; border-radius: 50%; background: #F0B13F; box-shadow: 0 0 0 .18em rgba(240, 177, 63, .35); }
-.pg-pic-sun i:nth-child(2) { left: 14%; top: 4%; width: 72%; height: 76%; background: conic-gradient(from 0deg, #F0B13F 0 8deg, transparent 8deg 45deg, #F0B13F 45deg 53deg, transparent 53deg 90deg, #F0B13F 90deg 98deg, transparent 98deg 135deg, #F0B13F 135deg 143deg, transparent 143deg 180deg, #F0B13F 180deg 188deg, transparent 188deg 225deg, #F0B13F 225deg 233deg, transparent 233deg 270deg, #F0B13F 270deg 278deg, transparent 278deg 315deg, #F0B13F 315deg 323deg, transparent 323deg); border-radius: 50%; z-index: -1; }
-.pg-pic-sun i:nth-child(3) { left: 46%; top: 60%; width: 50%; height: 30%; border-radius: 40% 50% 30% 30%; background: #FBF6EA; }
-/* цветок: лепестки, середина, стебель */
-.pg-pic-flower i:nth-child(1) { left: 30%; top: 4%; width: 40%; height: 46%; border-radius: 50%; background: #E0643F; box-shadow: -.45em .1em 0 -.08em #E0643F, .45em .1em 0 -.08em #E0643F, 0 -.3em 0 -.08em #E0643F; }
-.pg-pic-flower i:nth-child(2) { left: 40%; top: 16%; width: 20%; height: 22%; border-radius: 50%; background: #F0B13F; }
-.pg-pic-flower i:nth-child(3) { left: 47%; top: 48%; width: 6%; height: 52%; background: #2A8C7E; border-radius: 2px; box-shadow: .3em .1em 0 0 #2A8C7E; }
-
-/* ══ РАМЫ НА СТЕНЕ (карта 05p) ═════════════════════════════════════════════ */
-.pp-street.pp-trail .kz-cut.pp-board .kz-cut-in { background: #E9D9C0 !important; }
-.pp-trail-path { opacity: 0; }
-.kz-cut.pp-frame { border-radius: 0; }
-.pp-frame-in { position: absolute; z-index: 2; inset: 14%; display: grid; place-items: center; overflow: hidden; background: #FBF6EA; }
-.pp-frame-in b { font: 800 1.1em 'Manrope', sans-serif; color: #C9BFAA; }
-.pp-frame-in .pg-photo { font-size: calc(var(--hw, 30px) / 8); margin: 0; }
-.pp-house.is-s .pp-frame-in .pg-photo { font-size: calc(var(--hw, 26px) / 8); }
-.pp-street.is-blown .pp-frame-in .pg-photo { animation: kzOut .6s steps(5, end) both; }
-
-/* ══ ПОЛКА ФАЙЛОВ ══════════════════════════════════════════════════════════ */
-.pp-shelf-row { display: flex; flex-wrap: wrap; gap: 6px 10px; }
-.pp-shelf-f { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; padding: 2px 3px; border-radius: 4px; }
-.pp-shelf-f .pg-photo { font-size: 6.5px; margin: 0; }
-.pp-shelf-f code { font: 700 clamp(10.5px, 1.55dvh, 12.5px) 'JetBrains Mono', ui-monospace, monospace; color: #1F2A44; }
-.pp-shelf-f.is-hl { background: #FFE9A8; }
-@media (max-width: 759px) { .pp-shelf-f .pg-photo { display: none; } .pp-shelf-row { gap: 3px 8px; } }
-
-/* ══ ПРОГРАММА ЧТЕНИЯ ЭКРАНА (t3) ══════════════════════════════════════════ */
-.pp-reader { display: flex; flex-direction: column; gap: 4px; align-self: stretch; padding: 6px 12px 8px; background: #1F2A44; color: #FBF6EA;
-  clip-path: polygon(0 4%, 3% 0, 97% 3%, 100% 0, 99% 50%, 100% 100%, 50% 97%, 0 100%, 1% 50%); }
-.pp-reader .pp-files-h { color: #F0B13F; }
-.pp-reader-l { display: flex; align-items: center; gap: 8px; font: 700 clamp(12.5px, 1.9dvh, 15px)/1.25 'Manrope', sans-serif; opacity: .65; }
-.pp-reader-l.is-ok { opacity: 1; }
-.pp-spk { flex: none; width: 11px; height: 11px; background: #F0B13F; clip-path: polygon(0 30%, 35% 30%, 80% 0, 80% 100%, 35% 70%, 0 70%); }
-.is-kbd .pp-reader { display: none; }
-.pp-frame-in b.is-star { color: #F0B13F; font-size: 1.4em; }
 `;

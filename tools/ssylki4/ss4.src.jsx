@@ -2,7 +2,7 @@
 // КУРС «HTML» · Модуль 1 «Основы разметки» · Урок 4 — «Ссылки и атрибуты»
 // (бумажный коллаж, по эталону урока 1). Дети 10–14, проходят сами.
 // Один самодостаточный JSX: канон курса (до пометки «УРОК») + урок.
-// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/ssylki4/ss4.src.jsx lessons/html/04-ssylki-i-atributy.jsx
+// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/ssylki4/ss4.src.jsx lessons/test/24-ssylki-i-atributy.jsx
 // =============================================================================
 /*@CANON@*/
 // =============================================================================
@@ -42,7 +42,7 @@
 // ОБРАЩЕНИЕ: UZ — Siz, RU — «ты» без рода, EN — «you».
 // =============================================================================
 const META = {
-  lessonId: 'html-04-ssylki-i-atributy',
+  lessonId: 'test-24-ssylki-i-atributy',
   module: 'html-m1-osnovy',
   lessonTitle: {
     uz: '4-dars. Havolalar va atributlar',

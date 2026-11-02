@@ -1,7 +1,7 @@
 // =============================================================================
-// КУРС «HTML» · Модуль 1 · Практика к уроку 1 — «Бумажная улица». Дети 10–14, проходят сами.
+// КУРС «HTML» · Модуль 1 · Практика к уроку 5 — «Выставка». Дети 10–14, проходят сами.
 // Один самодостаточный JSX: канон курса (до пометки «УРОК») + практика.
-// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/praktika-01/p01.src.jsx lessons/html/01p-struktura-dokumenta.jsx
+// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/praktika-05/p05.src.jsx lessons/html/05p-izobrazheniya.jsx
 // =============================================================================
 // =============================================================================
 // КУРС «HTML» — КАНОН УРОКОВ v1 · дети 8–10 лет · UZ / RU / EN
@@ -6661,53 +6661,43 @@ const CANON_LIB_CSS = `
 const CANON_SCREEN_CSS = CANON_SCREEN_CSS_BASE + CANON_MECH_CSS + CANON_DZ_CSS + CANON_CRT_CSS + CANON_LIB_CSS;
 // ==============================  У Р О К  =====================================
 // =============================================================================
-// ===== ПРАКТИКА К УРОКУ 1 · «Бумажная улица» · модуль html-m1-osnovy =====
+// ===== ПРАКТИКА К УРОКУ 5 · «Выставка» · модуль html-m1-osnovy =====
 //
-// ЗАМЫСЕЛ (22.10.2026, переделка по эталону — урок 1 «Бумажная страница»).
-// Стиль урока 1: бумажный коллаж — лист с рваным краем, вырезки с фактурой и
-// тенью, stop-motion, шорох бумаги, переход «разбор и сборка», бумажный браузер.
-// Сюжет: бумажная улица, каждый дом на ней — веб-страница. Ветер (одно касание
-// в хуке) разметал её: у домов пропали названия, тексты и куски кода. Ученик
-// чинит четыре дома кодом, а пятый — свой — строит сам. Улица — индикатор
-// продвижения: дом загорается, когда его страница готова.
+// ЗАМЫСЕЛ (26.10.2026; каркас — практики 01p–04p, механика — общий движок 04p
+// с атрибутами, бумажный стиль урока 1). Выставка рисунков класса: пять рам на
+// стене. В хуке ученик нажимает «Открыть выставку» — картинки выпадают из рам.
+// Ученик возвращает их кодом: даёт файлы, чинит имена, пишет подписи alt,
+// чинит сломанные теги и собирает свою галерею. Картинки в бумажном браузере
+// честные: файл есть — фото; нет src — только alt; нет файла — сломанная картинка.
 //
-// СЕМЬ СЛАЙДОВ (заказчик, 22.10.2026): хук · пять заданий от самого лёгкого к
-// сложному, без выхода за грань понимания 10–14 лет · вывод.
-//   t1 пекарня — своё название между готовыми тегами title (поле в строке)
-//   t2 почта — дописать </title>: без него весь текст честно уезжает на вкладку
-//   t3 кинотеатр — блок body со своим текстом (три строки)
-//   t4 школа — нажать место, где кончается head, и вписать </head>
-//   t5 свой дом — внутри готового html написать head с title и body с текстом
+// СЕМЬ СЛАЙДОВ (заказчик, 22.10.2026): хук · пять заданий от лёгкого к сложному,
+// у каждого своя механика:
+//   t1 кот — у картинки есть alt, но нет src: дописать src="cat.jpg";
+//   t2 попугай и рыбка — опечатки в именах файлов: сверить с полкой файлов;
+//   t3 подписи — две картинки без alt: написать описания словами (программа
+//      чтения экрана сразу их «читает»);
+//   t4 витрина — найти и починить два сломанных тега (scr вместо src, href у
+//      img); счётчик «осталось исправить»;
+//   t5 своя галерея — с нуля: h1 и p (урок 2) и две картинки с src и alt.
+// Только материал уроков 1–5: готовые head и body вокруг кода, h1, h2, p, img, src, alt.
 //
-// ОСОБЫЕ ПРАВИЛА ПРАКТИКИ (требования заказчика — навык praktika)
-//   · Коди — голова в кружке в шапке, как в уроке 1 на телефоне (22.10.2026); облака
-//     с текстом нет — задание всегда написано строкой-полоской на листе.
-//   · Пишет ученик; кнопки < / > только вставляют символ в место курсора.
-//   · Проверка — только по «Проверить»; браузер обновляется сразу и показывает
-//     честно (текст из незакрытого title уходит на вкладку вместе с тегами).
-//   · Неудача — одна причина; со второй неудачи подряд — ещё и ступень
-//     подсказки; лампочка открывает ступени по просьбе; после образца третьей
-//     ступени — короткая дополнительная задача с новым содержимым.
-//   · Код ученика не исполняется: из него извлекается только текст.
-//   · Тон — как в эталоне: коротко, спокойно, узбекский как живая речь
-//     (Siz; yorliq — вкладка, oyna — окно, sahifa nomi — название).
-//   · Конфетти — только в финале.
+// ОСОБЫЕ ПРАВИЛА (как в 01p–04p): Коди — голова в кружке в шапке, без облака с
+// текстом; пишет ученик; проверка по «Проверить» (одна причина, со второй неудачи
+// — ступень подсказки); три ступени по лампочке, после образца — ещё одна задача;
+// браузер честный и без прокрутки; код не исполняется; конфетти только в финале.
 // =============================================================================
-
 const META = {
-  lessonId: 'html-01p-bumazhnaya-ulica',
+  lessonId: 'test-27-izobrazheniya-praktika',
   module: 'html-m1-osnovy',
   lessonTitle: {
-    uz: '1-dars amaliyoti. Qog‘oz ko‘cha',
-    ru: 'Практика к уроку 1. Бумажная улица',
-    en: 'Lesson 1 practice. Paper Street'
+    uz: '5-dars amaliyoti. Ko‘rgazma',
+    ru: 'Практика к уроку 5. Выставка',
+    en: 'Lesson 5 practice. The exhibition'
   }
 };
 
 const L3 = (uz, ru, en) => ({ uz: uz, ru: ru, en: en });
 
-// Подстановка в трёхъязычную строку: fillL(FB.openAgain, { tag: 'body' }).
-// Значение подстановки — строка или { uz, ru, en }.
 const fillL = (node, vars) => {
   const out = {};
   LANGS.forEach((l) => {
@@ -6723,38 +6713,53 @@ const fillL = (node, vars) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// БУМАЖНАЯ УЛИЦА — пять домов. Задание n чинит дом n; последний — свой дом ученика.
+// РАМЫ ВЫСТАВКИ — пять мест на стене. Задание n возвращает картинку в раму n;
+// последняя — галерея ученика. pic — что в раме, когда она готова.
 // ─────────────────────────────────────────────────────────────────────────────
 const STREET = [
-  { id: 'bakery', c: '#E0643F', name: L3('Novvoyxona', 'Пекарня', 'Bakery') },
-  { id: 'post',   c: '#F0B13F', name: L3('Pochta', 'Почта', 'Post office') },
-  { id: 'cinema', c: '#1F2A44', name: L3('Kinoteatr', 'Кинотеатр', 'Cinema') },
-  { id: 'school', c: '#2A8C7E', name: L3('Maktab', 'Школа', 'School') },
-  { id: 'home',   c: '#5E8FB8', name: L3('Sizning uyingiz', 'Твой дом', 'Your house') }
+  { id: 'cat', c: '#F0B13F', pic: 'cat.jpg', name: L3('Mushuk', 'Кот', 'Cat') },
+  { id: 'parrot', c: '#E0643F', pic: 'parrot.png', name: L3('To‘tiqush', 'Попугай', 'Parrot') },
+  { id: 'sun', c: '#2A8C7E', pic: 'sun.png', name: L3('Tavsiflar', 'Описания', 'Descriptions') },
+  { id: 'fish', c: '#5E8FB8', pic: 'fish.jpg', name: L3('Vitrina', 'Витрина', 'Showcase') },
+  { id: 'mine', c: '#1F2A44', name: L3('Sizning galereyangiz', 'Твоя галерея', 'Your gallery') }
 ];
 const HOME = STREET.length - 1;
+// Файлы картинок выставки: файл → рисунок и фон бумажного фото.
+const PHOTO_FILES = {
+  'cat.jpg': { pic: 'cat', bg: '#F0B13F', seed: 501 },
+  'dog.jpg': { pic: 'dog', bg: '#8FCFC3', seed: 502 },
+  'parrot.png': { pic: 'parrot', bg: '#F6DFAE', seed: 503 },
+  'fish.jpg': { pic: 'fish', bg: '#9EC9E0', seed: 504 },
+  'sun.png': { pic: 'sun', bg: '#BFE0F0', seed: 505 },
+  'flower.jpg': { pic: 'flower', bg: '#DCE8CF', seed: 506 }
+};
+const FILE_LIST = Object.keys(PHOTO_FILES);
+// Ссылок в этой практике нет (страницы сайта — урок 4).
+const SITE_PAGES = {};
 
-// Содержимое страниц домов и дополнительных задач.
+// Слова картинок и страниц.
 const TXT = {
-  bakeryText: L3('Har kuni ertalab issiq non.', 'Свежий хлеб каждое утро.', 'Fresh bread every morning.'),
-  bikeText: L3('Bu yerda velosipedlar tuzatiladi.', 'Здесь чинят велосипеды.', 'Bikes get fixed here.'),
-  postText: L3('Xatlar va posilkalar shu yerda.', 'Здесь письма и посылки.', 'Letters and parcels are here.'),
-  stop: L3('Bekat', 'Остановка', 'Bus stop'),
-  stopText: L3('Avtobus tez-tez keladi.', 'Автобус приходит часто.', 'The bus comes often.'),
-  pool: L3('Basseyn', 'Бассейн', 'Pool'),
-  schoolText: L3('Darslar ertalab boshlanadi.', 'Уроки начинаются утром.', 'Lessons start in the morning.'),
-  cafe: L3('Kafe', 'Кафе', 'Cafe'),
-  cafeText: L3('Choy va pirog.', 'Чай и пирог.', 'Tea and pie.'),
-  workshop: L3('Ustaxona', 'Мастерская', 'Workshop')
+  top: L3('Ko‘rgazma', 'Выставка', 'Exhibition'),
+  hallH: L3('Sinfimiz rasmlari', 'Рисунки нашего класса', 'Our class drawings'),
+  cat: L3('Sariq mushuk', 'Рыжий кот', 'A ginger cat'),
+  dog: L3('Quvnoq it', 'Весёлая собака', 'A happy dog'),
+  parrot: L3('To‘tiqush', 'Попугай', 'A parrot'),
+  fish: L3('Baliq', 'Рыбка', 'A fish'),
+  sun: L3('Quyosh', 'Солнце', 'The sun'),
+  catS: L3('Mushuk', 'Кот', 'A cat'),
+  galH: L3('Mening galereyam', 'Моя галерея', 'My gallery'),
+  galP: L3('Bu mening sevimli rasmlarim.', 'Это мои любимые картинки.', 'These are my favorite pictures.'),
+  // Слова, которые ничего не говорят о картинке (t3).
+  generic: ['rasm', 'surat', 'foto', 'картинка', 'фото', 'рисунок', 'изображение', 'picture', 'photo', 'image', 'drawing']
 };
 
 // Подписи интерфейса практики. up, down, mySite, hello, play нужны бумажному набору.
 const UI = {
   task: L3('{n}-topshiriq', 'Задание {n}', 'Task {n}'),
-  houseOf: L3('{n}/5-uy', 'Дом {n} из 5', 'House {n} of 5'),
-  map: L3('Ko‘cha xaritasi', 'Карта улицы', 'Street map'),
-  works: L3('tayyor', 'готов', 'ready'),
-  off: L3('kutmoqda', 'ждёт', 'waiting'),
+  houseOf: L3('{n}/5-rom', 'Рама {n} из 5', 'Frame {n} of 5'),
+  map: L3('Ko‘rgazma devori', 'Стена выставки', 'Exhibition wall'),
+  works: L3('rasm joyida', 'картинка на месте', 'picture in place'),
+  off: L3('bo‘sh', 'пусто', 'empty'),
   now: L3('hozir shu yerda', 'сейчас здесь', 'you are here'),
   check: L3('Tekshirish', 'Проверить', 'Check'),
   keys: L3('Teg belgilari', 'Символы для тегов', 'Tag symbols'),
@@ -6772,18 +6777,21 @@ const UI = {
   ready: L3('Ish tayyor', 'Работа готова', 'Work is ready'),
   drill: L3('Yana bitta', 'Ещё одна', 'One more'),
   gapHere: L3('shu yerda tugaydimi?', 'здесь кончается?', 'ends here?'),
-  wind: L3('Shamol!', 'Ветер!', 'Wind!'),
-  given: L3('tayyor', 'уже есть', 'given'),
-  bpTitle: L3('uy nomi', 'название дома', 'house name'),
-  bpBody: L3('oynadagi matn', 'текст в окне', 'text in the window'),
+  open: L3('Ko‘rgazmani ochish', 'Открыть выставку', 'Open the exhibition'),
+  files: L3('Rasm fayllari', 'Файлы картинок', 'Picture files'),
+  reader: L3('Ekranni o‘qiydigan dastur aytadi', 'Программа чтения экрана скажет', 'The screen reader will say'),
+  noAlt: L3('alt yo‘q', 'нет alt', 'no alt'),
+  left: L3('Tuzatish kerak: {n}', 'Осталось исправить: {n}', 'Left to fix: {n}'),
+  allFixed: L3('Hammasi tuzatildi', 'Всё исправлено', 'All fixed'),
+  needH1: L3('h1 — galereya nomi', 'h1 — название галереи', 'h1 — the gallery name'),
+  needP: L3('p — bir jumla', 'p — одна фраза', 'p — one sentence'),
+  need2: L3('fayllardan 2 ta rasm', '2 картинки из файлов', '2 pictures from the files'),
+  needAlts: L3('har bir rasmda alt bor', 'у каждой картинки alt', 'every picture has alt'),
+  needClosed: L3('hamma teglar yopilgan', 'все теги закрыты', 'all tags are closed'),
+  notFound: L3('Fayl topilmadi', 'Файл не найден', 'File not found'),
+  back: L3('← Orqaga', '← Назад', '← Back'),
   nextLesson: L3('Keyingi dars', 'Следующий урок', 'Next lesson'),
-  next: L3('Sarlavhalar va matn', 'Заголовки и текст', 'Headings and text'),
-  part: {
-    open: L3('ochuvchi teg', 'открывающий тег', 'opening tag'),
-    name: L3('nom', 'название', 'name'),
-    text: L3('matn', 'текст', 'text'),
-    close: L3('yopuvchi teg', 'закрывающий тег', 'closing tag')
-  },
+  next: L3('Formalar', 'Формы', 'Forms'),
   up: L3('Yuqoriga', 'Вверх', 'Up'),
   down: L3('Pastga', 'Вниз', 'Down'),
   mySite: L3('Mening saytim', 'Мой сайт', 'My site'),
@@ -6793,217 +6801,170 @@ const UI = {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ОБРАТНАЯ СВЯЗЬ ПРОВЕРКИ. Одна проблема — одна короткая фраза: что не так и
-// что сделать. Без «ошибка», «неправильно», «xato», «noto‘g‘ri». Говорим о
-// правилах нашей страницы, а не обо всём HTML. Знак — с названием рядом.
+// что сделать. Фразы про атрибуты (имя, «=», кавычки, href у img, </img>) —
+// общие, в движке 04p.
 // ─────────────────────────────────────────────────────────────────────────────
 const FB = {
-  // Запись тега
+  // Запись тегов, пары и порядок (разбор фрагмента — checkFrag)
+  pairMismatch: L3('{a} tegi </{b}> bilan yopilgan. Juft bir xil bo‘lishi kerak: </{a}>.', '{a} закрыт тегом </{b}>. Пара должна совпадать: </{a}>.', '{a} is closed with </{b}>. The pair must match: </{a}>.'),
+  unclosedIn: L3('{tag} hali yopilmagan, {next} esa allaqachon tugayapti.', '{tag} ещё не закрыт, а {next} уже заканчивается.', '{tag} isn’t closed yet, but {next} is already ending.'),
+  blockInBlock: L3('{tag} hali tugamadi, {next} esa boshlanyapti. Avval {tag} ni yoping.', '{tag} ещё не закончился, а {next} уже начинается. Сначала закрой {tag}.', '{tag} hasn’t ended, but {next} is already starting. Close {tag} first.'),
+  inlineOutside: L3('{tag} so‘z atrofiga qo‘yiladi: xatboshi yoki sarlavha ichida.', '{tag} ставят вокруг слова — внутри абзаца или заголовка.', '{tag} goes around a word, inside a paragraph or a heading.'),
+  textOutside: L3('Matn teglardan tashqarida turibdi. Ro‘yxat bandini li ichiga qo‘ying.', 'Текст стоит снаружи тегов. Пункт списка поставь внутрь li.', 'The text is outside the tags. Put the list item inside li.'),
   noGt: L3('{tag} tegi oxirida o‘ng «>» qavs yetishmayapti.', 'У тега {tag} в конце не хватает уголка «>».', 'The {tag} tag is missing the bracket “>” at the end.'),
   noLt: L3('{tag} oldida chap «<» qavs yetishmayapti.', 'Перед {tag} не хватает уголка «<».', 'The bracket “<” is missing before {tag}.'),
   unknown: L3('«{raw}» tegida harflar adashgan: {tag} kerak.', 'В теге «{raw}» перепутаны буквы: нужно {tag}.', 'The letters in “{raw}” are mixed up: it should be {tag}.'),
-  unknownFar: L3('«{raw}» tegi bizga notanish. Sahifamizda faqat html, head, title va body bor.', 'Тег «{raw}» нам не знаком. На нашей странице только html, head, title и body.', 'We don’t know the tag “{raw}”. Our page has only html, head, title and body.'),
+  unknownFar: L3('«{raw}» tegi bizga notanish. Bizda h1 dan h6 gacha, p, b, i, ul, ol, li, a va img teglari bor.', 'Тег «{raw}» нам не знаком. У нас есть теги с h1 по h6, p, b, i, ul, ol, li, a и img.', 'We don’t know the tag “{raw}”. We have the tags h1 to h6, p, b, i, ul, ol, li, img and the a tag.'),
   slashEnd: L3('Qiya chiziq boshqa joyda turibdi. Yopuvchi tegda u chap «<» qavsdan keyin keladi: </{tag}>.', 'Косая черта стоит не там. В закрывающем теге она идёт сразу после уголка «<»: </{tag}>.', 'The slash is in the wrong spot. In a closing tag it goes right after the bracket “<”: </{tag}>.'),
   backslash: L3('Yopuvchi tegda qiya chiziq «/» turadi, bu yerda esa teskari «\\» chiziq.', 'В закрывающем теге нужна косая черта «/», а здесь обратная «\\».', 'A closing tag needs a slash “/”, but here it is a backslash “\\”.'),
   junk: L3('Qavslar ichiga faqat teg nomini yozamiz, matn esa tashqarida turadi.', 'Внутри уголков пишем только имя тега, а текст — снаружи.', 'Inside the brackets we write only the tag name; the text goes outside.'),
   emptyTag: L3('Bu yerda bo‘sh qavslar. Ichida teg nomi bo‘lishi kerak.', 'Здесь пустые уголки. Внутри должно быть имя тега.', 'These brackets are empty. A tag name goes inside.'),
-  // Пары и вложенность
   openAgain: L3('Bu yerda ochuvchi {tag} yozilgan. Yopuvchi tegga qiya chiziq kerak.', 'Здесь написан открывающий {tag}. Закрывающему тегу нужна косая черта.', 'This is an opening {tag}. The closing tag needs a slash.'),
-  notClosedOpen: L3('{tag} hali tugamadi, {next} esa allaqachon boshlanyapti.', '{tag} ещё не закончился, а {next} уже начинается.', '{tag} hasn’t ended yet, but {next} is already starting.'),
-  notClosedClose: L3('{tag} hali tugamadi, {next} esa allaqachon yopilyapti. {tag} nima bilan tugashini tekshiring.', '{tag} ещё не закончился, а {next} уже закрывается. Проверь, чем заканчивается {tag}.', '{tag} hasn’t ended yet, but {next} is already closing. Check how {tag} ends.'),
   unclosedEnd: L3('{tag} nima bilan tugashini tekshiring: yopuvchi teg yo‘q.', 'Проверь, чем заканчивается {tag}: закрывающего тега нет.', 'Check how {tag} ends: there is no closing tag.'),
-  unclosedHtmlOk: L3('Nom ham, matn ham tayyor. html nima bilan tugashini tekshiring.', 'Название и текст готовы. Проверь, чем заканчивается html.', 'The name and the text are ready. Check how html ends.'),
-  twice: L3('{tag} yuqorida allaqachon ochilgan. Sahifamizda u bitta.', '{tag} уже открыт выше. На нашей странице он один.', '{tag} is already opened above. Our page has only one.'),
   closeWithoutOpen: L3('Bu yerda yopuvchi {tag} bor, ochuvchisi esa yo‘q.', 'Здесь закрывающий {tag}, а открывающего нет.', 'There is a closing {tag} here, but no opening one.'),
-  closeTwice: L3('{tag} ikki marta yopilgan. Ortiqcha yopuvchi tegni o‘chiring.', '{tag} закрыт два раза. Лишний закрывающий тег сотри.', '{tag} is closed twice. Delete the extra closing tag.'),
-  titleOutsideHead: L3('title ni head ichiga yozamiz: bu sahifa haqidagi ma’lumot.', 'title пишем внутри head: это сведения о странице.', 'title goes inside head: it is information about the page.'),
-  noHtmlOpen: L3('html dan boshlang: birinchi qatordan keyin ochuvchi html kerak.', 'Начни с html: после первой строки нужен открывающий html.', 'Start with html: after the first line you need an opening html.'),
-  afterHtml: L3('{tag} yopuvchi html dan keyin turibdi. Hammasini html ichiga yozamiz.', '{tag} стоит после закрывающего html. Всё пишем внутри html.', '{tag} comes after the closing html. Everything goes inside html.'),
-  htmlInside: L3('html hamma qismlarni o‘z ichiga oladi, shuning uchun u hammasidan tashqarida turadi.', 'html объединяет все части, поэтому он стоит снаружи всех.', 'html holds all the parts, so it goes outside everything.'),
-  headAfterBody: L3('head body dan oldin turadi: avval sahifa haqida ma’lumot, keyin oynada ko‘rinadigan qism.', 'head стоит перед body: сначала сведения о странице, потом то, что видно в окне.', 'head comes before body: first the page information, then what you see in the window.'),
-  textOutNone: L3('Matn html dan tashqarida turibdi. Oynada ko‘rinadigan matnni body ichiga yozamiz.', 'Текст стоит снаружи html. Текст для окна пишем внутри body.', 'The text is outside html. Text for the window goes inside body.'),
-  textOutHtml: L3('Matn body dan tashqarida. Oynada ko‘rinadigan matnni body ichiga yozamiz.', 'Текст стоит вне body. Текст для окна пишем внутри body.', 'The text is outside body. Text for the window goes inside body.'),
-  textOutHead: L3('head ichida matnni faqat title ichiga yozamiz.', 'В head текст пишем только внутри title.', 'Inside head, text goes only inside title.'),
-  missHtml: L3('html jufti yo‘q. U birinchi qatordan keyin ochiladi va eng oxirida yopiladi.', 'Нет пары html. Она открывается после первой строки и закрывается в самом конце.', 'There is no html pair. It opens after the first line and closes at the very end.'),
-  missHead: L3('head qismi yo‘q. U html ichida, body dan oldin turadi. Unda title bo‘ladi.', 'Нет части head. Она стоит внутри html перед body, в ней — title.', 'There is no head part. It goes inside html before body, and title lives in it.'),
-  missTitle: L3('head ichiga nomli title qo‘ying.', 'В head нужен title с названием.', 'head needs a title with a name.'),
-  missBody: L3('body qismi yo‘q. U head dan keyin keladi.', 'Нет части body. Она идёт после head.', 'There is no body part. It comes after head.'),
-  titleEmpty: L3('title joyida, lekin bo‘sh. Teglar orasiga nom yozing.', 'title на месте, но пустой. Напиши название между тегами.', 'title is there, but it is empty. Write a name between the tags.'),
-  bodyEmpty: L3('body teglari joyida, ichi esa bo‘sh. Matn yozing.', 'Теги body на месте, а внутри пусто. Напиши текст.', 'The body tags are in place, but it is empty inside. Write the text.'),
-  noDoctype: L3('Birinchi qator yo‘qoldi. Boshiga <!DOCTYPE html> ni qaytaring.', 'Первая строка пропала. Верни <!DOCTYPE html> в начало.', 'The first line is gone. Put <!DOCTYPE html> back at the start.'),
-  textOnly: L3('Matn bor, lekin teglar yo‘q. Sahifa teglardan quriladi: html dan boshlang.', 'Текст есть, а тегов нет. Страница строится из тегов: начни с html.', 'There is text but no tags. A page is built from tags: start with html.'),
-  docEmpty: L3('Hozircha faqat birinchi qator bor. Ochuvchi html dan boshlang.', 'Пока есть только первая строка. Начни с открывающего html.', 'There is only the first line so far. Start with an opening html.'),
-  // Поля в строках (t1, t2)
-  fieldTags: L3('Teglar o‘z joyida turibdi. Bu yerga faqat so‘z yozing, qavslarsiz.', 'Теги уже стоят на месте. Здесь нужны только слова, без уголков.', 'The tags are already in place. Only words here, no brackets.'),
-  titleBlank: L3('title hozircha bo‘sh. Nomni title teglari orasiga yozing.', 'title пока пустой. Напиши название между тегами title.', 'title is empty so far. Write a name between the title tags.'),
-  fieldLetters: L3('Nomni harflar bilan yozing: kamida bitta so‘z.', 'Напиши название буквами — хотя бы одно слово.', 'Write the name in letters, at least one word.'),
-  // Строка title (t3, t4)
-  lineEmpty: L3('Qator hozircha bo‘sh. Unga title tegi, nom va yopuvchi tegni yozing.', 'Строка пока пустая. Напиши в ней тег title, название и закрывающий тег.', 'The line is empty so far. Write the title tag, the name and the closing tag.'),
-  lineTextOnly: L3('Hozircha bu yerda faqat matn. Sahifa nomi title teglari orasida turadi.', 'Пока здесь только текст. Название страницы стоит между тегами title.', 'There is only text here so far. The page name stands between title tags.'),
-  lineWrongTag: L3('Sahifa nomi title ichida yoziladi, bu yerda esa {tag} turibdi.', 'Название страницы пишут в title, а здесь стоит {tag}.', 'The page name goes in title, but here you have {tag}.'),
-  lineNoOpen: L3('Nomdan oldin ochuvchi title yo‘q.', 'Перед названием нет открывающего title.', 'There is no opening title before the name.'),
-  lineNoClose: L3('Nom bor. Endi uni yoping: nomdan keyin yopuvchi title kerak.', 'Название есть. Теперь закрой его: после названия нужен закрывающий title.', 'The name is there. Now close it: put a closing title after the name.'),
-  lineTextOutside: L3('Matnning bir qismi teglardan tashqarida. Nomni ochuvchi va yopuvchi title orasiga yozamiz.', 'Часть текста стоит снаружи тегов. Название пишем между открывающим и закрывающим title.', 'Part of the text is outside the tags. The name goes between the opening and the closing title.'),
-  lineOrder: L3('Avval ochuvchi title, keyin nom, keyin yopuvchi title.', 'Сначала открывающий title, потом название, потом закрывающий.', 'First the opening title, then the name, then the closing one.'),
-  lineNoName: L3('Teglar joyida, orasi esa bo‘sh. Sahifa nomini yozing.', 'Теги на месте, а между ними пусто. Напиши название страницы.', 'The tags are in place, but there is nothing between them. Write the page name.'),
-  lineWrongName: L3('Teglar joyida! Nomni tekshiring: «{name}» kerak.', 'Теги на месте! Проверь название: нужно «{name}».', 'The tags are right! Check the name: it should be “{name}”.'),
-  // Блок body (t5)
-  blockEmpty: L3('Bu yer hozircha bo‘sh. Matnli body qismini yozing.', 'Здесь пока пусто. Напиши часть body с текстом.', 'It is empty here so far. Write a body part with text.'),
-  blockTextOnly: L3('Matn bor, lekin unga o‘z qismi kerak. Uni body ichiga qo‘ying.', 'Текст есть, но ему нужна своя часть. Поставь его внутрь body.', 'The text is there, but it needs its own part. Put it inside body.'),
-  blockWrongTag: L3('Oynadagi matnni body ichiga yozamiz, bu yerda esa {tag} turibdi.', 'Текст для окна пишем в body, а здесь стоит {tag}.', 'Text for the window goes in body, but here you have {tag}.'),
-  blockOrder: L3('Avval ochuvchi body, keyin matn, keyin yopuvchi body.', 'Сначала открывающий body, потом текст, потом закрывающий body.', 'First the opening body, then the text, then the closing body.'),
-  // Один закрывающий тег (t6)
-  pickFirst: L3('Avval {tag} qayerda tugashi kerakligini bosing.', 'Сначала нажми место, где должен закончиться {tag}.', 'First tap the place where {tag} should end.'),
-  closeEmpty: L3('Qator hozircha bo‘sh. Bu yerga yopuvchi {tag} tegini yozing.', 'Строка пока пустая. Напиши здесь закрывающий тег {tag}.', 'The line is empty so far. Type the closing {tag} tag here.'),
-  closeOther: L3('Bu yerda {tag} tugaydi, shuning uchun yopuvchi {tag} kerak.', 'Здесь заканчивается {tag}, поэтому нужен закрывающий {tag}.', '{tag} ends here, so you need a closing {tag}.'),
-  closeText: L3('Bu qatorga faqat teg yoziladi, matn kerak emas.', 'В этой строке нужен только тег, без текста.', 'This line needs only the tag, no text.'),
-  closeOne: L3('Bitta yopuvchi {tag} yetarli.', 'Достаточно одного закрывающего {tag}.', 'One closing {tag} is enough.')
+  textSame: L3('Teglar joyida! Faqat so‘zlar o‘zgarib qoldi: teglarni tuzatamiz, matnni esa avvalgidek qoldiramiz.', 'Теги в порядке! Только слова изменились: чиним теги, а текст оставляем как был.', 'The tags are fine! Only the words changed: we fix the tags and leave the text as it was.'),
+  headEmpty: L3('Sarlavha teglari joyida, ichi esa bo‘sh. Ro‘yxat nomini yozing.', 'Теги заголовка на месте, а внутри пусто. Напиши название списка.', 'The heading tags are in place, but empty. Write the list name.'),
+  // Списки (урок 3)
+  listText: L3('Ro‘yxatda matn li siz turibdi: unda nuqta ham, raqam ham yo‘q. Uni li ga o‘rang.', 'В списке текст стоит без li — у него нет ни точки, ни номера. Оберни его в li.', 'There’s text in the list without li: it gets no dot or number. Wrap it in li.'),
+  liOutside: L3('li faqat ul yoki ol ichida yoziladi, bu esa ro‘yxatdan tashqarida turibdi.', 'li пишут только внутри ul или ol, а этот стоит снаружи списка.', 'li goes only inside ul or ol, but this one is outside the list.'),
+  listNotClosed: L3('{tag} ro‘yxati hali yopilmagan, {next} esa boshlanyapti. Avval ro‘yxatni yoping.', 'Список {tag} ещё не закрыт, а {next} уже начинается. Сначала закрой список.', 'The {tag} list isn’t closed yet, but {next} is already starting. Close the list first.'),
+  // Картинки (урок 5)
+  needImg: L3('Bu yerda rasm kerak: img tegi.', 'Здесь нужна картинка — тег img.', 'This needs a picture: the img tag.'),
+  oneImg: L3('Bitta rasm yozing: bitta img tegi.', 'Напиши одну картинку — один тег img.', 'Write one picture: one img tag.'),
+  noSrc: L3('Rasmda src yo‘q: brauzer qaysi faylni ochishni bilmaydi. src atributini yozing.', 'У картинки нет src — браузер не знает, какой файл открыть. Допиши атрибут src.', 'The picture has no src: the browser doesn’t know which file to open. Add the src attribute.'),
+  srcEmpty: L3('src ichi bo‘sh: qo‘shtirnoq ichiga fayl nomini yozing.', 'В src пусто: впиши между кавычками имя файла.', 'src is empty: type the file name between the quotes.'),
+  srcWrong: L3('src da {src} turibdi, bizga esa {want} kerak.', 'В src стоит {src}, а нужен {want}.', 'src says {src}, but we need {want}.'),
+  altKeep: L3('Fayl to‘g‘ri! alt ni avvalgidek qoldiring: «{w}».', 'Файл верный! alt оставь прежним: «{w}».', 'The file is right! Keep alt as it was: “{w}”.'),
+  imgNoFile: L3('«{alt}» rasmi {src} faylini qidiryapti, lekin bunday fayl yo‘q. Nomni fayllar bilan solishtiring.', 'Картинка «{alt}» ищет файл {src}, а такого файла нет. Сверь имя с файлами.', 'The “{alt}” picture looks for the file {src}, but there’s no such file. Compare the name with the files.'),
+  imgTo: L3('«{alt}» rasmi {src} ni ko‘rsatyapti, bizga esa {want} kerak.', 'Картинка «{alt}» показывает {src}, а нужен {want}.', 'The “{alt}” picture shows {src}, but we need {want}.'),
+  keepImgs: L3('Teglar joyida! Faqat rasmlarni avvalgidek qoldiring: o‘sha fayllar va o‘sha alt.', 'Теги в порядке! Только оставь картинки как были: те же файлы и те же alt.', 'The tags are fine! Just keep the pictures as they were: the same files and alts.'),
+  twoImgs: L3('Ikkala rasm joyida qolsin.', 'Пусть обе картинки останутся на месте.', 'Keep both pictures in place.'),
+  needAlt: L3('{src} rasmida alt yo‘q. So‘z bilan tavsif yozing.', 'У картинки {src} нет alt. Допиши описание словами.', 'The {src} picture has no alt. Add a description in words.'),
+  altEmpty: L3('{src} rasmida alt bo‘sh. Qo‘shtirnoq ichiga rasmda nima borligini yozing.', 'У картинки {src} пустой alt. Впиши между кавычками, что на картинке.', 'The {src} picture has an empty alt. Type what’s in the picture between the quotes.'),
+  altFile: L3('alt da fayl nomi turibdi. alt esa rasmni so‘z bilan tasvirlaydi: unda nima bor?', 'В alt стоит имя файла. А alt описывает картинку словами: что на ней?', 'alt has a file name. alt describes the picture in words: what’s in it?'),
+  altGeneric: L3('«{w}» so‘zi rasm haqida hech narsa aytmaydi. Unda nima borligini yozing.', 'Слово «{w}» ничего не говорит о картинке. Напиши, что на ней.', 'The word “{w}” says nothing about the picture. Write what’s in it.'),
+  keepSrc: L3('Tavsiflar bor! Faqat src ni avvalgidek qoldiring.', 'Описания есть! Только имена файлов в src оставь прежними.', 'The descriptions are there! Just keep src as it was.'),
+  // t5 — своя галерея
+  artEmpty: L3('Hozircha bo‘sh. Galereya nomini h1 ga yozishdan boshlang.', 'Пока пусто. Начни с названия галереи в h1.', 'It’s empty so far. Start with the gallery name in h1.'),
+  needH1: L3('Tepaga h1 sarlavha kerak: galereyangiz nomi.', 'Сверху нужен заголовок h1 — название твоей галереи.', 'You need an h1 heading on top: your gallery’s name.'),
+  galHeadEmpty: L3('Sarlavha teglari joyida, ichi esa bo‘sh. Galereya nomini yozing.', 'Теги заголовка на месте, а внутри пусто. Напиши название галереи.', 'The heading tags are in place, but empty. Write the gallery name.'),
+  needP: L3('Sarlavha ostiga p xatboshi yozing: bitta jumla.', 'Под заголовком напиши абзац p — одну фразу.', 'Under the heading, write a p paragraph: one sentence.'),
+  needTwo: L3('Galereyada fayllardan kamida ikkita rasm bo‘lsin.', 'В галерее нужно хотя бы две картинки — из файлов.', 'The gallery needs at least two pictures from the files.'),
+  noFile: L3('{src} degan fayl yo‘q. Rasm fayllaridan birini yozing.', 'Файла {src} нет. Впиши один из файлов картинок.', 'There’s no file {src}. Type one of the picture files.'),
+  needAlts: L3('Har bir rasmga so‘z bilan alt yozing.', 'У каждой картинки должен быть alt со словами.', 'Every picture needs an alt with words.')
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ВСЕ ТЕКСТЫ ЭКРАНОВ. Реплики (say, cast, hints, praise, done, msgs …) звучат;
-// подписи (eyebrow, order, plan …) только печатаются.
+// ВСЕ ТЕКСТЫ ЭКРАНОВ. Реплики (say, hints, praise, done …) звучат; подписи
+// (eyebrow, order, ask, note, empty …) только печатаются. В узбекских звучащих
+// репликах нет тире: движок отдаёт его сервису точкой.
 // ─────────────────────────────────────────────────────────────────────────────
 const C = {
-  // Хук: улица целая → касание «Ветер!» → дома выцветают и косятся, вывески улетают.
+  // Хук: рамы с картинками → касание «Открыть выставку» → картинки выпадают из рам.
   intro: {
-    eyebrow: L3('Qog‘oz ko‘cha', 'Бумажная улица', 'Paper Street'),
-    say: L3('Bu qog‘oz ko‘cha. Undagi har bir uy veb-sahifa: yorliqda nomi, oynada matni.',
-      'Это бумажная улица. Каждый дом на ней — веб-страница: на вкладке название, в окне текст.',
-      'This is Paper Street. Every house on it is a web page: the name on the tab, the text in the window.'),
-    blown: L3('Voy, qarang! Shamol uylarning nomlari, matnlari va kod bo‘laklarini uchirib ketdi.',
-      'Ой! Ветер унёс у домов названия, тексты и куски кода.',
-      'Oh no! The wind blew away the houses’ names, texts and pieces of code.'),
-    plan: L3('To‘rtta uyni kod bilan tuzatamiz, beshinchisini esa o‘zingiz qurasiz. Har bir topshiriq oldingisidan biroz qiyinroq.',
-      'Починим четыре дома кодом, а пятый построишь своими руками. Каждое задание чуть сложнее прошлого.',
-      'We’ll fix four houses with code, and you’ll build the fifth yourself. Each task is a bit harder than the last.'),
-    ask: L3('«Shamol!» tugmasini bosing', 'Нажми «Ветер!»', 'Tap “Wind!”'),
-    order: L3('To‘rtta uyni tuzating, beshinchisini o‘zingiz quring. Kodni siz yozasiz.',
-      'Почини четыре дома, а пятый построй своими руками. Код пишешь ты.',
-      'Fix four houses and build the fifth yourself. You write the code.'),
-    note: L3('Sahifasi tayyor bo‘lgan uy yonadi. Jarima yo‘q: xohlagancha tekshiring.',
-      'Дом загорается, когда его страница готова. Штрафов нет — проверяй сколько хочешь.',
-      'A house lights up when its page is ready. No penalties: check as often as you like.')
+    eyebrow: L3('Ko‘rgazma', 'Выставка', 'Exhibition'),
+    say: L3('Bugun sinfimizda rasmlar ko‘rgazmasi. Devorda beshta rom bor, hammasi tayyor.',
+      'Сегодня выставка рисунков нашего класса. На стене пять рам, всё готово.',
+      'Today is our class drawing exhibition. There are five frames on the wall, all ready.'),
+    blown: L3('Voy! Eshik ochilganda shamol kirdi va rasmlar romlardan tushib ketdi.', 'Ой! Открыли дверь, подул ветер, и картинки выпали из рам.', 'Oh no! We opened the door, the wind blew in, and the pictures fell out of the frames.'),
+    plan: L3('To‘rtta rasmni kod bilan joyiga qaytaramiz, beshinchi romga esa o‘z galereyangizni yozasiz. Har bir topshiriq oldingisidan biroz qiyinroq.',
+      'Вернём четыре картинки кодом, а в пятую раму ты напишешь свою галерею. Каждое задание чуть сложнее прошлого.',
+      'We’ll put four pictures back with code, and you’ll write your own gallery for the fifth frame. Each task is a bit harder than the last.'),
+    ask: L3('«Ko‘rgazmani ochish» tugmasini bosing', 'Нажми «Открыть выставку»', 'Tap “Open the exhibition”'),
+    order: L3('To‘rtta rasmni qaytaring va o‘z galereyangizni yozing. Kodni siz yozasiz.', 'Верни четыре картинки и напиши свою галерею. Код пишешь ты.', 'Put four pictures back and write your own gallery. You write the code.'),
+    note: L3('Rasmi qaytgan rom yonadi. Jarima yo‘q: xohlagancha tekshiring.', 'Рама загорается, когда картинка вернулась. Штрафов нет — проверяй сколько хочешь.', 'A frame lights up when its picture is back. No penalties: check as often as you like.')
   },
 
-  // 1 · самое лёгкое: слово между готовыми тегами.
+  // 1 · самое лёгкое: у картинки есть alt, но нет src.
   t1: {
-    order: L3('Novvoyxonaga nom o‘ylab toping va uni title ichiga yozing',
-      'Придумай пекарне название и напиши его внутри title',
-      'Make up a name for the bakery and type it inside title'),
-    say: L3('Bu novvoyxona sahifasi. Yorliqda faqat index.html turibdi, chunki sahifaning nomi yo‘q. Nom o‘ylab toping va uni title ichiga yozing.',
-      'Это страница пекарни. На вкладке только index.html: у страницы нет названия. Придумай его и напиши внутри title.',
-      'This is the bakery’s page. The tab only says index.html: the page has no name. Make one up and type it inside title.'),
+    order: L3('Rasmga fayl bering: cat.jpg', 'Дай картинке файл: cat.jpg', 'Give the picture a file: cat.jpg'),
+    say: L3('Mushuk rasmida alt bor, src esa yo‘q: shuning uchun sahifada faqat so‘zlar ko‘rinyapti. img tegiga src atributini yozing.',
+      'У картинки с котом есть alt, а src нет — поэтому на странице только слова. Допиши в тег img атрибут src.',
+      'The cat picture has alt but no src, so only words show on the page. Add the src attribute to the img tag.'),
     hints: [
-      L3('Sahifa nomi brauzer yorlig‘ida ko‘rinadi. Qaysi teg bunga javob beradi?',
-        'Название страницы видно на вкладке браузера. Какой тег за него отвечает?',
-        'The page name shows on the browser tab. Which tag is in charge of it?'),
-      L3('head ichiga qarang: u yerda title qatori bor.', 'Посмотри внутрь head: там есть строка title.', 'Look inside head: there is a title line.'),
-      L3('title teglari orasidagi bo‘sh joyni bosing va nom yozing. Gul do‘koni «Guldasta» deb atalishi mumkin, nonvoyxonaga esa o‘zingiz nom o‘ylang.',
-        'Нажми на пустое место между тегами title и напиши название. У цветочного магазина могло быть «Букет», а пекарне придумай своё.',
-        'Tap the empty space between the title tags and type a name. A flower shop might be called “Bouquet”; make up one for the bakery.')
+      L3('Brauzerga qaysi faylni ochishni qaysi atribut aytadi?', 'Какой атрибут говорит браузеру, какой файл открыть?', 'Which attribute tells the browser which file to open?'),
+      L3('Bu src. U img tegi ichida yoziladi: nomi, tenglik belgisi va qo‘shtirnoq ichida fayl nomi.', 'Это src. Его пишут внутри тега img: имя, знак равно и имя файла в кавычках.', 'It’s src. It goes inside the img tag: the name, an equals sign and the file name in quotes.'),
+      L3('Mana boshqa rasmda src qanday yozilgan. Mushukni ham shunday yozing.', 'Вот как записан src у другой картинки. Кота запиши так же.', 'Here’s how another picture’s src is written. Write the cat the same way.')
     ],
-    praise: L3('To‘g‘ri! Nom yorliqda chiqdi. Novvoyxona ochildi.', 'Есть! Название на вкладке — пекарня открылась.', 'Yes! The name is on the tab, and the bakery is open.'),
-    done: L3('Novvoyxonaning nomi bor.', 'У пекарни уже есть название.', 'The bakery already has a name.'),
-    drill: L3('Bu sahifaga ham nom bering: uni title ichiga yozing.', 'Дай название и этой странице: напиши его внутри title.', 'Name this page too: type the name inside title.')
+    praise: L3('Mana mushuk! Rasm romiga qaytdi.', 'Вот и кот! Картинка вернулась в раму.', 'There’s the cat! The picture is back in its frame.'),
+    done: L3('Mushuk joyida.', 'Кот на месте.', 'The cat is in place.'),
+    drill: L3('It rasmiga ham fayl bering: dog.jpg.', 'Дай файл и картинке с собакой: dog.jpg.', 'Give the dog picture a file too: dog.jpg.')
   },
 
-  // 2 · один тег: дописать </title>.
+  // 2 · опечатки в именах файлов: сверить с полкой файлов.
   t2: {
-    order: L3('Qator oxiriga yopuvchi title tegini yozing', 'Допиши в конце строки закрывающий тег title', 'Add the closing title tag at the end of the line'),
-    say: L3('Qarang: pochta sahifasining hamma matni yorliqqa chiqib ketdi. title boshlangan, lekin yopilmagan. Qator oxiriga yopuvchi title tegini yozing.',
-      'Смотри: весь текст почты уехал на вкладку. title начался, но не закрылся. Допиши в конце строки закрывающий тег title.',
-      'Look: all the post office text ended up on the tab. title started but never closed. Add the closing title tag at the end of the line.'),
+    order: L3('Fayl nomlaridagi xatolarni tuzating', 'Исправь имена файлов', 'Fix the file names'),
+    say: L3('Ikkala rasm singan: fayl nomlarida xato bor. Ularni fayllar ro‘yxati bilan solishtiring va tuzating.',
+      'Обе картинки сломаны: в именах файлов опечатки. Сверь их со списком файлов и исправь.',
+      'Both pictures are broken: the file names have typos. Compare them with the file list and fix them.'),
     hints: [
-      L3('Nom boshlandi, lekin tugamadi. Qator oxirida nima yetishmayapti?',
-        'Название началось, но не закончилось. Чего не хватает в конце строки?',
-        'The name started but didn’t end. What is missing at the end of the line?'),
-      L3('Yopuvchi teg ochuvchisi bilan bir xil so‘z. Faqat chap «<» qavsdan keyin qiya chiziq «/» turadi.',
-        'Закрывающий тег — то же слово, только после уголка «<» стоит косая черта «/».',
-        'A closing tag is the same word, just with a slash “/” after the bracket “<”.'),
-      L3('Mana boshqa teg qanday yopiladi. title ni ham shunday yoping.', 'Вот как закрывается другой тег. title закрой так же.', 'Here is how another tag closes. Close title the same way.')
+      L3('Har bir src ni fayllar ro‘yxati bilan harfma-harf solishtiring.', 'Сравни каждый src со списком файлов — буква за буквой.', 'Compare each src with the file list, letter by letter.'),
+      L3('To‘tiqush fayli parrot.png, baliqniki esa fish.jpg. Ikkala src ni tuzating.', 'Попугай — parrot.png, рыбка — fish.jpg. Поправь оба src.', 'The parrot is parrot.png, the fish is fish.jpg. Fix both src values.'),
+      L3('Mana to‘g‘ri rasm. Ikkinchisini ham shunday tuzating.', 'Вот правильная картинка. Вторую поправь так же.', 'Here’s a correct picture. Fix the second one the same way.')
     ],
-    praise: L3('To‘g‘ri! title yopildi, matn yana oynaga qaytdi.', 'Есть! title закрылся, и текст вернулся в окно.', 'Yes! title is closed, and the text is back in the window.'),
-    done: L3('Pochta sahifasi joyida.', 'Страница почты в порядке.', 'The post office page is fine.'),
-    drill: L3('Bu yerda ham title yopilmagan. Qator oxiriga yopuvchi tegni yozing.', 'И здесь title не закрыт. Допиши закрывающий тег в конце строки.', 'title isn’t closed here either. Add the closing tag at the end of the line.')
+    praise: L3('Zo‘r! Ikkala rasm yana ko‘rinyapti.', 'Огонь! Обе картинки снова видны.', 'Awesome! Both pictures show again.'),
+    done: L3('Fayl nomlari tuzatildi.', 'Имена файлов исправлены.', 'The file names are fixed.'),
+    drill: L3('Bu yerda ham ikkita xato nom bor. Tuzating.', 'И здесь два имени с опечатками. Исправь.', 'Two names have typos here too. Fix them.')
   },
 
-  // 3 · блок из трёх строк: body со своим текстом.
+  // 3 · подписи alt для двух картинок (свои слова).
   t3: {
-    order: L3('body qismini yozing: bugun kinoda nima bor?', 'Напиши часть body: что сегодня в кино?', 'Write the body part: what’s on at the cinema today?'),
-    say: L3('Kinoteatr oynasi bo‘m-bo‘sh, chunki body qismi yo‘q. Uni o‘zingiz yozing: ochuvchi body, matn va yopuvchi body.',
-      'Окно кинотеатра пустое: части body нет. Напиши её: открывающий body, текст и закрывающий body.',
-      'The cinema window is empty: there is no body part. Write it: the opening body, the text and the closing body.'),
-    empty: L3('Matn shu yerda chiqadi', 'Здесь появится текст', 'The text will appear here'),
+    order: L3('Ikkala rasmga alt tavsifini yozing', 'Напиши обеим картинкам описание alt', 'Write an alt description for both pictures'),
+    say: L3('Ko‘rgazmaga ko‘zi ojiz mehmon keldi. Uning dasturi rasmlarni o‘qiy olmayapti: ularda alt yo‘q. Har bir rasmga so‘z bilan tavsif yozing.',
+      'На выставку пришёл незрячий гость. Его программа не может прочитать картинки — у них нет alt. Напиши каждой картинке описание словами.',
+      'A blind visitor came to the exhibition. Their program can’t read the pictures: they have no alt. Write a description in words for each picture.'),
     hints: [
-      L3('Oynadagi matn hujjatning o‘z qismida turadi. U teg bilan boshlanib, teg bilan tugaydi.',
-        'Текст в окне стоит в своей части документа. Она начинается тегом и заканчивается тегом.',
-        'Window text sits in its own part of the document. It starts with a tag and ends with a tag.'),
-      L3('Bu qism body. U head dan keyin boshlanadi va html yopilishidan oldin tugaydi.',
-        'Это часть body. Она начинается после head и заканчивается до закрытия html.',
-        'This part is body. It starts after head and ends before html closes.'),
-      L3('Mana boshqa matnli namuna. Kinoteatr uchun ham shunday yozing.', 'Вот образец с другим текстом. Для кинотеатра напиши так же.', 'Here’s a sample with other text. Write the cinema one the same way.')
+      L3('Rasmga qarang: unda kim yoki nima bor?', 'Посмотри на картинку: кто или что на ней?', 'Look at the picture: who or what is in it?'),
+      L3('img tegi ichiga alt atributini yozing: qo‘shtirnoq ichida bir necha so‘z.', 'Впиши в тег img атрибут alt: несколько слов в кавычках.', 'Add the alt attribute to the img tag: a few words in quotes.'),
+      L3('Mana boshqa rasmdagi alt. Siznikini ham shunday yozing, o‘z so‘zlaringiz bilan.', 'Вот alt у другой картинки. Свои напиши так же, своими словами.', 'Here’s another picture’s alt. Write yours the same way, in your own words.')
     ],
-    praise: L3('To‘g‘ri! Matn oynada. Kinoteatr ochildi.', 'Верно! Текст в окне — кинотеатр открыт.', 'Right! The text is in the window, and the cinema is open.'),
-    done: L3('Kinoteatr oynasida matn bor.', 'В окне кинотеатра уже есть текст.', 'The cinema window already has text.'),
-    drill: L3('Basseyn oynasi ham bo‘sh. Unga matnli body yozing.', 'Окно бассейна тоже пустое. Напиши для него body с текстом.', 'The pool window is empty too. Write it a body with text.')
+    praise: L3('Ajoyib! Endi dastur mehmonga har bir rasmni aytib beradi.', 'Здорово! Теперь программа расскажет гостю про каждую картинку.', 'Great! Now the program will tell the visitor about each picture.'),
+    done: L3('Tavsiflar tayyor.', 'Описания готовы.', 'The descriptions are ready.'),
+    drill: L3('Gul rasmiga ham alt yozing.', 'Напиши alt и картинке с цветком.', 'Write an alt for the flower picture too.')
   },
 
-  // 4 · найти место в чужом коде и дописать </head>.
+  // 4 · найти и починить два сломанных тега; счётчик «осталось исправить».
   t4: {
-    order: L3('head qayerda tugashi kerakligini bosing', 'Нажми место, где должен закончиться head', 'Tap the place where head should end'),
-    order2: L3('Shu joyga yopuvchi head tegini yozing', 'Напиши здесь закрывающий тег head', 'Type the closing head tag here'),
-    say: L3('Maktab sahifasida head ochilgan, lekin yopilmagan: chap tomondagi chizig‘i punktir. Avval head qayerda tugashi kerakligini bosing.',
-      'В странице школы head открыт, но не закрыт: его полоска слева — пунктиром. Сначала нажми место, где head должен закончиться.',
-      'On the school page head is opened but not closed: its bar on the left is dashed. First tap the place where head should end.'),
-    picked: L3('To‘g‘ri joy! Endi shu yerga yopuvchi head tegini yozing.', 'Верное место! Теперь напиши здесь закрывающий тег head.', 'Right spot! Now type the closing head tag here.'),
-    miss: {
-      before: L3('Bu yerda head hali boshlanmagan.', 'Здесь head ещё не начался.', 'head hasn’t started here yet.'),
-      inside: L3('head endi boshlandi: uning ichida hali title bor.', 'head только начался: внутри него ещё title.', 'head has just started: title is still inside it.'),
-      after: L3('Bu yerda body boshlangan. head esa body dan oldin tugashi kerak.', 'Здесь уже идёт body. А head должен закончиться до начала body.', 'body has already started here. head must end before body begins.')
-    },
+    order: L3('Ikkita buzilgan rasm tegini toping va tuzating', 'Почини два сломанных тега картинки', 'Find and fix two broken picture tags'),
+    say: L3('Vitrinada ikkita rasm o‘rniga faqat so‘zlar turibdi. Teglarda ikkita xato bor. Ularni toping va tuzating.',
+      'На витрине вместо двух картинок одни слова. В тегах две ошибки. Найди и почини их.',
+      'In the showcase there are only words instead of two pictures. There are two mistakes in the tags. Find and fix them.'),
     hints: [
-      L3('head nima bilan tugashini tekshiring. U qayerda tugashi kerak?', 'Проверь, чем заканчивается head. Где он должен закончиться?', 'Check how head ends. Where should it end?'),
-      L3('head body boshlanishidan oldin tugaydi. title esa head ichida qoladi.', 'head заканчивается до начала body. А title остаётся внутри head.', 'head ends before body starts. title stays inside head.'),
-      L3('title qatoridan keyingi joyni bosing va u yerga yopuvchi head yozing.', 'Нажми место после строки title и напиши там закрывающий head.', 'Tap the place after the title line and type the closing head there.')
+      L3('Har bir img ni tekshiring: atribut nomlari to‘g‘rimi?', 'Проверь каждый img: верны ли имена атрибутов?', 'Check each img: are the attribute names right?'),
+      L3('{n}-qatorga qarang: undagi rasm tegida nimadir joyida emas.', 'Посмотри на строку {n}: с тегом картинки в ней что-то не так.', 'Look at line {n}: something’s off with the picture tag there.'),
+      L3('Rasm tegi: img, fayl nomli src va alt. Mana to‘g‘ri teglar.', 'Тег картинки — это img, src с именем файла и alt. Вот правильные теги.', 'A picture tag is img, src with the file name, and alt. Here are correct tags.')
     ],
-    praise: L3('To‘g‘ri! head yopildi, chizig‘i ham butun bo‘ldi.', 'Есть! head закрыт — полоска стала сплошной.', 'Yes! head is closed, and its bar is solid now.'),
-    done: L3('Maktab sahifasida head yopiq.', 'В странице школы head уже закрыт.', 'On the school page head is already closed.'),
-    drill: L3('Bu yerda body yopilmagan. U qayerda tugashini bosing va yopuvchi tegni yozing.', 'А здесь не закрыт body. Нажми, где он заканчивается, и допиши закрывающий тег.', 'Here body isn’t closed. Tap where it ends and type the closing tag.'),
-    drill2: L3('Shu joyga yopuvchi body tegini yozing', 'Напиши здесь закрывающий тег body', 'Type the closing body tag here'),
-    drillMiss: {
-      before: L3('Bu yerda body hali boshlanmagan.', 'Здесь body ещё не начался.', 'body hasn’t started here yet.'),
-      inside: L3('body hali davom etyapti: pastda uning matni bor.', 'body ещё продолжается: ниже его текст.', 'body still goes on: its text is below.')
-    }
+    hintLine: L3('Hammasi tuzaldi, «Tekshirish»ni bosing.', 'Всё починено — нажми «Проверить».', 'Everything is fixed — tap “Check”.'),
+    hintKeep: L3('Avvalgi kod bilan solishtiring: o‘sha fayllar va o‘sha alt qolishi kerak.', 'Сравни с тем, что было: те же файлы и те же alt.', 'Compare with how it was: the same files and alts.'),
+    hintTags: L3('Teglarni tekshiring: atribut nomlari va qo‘shtirnoqlar joyidami?', 'Проверь теги: на месте ли имена атрибутов и кавычки?', 'Check the tags: are the attribute names and quotes in place?'),
+    praise: L3('Qutqardingiz! Vitrinada yana rasmlar.', 'Спасено! На витрине снова картинки.', 'Saved! The showcase has pictures again.'),
+    done: L3('Vitrina tuzatildi.', 'Витрина починена.', 'The showcase is fixed.'),
+    drill: L3('Bu yerda ham tuzatiladigan ikkita joy bor. Toping va tuzating.', 'И здесь два места надо поправить. Найди и почини.', 'Two spots need fixing here too. Find and fix them.')
   },
 
-  // 5 · самое сложное, но посильное: внутри готового html — head с title и body с текстом.
+  // 5 · своя галерея с нуля: h1 и p (урок 2), две картинки с src и alt.
   t5: {
-    order: L3('html ichiga ikki qism yozing: nomli title bilan head, keyin matnli body',
-      'Внутри html напиши две части: head с title и body с текстом',
-      'Inside html, write two parts: head with title, then body with text'),
-    say: L3('Ko‘cha tuzaldi! Endi o‘z uyingiz. html ramkasi tayyor. Uning ichiga head va title bilan uy nomini, keyin body va matnni yozing.',
-      'Улица починена! Теперь твой дом. Рамка html уже есть. Внутри напиши head с title — это название дома, а потом body с текстом.',
-      'The street is fixed! Now your house. The html frame is ready. Inside it, write head with title for the house name, then body with text.'),
+    order: L3('O‘z galereyangizni yozing: h1, p va ikkita rasm — har birida alt', 'Напиши свою галерею: h1, p и две картинки с alt', 'Write your gallery: h1, p and two pictures with alt'),
+    say: L3('Rasmlar joyida! Endi o‘z galereyangizni yozing: h1 da nom, p da bitta jumla va fayllardan kamida ikkita rasm, har birida alt.',
+      'Картинки на месте! Теперь напиши свою галерею: название h1, одну фразу в p и хотя бы две картинки из файлов, у каждой alt.',
+      'The pictures are back! Now write your own gallery: an h1 name, one sentence in p, and at least two pictures from the files, each with alt.'),
+    empty: L3('Galereyangiz shu yerda chiqadi', 'Здесь появится твоя галерея', 'Your gallery will appear here'),
     hints: [
-      L3('html ichida ikki qism bo‘ladi: avval head, keyin body.', 'Внутри html две части: сначала head, потом body.', 'Inside html there are two parts: first head, then body.'),
-      L3('head ichida title qatori bo‘ladi. head yopilgach body ochiladi va html tugashidan oldin yopiladi.',
-        'В head — строка title. Когда head закрыт, открывается body, и он закрывается до конца html.',
-        'Inside head goes the title line. After head closes, body opens and closes before html ends.'),
-      L3('Mana boshqa uyda bu qanday ko‘rinadi. O‘zingiznikini ham shunday yozing.', 'Вот как это выглядит у другого дома. Свою часть напиши так же.', 'Here is how it looks for another house. Write yours the same way.')
+      L3('Sahifa sarlavhadan boshlanadi, ostida xatboshi, keyin rasmlar.', 'Страница начинается с заголовка, под ним абзац, потом картинки.', 'The page starts with a heading, then a paragraph, then pictures.'),
+      L3('h1 juftidan boshlang va ichiga galereya nomini yozing.', 'Начни с пары h1 и напиши внутри название галереи.', 'Start with an h1 pair and type the gallery name inside.'),
+      L3('Mana boshqa galereya. O‘zingiznikini ham shunday tuzing.', 'Вот другая галерея. Свою построй так же.', 'Here’s another gallery. Build yours the same way.')
     ],
-    praise: L3('Uyingiz qurildi! Uning sahifasini o‘zingiz yozdingiz.', 'Дом построен! Его страница написана твоими руками.', 'Your house is built! You wrote its page yourself.'),
-    done: L3('Uyingiz qurilgan.', 'Твой дом уже построен.', 'Your house is already built.'),
-    drill: L3('Ustaxona uchun body yozing: u yerda nima qilinadi?', 'Напиши body для мастерской: что там делают?', 'Write a body for the workshop: what happens there?')
-  },
-
-  // Подсказка 2 своего дома — по той части, где сейчас затруднение.
-  house: {
     hint2: {
-      html: L3('html juftini tekshiring: ochuvchi html birinchi qatordan keyin, yopuvchisi eng oxirida.', 'Проверь пару html: открывающий — после первой строки, закрывающий — в самом конце.', 'Check the html pair: the opening one after the first line, the closing one at the very end.'),
-      head: L3('head juftini tekshiring: u html ichida, title esa uning ichida.', 'Проверь пару head: она внутри html, а title — внутри неё.', 'Check the head pair: it is inside html, and title is inside it.'),
-      body: L3('body juftini tekshiring: u head dan keyin ochiladi va html tugashidan oldin yopiladi.', 'Проверь пару body: она открывается после head и закрывается до конца html.', 'Check the body pair: it opens after head and closes before html ends.'),
-      tag: L3('Teglar qanday yozilganini tekshiring: qavslar, qiya chiziq va harflar.', 'Проверь, как написаны теги: уголки, косая черта и буквы.', 'Check how the tags are written: brackets, slash and letters.')
-    }
+      h1: L3('h1 juftidan boshlang va ichiga galereya nomini yozing.', 'Начни с пары h1 и напиши внутри название галереи.', 'Start with an h1 pair and type the gallery name inside.'),
+      p: L3('Sarlavha ostiga p juftini yozing: ichida bitta jumla.', 'Под заголовком напиши пару p — внутри одна фраза.', 'Under the heading, write a p pair with one sentence inside.'),
+      img: L3('Keyin ikkita img yozing: src da fayl nomi, alt da tavsif.', 'Дальше напиши два img: в src имя файла, в alt описание.', 'Then write two img tags: the file name in src, a description in alt.'),
+      file: L3('Fayllar ro‘yxatiga qarang: src da faqat bor fayllar bo‘lsin.', 'Посмотри на список файлов: в src — только существующие файлы.', 'Look at the file list: src should only have files that exist.'),
+      alt: L3('Har bir img ga so‘z bilan alt yozing.', 'В каждый img допиши alt со словами.', 'Add an alt with words to each img.'),
+      tag: L3('Teglarni tekshiring: har bir ochilgan teg o‘z jufti bilan yopilishi kerak.', 'Проверь теги: каждый открытый тег должен закрыться своей парой.', 'Check the tags: every opened tag must close with its pair.')
+    },
+    praise: L3('Galereyangiz tayyor! Uning kodini boshidan oxirigacha o‘zingiz yozdingiz.', 'Твоя галерея готова! Её код — целиком твой, от первой до последней строки.', 'Your gallery is ready! You wrote its code yourself, start to finish.'),
+    done: L3('Galereyangiz tayyor.', 'Твоя галерея уже готова.', 'Your gallery is already done.'),
+    drill: L3('Yana bitta rasm qo‘shing: gul, flower.jpg, alt bilan.', 'Добавь ещё одну картинку — цветок, flower.jpg, с alt.', 'Add one more picture: the flower, flower.jpg, with alt.')
   },
 
   drill: {
@@ -7012,16 +6973,14 @@ const C = {
   },
 
   fin: {
-    eyebrow: L3('Ko‘cha yana tirik', 'Улица снова живая', 'The street is alive again'),
-    say: L3('Tabriklayman! Ko‘cha yana tirik. Oxirgi uy esa sizniki: uning sahifasini o‘zingiz yozdingiz.',
-      'Ура! Улица снова живая. А последний дом — твой: в нём твоё название и твой текст.',
-      'Hooray! The street is alive again. And the last house is yours: you wrote its page yourself.'),
+    eyebrow: L3('Ko‘rgazma ochiq', 'Выставка открыта', 'The exhibition is open'),
+    say: L3('Tabriklayman! Hamma rasmlar joyida. Oxirgi rom esa sizning galereyangiz.', 'Ура! Все картинки на местах. А последняя рама — твоя галерея.', 'Hooray! All the pictures are in place. And the last frame is your gallery.'),
     skills: [
-      L3('title ichiga sahifa nomini yozaman', 'Пишу название страницы в title', 'I write the page name in title'),
-      L3('Yopuvchi tegni yozaman', 'Пишу закрывающий тег', 'I write a closing tag'),
-      L3('Matnli body yozaman', 'Пишу body с текстом', 'I write body with text'),
-      L3('head qayerda tugashini topaman', 'Нахожу, где заканчивается head', 'I find where head ends'),
-      L3('head va body bilan sahifa yozaman', 'Пишу страницу из head и body', 'I write a page with head and body')
+      L3('Rasmga src bilan fayl beraman', 'Даю картинке файл атрибутом src', 'I give a picture a file with src'),
+      L3('Fayl nomidagi xatoni topaman', 'Нахожу опечатку в имени файла', 'I find a typo in a file name'),
+      L3('Rasmga alt tavsifini yozaman', 'Пишу картинке описание alt', 'I write an alt description'),
+      L3('Buzilgan rasm tegini tuzataman', 'Чиню сломанный тег картинки', 'I fix a broken picture tag'),
+      L3('Rasmli o‘z sahifamni yozaman', 'Пишу свою страницу с картинками', 'I write my own page with pictures')
     ]
   }
 };
@@ -7386,7 +7345,9 @@ function ManBox({ frame, frameSides, frameAnim, frameHl, labels, man, br, cls, c
 // БУМАЖНЫЙ БРАУЗЕР — узнаваемый Chrome в Windows, только из бумаги: тёмная
 // полоса вкладок (вкладка с значком, именем и крестиком, «+»), кнопки окна
 // «– □ ×», полоса со стрелками и адресной строкой, под ней страница.
-function PaperBrowser({ title, children, tabHl, pageHl, stamp, short, cls, tabRef, pageRef }) {
+// url — файл открытой страницы в адресной строке (урок 4: ссылка меняет адрес),
+// urlHl — подсветить адрес, onBack — стрелка «назад» нажимается.
+function PaperBrowser({ title, children, tabHl, pageHl, stamp, short, cls, tabRef, pageRef, url, urlHl, onBack }) {
   const t = title != null && String(title).trim() !== '' ? String(title) : '';
   return (
     <div className={'kz-br' + (short ? ' is-short' : '') + (pageHl ? ' is-hl-page' : '') + (cls ? ' ' + cls : '')}>
@@ -7402,8 +7363,8 @@ function PaperBrowser({ title, children, tabHl, pageHl, stamp, short, cls, tabRe
       </div>
       <div className="kz-br-tool">
         <Cut c="#E6DCC6" seed={33} n={12} amp={6} asp={12} cls="kz-br-tool-bg" />
-        <span className="kz-br-arrows" aria-hidden="true"><i className="kz-ar-l" /><i className="kz-ar-r" /></span>
-        <span className="kz-br-url"><i className="kz-br-lock" aria-hidden="true" /><span>index.html</span></span>
+        <span className="kz-br-arrows">{onBack ? <button type="button" className="kz-ar-l kz-ar-btn" onClick={onBack} aria-label="Back" /> : <i className="kz-ar-l" aria-hidden="true" />}<i className="kz-ar-r" aria-hidden="true" /></span>
+        <span className={'kz-br-url' + (urlHl ? ' is-hl' : '')}><i className="kz-br-lock" aria-hidden="true" /><span key={'u' + (url || '')} className={'kz-br-url-t' + (stamp && url ? ' kz-a-stamp' : '')}>{url || 'index.html'}</span></span>
       </div>
       <div className="kz-br-body">
         <Cut c={KZ.cream} seed={32} n={16} amp={1.1} asp={1.6} cls="kz-br-paper" />
@@ -7906,8 +7867,12 @@ function useKzTransition(screenKey) {
 }
 
 // =============================================================================
-// МЕХАНИКА ПРАКТИКИ. Каркас — практика 01p (разбор кода, редактор, ход задания,
-// экран без Коди); вид — бумажный набор урока 1 (лист, вырезки, бумажный браузер).
+// МЕХАНИКА ПРАКТИК 4 И 5 (копия механики практики 03p; добавлены атрибуты:
+// ссылка a с href и картинка img с src и alt — честная страница, по ссылке можно
+// перейти, картинка показывается, ломается или даёт текст alt; проверка
+// атрибутов). Общая для 04p «Острова» и 05p «Выставка»: практика 05p подключает
+// этот файл. Свои у каждой — карта (stopArt, STREET), страницы сайта (SITE_PAGES),
+// фото-файлы (PHOTO_FILES), тексты. Каркас — практика 01p; вид — бумажный набор урока 1.
 // =============================================================================
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -7917,22 +7882,41 @@ function useKzTransition(screenKey) {
 // ─────────────────────────────────────────────────────────────────────────────
 const TAG_SAY = {
   ru: { html: 'HTML', head: 'head', title: 'title', body: 'body', doctype: 'doctype',
+    h1: 'H one', h2: 'H two', h3: 'H three', h4: 'H four', h5: 'H five', h6: 'H six', p: 'P', b: 'B', i: 'I', ul: 'U L', ol: 'O L', li: 'L I',
+    a: 'A', href: 'H ref', img: 'I M G', src: 'S R C', alt: 'alt', dot: 'точка',
     close: 'закрывающий тег', lt: 'уголок', gt: 'уголок', slash: 'косая черта' },
   uz: { html: 'HTML', head: 'head', title: 'title', body: 'body', doctype: 'doctype',
+    h1: 'H one', h2: 'H two', h3: 'H three', h4: 'H four', h5: 'H five', h6: 'H six', p: 'P', b: 'B', i: 'I', ul: 'U L', ol: 'O L', li: 'L I',
+    a: 'A', href: 'H ref', img: 'I M G', src: 'S R C', alt: 'alt', dot: 'nuqta',
     close: 'yopuvchi teg', lt: 'chap qavs', gt: 'o‘ng qavs', slash: 'qiya chiziq' },
   en: { html: 'H T M L', head: 'head', title: 'title', body: 'body', doctype: 'doctype',
+    h1: 'H one', h2: 'H two', h3: 'H three', h4: 'H four', h5: 'H five', h6: 'H six', p: 'P', b: 'B', i: 'I', ul: 'U L', ol: 'O L', li: 'L I',
+    a: 'A', href: 'H ref', img: 'I M G', src: 'S R C', alt: 'alt', dot: 'dot',
     close: 'closing tag', lt: 'less-than sign', gt: 'greater-than sign', slash: 'slash' }
 };
 function spokenHtml(text, lang) {
   const m = TAG_SAY[lang] || TAG_SAY.ru;
   const word = (t) => m[String(t).toLowerCase()] || t;
   let s = String(text || '');
+  // Знаки «=» и кавычки в речь не идут (рядом всегда слова «знак равно», «кавычки»);
+  // файл cats.html — «cats точка HTML», cat.jpg — «cat точка J P G».
+  s = s.replace(/[«“"]\s*=\s*[»”"]/g, ' ').replace(/"/g, ' ');
+  const EXT = { html: 'html', jpg: 'J P G', png: 'P N G' };
+  s = s.replace(/\b([A-Za-z_0-9]+)\.(html|jpg|png)\b/g, (all, n, e) => n + ' ' + m.dot + ' ' + EXT[e]);
   s = s.replace(/<!DOCTYPE\s+html>/gi, m.doctype + ' ' + m.html);
-  s = s.replace(/<\s*\/\s*([a-z][a-z0-9]*)\s*>/gi, (all, t) => m.close + ' ' + word(t));
-  s = s.replace(/<\s*([a-z][a-z0-9]*)\s*>/gi, (all, t) => word(t));
-  s = s.replace(/\b(html|HTML|head|title|body|DOCTYPE)\b/g, (w) => word(w));
+  s = s.replace(/<\s*\/\s*([a-z][a-z0-9]*)\s*>/gi, (all, t) => ' ' + m.close + ' ' + word(t) + ' ');
+  s = s.replace(/<\s*([a-z][a-z0-9]*)\s*>/gi, (all, t) => ' ' + word(t) + ' ');
+  s = s.replace(/\b(html|HTML|head|title|body|DOCTYPE|h[1-6])\b/g, (w) => word(w));
+  // Одиночные латинские p, b, i — имена тегов (как в уроке 2): других в репликах нет.
+  s = s.replace(/(^|[\s(«“"])([pbi])(?=[\s,.!?:;)»”"]|$)/g, (all, pre, t) => pre + word(t));
+  // Голые ul, ol, li (урок 3) — тоже словами.
+  s = s.replace(/(^|[^A-Za-z‘’'ʻʼ])(ul|ol|li|href|img|src)(?=[^A-Za-z‘’'ʻʼ]|$)/g, (all, pre, t) => pre + word(t));
+  // Тег a: в узбекском и русском латинская «a» — только тег; в английском «a» —
+  // артикль, тег узнаётся в «the a», «opening a», «closing a», «letter a».
+  if (lang === 'en') s = s.replace(/\b(the|The|letter|opening|closing) a\b/g, '$1 ' + m.a);
+  else s = s.replace(/(^|[^A-Za-z‘’'ʻʼ-])a(?=[^A-Za-z‘’'ʻʼ-]|$)/g, (all, pre) => pre + m.a);
   s = s.replace(/</g, ' ' + m.lt + ' ').replace(/>/g, ' ' + m.gt + ' ').replace(/\s\/\s/g, ' ' + m.slash + ' ');
-  return s.replace(/\s+/g, ' ').trim();
+  return s.replace(/\s+/g, ' ').replace(/\s+([.,!?;:])/g, '$1').trim();
 }
 // Реплики в данных экрана — для прогрева озвучки. Подписи, которые только
 // печатаются, пропускаем; шаблоны с подстановкой {…} — тоже.
@@ -7964,16 +7948,23 @@ function SpokenTags({ children }) {
 // (сплошная — закрыто, пунктир — нет), а теги в коде — коралловые уголки и
 // имя чернилами, как на бумажках урока.
 // ─────────────────────────────────────────────────────────────────────────────
-const TAGC = { html: '#E0643F', head: '#D39A1E', title: '#D39A1E', body: '#2A8C7E' };
-const KNOWN = ['html', 'head', 'title', 'body'];
-const PARENT = { html: null, head: 'html', body: 'html', title: 'head' };
-const catOf = (tag) => (tag === 'html' ? 'html' : tag === 'body' ? 'body' : 'head');
+const TAGC = { html: '#E0643F', head: '#D39A1E', title: '#D39A1E', body: '#2A8C7E',
+  h1: '#E0643F', h2: '#E0643F', h3: '#E0643F', h4: '#E0643F', h5: '#E0643F', h6: '#E0643F', p: '#2A8C7E', b: '#D39A1E', i: '#D39A1E', ul: '#2A8C7E', ol: '#D39A1E', li: '#E0643F', a: '#2A8C7E', img: '#D39A1E' };
+const HEADS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+const KNOWN = ['html', 'head', 'title', 'body'].concat(HEADS, ['p', 'b', 'i', 'ul', 'ol', 'li', 'a', 'img']);
+// Атрибуты наших тегов (уроки 4–5): у ссылки — href, у картинки — src и alt.
+const ATTRS = { a: ['href'], img: ['src', 'alt'] };
+const catOf = (tag) => (tag === 'html' ? 'html' : tag === 'head' || tag === 'title' ? 'head' : 'body');
+const isHead = (t) => /^h[1-6]$/.test(t);
+const isBlock = (t) => isHead(t) || t === 'p';
+const isInline = (t) => t === 'b' || t === 'i' || t === 'a';
+const isList = (t) => t === 'ul' || t === 'ol';
 
 // Осмысленный текст: хотя бы две буквы любого алфавита.
 const LETTER_RE = /\p{L}/gu;
 const hasLetters = (s) => (String(s || '').match(LETTER_RE) || []).length >= 2;
 // Похоже на тег: «<» с буквой, «/» или «!» после него, либо знакомый тег без «<».
-const hasTags = (s) => /<\s*[A-Za-z\/!\\]/.test(String(s || '')) || /\b(html|head|title|body)\s*>/i.test(String(s || ''));
+const hasTags = (s) => /<\s*[A-Za-z\/!\\]/.test(String(s || '')) || /\b(html|head|title|body|h[1-6]|ul|ol|li|img)\s*>/i.test(String(s || ''));
 const squash = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 // Сравнение заданных надписей: регистр, ё/е, кавычки и знаки по краям не важны.
 const normName = (s) => String(s || '').toLowerCase().replace(/ё/g, 'е')
@@ -8012,6 +8003,19 @@ const nearTag = (name) => {
 //   { k: 'bad', bad: 'noGt' | 'noLt' | 'unknown' | 'slashEnd' | 'backslash' | 'junk' | 'emptyTag', name, raw }
 // У каждого токена — номер строки (line), считая от нуля.
 // ─────────────────────────────────────────────────────────────────────────────
+// Атрибуты в открывающем теге, как их читает браузер: имя (строчными), значение,
+// в кавычках ли оно, есть ли знак «=».
+function parseAttrs(str) {
+  const out = [];
+  const re = /([^\s"'=<>\/]+)(\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+  let m;
+  while ((m = re.exec(String(str || '')))) {
+    out.push({ n: m[1].toLowerCase(), raw: m[1], eq: !!m[2], v: m[3] != null ? m[3] : m[4] != null ? m[4] : m[5] != null ? m[5] : '', q: m[3] != null || m[4] != null });
+  }
+  return out;
+}
+const attrOf = (t, n) => (t && t.attrs ? t.attrs.find((a) => a.n === n) : null);
+
 function lexDoc(src) {
   const s = String(src || '');
   const out = [];
@@ -8024,7 +8028,7 @@ function lexDoc(src) {
   // Текст без «<». Внутри ищем знакомый тег без открывающего уголка: «title>».
   const pushText = (from, to) => {
     const part = s.slice(from, to);
-    const re = /(\/?)[ \t]*\b(html|head|title|body)[ \t]*>/gi;
+    const re = /(\/?)[ \t]*\b(html|head|title|body|h[1-6]|ul|ol|li)[ \t]*>/gi;
     let last = 0;
     let m;
     while ((m = re.exec(part))) {
@@ -8052,9 +8056,24 @@ function lexDoc(src) {
       i = end;
       continue;
     }
-    const gt = s.indexOf('>', i + 1);
-    const lt = s.indexOf('<', i + 1);
-    if (gt < 0 || (lt >= 0 && lt < gt)) {
+    // Конец тега — первый «>» вне кавычек (в значении атрибута «>» не считается).
+    let gt = -1;
+    let qq = null;
+    for (let k = i + 1; k < s.length; k += 1) {
+      const ch = s[k];
+      if (qq) { if (ch === qq) qq = null; continue; }
+      if ((ch === '"' || ch === "'") && /=\s*$/.test(s.slice(i + 1, k))) { qq = ch; continue; }
+      if (ch === '>') { gt = k; break; }
+      if (ch === '<') break;
+    }
+    if (qq) {
+      // Кавычка открыта и не закрыта: браузер съедает всё до конца — тег не закончен.
+      const nm0 = (/^<\s*\/?\s*([A-Za-z][A-Za-z0-9]*)/.exec(s.slice(i)) || ['', ''])[1].toLowerCase();
+      push({ k: 'bad', bad: 'quote', name: nm0, raw: s.slice(i) }, i, s.length);
+      i = s.length;
+      continue;
+    }
+    if (gt < 0) {
       // «<title» без «>»: тег не закончен. Хвост дальше читается как текст.
       const m = /^<\s*[\/\\]?\s*!?[A-Za-z]*[A-Za-z0-9]*/.exec(s.slice(i));
       const raw = m ? m[0] : '<';
@@ -8070,8 +8089,13 @@ function lexDoc(src) {
     if (/^\s*!/.test(inner)) tok = { k: 'doctype', raw };
     else if ((m = /^\s*(\/)?\s*([A-Za-z][A-Za-z0-9]*)\s*$/.exec(inner))) {
       const name = m[2].toLowerCase();
-      tok = KNOWN.indexOf(name) >= 0 ? { k: m[1] ? 'close' : 'open', name, raw }
+      tok = KNOWN.indexOf(name) >= 0 ? { k: m[1] ? 'close' : 'open', name, raw, attrs: [] }
         : { k: 'bad', bad: 'unknown', name, raw };
+    } else if ((m = /^\s*img\s*\/\s*$/i.exec(inner))) {
+      tok = { k: 'open', name: 'img', raw, attrs: [] };
+    } else if ((m = /^\s*(\/)?\s*([A-Za-z][A-Za-z0-9]*)\s+([\s\S]*?)\s*(\/)?\s*$/.exec(inner)) && KNOWN.indexOf(m[2].toLowerCase()) >= 0) {
+      // Тег с атрибутами: <a href="cats.html">, <img src="cat.jpg" alt="…">.
+      tok = { k: m[1] ? 'close' : 'open', name: m[2].toLowerCase(), raw, attrs: parseAttrs(m[3]), attrStr: m[3] };
     } else if ((m = /^\s*\\\s*([A-Za-z][A-Za-z0-9]*)\s*$/.exec(inner))) {
       tok = { k: 'bad', bad: 'backslash', name: m[1].toLowerCase(), raw };
     } else if ((m = /^\s*([A-Za-z][A-Za-z0-9]*)\s*\/\s*$/.exec(inner))) {
@@ -8087,6 +8111,21 @@ function lexDoc(src) {
   return out;
 }
 
+// Фразы проверки атрибутов — общие для практик 4 и 5 (своё FB практики главнее).
+const FB_ATTR = {
+  quoteOpen: L3('{tag} tegida qo‘shtirnoq ochilgan, lekin yopilmagan: brauzer undan keyingi hamma narsani qiymat deb o‘ylaydi. Qiymatdan keyin ham qo‘shtirnoq qo‘ying.', 'В теге {tag} кавычка открыта, но не закрыта — браузер считает всё дальше значением. Поставь кавычку и после значения.', 'In the {tag} tag a quote is opened but not closed: the browser treats everything after it as the value. Put a quote after the value too.'),
+  attrOnClose: L3('Atribut yopuvchi {tag} tegida turibdi, brauzer uni sezmaydi. Atributni ochuvchi tegga o‘tkazing.', 'Атрибут стоит в закрывающем теге {tag} — браузер его не замечает. Перенеси атрибут в открывающий тег.', 'The attribute is in the closing {tag} tag, and the browser ignores it. Move the attribute into the opening tag.'),
+  imgClose: L3('img ning yopuvchi tegi bo‘lmaydi: u hech narsani o‘ramaydi. Yopuvchi img ni o‘chiring.', 'У img не бывает закрывающего тега — он ничего не оборачивает. Сотри закрывающий img.', 'img has no closing tag: it doesn’t wrap anything. Erase the closing img.'),
+  hrefOnImg: L3('href havolalar uchun. Rasm faylining manzili src atributida yoziladi.', 'href — для ссылок. Адрес файла картинки пишут в атрибуте src.', 'href is for links. A picture’s file address goes in the src attribute.'),
+  srcOnA: L3('Havolada manzil href atributida yoziladi, {raw} da emas.', 'У ссылки адрес пишут в атрибуте href, а не в {raw}.', 'A link’s address goes in the href attribute, not in {raw}.'),
+  attrName: L3('Atribut nomini tekshiring: {raw} emas, {want}.', 'Проверь имя атрибута: не {raw}, а {want}.', 'Check the attribute name: not {raw}, but {want}.'),
+  attrUnknown: L3('{tag} tegida {raw} atributi kerak emas.', 'У тега {tag} атрибут {raw} не нужен.', 'The {tag} tag doesn’t need the {raw} attribute.'),
+  attrNoEq: L3('{name} dan keyin tenglik belgisi «=» va qo‘shtirnoq ichida qiymat kerak.', 'После {name} нужен знак равно «=» и значение в кавычках.', 'After {name} you need an equals sign “=” and a value in quotes.'),
+  attrNoQuotes: L3('Brauzer tushundi, lekin {name} qiymati qo‘shtirnoq ichida yoziladi: qiymatdan oldin ham, keyin ham.', 'Браузер понял, но значение {name} пишут в кавычках — и перед ним, и после.', 'The browser understood, but the {name} value goes in quotes, before and after it.'),
+  aInA: L3('Oldingi havola yopilmagan: yangi a dan oldin yopuvchi a tegi kerak.', 'Предыдущая ссылка не закрыта: перед новым a нужен закрывающий тег a.', 'The previous link isn’t closed: put the closing a tag before the next opening a.')
+};
+Object.keys(FB_ATTR).forEach((k) => { if (!FB[k]) FB[k] = FB_ATTR[k]; });
+
 const fb = (key, vars, cat) => ({ ok: false, msg: vars ? fillL(FB[key] || key, vars) : (FB[key] || key), cat: cat || 'tag' });
 const fbT = (node, vars, cat) => ({ ok: false, msg: vars ? fillL(node, vars) : node, cat: cat || 'tag' });
 
@@ -8095,6 +8134,7 @@ function badFb(t) {
   const nm = t.name || '';
   const cat = KNOWN.indexOf(nm) >= 0 ? catOf(nm) : (nearTag(nm) ? catOf(nearTag(nm)) : 'tag');
   const r = (o) => Object.assign(o, { line: t.line });
+  if (t.bad === 'quote') return r(fb('quoteOpen', { tag: nm || 'a' }, cat));
   if (t.bad === 'noGt') return r(fb('noGt', { tag: KNOWN.indexOf(nm) >= 0 ? nm : (t.raw || '<') }, cat));
   if (t.bad === 'noLt') return r(fb('noLt', { tag: nm }, cat));
   if (t.bad === 'slashEnd') return r(fb('slashEnd', { tag: KNOWN.indexOf(nm) >= 0 ? nm : (nearTag(nm) || nm) }, cat));
@@ -8103,187 +8143,6 @@ function badFb(t) {
   if (t.bad === 'junk') return r(fb('junk', null, cat));
   const near = nearTag(nm);
   return r(near ? fb('unknown', { raw: t.raw, tag: near }, catOf(near)) : fb('unknownFar', { raw: t.raw }, 'tag'));
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ПРОВЕРКА ДОКУМЕНТА. Правила нашей страницы: html снаружи всех; внутри —
-// head, потом body; в head — title с названием; в body — текст. Обход идёт по
-// порядку записи и запоминает ПЕРВУЮ проблему. Неверная запись тега
-// проверяется раньше структуры. need — какие части уже нужны (свой дом
-// строится по шагам: сначала html, потом head с title, потом body).
-// ─────────────────────────────────────────────────────────────────────────────
-function analyzeDoc(src, need) {
-  const N = Object.assign({ head: true, body: true }, need || {});
-  const toks = lexDoc(src);
-  const bad = toks.find((t) => t.k === 'bad');
-  if (bad) return badFb(bad);
-  const stack = [];
-  const seen = {};
-  const closed = {};
-  let titleText = '';
-  let bodyText = '';
-  let first = null;
-  const flag = (key, vars, cat) => { if (!first) first = fb(key, vars, cat); };
-  toks.forEach((t) => {
-    const top = stack[stack.length - 1];
-    if (t.k === 'text') {
-      if (top === 'title') titleText += t.v;
-      else if (top === 'body') bodyText += t.v;
-      else if (hasLetters(t.v)) {
-        if (top === 'head') flag('textOutHead', null, 'head');
-        else if (top === 'html') flag('textOutHtml', null, 'body');
-        else flag('textOutNone', null, 'html');
-      }
-      return;
-    }
-    if (t.k === 'open') {
-      const X = t.name;
-      if (seen[X]) {
-        if (top === X) { flag('openAgain', { tag: X }, catOf(X)); stack.pop(); closed[X] = true; return; }
-        flag('twice', { tag: X }, catOf(X));
-      } else if (X === 'html') {
-        if (stack.length) flag('htmlInside', null, 'html');
-      } else {
-        const par = PARENT[X];
-        if (top === par) { if (X === 'head' && seen.body) flag('headAfterBody', null, 'head'); }
-        else if (stack.indexOf(par) >= 0) flag('notClosedOpen', { tag: top, next: X }, catOf(top));
-        else if (X === 'title') flag('titleOutsideHead', null, 'head');
-        else if (closed.html) flag('afterHtml', { tag: X }, 'html');
-        else flag('noHtmlOpen', null, 'html');
-      }
-      seen[X] = (seen[X] || 0) + 1;
-      stack.push(X);
-      return;
-    }
-    if (t.k === 'close') {
-      const X = t.name;
-      if (top === X) { stack.pop(); closed[X] = true; return; }
-      const at = stack.lastIndexOf(X);
-      if (at >= 0) { flag('notClosedClose', { tag: top, next: X }, catOf(top)); stack.length = at; closed[X] = true; return; }
-      if (closed[X]) flag('closeTwice', { tag: X }, catOf(X));
-      else flag('closeWithoutOpen', { tag: X }, catOf(X));
-    }
-  });
-  if (first) return first;
-  // Дальше — «чего-то не хватает»: под заметкой пометка «документ собран не полностью».
-  const miss = (key, vars, cat) => Object.assign(fb(key, vars, cat), { sub: true });
-  if (!seen.html) return miss('missHtml', null, 'html');
-  if (N.head && !seen.head) return miss('missHead', null, 'head');
-  if (N.head && !seen.title) return miss('missTitle', null, 'head');
-  if (N.body && !seen.body) return miss('missBody', null, 'body');
-  if (stack.length) {
-    const tag = stack[stack.length - 1];
-    if (tag === 'html' && N.body && hasLetters(titleText) && hasLetters(bodyText)) return miss('unclosedHtmlOk', null, 'html');
-    return miss('unclosedEnd', { tag }, catOf(tag));
-  }
-  if ((N.head || seen.title) && !hasLetters(titleText)) return miss('titleEmpty', null, 'head');
-  if ((N.body || seen.body) && !hasLetters(bodyText)) return miss('bodyEmpty', null, 'body');
-  return { ok: true, result: { title: squash(titleText), text: squash(bodyText), html: String(src) } };
-}
-
-// Документ целиком (t7–t10): первая строка, теги вообще, потом структура.
-function checkDoc(code, need) {
-  const toks = lexDoc(code);
-  if (!toks.some((t) => t.k === 'doctype')) return fb('noDoctype', null, 'html');
-  const tags = toks.filter((t) => t.k === 'open' || t.k === 'close' || t.k === 'bad');
-  if (!tags.length) return fb(toks.some((t) => t.k === 'text' && hasLetters(t.v)) ? 'textOnly' : 'docEmpty', null, 'html');
-  return analyzeDoc(code, need);
-}
-
-// Строка title (t3, t4 и их дополнительные задачи). target — { uz, ru, en }.
-function checkLine(line, target, lang) {
-  if (!String(line || '').trim()) return fb('lineEmpty', null, 'head');
-  const toks = lexDoc(line).filter((t) => !(t.k === 'text' && !t.v.trim()));
-  const bad = toks.find((t) => t.k === 'bad');
-  if (bad) return badFb(bad);
-  const tags = toks.filter((t) => t.k === 'open' || t.k === 'close');
-  if (!tags.length) return fb('lineTextOnly', null, 'head');
-  const other = tags.find((t) => t.name !== 'title');
-  if (other) return fb('lineWrongTag', { tag: other.name }, 'head');
-  const opens = tags.filter((t) => t.k === 'open');
-  const closes = tags.filter((t) => t.k === 'close');
-  if (opens.length >= 2 && !closes.length) return fb('openAgain', { tag: 'title' }, 'head');
-  if (!opens.length) return fb('lineNoOpen', null, 'head');
-  if (!closes.length) return fb('lineNoClose', null, 'head');
-  if (opens.length > 1) return fb('twice', { tag: 'title' }, 'head');
-  if (closes.length > 1) return fb('closeTwice', { tag: 'title' }, 'head');
-  const io = toks.indexOf(opens[0]);
-  const ic = toks.indexOf(closes[0]);
-  if (ic < io) return fb('lineOrder', null, 'head');
-  if (toks.some((t, k) => t.k === 'text' && (k < io || k > ic))) return fb('lineTextOutside', null, 'head');
-  const inner = squash(toks.slice(io + 1, ic).map((t) => t.v).join(''));
-  if (!hasLetters(inner)) return fb('lineNoName', null, 'head');
-  if (target && normName(inner) !== normName(pickOf(target, lang))) return fb('lineWrongName', { name: target }, 'head');
-  return { ok: true, result: { title: inner } };
-}
-
-// Блок body (t5 и дополнительные задачи): открывающий тег, свой текст,
-// закрывающий тег — в любом количестве строк.
-function checkBlock(area) {
-  if (!String(area || '').trim()) return fb('blockEmpty', null, 'body');
-  const toks = lexDoc(area);
-  const bad = toks.find((t) => t.k === 'bad');
-  if (bad) return badFb(bad);
-  const tags = toks.filter((t) => t.k === 'open' || t.k === 'close');
-  if (!tags.length) return fb(hasLetters(area) ? 'blockTextOnly' : 'blockEmpty', null, 'body');
-  const other = tags.find((t) => t.name !== 'body');
-  if (other) return fb('blockWrongTag', { tag: other.name }, 'body');
-  const opens = tags.filter((t) => t.k === 'open');
-  const closes = tags.filter((t) => t.k === 'close');
-  if (opens.length >= 2 && !closes.length) return fb('openAgain', { tag: 'body' }, 'body');
-  if (!opens.length) return fb('closeWithoutOpen', { tag: 'body' }, 'body');
-  if (!closes.length) return fb('unclosedEnd', { tag: 'body' }, 'body');
-  if (opens.length > 1) return fb('twice', { tag: 'body' }, 'body');
-  if (closes.length > 1) return fb('closeTwice', { tag: 'body' }, 'body');
-  const io = toks.indexOf(opens[0]);
-  const ic = toks.indexOf(closes[0]);
-  if (ic < io) return fb('blockOrder', null, 'body');
-  if (toks.some((t, k) => t.k === 'text' && (k < io || k > ic) && hasLetters(t.v))) return fb('textOutHtml', null, 'body');
-  const inner = squash(toks.slice(io + 1, ic).map((t) => t.v).join(''));
-  if (!hasLetters(inner)) return fb('bodyEmpty', null, 'body');
-  return { ok: true, result: { text: inner } };
-}
-
-// Один закрывающий тег на своей строке (t6): </head> или </body>.
-function checkCloseTag(code, tag) {
-  if (!String(code || '').trim()) return fb('closeEmpty', { tag }, catOf(tag));
-  const toks = lexDoc(code).filter((t) => !(t.k === 'text' && !t.v.trim()));
-  const bad = toks.find((t) => t.k === 'bad');
-  if (bad) return badFb(bad);
-  const tags = toks.filter((t) => t.k === 'open' || t.k === 'close');
-  if (!tags.length) return fb('closeText', null, catOf(tag));
-  if (tags.length > 1) return tags.every((t) => t.k === 'close' && t.name === tag) ? fb('closeOne', { tag }, catOf(tag)) : fb('closeOther', { tag }, catOf(tag));
-  const t = tags[0];
-  if (t.name === tag && t.k === 'open') return fb('openAgain', { tag }, catOf(tag));
-  if (t.name !== tag) return fb('closeOther', { tag }, catOf(tag));
-  if (toks.some((x) => x.k === 'text' && hasLetters(x.v))) return fb('closeText', null, catOf(tag));
-  return { ok: true, result: {} };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ЧТО ПОКАЖЕТ БРАУЗЕР — честно, как настоящий: всё, что после <title>, до
-// </title> — название на вкладке (если </title> нет, туда уезжает и остальной
-// код вместе с тегами, как в уроке 1); остальной текст — в окне, даже если
-// структура собрана не до конца. Всё — строки; React рисует их как текст.
-// ─────────────────────────────────────────────────────────────────────────────
-function pageOf(src) {
-  const toks = lexDoc(src);
-  let inTitle = false;
-  let titleSeen = false;
-  let title = '';
-  const page = [];
-  toks.forEach((t) => {
-    if (inTitle) {
-      if (t.k === 'close' && t.name === 'title') { inTitle = false; return; }
-      title += t.k === 'text' ? t.v : ' ' + (t.raw || '') + ' ';
-      return;
-    }
-    if (t.k === 'open' && t.name === 'title') { inTitle = true; titleSeen = true; return; }
-    if (t.k === 'text') { page.push(t.v); return; }
-    // Это браузер не считает тегом и показывает в окне как есть: «title>», «<\body>», «<>».
-    if (t.k === 'bad' && (t.bad === 'noLt' || t.bad === 'backslash' || t.bad === 'emptyTag')) page.push(t.raw);
-  });
-  return { title: titleSeen ? squash(title) : null, text: squash(page.join(' ')) };
 }
 
 // Полоски вложенности: какой контейнер на каких строках и закрыт ли он.
@@ -8295,8 +8154,8 @@ function regionsOf(src) {
   const stack = [];
   const regs = [];
   toks.forEach((t) => {
-    if (t.k === 'open' && t.name !== 'title') stack.push({ tag: t.name, from: t.line, depth: stack.length });
-    else if (t.k === 'close' && t.name !== 'title') {
+    if (t.k === 'open' && t.name !== 'title' && t.name !== 'img' && t.name !== 'a') stack.push({ tag: t.name, from: t.line, depth: stack.length });
+    else if (t.k === 'close' && t.name !== 'title' && t.name !== 'img' && t.name !== 'a') {
       let at = -1;
       for (let k = stack.length - 1; k >= 0; k -= 1) if (stack[k].tag === t.name) { at = k; break; }
       if (at < 0) return;
@@ -8314,8 +8173,24 @@ function regionsOf(src) {
 // коралловые, имя чернилами. Начертание одно для всех кусочков: подсветка
 // лежит под прозрачной textarea и обязана совпадать с ней буква в букву.
 // ─────────────────────────────────────────────────────────────────────────────
+// Атрибуты внутри тега: имя бирюзовое, «=» коралловый, значение горчично-коричневое.
+// Каждый символ строки остаётся на месте — подсветка совпадает с полем ввода.
+function hlAttrs(str, key) {
+  const out = [];
+  const re = /([^\s"'=]+)(?:(\s*=\s*)("[^"]*"?|'[^']*'?|[^\s"']+)?)?|(\s+)|(.)/g;
+  let m;
+  let k = 0;
+  while ((m = re.exec(str))) {
+    k += 1;
+    if (m[4] || m[5]) { out.push(<span key={key + 's' + k} className="ed-t">{m[0]}</span>); continue; }
+    out.push(<span key={key + 'n' + k} className="ed-an">{m[1]}</span>);
+    if (m[2]) out.push(<span key={key + 'e' + k} className="ed-eq">{m[2]}</span>);
+    if (m[3]) out.push(<span key={key + 'v' + k} className="ed-av">{m[3]}</span>);
+  }
+  return out;
+}
 function hlLine(str) {
-  const re = /<!DOCTYPE\s+html\s*>|<\s*[\/\\]?\s*[A-Za-z][A-Za-z0-9]*\s*\/?\s*>/gi;
+  const re = /<!DOCTYPE\s+html\s*>|<\s*[\/\\]?\s*[A-Za-z][A-Za-z0-9]*(?:\s+(?:[^<>"']|"[^"]*"|'[^']*')*)?\s*\/?\s*>/gi;
   const out = [];
   let last = 0;
   let m;
@@ -8324,9 +8199,13 @@ function hlLine(str) {
     const raw = m[0];
     const nm = ((/[A-Za-z][A-Za-z0-9]*/.exec(raw.replace(/^<\s*[\/\\]?\s*/, '')) || [''])[0]).toLowerCase();
     if (/^<!/.test(raw)) out.push(<span key={'g' + m.index} className="ed-doc">{raw}</span>);
-    else if (KNOWN.indexOf(nm) >= 0 && /^<\s*\/?\s*[A-Za-z]+\s*>$/.test(raw)) {
-      const mm = /^(<\s*\/?\s*)([A-Za-z]+)(\s*>)$/.exec(raw);
+    else if (KNOWN.indexOf(nm) >= 0 && /^<\s*\/?\s*[A-Za-z][A-Za-z0-9]*\s*>$/.test(raw)) {
+      const mm = /^(<\s*\/?\s*)([A-Za-z][A-Za-z0-9]*)(\s*>)$/.exec(raw);
       out.push(<span key={'g' + m.index} className="ed-tag"><span className="ed-br">{mm[1]}</span><span className="ed-nm">{mm[2]}</span><span className="ed-br">{mm[3]}</span></span>);
+    } else if (KNOWN.indexOf(nm) >= 0 && /^<\s*\/?\s*[A-Za-z][A-Za-z0-9]*\s+[\s\S]*>$/.test(raw)) {
+      // Тег с атрибутами: «<a» + атрибуты + «>».
+      const mm = /^(<\s*\/?\s*)([A-Za-z][A-Za-z0-9]*)(\s+[\s\S]*?)(\s*\/?\s*>)$/.exec(raw);
+      out.push(<span key={'g' + m.index} className="ed-tag"><span className="ed-br">{mm[1]}</span><span className="ed-nm">{mm[2]}</span>{hlAttrs(mm[3], 'a' + m.index)}<span className="ed-br">{mm[4]}</span></span>);
     } else out.push(<span key={'g' + m.index} className="ed-unk">{raw}</span>);
     last = m.index + raw.length;
   }
@@ -8545,51 +8424,377 @@ function CodeSample({ code, label, cls }) {
   );
 }
 
-// Бумажный браузер урока 1 со страницей: текст из body — в окне.
-function PageView({ title, text, empty, flash, hl }) {
-  const pick = usePick();
-  const t = String(text || '').trim();
+// ─────────────────────────────────────────────────────────────────────────────
+// ЧТО ПОКАЖЕТ БРАУЗЕР (уроки 2–3) — честно, как настоящий, для наших тегов:
+//   · title — на вкладку (незакрытый уносит на вкладку остальной код);
+//   · h1–h6 и p — блоки; p внутри незакрытого заголовка — шрифтом заголовка;
+//   · b и i — жирный и курсив; незакрытый b / i тянется дальше;
+//   · ul / ol — список; точку или номер ставит только li; текст в списке без
+//     li — без точки; <li> вместо </li> даёт пустой пункт; li вне списка — без
+//     отступа; p в незакрытом списке сдвинут, как список;
+//   · текст без тегов — отдельной строкой в окне.
+// Возвращает { title, blocks } — только текст. Блок: { t: 'h1'…'h6' | 'p' | 'raw'
+// | 'stray', parts } или { t: 'ul' | 'ol', kids: [{ li, parts } | { txt: parts } | { p: parts }] }.
+// ─────────────────────────────────────────────────────────────────────────────
+function renderDoc(src) {
+  const toks = lexDoc(src);
+  let title = null;
+  let inTitle = false;
+  let tt = '';
+  const blocks = [];
+  let cur = null;        // куда идёт текст: блок, пункт или кусок текста в списке
+  let list = null;       // открытый список
+  const fmt = { b: 0, i: 0 };
+  let openHead = null;
+  // Ссылка: href открытого a (строка) — слова синие и ведут туда; a без href — обычный
+  // текст. Незакрытый a тянется дальше, как в настоящем браузере.
+  let link;
+  const part = (v) => ({ s: v, b: fmt.b > 0, i: fmt.i > 0, href: link });
+  const open = (t, inh) => { cur = { t, inh: inh || null, parts: [] }; blocks.push(cur); };
+  const text = (v) => {
+    if (cur) { cur.parts.push(part(v)); return; }
+    if (!v.trim()) return;
+    if (list) { cur = { txt: true, parts: [part(v)] }; list.kids.push(cur); return; }
+    open('raw'); cur.parts.push(part(v));
+  };
+  toks.forEach((t) => {
+    if (inTitle) {
+      if (t.k === 'close' && t.name === 'title') { inTitle = false; title = squash(tt); return; }
+      tt += t.k === 'text' ? t.v : ' ' + (t.raw || '') + ' ';
+      return;
+    }
+    if (t.k === 'open' && t.name === 'title') { inTitle = true; tt = ''; return; }
+    if (t.k === 'text') { text(t.v); return; }
+    if (t.k === 'bad') { if (t.bad === 'noLt' || t.bad === 'backslash' || t.bad === 'emptyTag') text(t.raw); return; }
+    if (t.k === 'open' && t.name === 'a') { const h = attrOf(t, 'href'); link = h ? h.v.trim() : undefined; return; }
+    if (t.k === 'close' && (t.name === 'a' || t.name === 'img')) { if (t.name === 'a') link = undefined; return; }
+    if (t.k === 'open' && t.name === 'img') {
+      // Картинка — кусок строки: файл есть — фото; нет src — пусто (или текст alt);
+      // файла нет — значок сломанной картинки и alt.
+      const sa = attrOf(t, 'src'), aa = attrOf(t, 'alt');
+      const ip = { img: { src: sa ? sa.v.trim() : undefined, alt: aa ? aa.v : undefined }, href: link, s: '' };
+      if (cur) { cur.parts.push(ip); return; }
+      if (list) { cur = { txt: true, parts: [ip] }; list.kids.push(cur); return; }
+      open('raw'); cur.parts.push(ip);
+      return;
+    }
+    if (t.k === 'open') {
+      if (isList(t.name)) { list = { t: t.name, kids: [] }; blocks.push(list); cur = null; openHead = null; return; }
+      if (t.name === 'li') {
+        if (list) { cur = { li: true, parts: [] }; list.kids.push(cur); }
+        else open('stray');
+        return;
+      }
+      if (isHead(t.name) || t.name === 'p') {
+        if (list) { cur = { p: true, t: t.name, parts: [] }; list.kids.push(cur); return; }
+        if (isHead(t.name)) { open(t.name); openHead = t.name; return; }
+        open('p', openHead); return;
+      }
+      if (isInline(t.name)) { fmt[t.name] += 1; return; }
+      return;
+    }
+    if (t.k === 'close') {
+      if (isInline(t.name)) { fmt[t.name] = Math.max(0, fmt[t.name] - 1); return; }
+      if (isList(t.name)) { if (list) { list = null; cur = null; } return; }
+      if (t.name === 'li') { if (cur && (cur.li || cur.t === 'stray')) cur = null; return; }
+      if (isHead(t.name)) openHead = null;
+      if ((isBlock(t.name)) && cur) { cur = null; }
+      if (cur && cur.txt) cur = null;
+    }
+  });
+  if (inTitle) title = squash(tt);
+  const has = (ps) => ps.some((x) => x.img || String(x.s || '').trim());
+  return {
+    title,
+    blocks: blocks.filter((bk) => (bk.kids ? true : has(bk.parts)))
+      .map((bk) => (bk.kids ? Object.assign({}, bk, { kids: bk.kids.filter((k) => k.li || has(k.parts)) }) : bk))
+  };
+}
+
+// ПРОВЕРКА ФРАГМЕНТА (теги уроков 2–3). Обход по порядку записи; первая проблема —
+// фраза, всего проблем — для счётчика «осталось исправить» (по строкам с поломкой).
+//   · блоки h1–h6 и p стоят друг за другом; b и i — внутри блока или пункта;
+//   · список ul / ol, внутри только пункты li; пары совпадают;
+//   · strictText — текст вне блоков и списков тоже проблема (своя работа).
+// lists: [{ t, items: [{ text, marks }], line }], blocks: [{ t, text, marks }].
+// Атрибуты ссылки и картинки: имя знакомое (у a — href, у img — src и alt), есть
+// знак «=», значение в кавычках (браузер поймёт и без них — пишем в кавычках).
+function attrIssues(t) {
+  const ok = ATTRS[t.name] || [];
+  const out = [];
+  (t.attrs || []).forEach((a) => {
+    if (ok.indexOf(a.n) < 0) {
+      if (t.name === 'img' && a.n === 'href') out.push({ key: 'hrefOnImg' });
+      else if (t.name === 'a' && (a.n === 'src' || a.n === 'alt')) out.push({ key: 'srcOnA', vars: { raw: a.raw } });
+      else {
+        const near = a.n.length >= 2 ? ok.find((w) => editDist(a.n, w) <= 2) : null;
+        out.push(near ? { key: 'attrName', vars: { raw: a.raw, want: near } } : { key: 'attrUnknown', vars: { raw: a.raw, tag: t.name } });
+      }
+      return;
+    }
+    if (!a.eq) { out.push({ key: 'attrNoEq', vars: { name: a.n } }); return; }
+    if (!a.q) out.push({ key: 'attrNoQuotes', vars: { name: a.n } });
+  });
+  return out;
+}
+
+function checkFrag(code, opts) {
+  const o = opts || {};
+  const toks = lexDoc(code);
+  const issues = [];
+  const add = (key, vars, line) => issues.push({ key, vars: vars || null, line });
+  const stack = [];
+  const blocks = [];
+  const lists = [];
+  const strays = [];
+  const links = [];      // ссылки: { href, text, line, inLi }
+  const imgs = [];       // картинки: { src, alt, line, inLi }
+  let link = null;
+  let cur = null;
+  let list = null;
+  const bare = (idx) => {
+    for (let k = idx + 1; k < toks.length; k += 1) {
+      if (toks[k].k !== 'text') return true;
+      if (hasLetters(toks[k].v)) return false;
+    }
+    return true;
+  };
+  const top = () => stack[stack.length - 1];
+  // Строка текста — там, где его первая буква (кусок может начинаться с переноса).
+  const textLine = (t) => t.line + (String(t.v).slice(0, String(t.v).search(/\S|$/)).match(/\n/g) || []).length;
+  toks.forEach((t, idx) => {
+    if (t.k === 'bad') { issues.push(Object.assign(badFb(t), { line: t.line, bad: true })); return; }
+    if ((t.k === 'open' || t.k === 'close') && (t.name === 'a' || t.name === 'img')) {
+      if (t.k === 'close' && t.attrs && t.attrs.length) add('attrOnClose', { tag: t.name }, t.line);
+      if (t.k === 'close' && t.name === 'img') { add('imgClose', null, t.line); return; }
+      if (t.k === 'open') {
+        attrIssues(t).forEach((x) => add(x.key, x.vars, t.line));
+        // Ссылка или картинка прямо в body — строчка страницы (как в настоящем браузере).
+        if (!cur && !isList(top())) { cur = { t: 'line', text: '', marks: [], line: t.line }; blocks.push(cur); }
+        else if (!cur) add('listText', { tag: top() }, t.line);
+        const inLi = top() === 'li';
+        if (t.name === 'img') {
+          const sa = attrOf(t, 'src'), aa = attrOf(t, 'alt');
+          imgs.push({ src: sa ? sa.v.trim() : undefined, alt: aa ? aa.v : undefined, line: t.line, inLi });
+          return;
+        }
+        if (top() === 'a') add('aInA', null, t.line);
+        const h = attrOf(t, 'href');
+        link = { href: h ? h.v.trim() : undefined, text: '', line: t.line, inLi };
+        links.push(link);
+        stack.push('a');
+        return;
+      }
+      link = null;
+    }
+    if (t.k === 'doctype' || ((t.k === 'open' || t.k === 'close') && !isBlock(t.name) && !isInline(t.name) && !isList(t.name) && t.name !== 'li')) return;
+    if (t.k === 'text') {
+      if (link) link.text += t.v;
+      if (cur) {
+        cur.text += t.v;
+        stack.filter(isInline).forEach((x) => { cur.marks.push({ tag: x, v: t.v }); });
+      } else if (hasLetters(t.v)) {
+        if (isList(top())) add('listText', { tag: top() }, textLine(t));
+        else if (o.strictText) add('textOutside', null, textLine(t));
+      }
+      return;
+    }
+    if (t.k === 'open') {
+      if (isList(t.name)) {
+        if (cur && !(cur.t === 'line' && !stack.length) && !stack.some(isList)) { add('blockInBlock', { tag: stack.find(isBlock) || top(), next: t.name }, t.line); stack.length = 0; cur = null; }
+        if (cur && cur.t === 'line') cur = null;
+        stack.push(t.name);
+        list = { t: t.name, items: [], line: t.line };
+        lists.push(list);
+        return;
+      }
+      if (t.name === 'li') {
+        if (top() === 'li') {
+          if (bare(idx)) { add('openAgain', { tag: 'li' }, t.line); stack.pop(); cur = null; return; }
+          add('unclosedIn', { tag: 'li', next: 'li' }, t.line); stack.pop();
+        }
+        cur = { text: '', marks: [], line: t.line };
+        if (isList(top())) list.items.push(cur);
+        else { add('liOutside', null, t.line); strays.push(cur); }
+        stack.push('li');
+        return;
+      }
+      if (isBlock(t.name)) {
+        if (isList(top())) { add('listNotClosed', { tag: top(), next: t.name }, t.line); stack.length = 0; list = null; }
+        else if (top() === t.name && stack.length === 1 && bare(idx)) { add('openAgain', { tag: t.name }, t.line); stack.length = 0; cur = null; return; }
+        else if (stack.length) add('blockInBlock', { tag: stack.find(isBlock) || top(), next: t.name }, t.line);
+        stack.length = 0;
+        cur = { t: t.name, text: '', marks: [], line: t.line };
+        blocks.push(cur);
+        stack.push(t.name);
+        return;
+      }
+      if (!cur) add('inlineOutside', { tag: t.name }, t.line);
+      stack.push(t.name);
+      return;
+    }
+    const tp = top();
+    if (tp === t.name) {
+      stack.pop();
+      if (isBlock(t.name) || t.name === 'li') cur = null;
+      if (isList(t.name)) { list = null; cur = null; }
+      return;
+    }
+    if ((tp && isHead(tp) && isHead(t.name)) || (isList(tp) && isList(t.name))) { add('pairMismatch', { a: tp, b: t.name }, t.line); stack.pop(); cur = null; if (isList(tp)) list = null; return; }
+    const at = stack.lastIndexOf(t.name);
+    if (at >= 0) {
+      for (let k = stack.length - 1; k > at; k -= 1) add('unclosedIn', { tag: stack[k], next: t.name }, t.line);
+      stack.length = at;
+      if (isBlock(t.name) || isList(t.name) || t.name === 'li') cur = null;
+      if (isList(t.name)) list = null;
+      return;
+    }
+    add('closeWithoutOpen', { tag: t.name }, t.line);
+  });
+  for (let k = stack.length - 1; k >= 0; k -= 1) add('unclosedEnd', { tag: stack[k] }, null);
+  const first = issues[0];
+  const msg = first ? (first.bad ? first.msg : fillL(FB[first.key], first.vars || {})) : null;
+  const lines = {};
+  issues.forEach((x, k) => { lines[x.line == null ? 'n' + k : x.line] = 1; });
+  return { ok: !issues.length, msg, line: first ? first.line : null, count: Object.keys(lines).length, blocks, lists, strays, links, imgs };
+}
+
+// Страница всегда помещается в окно целиком, без прокрутки (правило эталона):
+// не влезает — шрифт страницы ступеньками уменьшается (не меньше 56 %). Ещё раз —
+// после «штампа» (пока он идёт, страница кажется выше).
+function useFitPage(dep) {
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const page = el && el.closest('.kz-br-page');
+    if (!el || !page) return undefined;
+    const fit = () => {
+      let k = 1;
+      el.style.fontSize = '';
+      while (page.scrollHeight > page.clientHeight + 1 && k > 0.56) { k -= 0.06; el.style.fontSize = k.toFixed(2) + 'em'; }
+    };
+    fit();
+    const tm = setTimeout(fit, 700);
+    if (typeof ResizeObserver === 'undefined') return () => clearTimeout(tm);
+    const ro = new ResizeObserver(() => fit());
+    ro.observe(page);
+    return () => { clearTimeout(tm); ro.disconnect(); };
+  }, [dep]); // eslint-disable-line react-hooks/exhaustive-deps
+  return ref;
+}
+
+// Бумажное фото из файла (практика 5): рваная вырезка с фоном и рисунком.
+// PHOTO_FILES — файлы практики: { 'cat.jpg': { pic, bg, seed } }.
+function PgPhoto({ file }) {
+  const ph = PHOTO_FILES[file];
+  if (!ph) return null;
   return (
-    <PaperBrowser title={title} stamp={flash} tabHl={hl === 'title' || hl === 'head'} pageHl={hl === 'body'} cls="pp-br kz-piece">
-      <div key={'pg' + (flash || 0)} className={'pp-page' + (t ? '' : ' is-empty') + (flash ? ' kz-a-pop' : '')}>
-        {t || (empty ? pick(empty) : ' ')}
+    <span className="pg-photo" data-file={file}>
+      <Cut c={ph.bg} seed={ph.seed} n={9} amp={3} asp={1.35} cls="pg-photo-cut" />
+      <span className={'pg-pic pg-pic-' + ph.pic} aria-hidden="true"><i /><i /><i /></span>
+    </span>
+  );
+}
+// Картинка, как её рисует браузер: файл есть — фото; src нет — пусто (с alt —
+// только текст alt); файла нет — значок сломанной картинки и alt.
+function PgImg({ src, alt }) {
+  const has = typeof src === 'string' && src !== '';
+  if (has && PHOTO_FILES[src]) return <PgPhoto file={src} />;
+  if (!has) return alt ? <span className="pg-alt">{alt}</span> : <span className="pg-noimg" />;
+  return <span className="pg-broken" data-src={src}><i className="pg-broken-ic" aria-hidden="true" />{alt ? <span>{alt}</span> : null}</span>;
+}
+// Кусочки текста с b и i, ссылки (href — синие, нажимаются) и картинки.
+const pgParts = (parts, go) => parts.map((x, k) => {
+  let inner = x.img ? <PgImg src={x.img.src} alt={x.img.alt} /> : (x.i ? <i>{x.s}</i> : x.s);
+  if (x.b && !x.img) inner = <b>{inner}</b>;
+  if (typeof x.href === 'string') {
+    return go ? <button key={k} type="button" className="pg-a" data-href={x.href} onClick={() => go(x.href)}>{inner}</button>
+      : <span key={k} className="pg-a">{inner}</span>;
+  }
+  return <React.Fragment key={k}>{inner}</React.Fragment>;
+});
+const hasText = (ps) => ps.some((x) => x.img || String(x.s || '').trim());
+
+// Страница сайта, на которую ведёт ссылка (практика 4): SITE_PAGES —
+// { 'cave.html': { title, text, pic } }. Файла нет — «Файл не найден».
+function SitePageView({ url, onBack }) {
+  const pick = usePick();
+  const pg = SITE_PAGES[url];
+  if (!pg) return <div className="pg-nf"><span className="pg-nf-ic" aria-hidden="true" /><b>{pick(UI.notFound)}</b><span translate="no">{url}</span></div>;
+  return (
+    <div className="pg-site">
+      <div className="pg-blk pg-h1">{pick(pg.title)}</div>
+      {pg.pic ? <span className={'pg-site-pic pg-site-' + pg.pic} aria-hidden="true"><i /><i /><i /></span> : null}
+      <div className="pg-blk pg-p">{pick(pg.text)}</div>
+      <button type="button" className="pg-a pg-back" onClick={onBack}>{pick(UI.back)}</button>
+    </div>
+  );
+}
+
+// Бумажный браузер урока 1 со страницей уроков 2–5. Классы pg- (pp-doc занят
+// строкой DOCTYPE в коде с полями). По ссылке можно перейти: открывается
+// страница файла из href, адрес и вкладка меняются, стрелка «назад» возвращает.
+// Код поменялся — снова своя страница.
+function PageView({ title, blocks, empty, flash, hl, url }) {
+  const pick = usePick();
+  const list = blocks || [];
+  const key = JSON.stringify(list);
+  const [at, setAt] = useState(null);
+  const [nav, setNav] = useState(0);
+  useEffect(() => { setAt(null); }, [key]);
+  const ref = useFitPage(key + (flash || 0) + (at || ''));
+  const go = (href) => { const h = String(href || '').trim(); setAt(h || null); setNav((x) => x + 1); sfx('pop', true); };
+  const back = () => { setAt(null); setNav((x) => x + 1); sfx('tap', true); };
+  const away = at != null;
+  const sp = away ? SITE_PAGES[at] : null;
+  const tab = away ? (sp ? pick(sp.title) : at) : title;
+  return (
+    <PaperBrowser title={tab} url={away ? at : (url || 'index.html')} stamp={away || nav ? nav + (flash || 0) : flash} urlHl={away}
+      onBack={away ? back : undefined} tabHl={hl === 'title'} pageHl={hl === 'body'} cls="pp-br kz-piece">
+      <div ref={ref} key={'pg' + (flash || 0) + ':' + nav} className={'pg-doc' + (list.length || away ? '' : ' is-empty') + (flash || nav ? ' kz-a-pop' : '')}>
+        {away ? <SitePageView url={at} onBack={back} /> : list.length ? list.map((bk, j) => {
+          if (bk.kids) {
+            let n = 0;
+            const rows = [];
+            bk.kids.forEach((kid, q) => {
+              if (kid.li) { n += 1; rows.push(<div key={q} className="pg-li"><span className="pg-mk" aria-hidden="true">{bk.t === 'ol' ? n + '.' : '•'}</span><span>{kid.parts.length && hasText(kid.parts) ? pgParts(kid.parts, go) : ' '}</span></div>); }
+              else if (kid.p) rows.push(<div key={q} className={'pg-blk pg-' + (kid.t || 'p')}>{pgParts(kid.parts, go)}</div>);
+              else rows.push(<div key={q} className="pg-txt">{pgParts(kid.parts, go)}</div>);
+            });
+            return <div key={j} className={'pg-list pg-' + bk.t}>{rows}</div>;
+          }
+          if (bk.t === 'stray') return <div key={j} className="pg-li pg-stray"><span className="pg-mk" aria-hidden="true">•</span><span>{pgParts(bk.parts, go)}</span></div>;
+          return <div key={j} className={'pg-blk pg-' + bk.t + (bk.inh ? ' pg-in-' + bk.inh : '')}>{pgParts(bk.parts, go)}</div>;
+        }) : (empty ? pick(empty) : ' ')}
       </div>
     </PaperBrowser>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// БУМАЖНАЯ УЛИЦА. Дом — вырезки: стены, крыша, окно, дверь. Ждёт — выцвел,
-// покосился от ветра, окно тёмное; готов — свой цвет, стоит ровно, окно
-// светится, галочка. Свой дом до постройки — пунктирный план. У пекарни и
-// своего дома на вывеске — название, которое придумал ученик.
+// ТРОПА ПОХОДА — карта продвижения: пять привалов на бумажной тропе. Привал —
+// бумажный флажок-круг с мини-списком (точки или номера). Ждёт — выцвел и
+// покосился, список размыт; готов — свой цвет, ровно, галочка. Свой список до
+// написания — пунктирный круг; потом — его название.
+// (houseLit / houseName / StreetStrip / StreetMap — устройство карты 01p.)
 // ─────────────────────────────────────────────────────────────────────────────
-const ROOF = 'polygon(50% 0%, 58% 6%, 74% 22%, 88% 38%, 100% 52%, 96% 100%, 50% 96%, 4% 100%, 0% 52%, 14% 36%, 30% 20%, 42% 7%)';
 const houseLit = (store, i) => !!(store.get('t' + (i + 1)) || {}).solved;
 const houseName = (store, i, pick) => {
-  const own = i === 0 || i === HOME ? ((store.get('t' + (i + 1)) || {}).result || {}).title : null;
+  const own = i === HOME ? ((store.get('t' + (i + 1)) || {}).result || {}).title : null;
   return own && houseLit(store, i) ? own : pick(STREET[i].name);
 };
-// Наклон дома, который разметал ветер: у каждого свой; готовый дом стоит ровно.
-const TILT = [-7, 5, -5, 7, 0];
-function PaperHouse({ i, lit, cur, name, size, pop, whole }) {
+const TILT = [-8, 6, -6, 8, 0];
+function Clipping({ i, lit, cur, name, size, pop, whole }) {
   const h = STREET[i];
   const home = i === HOME;
   const on = lit || (whole && !home);
   const ghost = home && !lit;
   const wait = !on && !home;
   return (
-    <span className={'pp-house' + (on ? ' is-lit' : '') + (wait ? ' is-wait' : '') + (cur ? ' is-cur' : '') + (ghost ? ' is-ghost' : '') + (pop ? ' kz-a-stamp' : '') + (size ? ' is-' + size : '')}
+    <span className={'pp-house pp-stop' + (on ? ' is-lit' : '') + (wait ? ' is-wait' : '') + (cur ? ' is-cur' : '') + (ghost ? ' is-ghost' : '') + (pop ? ' kz-a-stamp' : '') + (size ? ' is-' + size : '')}
       style={{ '--hc': h.c, '--tilt': TILT[i % TILT.length] + 'deg' }}>
       <span className="pp-h-art" aria-hidden="true">
-        {ghost ? <span className="pp-h-plan" /> : (
-          <>
-            <Cut c={h.c} clip={ROOF} cls="pp-h-roof" />
-            <Cut c="#FBF6EA" seed={80 + i} n={6} amp={4} asp={0.9} cls="pp-h-wall" />
-            <Cut c={on ? '#FFD46B' : '#5B6070'} seed={90 + i} n={4} amp={8} cls="pp-h-win" />
-            <Cut c={h.c} seed={100 + i} n={4} amp={8} asp={0.6} cls="pp-h-door" />
-          </>
-        )}
+        {ghost ? <span className="pp-stop-plan" /> : stopArt(h, i, on)}
       </span>
       {lit ? <span className="pp-h-ok"><Icon name="check" size={9} /></span> : null}
       {name ? <span className="pp-h-name">{name}</span> : null}
@@ -8597,8 +8802,8 @@ function PaperHouse({ i, lit, cur, name, size, pop, whole }) {
   );
 }
 
-// Полоса улицы над заданием: восемь домов и подпись текущего. mini — для шапки
-// телефона: только предыдущий, текущий и следующий дом, без подписи.
+// Полоса тропы над заданием: пять привалов и подпись текущего. mini — для шапки
+// телефона: только предыдущий, текущий и следующий, без подписи.
 function StreetStrip({ cur, pop, mini }) {
   const pick = usePick();
   const store = useStore();
@@ -8610,7 +8815,7 @@ function StreetStrip({ cur, pop, mini }) {
         {shown.map((i) => (
           <span key={STREET[i].id} role="listitem" title={nm(i)}
             aria-label={nm(i) + ' — ' + pick(houseLit(store, i) ? UI.works : UI.off) + (i === cur ? ', ' + pick(UI.now) : '')}>
-            <PaperHouse i={i} lit={houseLit(store, i)} cur={i === cur} size="s" pop={pop && i === cur} />
+            <Clipping i={i} lit={houseLit(store, i)} cur={i === cur} size="s" pop={pop && i === cur} />
           </span>
         ))}
       </div>
@@ -8621,22 +8826,23 @@ function StreetStrip({ cur, pop, mini }) {
   );
 }
 
-// Большая улица — на вступлении и в финале: дома стоят на бумажной мостовой.
-// whole — улица до ветра (хук): все дома целые; blown — ветер только что
-// прошёл: с домов слетают бумажки-вывески.
+// Большая тропа — на вступлении и в финале: привалы вдоль пунктирной тропинки.
+// whole — до дождя (хук): все привалы целые; blown — дождь только что прошёл:
+// с флажков слетают капли-клочки.
 function StreetMap({ glow, whole, blown }) {
   const pick = usePick();
   const store = useStore();
   return (
-    <div className={'pp-street kz-piece' + (glow ? ' is-glow' : '') + (blown ? ' is-blown' : '')} role="list" aria-label={pick(UI.map)}>
-      <Cut c="#E6DCC6" seed={120} n={20} amp={10} asp={14} cls="pp-road" />
+    <div className={'pp-street pp-trail kz-piece' + (glow ? ' is-glow' : '') + (blown ? ' is-blown' : '')} role="list" aria-label={pick(UI.map)}>
+      <Cut c="#DCE8CF" seed={120} n={20} amp={5} asp={6} cls="pp-road pp-board" />
+      <span className="pp-trail-path" aria-hidden="true" />
       {STREET.map((s, i) => {
         const lit = houseLit(store, i);
         return (
           <span key={s.id} role="listitem" className="pp-street-h" style={{ '--dl': (glow ? 0.15 + i * 0.12 : i * 0.06) + 's', '--i': i }}
             aria-label={houseName(store, i, pick) + ' — ' + pick(lit || (whole && i !== HOME) ? UI.works : UI.off)}>
-            <PaperHouse i={i} lit={lit} whole={whole} name={houseName(store, i, pick)} size="l" />
-            {blown && i !== HOME ? <Cut c="var(--kz-piece)" seed={140 + i} n={5} amp={10} asp={2.6} cls="pp-scrap" /> : null}
+            <Clipping i={i} lit={lit} whole={whole} name={houseName(store, i, pick)} size="l" />
+            {blown && i !== HOME ? <Cut c="#7FB3D5" round seed={140 + i} n={5} amp={10} cls="pp-scrap pp-drop" /> : null}
           </span>
         );
       })}
@@ -8647,36 +8853,37 @@ function StreetMap({ glow, whole, blown }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // НАГЛЯДНАЯ ПОМОЩЬ — видна сразу, подписана названиями тегов.
 // ─────────────────────────────────────────────────────────────────────────────
-// Три места строки или блока: открывающий тег · название (текст) · закрывающий.
-function Slots3({ mid }) {
+// Как должно выглядеть в браузере (t3): список с точками или номерами.
+function ListTarget({ kind, items }) {
   const pick = usePick();
   return (
-    <div className="pp-slots kz-piece" aria-label={pick(UI.sample)}>
-      {['open', mid || 'name', 'close'].map((k, n) => (
-        <span key={k} className={'pp-slot is-' + k}><b>{n + 1}</b>{pick(UI.part[k])}</span>
-      ))}
+    <div className="pp-target kz-piece">
+      <span className="pp-target-h">{pick(UI.target)}</span>
+      <span className="pp-target-s">
+        {items.map((x, k) => <span key={k} className="pp-target-li"><i aria-hidden="true">{kind === 'ol' ? (k + 1) + '.' : '•'}</i>{x}</span>)}
+      </span>
     </div>
   );
 }
-// Чертёж своего дома (t5): дерево частей; html уже есть, head с title и body — пишет ученик.
-function Blueprint() {
+// Сколько ещё сломанных строк (t4): живой счётчик — условие видно.
+function FixLeft({ n }) {
   const pick = usePick();
-  const row = (pre, tag, note, given) => (
-    <div className={'pp-bp-row' + (given ? ' is-done' : ' is-cur')}>
-      <span className="pp-bp-pre" aria-hidden="true">{pre}</span>
-      <span className="pp-bp-tag" style={{ '--c': TAGC[tag] }}>{tag}</span>
-      {note ? <span className="pp-bp-note">— {pick(note)}</span> : null}
-      {given ? <span className="pp-bp-ok" title={pick(UI.given)}><Icon name="check" size={11} /></span> : null}
+  return (
+    <div className={'pp-left kz-piece' + (n ? '' : ' is-ok')} aria-live="polite">
+      {n ? pick(fillL(UI.left, { n })) : <><Icon name="check" size={13} />{pick(UI.allFixed)}</>}
     </div>
   );
+}
+// Что должно быть в своей работе (t5) — галочки загораются по ходу набора.
+function Checklist({ items }) {
+  const pick = usePick();
   return (
-    <div className="pp-bp kz-piece" translate="no">
-      <div className="pp-bp-tree">
-        {row('', 'html', UI.given, true)}
-        {row('├─ ', 'head')}
-        {row('│  └─ ', 'title', UI.bpTitle)}
-        {row('└─ ', 'body', UI.bpBody)}
-      </div>
+    <div className="pp-check kz-piece">
+      {items.map((it) => (
+        <span key={it.k} className={'pp-check-i' + (it.ok ? ' is-ok' : '')}>
+          <span className="pp-check-box">{it.ok ? <Icon name="check" size={11} /> : null}</span>{pick(it.text)}
+        </span>
+      ))}
     </div>
   );
 }
@@ -8928,17 +9135,17 @@ function Workbench({ spec, st, setSt, inputRef, fx, aids, tools, flash, onPick }
         hl={f.hl} led={f.led} titleRef={inputRef} bodyRef={inputRef} focusBody={!!spec.focusBody} ph={spec.ph} />
     );
   } else if (spec.kind === 'gap' && st.at == null) {
-    const pg = pageOf(spec.lines.join('\n'));
+    const pg = renderDoc(spec.lines.join('\n'));
     title = pg.title;
-    text = pg.text;
+    text = pg.blocks;
     editor = <GapPick lines={spec.lines} gaps={spec.gaps} onPick={onPick} led={f.ledGap} miss={st.miss} />;
   } else {
     const before = spec.kind === 'gap' ? spec.lines.slice(0, st.at + 1) : spec.before;
     const after = spec.kind === 'gap' ? spec.lines.slice(st.at + 1) : spec.after;
     const full = (before || []).concat([st.code]).concat(after || []).join('\n');
-    const pg = pageOf(full);
+    const pg = renderDoc(full);
     title = pg.title;
-    text = pg.text;
+    text = pg.blocks;
     editor = (
       <CodeEditor value={st.code} onChange={(v) => setSt(Object.assign({}, st, { code: v }))}
         before={before} after={after} single={spec.kind === 'line' || spec.kind === 'gap'} ind={spec.ind}
@@ -8948,7 +9155,7 @@ function Workbench({ spec, st, setSt, inputRef, fx, aids, tools, flash, onPick }
   return (
     <div className={'op-work' + (spec.big ? ' is-big' : '')}>
       <div className="op-side">
-        <PageView title={title} text={text} empty={spec.empty} flash={flash} hl={f.hl} />
+        <PageView title={title} blocks={spec.kind === 'fields' ? null : text} empty={spec.empty} flash={flash} hl={f.hl} url={spec.url} />
         {aids || null}
       </div>
       <div className="op-main">
@@ -9079,138 +9286,296 @@ function TaskScreen({ p, make }) {
 }
 
 // =============================================================================
-// ХУК, ПЯТЬ ЗАДАНИЙ, ВЫВОД И КОРЕНЬ ПРАКТИКИ «БУМАЖНАЯ УЛИЦА»
-// Семь слайдов (заказчик, 22.10.2026): задания идут от самого лёгкого к
-// сложному — слово между тегами → один тег → блок из трёх строк → найти место
-// в чужом коде → своя страница внутри готового html.
+// ХУК, ПЯТЬ ЗАДАНИЙ, ВЫВОД И КОРЕНЬ ПРАКТИКИ «ВЫСТАВКА»
+// Семь слайдов (заказчик, 22.10.2026). У каждого задания своя механика:
+// дописать src → исправить имена файлов → написать подписи alt (их «читает»
+// программа чтения экрана) → найти и починить два тега (счётчик) → своя
+// галерея с нуля (живой список условий).
 // =============================================================================
 const DOCTYPE = '<!DOCTYPE html>';
-const headWith = (title) => [DOCTYPE, '<html>', '  <head>', '    <title>' + title + '</title>', '  </head>'];
-const bodyWith = (text) => ['  <body>', '    ' + text, '  </body>', '</html>'];
-const HEAD_OPEN = [DOCTYPE, '<html>', '  <head>'];
-const afterTitle = (text) => ['  </head>'].concat(bodyWith(text));
+// Готовая рамка документа (урок 1): head с title и открытый body; extra — строки в body.
+const frame = (title, extra) => [DOCTYPE, '<html>', '  <head>', '    <title>' + title + '</title>', '  </head>', '  <body>'].concat(extra || []);
+const END = ['  </body>', '</html>'];
+const same = (a, b) => normName(a) === normName(b);
+// Разбор нашёл поломку записи, пар или атрибутов — его фраза; line — где она.
+const fragFail = (r) => ({ ok: false, msg: r.msg, cat: 'tag', line: r.line });
+const imgCode = (src, alt) => '<img' + (src != null ? ' src="' + src + '"' : '') + (alt != null ? ' alt="' + alt + '"' : '') + '>';
+const isFile = (s) => !!PHOTO_FILES[String(s || '').trim()];
 
-// Поле в строке кода (t1): пишется только слово, теги уже стоят.
-function checkTitleField(st) {
-  if (hasTags(st.title)) return fb('fieldTags', null, 'head');
-  if (!st.title.trim()) return fb('titleBlank', null, 'head');
-  if (!hasLetters(st.title)) return fb('fieldLetters', null, 'head');
-  return { ok: true, result: { title: squash(st.title), text: squash(st.body) } };
+// Карта: рама на стене. Готова — в ней картинка; ждёт — пустая, со знаком «?».
+function stopArt(h, i, on) {
+  return (
+    <>
+      <Cut c="#1F2A44" seed={80 + i} n={8} amp={2.4} cls="pp-stop-disc pp-frame" />
+      <span className={'pp-frame-in' + (on ? '' : ' is-mess')}>{on && h.pic ? <PgPhoto file={h.pic} /> : on ? <b className="is-star" aria-hidden="true">★</b> : <b aria-hidden="true">?</b>}</span>
+    </>
+  );
 }
 
-// Образцы третьей ступени своего дома — по части, где затруднение; всегда для другого дома.
-const FRAG = {
-  head: (pick) => '<head>\n  <title>' + pick(TXT.workshop) + '</title>\n</head>',
-  body: (pick) => '<body>\n  ' + pick(TXT.bikeText) + '\n</body>'
-};
-const fragCat = (r) => (r.ok || r.cat === 'body' ? 'body' : 'head');
+// Файлы картинок — видны сразу (наглядная помощь): маленькое фото и имя файла.
+function FileShelf({ hl }) {
+  const pick = usePick();
+  return (
+    <div className="pp-files pp-shelf kz-piece" aria-label={pick(UI.files)}>
+      <span className="pp-files-h">{pick(UI.files)}</span>
+      <span className="pp-shelf-row">
+        {FILE_LIST.map((f) => (
+          <span key={f} className={'pp-shelf-f' + (hl === f ? ' is-hl' : '')}><PgPhoto file={f} /><code translate="no">{f}</code></span>
+        ))}
+      </span>
+    </div>
+  );
+}
+// Что скажет программа чтения экрана — alt каждой картинки на странице (t3).
+function ReaderList({ code }) {
+  const pick = usePick();
+  const imgs = checkFrag(code).imgs;
+  return (
+    <div className="pp-reader kz-piece" aria-live="polite">
+      <span className="pp-files-h">{pick(UI.reader)}</span>
+      {imgs.map((I, k) => (
+        <span key={k} className={'pp-reader-l' + (I.alt && hasLetters(I.alt) ? ' is-ok' : '')}>
+          <i className="pp-spk" aria-hidden="true" />{I.alt && I.alt.trim() ? '«' + I.alt + '»' : pick(UI.noAlt)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// t1 — у картинки появился нужный файл, alt прежний.
+function checkAddSrc(code, want, alt) {
+  const r = checkFrag(code);
+  if (!r.ok) return fragFail(r);
+  if (!r.imgs.length) return fb('needImg');
+  if (r.imgs.length > 1) return fb('oneImg');
+  const I = r.imgs[0];
+  if (I.src === undefined) return fb('noSrc');
+  if (!I.src) return fb('srcEmpty');
+  if (I.src !== want) return fb('srcWrong', { src: I.src, want });
+  if (!same(I.alt, alt)) return fb('altKeep', { w: alt });
+  return { ok: true, result: {} };
+}
+// t2, t4 — у каждой картинки (по её alt) свой файл.
+function checkImgMap(r, map) {
+  if (r.imgs.length !== map.length) return fb('twoImgs');
+  for (let k = 0; k < map.length; k += 1) {
+    const m = map[k];
+    const I = r.imgs.find((x) => same(x.alt, m.alt));
+    if (!I) return fb('keepImgs');
+    if (I.src === undefined) return fb('noSrc');
+    if (!I.src) return fb('srcEmpty');
+    if (I.src !== m.src) return fb(isFile(I.src) ? 'imgTo' : 'imgNoFile', { alt: m.alt, src: I.src, want: m.src });
+  }
+  return { ok: true, result: {} };
+}
+function checkNames(code, map) {
+  const r = checkFrag(code, { strictText: true });
+  if (!r.ok) return fragFail(r);
+  return checkImgMap(r, map);
+}
+// t3 — у каждой картинки описание словами: не пусто, не имя файла, не «картинка».
+function altIssue(I) {
+  if (I.alt === undefined) return fb('needAlt', { src: I.src });
+  const a = String(I.alt).trim();
+  if (!a) return fb('altEmpty', { src: I.src });
+  if (/\.(jpe?g|png|gif)\b/i.test(a)) return fb('altFile');
+  if (TXT.generic.indexOf(normName(a)) >= 0) return fb('altGeneric', { w: a });
+  if (!hasLetters(a)) return fb('altEmpty', { src: I.src });
+  return null;
+}
+function checkAlts(code, srcs) {
+  const r = checkFrag(code, { strictText: true });
+  if (!r.ok) return fragFail(r);
+  if (r.imgs.length !== srcs.length) return fb('twoImgs');
+  for (let k = 0; k < srcs.length; k += 1) {
+    const I = r.imgs.find((x) => x.src === srcs[k]);
+    if (!I) return fb('keepSrc');
+    const bad = altIssue(I);
+    if (bad) return bad;
+  }
+  return { ok: true, result: {} };
+}
+const brokenLeft = (code) => { const r = checkFrag(code, { strictText: true }); return r.ok ? 0 : Math.max(1, r.count); };
+
+// t5 — своя галерея: h1, p, хотя бы две картинки из файлов, у каждой alt.
+function galOf(code) {
+  const r = checkFrag(code, { strictText: true });
+  const h1 = r.blocks.find((x) => x.t === 'h1' && hasLetters(x.text));
+  const p = r.blocks.find((x) => x.t === 'p' && hasLetters(x.text));
+  const files = r.imgs.filter((I) => isFile(I.src));
+  const alts = r.imgs.length > 0 && r.imgs.every((I) => !altIssue(I));
+  return { r, h1, p, n: files.length, alts, closed: r.ok && (r.blocks.length > 0 || r.lists.length > 0) };
+}
+function checkOwn(code) {
+  if (!String(code || '').trim()) return fb('artEmpty', null, 'h1');
+  const a = galOf(code);
+  if (!a.r.ok) return fragFail(a.r);
+  if (!a.r.blocks.some((x) => x.t === 'h1')) return fb('needH1', null, 'h1');
+  if (!a.h1) return fb('galHeadEmpty', null, 'h1');
+  if (!a.p) return fb('needP', null, 'p');
+  if (a.r.imgs.length < 2) return fb('needTwo', null, 'img');
+  const badF = a.r.imgs.find((I) => !isFile(I.src));
+  if (badF) return badF.src ? fb('noFile', { src: badF.src }, 'file') : fb('noSrc', null, 'file');
+  const badA = a.r.imgs.find((I) => altIssue(I));
+  if (badA) return Object.assign(altIssue(badA), { cat: 'alt' });
+  return { ok: true, result: { title: squash(a.h1.text), items: a.r.imgs.map((I) => squash(I.alt)), images: a.r.imgs.map((I) => ({ src: I.src, alt: squash(I.alt) })) } };
+}
 
 // =============================================================================
-// ПЯТЬ ЗАДАНИЙ. Каждое — описание: что в редакторе, как проверить, какие
-// подсказки и наглядная помощь, какая дополнительная задача.
-// num — номер задания и дом улицы, который оно чинит.
+// ПЯТЬ ЗАДАНИЙ. num — номер задания и рама на стене, куда оно возвращает картинку.
 // =============================================================================
-// 1 · Пекарня — своё название между готовыми тегами title.
+// 1 · Кот — у картинки есть alt, но нет src: дописать src="cat.jpg".
 function cfgT1(pick) {
+  const top = pick(TXT.top);
+  const before = frame(top, ['    <h2>' + pick(TXT.hallH) + '</h2>']);
+  const cat = pick(TXT.cat), dog = pick(TXT.dog);
   return {
-    id: 't1', num: 1, kind: 'fields', C: C.t1,
-    spec: { kind: 'fields', editBody: false, ph: { title: L3('nom', 'название', 'name') } },
-    init: () => ({ title: '', body: pick(TXT.bakeryText) }),
-    check: checkTitleField,
+    id: 't1', num: 1, kind: 'line', C: C.t1,
+    spec: { kind: 'line', before, after: END, ind: 4, url: 'gallery.html' },
+    init: () => ({ code: imgCode(null, cat) }),
+    check: (st) => checkAddSrc(st.code, 'cat.jpg', cat),
     hint: (lv) => ({ text: C.t1.hints[lv - 1] }),
-    fx: (rec) => (rec.solved ? null : { hl: rec.hint >= 2 ? 'head' : null, led: rec.hint >= 3 ? 'title' : null }),
+    fx: (rec) => (rec.solved ? null : { led: rec.hint >= 3 }),
+    aids: <FileShelf hl="cat.jpg" />,
+    h3: () => <CodeSample code={imgCode('sun.png', pick(TXT.sun))} />,
     drill: { make: () => ({
-      order: C.t1.drill, spec: { kind: 'fields', editBody: false },
-      init: () => ({ title: '', body: pick(TXT.bikeText) }), check: checkTitleField
+      order: C.t1.drill,
+      spec: { kind: 'line', before, after: END, ind: 4, url: 'gallery.html' },
+      init: () => ({ code: imgCode(null, dog) }), check: (st) => checkAddSrc(st.code, 'dog.jpg', dog),
+      aids: <FileShelf hl="dog.jpg" />
     }) }
   };
 }
 
-// 2 · Почта — дописать </title>. Пока его нет, браузер честно уносит на вкладку
-// весь код после <title>.
-function cfgT2(pick, store, lang) {
+// 2 · Попугай и рыбка — опечатки в именах файлов: сломанные картинки.
+function cfgT2(pick) {
+  const top = pick(TXT.top);
+  const before = frame(top, ['    <h2>' + pick(TXT.hallH) + '</h2>']);
+  const par = pick(TXT.parrot), fish = pick(TXT.fish), dog = pick(TXT.dog), cat = pick(TXT.catS);
+  const map = [{ alt: par, src: 'parrot.png' }, { alt: fish, src: 'fish.jpg' }];
+  const map2 = [{ alt: dog, src: 'dog.jpg' }, { alt: cat, src: 'cat.jpg' }];
   return {
-    id: 't2', num: 2, kind: 'line', C: C.t2,
-    spec: { kind: 'line', before: HEAD_OPEN, after: afterTitle(pick(TXT.postText)), ind: 4 },
-    init: () => ({ code: '<title>' + pick(STREET[1].name) }),
-    check: (st) => checkLine(st.code, STREET[1].name, lang),
+    id: 't2', num: 2, kind: 'block', C: C.t2,
+    spec: { kind: 'block', before, after: END, ind: 4, url: 'gallery.html' },
+    init: () => ({ code: [imgCode('parot.png', par), imgCode('fish.jpeg', fish)].join('\n') }),
+    check: (st) => checkNames(st.code, map),
     hint: (lv) => ({ text: C.t2.hints[lv - 1] }),
     fx: (rec) => (rec.solved ? null : { led: rec.hint >= 3 }),
-    h3: () => <CodeSample code={'<body>\n  …\n</body>'} />,
+    aids: <FileShelf />,
+    h3: () => <CodeSample code={imgCode('parrot.png', par)} />,
     drill: { make: () => ({
       order: C.t2.drill,
-      spec: { kind: 'line', before: HEAD_OPEN, after: afterTitle(pick(TXT.stopText)), ind: 4 },
-      init: () => ({ code: '<title>' + pick(TXT.stop) }), check: (st) => checkLine(st.code, TXT.stop, lang)
+      spec: { kind: 'block', before, after: END, ind: 4, url: 'gallery.html' },
+      init: () => ({ code: [imgCode('dgo.jpg', dog), imgCode('cat.png', cat)].join('\n') }), check: (st) => checkNames(st.code, map2),
+      aids: <FileShelf />
     }) }
   };
 }
 
-// 3 · Кинотеатр — блок body со своим текстом; схема «1 · 2 · 3» видна сразу.
+// 3 · Подписи — две картинки без alt: описания словами. Рядом — что «скажет»
+// программа чтения экрана.
 function cfgT3(pick) {
+  const top = pick(TXT.top);
+  const before = frame(top, ['    <h2>' + pick(TXT.hallH) + '</h2>']);
   return {
     id: 't3', num: 3, kind: 'block', C: C.t3,
-    spec: { kind: 'block', before: headWith(pick(STREET[2].name)), after: ['</html>'], ind: 2, empty: C.t3.empty },
-    init: () => ({ code: '' }),
-    check: (st) => checkBlock(st.code),
+    spec: { kind: 'block', before, after: END, ind: 4, url: 'gallery.html' },
+    init: () => ({ code: [imgCode('parrot.png'), imgCode('sun.png')].join('\n') }),
+    check: (st) => checkAlts(st.code, ['parrot.png', 'sun.png']),
     hint: (lv) => ({ text: C.t3.hints[lv - 1] }),
     fx: (rec) => (rec.solved ? null : { led: rec.hint >= 3 }),
-    orderExtra: <Slots3 mid="text" />,
-    h3: () => <CodeSample code={'<body>\n  ' + pick(TXT.bikeText) + '\n</body>'} />,
+    aids: (rec, st) => <ReaderList code={st.code} />,
+    h3: () => <CodeSample code={imgCode('dog.jpg', pick(TXT.dog))} />,
     drill: { make: () => ({
       order: C.t3.drill,
-      spec: { kind: 'block', before: headWith(pick(TXT.pool)), after: ['</html>'], ind: 2, empty: C.t3.empty },
-      init: () => ({ code: '' }), check: (st) => checkBlock(st.code), orderExtra: <Slots3 mid="text" />
+      spec: { kind: 'block', before, after: END, ind: 4, url: 'gallery.html' },
+      init: () => ({ code: imgCode('flower.jpg') }), check: (st) => checkAlts(st.code, ['flower.jpg']),
+      aids: (d, st) => <ReaderList code={st.code} />
     }) }
   };
 }
 
-// 4 · Школа — нажать место, где кончается head, и вписать </head>.
+// 4 · Витрина — scr вместо src и href у img: на странице только тексты alt.
 function cfgT4(pick) {
-  const lines = [DOCTYPE, '<html>', '  <head>', '    <title>' + pick(STREET[3].name) + '</title>',
-    '  <body>', '    ' + pick(TXT.schoolText), '  </body>', '</html>'];
-  const m = C.t4.miss;
-  const dlines = headWith(pick(TXT.cafe)).concat(['  <body>', '    ' + pick(TXT.cafeText), '</html>']);
-  const dm = C.t4.drillMiss;
+  const top = pick(TXT.top);
+  const before = frame(top, ['    <h2>' + pick(TXT.hallH) + '</h2>']);
+  const fish = pick(TXT.fish), dog = pick(TXT.dog), cat = pick(TXT.catS), sun = pick(TXT.sun);
+  const map = [{ alt: fish, src: 'fish.jpg' }, { alt: dog, src: 'dog.jpg' }];
+  const map2 = [{ alt: cat, src: 'cat.jpg' }, { alt: sun, src: 'sun.png' }];
+  const lineOf = (code) => { const r = checkFrag(code, { strictText: true }); return r.ok || r.line == null ? null : before.length + r.line; };
   return {
-    id: 't4', num: 4, kind: 'gap', C: C.t4,
-    spec: { kind: 'gap', lines, gaps: [1, 2, 3, 4, 5, 6], ind: 2, bars: true },
-    init: () => ({ at: null, code: '', miss: null }),
-    pick: (i) => (i === 3 ? { ok: true, say: C.t4.picked } : { ok: false, msg: i < 2 ? m.before : i === 2 ? m.inside : m.after }),
-    orderOf: (st) => (st.at == null ? C.t4.order : C.t4.order2),
-    check: (st) => (st.at == null ? fb('pickFirst', { tag: 'head' }, 'head') : checkCloseTag(st.code, 'head')),
-    hint: (lv) => ({ text: C.t4.hints[lv - 1] }),
-    fx: (rec) => (rec.solved ? null : { ledGap: rec.hint >= 3 && rec.st.at == null ? 3 : null, led: rec.hint >= 3 && rec.st.at != null }),
+    id: 't4', num: 4, kind: 'block', C: C.t4,
+    spec: { kind: 'block', before, after: END, ind: 4, url: 'gallery.html' },
+    init: () => ({ code: ['<img scr="fish.jpg" alt="' + fish + '">', '<img href="dog.jpg" alt="' + dog + '">'].join('\n') }),
+    check: (st) => checkNames(st.code, map),
+    hint: (lv, st) => {
+      if (lv !== 2) return { text: C.t4.hints[lv - 1] };
+      const at = lineOf(st.code);
+      if (at != null) return { text: fillL(C.t4.hints[1], { n: at + 1 }) };
+      if (brokenLeft(st.code)) return { text: C.t4.hintTags };
+      return { text: checkNames(st.code, map).ok ? C.t4.hintLine : C.t4.hintKeep };
+    },
+    fx: (rec) => (rec.solved ? null : { markLine: rec.hint >= 2 ? lineOf(rec.st.code) : null }),
+    aids: (rec, st) => <FixLeft n={brokenLeft(st.code)} />,
+    h3: () => <CodeSample code={[imgCode('cat.jpg', cat), imgCode('sun.png', sun)].join('\n')} />,
     drill: { make: () => ({
       order: C.t4.drill,
-      orderOf: (st) => (st.at == null ? C.t4.drill : C.t4.drill2),
-      spec: { kind: 'gap', lines: dlines, gaps: [4, 5, 6], ind: 2, bars: true },
-      init: () => ({ at: null, code: '', miss: null }),
-      pick: (i) => (i === 6 ? { ok: true, say: C.t4.drill2 } : { ok: false, msg: i === 4 ? dm.before : dm.inside }),
-      check: (st) => (st.at == null ? fb('pickFirst', { tag: 'body' }, 'body') : checkCloseTag(st.code, 'body'))
+      spec: { kind: 'block', before, after: END, ind: 4, url: 'gallery.html' },
+      init: () => ({ code: ['<img sr="cat.jpg" alt="' + cat + '">', '<img src="sun.png" alt="' + sun + '"></img>'].join('\n') }),
+      check: (st) => checkNames(st.code, map2),
+      aids: (d, st) => <FixLeft n={brokenLeft(st.code)} />
     }) }
   };
 }
 
-// 5 · Свой дом — внутри готового html: head с title (своё название) и body
-// со своим текстом. Редактор во всё свободное место; чертёж виден сразу.
+// 5 · Своя галерея — с нуля внутри body: h1, p и две картинки с src и alt.
+// Список условий загорается по ходу набора; редактор во всё свободное место.
 function cfgT5(pick) {
+  const top = pick(TXT.top);
+  const before = frame(top);
+  const items = (code) => {
+    const a = galOf(code);
+    return [
+      { k: 'h1', ok: !!a.h1, text: UI.needH1 },
+      { k: 'p', ok: !!a.p, text: UI.needP },
+      { k: 'n', ok: a.n >= 2, text: UI.need2 },
+      { k: 'alt', ok: a.n >= 1 && a.alts, text: UI.needAlts },
+      { k: 'cl', ok: a.closed, text: UI.needClosed }
+    ];
+  };
   return {
-    id: 't5', num: 5, kind: 'doc', C: C.t5,
-    spec: { kind: 'doc', big: true, bars: true },
-    init: () => ({ code: [DOCTYPE, '<html>', '  ', '</html>'].join('\n') }),
-    check: (st) => checkDoc(st.code),
-    hint: (lv, st) => {
-      if (lv === 1) return { text: C.t5.hints[0] };
-      const r = checkDoc(st.code);
-      if (lv === 2) return { text: !r.ok && C.house.hint2[r.cat] ? C.house.hint2[r.cat] : C.t5.hints[1] };
-      return { text: C.t5.hints[2], cat: fragCat(r) };
+    id: 't5', num: 5, kind: 'block', C: C.t5,
+    spec: { kind: 'block', before, after: END, ind: 4, big: true, empty: C.t5.empty, url: 'gallery.html' },
+    init: () => ({ code: '' }),
+    check: (st) => {
+      const r = checkOwn(st.code);
+      if (!r.ok) return r;
+      const html = before.concat(st.code.split('\n').map((l) => '    ' + l)).concat(END).join('\n');
+      const pg = renderDoc(html);
+      return { ok: true, result: Object.assign({}, r.result, { html, page: pg.title, blocks: pg.blocks }) };
     },
-    orderExtra: <Blueprint />,
-    h3: (rec) => <CodeSample code={FRAG[rec.hcat || 'head'](pick)} />,
+    hint: (lv, st) => {
+      if (lv !== 2) return { text: C.t5.hints[lv - 1] };
+      const r = checkOwn(st.code);
+      return { text: C.t5.hint2[r.ok ? 'tag' : (r.cat || 'tag')] || C.t5.hints[1] };
+    },
+    fx: (rec) => (rec.solved ? null : { led: rec.hint >= 3 }),
+    aids: (rec, st) => <><Checklist items={items(st.code)} /><FileShelf /></>,
+    h3: () => <CodeSample code={'<h1>' + pick(TXT.galH) + '</h1>\n<p>' + pick(TXT.galP) + '</p>\n' + imgCode('sun.png', pick(TXT.sun)) + '\n…'} />,
     drill: { make: () => ({
       order: C.t5.drill,
-      spec: { kind: 'block', before: headWith(pick(TXT.workshop)), after: ['</html>'], ind: 2, empty: C.t3.empty },
-      init: () => ({ code: '' }), check: (st) => checkBlock(st.code)
+      spec: { kind: 'block', before, after: END, ind: 4, empty: C.t5.empty, url: 'gallery.html' },
+      init: () => ({ code: '' }),
+      check: (st) => {
+        const r = checkFrag(st.code, { strictText: true });
+        if (!r.ok) return fragFail(r);
+        const I = r.imgs[0];
+        if (!I) return fb('needImg');
+        if (I.src !== 'flower.jpg') return I.src ? fb('srcWrong', { src: I.src, want: 'flower.jpg' }) : fb('noSrc');
+        const bad = altIssue(I);
+        return bad || { ok: true, result: {} };
+      },
+      aids: <FileShelf hl="flower.jpg" />
     }) }
   };
 }
@@ -9222,8 +9587,8 @@ const ST4 = ({ p }) => <TaskScreen p={p} make={cfgT4} />;
 const ST5 = ({ p }) => <TaskScreen p={p} make={cfgT5} />;
 
 // =============================================================================
-// ХУК — улица целая; одно касание «Ветер!»: дома выцветают и косятся, с них
-// слетают бумажки-вывески (stop-motion, шорох). Потом Коди называет задачу.
+// ХУК — рамы с картинками; одно касание «Открыть выставку»: рамы вздрагивают,
+// картинки выпадают (stop-motion, шорох), в рамах остаётся «?».
 // =============================================================================
 function SIntro({ p }) {
   const pick = usePick();
@@ -9235,7 +9600,7 @@ function SIntro({ p }) {
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(done, spoken);
   const led = useIdleLed(canTap && !done, 0);
-  const blow = () => {
+  const openIt = () => {
     if (!canTap || done) return;
     sfx('pop', true);
     setBlown(true);
@@ -9251,11 +9616,11 @@ function SIntro({ p }) {
         <StreetMap whole={!done} blown={blown} />
         {done ? <p className="pp-intro-note kz-piece">{pick(c.note)}</p> : (
           <div className="pp-wind-row">
-            <button type="button" className={'kz-btn is-coral pp-wind' + (led ? ' is-led' : '')} disabled={!canTap} onClick={blow}>
-              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                <path d="M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7" />
+            <button type="button" className={'kz-btn is-coral pp-wind' + (led ? ' is-led' : '')} disabled={!canTap} onClick={openIt}>
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round">
+                <path d="M4 21V5l8-2v18M12 3l8 2v16M4 21h16M9 12h.01" />
               </svg>
-              {pick(UI.wind)}
+              {pick(UI.open)}
             </button>
           </div>
         )}
@@ -9277,7 +9642,7 @@ function PSeg({ value, onChange }) {
   );
 }
 
-// ВЫВОД — улица горит, своя страница и её код, что ученик теперь умеет, следующий урок.
+// ВЫВОД — рамы горят, своя галерея и её код, умения, следующий урок.
 function SFin({ p }) {
   const pick = usePick();
   const store = useStore();
@@ -9299,7 +9664,7 @@ function SFin({ p }) {
               <span className="pp-only-narrow"><PSeg value={view} onChange={setView} /></span>
             </div>
             <div className={'pp-fin-pair view-' + view}>
-              <div className="pp-fin-b"><PageView title={res.title} text={res.text} /></div>
+              <div className="pp-fin-b"><PageView title={res.page} blocks={res.blocks} url="gallery.html" /></div>
               <div className="pp-fin-c"><Pad><CodeSample code={res.html} /></Pad></div>
             </div>
             <div className="pp-skills kz-piece">
@@ -9329,14 +9694,14 @@ const SCREENS = [
 // «Повторить» стирает только текущий экран.
 const SCREEN_RESET = { intro: ['intro'], t1: ['t1'], t2: ['t2'], t3: ['t3'], t4: ['t4'], t5: ['t5'], fin: [] };
 
-// Артефакт практики — страница своего дома, как её написал ученик.
+// Артефакт практики — своя галерея, как её написал ученик.
 function practiceArtifact(store) {
   const r = (store.get('t5') || {}).result;
   if (!r) return null;
-  return { type: 'html-page', title: r.title, text: r.text, html: r.html };
+  return { type: 'html-page', title: r.title, text: (r.items || []).join(', '), items: r.items || [], images: r.images || [], html: r.html };
 }
 
-export default function HtmlPractice01({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
+export default function HtmlPractice05({ studentName, lang, ttsApiBase, voiceGender, onFinished, startAt, onExit }) {
   setLmsVoice(voiceGender);
   const R = useLessonRoot({
     meta: META, total: SCREENS.length, studentName, lang, ttsApiBase, onFinished, startAt, onExit,
@@ -9545,6 +9910,11 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .kz-br.is-hl-page .kz-cut.kz-br-paper { filter: drop-shadow(0 0 4px #2A8C7E) drop-shadow(0 4px 6px rgba(74, 48, 18, .2)); }
 .kz-br.is-hl-page .kz-br-page { outline: 3px solid #2A8C7E; outline-offset: 4px; border-radius: 4px; }
 .kz-br-text { position: relative; overflow-wrap: anywhere; }
+/* Адрес страницы (урок 4: ссылка открывает другой файл) и нажимаемая стрелка «назад». */
+.kz-br-url-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kz-br-url.is-hl { background: #FFE9A8; box-shadow: 0 0 0 2px #F0B13F, 0 0 10px 2px rgba(240, 177, 63, .8); }
+.kz-ar-btn { position: relative; width: 10px; height: 10px; padding: 0; background: none; border: none; border-left: 2.6px solid #E0643F; border-bottom: 2.6px solid #E0643F; cursor: pointer; }
+.kz-ar-btn::before { content: ''; position: absolute; inset: -9px; }
 @media (max-width: 759px) {
   .kz-br-win { gap: 9px; }
   .kz-br-win i { width: 9px; height: 9px; }
@@ -10116,10 +10486,12 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 
 /* Экран «Сверху вниз» (s12) после показа: части коллажа нажимаются. */
 .kz-s12.is-explore .kz-collage, .kz-s12.is-explore .kz-collage * { cursor: pointer; }
-/* ── ПРАКТИКА К УРОКУ 1 «Бумажная улица» — бумажный вид урока 1 ─────────────
+/* ── ПРАКТИКИ К УРОКАМ 4 И 5 (общий вид; копия вида практики 03p) ─────────────
+   Практика 05p подключает этот файл и добавляет свою карту и фото (p05.css). 
    Лист, вырезки и бумажный браузер — из набора kollazh; здесь только то, что
    есть у практики: редактор на бумажной подложке, заметки-листки, кнопки,
-   улица из бумажных домов. Префикс pp- (и классы каркаса 01p: ed-, cv-, op-). */
+   тропа с привалами-флажками, страница с заголовками, абзацами и списками (pg-).
+   Префикс pp- (и классы каркаса 01p: ed-, cv-, op-). */
 .lesson-root { --cv-fs: clamp(12.5px, 3.4vw, 15px); --ed-fs: 16px; --gw: 46px; }
 @media (min-width: 760px) and (min-height: 700px) {
   .lesson-root { --cv-fs: clamp(14px, 1.45vw, 16px); --ed-fs: 17px; }
@@ -10154,17 +10526,18 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .op-work.is-big .op-main { flex: 1 1 auto; }
 .op-work.is-big .op-main > .pp-edpad { flex: 1 1 auto; }
 .op-work.is-big .pp-edpad > .ed { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 8em; }
-.op-work.is-big .ed-edit { flex: 1 1 auto; }
+.op-work.is-big .ed-edit { flex: 1 0 auto; }
+.op-work.is-big .pp-edpad > .ed > * { flex-shrink: 0; }   /* строки рамки не сжимаются — редактор прокручивается */
 @media (min-width: 720px) {
   .op-work { flex-direction: row; align-items: stretch; gap: 20px; }
   .op-side { flex: .9 1 0; min-height: 0; overflow: auto; }
-  .op-main { flex: 1.1 1 0; }
+  .op-main, .op-work.is-big .op-main { flex: 1.1 1 0; }
   /* Ноутбук: лист шире — крупнее задание, браузер и улица; содержимое по центру листа. */
   .pp-sheet .kz-sheet-body { justify-content: safe center; padding: clamp(14px, 2.4dvh, 26px) clamp(40px, 4.5vw, 64px); }
   .kz-ask.pp-ask { font-size: clamp(15.5px, 2.5dvh, 20px); padding: 8px 18px 9px; }
   .pp-strip { padding: 0 6px; }
   .pp-strip .pp-house.is-s { --hw: clamp(28px, 4.4dvh, 38px); }
-  .pp-page { min-height: 4.2em; max-height: 9em; font-size: clamp(15px, 2.3dvh, 19px); }
+  .pp-br .kz-br-page { height: clamp(8em, 22dvh, 12em); font-size: clamp(14px, 2.1dvh, 18px); }
   .pp-br .kz-br-page { margin: 10px 14px 12px; }
   .pp-note-body { font-size: clamp(15px, 2.3dvh, 18px); }
 }
@@ -10173,8 +10546,28 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .kz-br.pp-br { aspect-ratio: auto; max-width: none; flex: 0 0 auto; }
 .pp-br .kz-br-body { flex: 0 0 auto; }
 .pp-br .kz-br-page { position: relative; inset: auto; margin: 7px 10px 9px; }
-.pp-page { min-height: 1.5em; max-height: 5.6em; overflow: auto; overflow-wrap: anywhere; scrollbar-width: thin; }
-.pp-page.is-empty { color: #9C9384; font-style: italic; font-family: 'Manrope', sans-serif; font-weight: 600; font-size: .86em; }
+/* Страница без прокрутки: высота окна задана, не влезает — шрифт подгоняет useFitPage. */
+.pp-br .kz-br-page { height: 7em; overflow: hidden; }
+.pg-doc { display: flex; flex-direction: column; align-items: flex-start; font-weight: 400; overflow-wrap: anywhere; }
+.pg-doc.is-empty { color: #9C9384; font-style: italic; font-family: 'Manrope', sans-serif; font-weight: 600; font-size: .86em; }
+.pg-blk { max-width: 100%; }
+.pg-h1, .pg-in-h1 { font-size: 1.75em; font-weight: 700; line-height: 1.1; }
+.pg-h2, .pg-in-h2 { font-size: 1.4em; font-weight: 700; line-height: 1.14; }
+.pg-h3, .pg-in-h3 { font-size: 1.17em; font-weight: 700; line-height: 1.2; }
+.pg-h4, .pg-in-h4 { font-size: 1em; font-weight: 700; }
+.pg-h5, .pg-in-h5 { font-size: .83em; font-weight: 700; }
+.pg-h6, .pg-in-h6 { font-size: .7em; font-weight: 700; }
+.pg-h1 { margin: 0 0 .22em; } .pg-h2 { margin: .1em 0 .2em; } .pg-h3, .pg-h4, .pg-h5, .pg-h6 { margin: .1em 0 .16em; }
+.pg-p, .pg-raw { line-height: 1.28; } .pg-p { margin: 0 0 .42em; }
+.pg-doc b { font-weight: 700; } .pg-doc i { font-style: italic; }
+/* Списки — как браузер по умолчанию: отступ, точка или номер перед каждым li. */
+.pg-list { padding-left: 1.7em; margin: .05em 0 .35em; }
+.pg-li, .pg-txt { position: relative; line-height: 1.3; min-height: 1.3em; }
+.pg-mk { position: absolute; left: -1.25em; width: 1.05em; text-align: right; }
+.pg-ul > .pg-li > .pg-mk { text-align: center; font-size: 1.1em; line-height: 1.18; }
+.pg-list .pg-blk { margin: .12em 0; }
+.pg-stray { margin-left: .9em; }
+.pg-stray > .pg-mk { left: -.9em; width: .8em; text-align: center; }
 .pp-br .kz-br-tab { max-width: 74%; }
 .pp-br.is-hl-page .kz-br-page { outline-offset: 2px; }
 
@@ -10294,52 +10687,41 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .pp-note-body { font: 700 clamp(14.5px, 2dvh, 17px)/1.35 'Manrope', sans-serif; }
 .pp-note-extra { margin-top: 6px; background: rgba(255, 255, 255, .72); box-shadow: inset 0 0 0 1.5px rgba(141, 94, 0, .22); }
 
-/* ══ НАГЛЯДНАЯ ПОМОЩЬ ══════════════════════════════════════════════════════ */
-.pp-slots { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
-.pp-slot { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px 5px; background: #FBF6EA; color: #1F2A44;
-  font: 700 13.5px 'Manrope', sans-serif; box-shadow: inset 0 0 0 1.5px #E6DCC6;
-  clip-path: polygon(0 10%, 6% 0, 94% 8%, 100% 0, 97% 55%, 100% 100%, 50% 92%, 4% 100%, 0 50%); }
-.pp-slot b { display: inline-grid; place-items: center; width: 18px; height: 18px; background: #1F2A44; color: #FBF6EA; font: 800 11px 'JetBrains Mono', monospace; border-radius: 4px; }
-.pp-slot.is-name, .pp-slot.is-text { background: #FFF1C9; }
+/* ══ СЧЁТЧИК ПОЛОМОК (t4) ═════════════════════════════════════════════════ */
 .pp-left { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px 5px; background: #FFE4D8; color: #8C3A1E;
   font: 800 13.5px 'Manrope', sans-serif; clip-path: polygon(0 10%, 6% 0, 94% 8%, 100% 0, 97% 55%, 100% 100%, 50% 92%, 4% 100%, 0 50%); }
 .pp-left.is-ok { background: #DCEFE8; color: #1E6B5F; }
-.pp-bp { display: flex; align-items: center; gap: 12px; padding: 6px 14px 7px; background: #FBF6EA; box-shadow: inset 0 0 0 1.5px #E6DCC6;
-  clip-path: polygon(0 6%, 4% 0, 96% 5%, 100% 0, 99% 50%, 100% 100%, 50% 95%, 0 100%, 1% 50%); }
-.pp-bp-step { flex: none; padding: 2px 9px; background: #1F2A44; color: #FBF6EA; font: 800 12px 'Manrope', sans-serif; border-radius: 4px; }
-.pp-bp-tree { font: 600 13.5px/1.4 'JetBrains Mono', ui-monospace, monospace; color: #1F2A44; }
-.pp-bp-row { display: flex; align-items: center; gap: 4px; opacity: .55; }
-.pp-bp-row.is-cur, .pp-bp-row.is-done { opacity: 1; }
-.pp-bp-row.is-cur .pp-bp-tag { background: #FFF1C9; box-shadow: inset 0 -2px 0 var(--c); }
-.pp-bp-pre { white-space: pre; color: #A39A88; }
-.pp-bp-tag { padding: 0 4px; font-weight: 800; border-radius: 3px; }
-.pp-bp-note { font: 600 12.5px 'Manrope', sans-serif; color: #5B5446; }
-.pp-bp-ok { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; background: #2A8C7E; color: #fff; margin-left: 3px; }
 
-/* ══ БУМАЖНАЯ УЛИЦА ═════════════════════════════════════════════════════════
-   Дом — вырезки: крыша, стена, окно, дверь. Ждёт — выцветший, окно тёмное;
-   готов — свой цвет, окно светится, галочка. Свой дом до постройки — пунктир. */
+/* ══ ТРОПА ПОХОДА ═══════════════════════════════════════════════════════════
+   Привал — бумажный круг-флажок своего цвета с мини-списком (точки или номера).
+   Ждёт — выцвел и покосился, список размыт; готов — свой цвет, ровно, галочка.
+   Свой список до написания — пунктирный круг. */
 .pp-house { position: relative; display: inline-flex; flex-direction: column; align-items: center; gap: 3px; vertical-align: bottom; }
-.pp-h-art { position: relative; display: block; width: var(--hw, 30px); height: calc(var(--hw, 30px) * 1.04); }
+.pp-h-art { position: relative; display: block; width: var(--hw, 30px); height: var(--hw, 30px); }
 .pp-house.is-s { --hw: 26px; }
-.pp-house.is-l { --hw: clamp(46px, 12.5vw, 66px); }
-.kz-cut.pp-h-roof { left: -8%; top: 0; width: 116%; height: 46%; z-index: 2; }
-.kz-cut.pp-h-wall { left: 6%; top: 38%; width: 88%; height: 62%; z-index: 1; }
-.kz-cut.pp-h-win { left: 18%; top: 52%; width: 30%; height: 24%; z-index: 3; }
-.kz-cut.pp-h-door { left: 58%; top: 62%; width: 24%; height: 38%; z-index: 3; }
-.pp-h-winplan { position: absolute; left: 18%; top: 52%; width: 30%; height: 24%; z-index: 3; border: 1.5px dashed #B1A891; border-radius: 2px; }
-.pp-h-plan { position: absolute; inset: 8% 6% 0; border: 2px dashed #B1A891; border-radius: 3px;
-  clip-path: polygon(50% 0, 100% 38%, 100% 100%, 0 100%, 0 38%); background: rgba(216, 205, 182, .25); }
-.pp-house.is-lit .kz-cut.pp-h-win { filter: drop-shadow(0 0 4px rgba(255, 196, 70, .95)) drop-shadow(0 1px 1px rgba(74, 48, 18, .3)); }
-/* Ждёт — выцвел и покосился от ветра; починили — свой цвет и стоит ровно (ступеньками). */
+.pp-house.is-l { --hw: clamp(48px, 13vw, 68px); }
+.kz-cut.pp-stop-disc { inset: 0; z-index: 1; }
+.pp-stop-list { position: absolute; z-index: 2; left: 24%; right: 20%; top: 26%; bottom: 26%; display: flex; flex-direction: column; justify-content: space-between; }
+.pp-stop-list i { display: flex; align-items: center; gap: 8%; height: 22%; }
+.pp-stop-list b { flex: none; display: grid; place-items: center; width: 22%; aspect-ratio: 1; border-radius: 50%; background: #FBF6EA;
+  font: 800 calc(var(--hw) * .13)/1 'Manrope', sans-serif; color: #1F2A44; }
+.pp-stop-list.is-ol b { width: 30%; border-radius: 3px; }
+.pp-stop-list u { flex: 1 1 auto; height: 55%; background: #FBF6EA; border-radius: 1px; text-decoration: none; opacity: .92; }
+.pp-stop-list i:nth-child(2) u { flex-basis: 80%; max-width: 80%; } .pp-stop-list i:nth-child(3) u { max-width: 62%; }
+.pp-stop-list.is-mess i { translate: -14% 0; rotate: -10deg; opacity: .7; } .pp-stop-list.is-mess i:nth-child(2) { translate: 10% -30%; rotate: 8deg; }
+.pp-stop-list.is-mess b { opacity: 0; }
+.pp-stop-plan { position: absolute; inset: 6%; border: 2px dashed #8E9C7E; border-radius: 50%; background: rgba(251, 246, 234, .45); }
+.pp-house.is-lit .pp-h-art { filter: drop-shadow(0 0 5px rgba(255, 196, 70, .75)); }
+/* Ждёт — выцвела и покосилась; починили — свой цвет и висит ровно (ступеньками). */
 .pp-h-art { transition: rotate .5s steps(5, end), filter .5s steps(5, end); }
-.pp-house.is-wait .pp-h-art { rotate: var(--tilt, 0deg); filter: grayscale(.8) opacity(.78); }
+.pp-house.is-wait .pp-h-art { rotate: var(--tilt, 0deg); filter: grayscale(.85) opacity(.78); }
 .pp-h-ok { position: absolute; top: -4px; right: -6px; z-index: 5; display: grid; place-items: center; width: 15px; height: 15px; border-radius: 50%;
   background: #2A8C7E; color: #fff; box-shadow: 0 0 0 2px #FBF6EA; }
 .pp-house.is-cur .pp-h-art::after { content: ''; position: absolute; left: 50%; bottom: -7px; translate: -50% 0; width: 70%; height: 3px; background: #E0643F; border-radius: 2px; }
 .pp-h-name { max-width: calc(var(--hw) * 1.7); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center;
   font: 800 clamp(10.5px, 1.5dvh, 12.5px)/1.2 'Manrope', sans-serif; color: #1F2A44; }
 .pp-house:not(.is-lit) .pp-h-name { color: #8C8476; }
+.pp-street .pp-house:not(.is-lit) .pp-h-name { color: #6B5A3E; }
 
 .pp-strip { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 0 0 auto; }
 .pp-strip-row { display: flex; align-items: flex-end; gap: clamp(6px, 1.2vw, 12px); }
@@ -10349,17 +10731,22 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .pp-strip.is-mini .pp-strip-row { gap: 10px; }
 .pp-strip.is-mini .pp-house.is-s { --hw: 24px; }
 
+/* Большая тропа — лужайка, пунктирная тропинка, привалы вдоль неё. */
 .pp-street { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(10px, 2dvh, 18px) 8px; align-items: end;
-  justify-items: center; padding: 6px 10px 14px; flex: 0 0 auto; width: 100%; max-width: 860px; align-self: center; }
-.pp-street .pp-road { z-index: 0; top: auto !important; bottom: 0; height: 12px; }
+  justify-items: center; padding: clamp(14px, 2.4dvh, 22px) 12px clamp(10px, 2dvh, 18px); flex: 0 0 auto; width: 100%; max-width: 860px; align-self: center; }
+.pp-street .kz-cut.pp-board { z-index: 0; }
+.pp-trail-path { position: absolute; z-index: 0; left: 6%; right: 6%; top: 40%; height: 0;
+  border-top: 3px dashed rgba(122, 96, 60, .55); }
+.pp-street .pp-house.is-l .pp-h-art::before { content: ''; position: absolute; bottom: -12px; left: 50%; translate: -50% 0; z-index: 0; width: 3px; height: 14px;
+  background: #7A603C; border-radius: 2px; }
 .pp-street-h { position: relative; z-index: 1; animation: kzDrop .66s steps(1, end) both; animation-delay: var(--dl, 0s); }
 .pp-street.is-glow .pp-house.is-lit .pp-h-art { animation: kzStamp .5s steps(1, end) both; animation-delay: var(--dl, 0s); }
 @media (min-width: 720px) {
   .pp-house.is-l { --hw: clamp(64px, 13dvh, 112px); }
   .pp-sheet-fin .pp-house.is-l { --hw: clamp(48px, 8dvh, 76px); }
 }
-/* Хук: ветер сдувает с домов бумажки-вывески (stop-motion, с шорохом — kzOut). */
-.kz-cut.pp-scrap { left: 30%; top: 2%; width: 44%; height: 16%; z-index: 6; animation: kzOut .9s steps(1, end) both; animation-delay: calc(var(--i, 0) * .09s); }
+/* Хук: дождь — с флажков слетают капли (stop-motion, с шорохом — kzOut). */
+.kz-cut.pp-scrap { left: 34%; top: 0; width: 26%; height: 22%; z-index: 6; animation: kzOut .9s steps(1, end) both; animation-delay: calc(var(--i, 0) * .09s); }
 .pp-street.is-blown .pp-h-art { animation: kzShake .5s steps(1, end) both; animation-delay: calc(var(--i, 0) * .07s); }
 .pp-wind-row { display: flex; justify-content: center; flex: 0 0 auto; }
 .kz-btn.pp-wind { min-width: 180px; font-size: 18px; }
@@ -10367,6 +10754,25 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .pp-intro-note { margin: 0; align-self: center; max-width: 560px; padding: 6px 14px; background: #FFF1C9; color: #5B4300; text-align: center;
   font: 700 clamp(13.5px, 1.9dvh, 15.5px)/1.35 'Manrope', sans-serif;
   clip-path: polygon(0 6%, 4% 0, 96% 5%, 100% 0, 99% 50%, 100% 100%, 50% 95%, 0 100%, 1% 50%); }
+
+/* ══ НАГЛЯДНАЯ ПОМОЩЬ ЗАДАНИЙ 3–5 ═════════════════════════════════════════════ */
+/* «Как должно быть» (t3) — как список в браузере: Times, точки перед пунктами. */
+.pp-target { display: flex; flex-direction: column; gap: 1px; align-self: stretch; padding: 6px 14px 8px; background: #FBF6EA; text-align: left; rotate: -.8deg;
+  box-shadow: inset 0 0 0 1.5px #E6DCC6, inset 4px 0 0 #F0B13F;
+  clip-path: polygon(0 6%, 4% 0, 96% 5%, 100% 0, 99% 50%, 100% 100%, 50% 95%, 0 100%, 1% 50%); }
+.pp-target-h { font: 800 11px 'Manrope', sans-serif; letter-spacing: .05em; text-transform: uppercase; color: #8A6A1A; }
+.pp-target-s { font: 400 clamp(15px, 2.2dvh, 19px)/1.3 'Times New Roman', Times, serif; color: #1F2A44; }
+.pp-target-s { display: flex; flex-direction: column; padding-left: 1.4em; }
+.pp-target-li { position: relative; line-height: 1.3; }
+.pp-target-li > i { position: absolute; left: -1.2em; width: 1em; text-align: center; font-style: normal; }
+/* Живой список условий своей статьи (t5). */
+.pp-check { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; padding: 6px 12px 7px; background: #FBF6EA;
+  box-shadow: inset 0 0 0 1.5px #E6DCC6; clip-path: polygon(0 6%, 4% 0, 96% 5%, 100% 0, 99% 50%, 100% 100%, 50% 95%, 0 100%, 1% 50%); }
+.pp-check-i { display: flex; align-items: center; gap: 6px; min-width: 0; font: 700 13px/1.25 'Manrope', sans-serif; color: #7C7466; }
+.pp-check-i.is-ok { color: #1E6B5F; }
+.pp-check-box { flex: none; display: grid; place-items: center; width: 16px; height: 16px; border-radius: 4px; box-shadow: inset 0 0 0 1.5px #C9BFAA; }
+.pp-check-i.is-ok .pp-check-box { background: #2A8C7E; color: #fff; box-shadow: none; animation: kzStamp .4s steps(1, end) both; }
+.op-side > .pp-left { align-self: flex-start; }
 
 /* ══ ФИНАЛ ═══════════════════════════════════════════════════════════════ */
 .pp-fin { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 980px; align-self: center; }
@@ -10424,20 +10830,19 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
   .pp-sheet .kz-sheet-body { padding: 10px 10px 12px; gap: 7px; }
   .kz-sheet-body > .op-work { min-height: 168px; }
   .op-side { flex: 0 1 auto; min-height: 46px; overflow: auto; scrollbar-width: none; }
+  /* Образец, счётчик и список условий — само условие задания: не сжимаются, ужимается редактор. */
+  /* Списки в окне — сам результат задания: колонка браузера не сжимается, ужимается редактор. */
+  .op-side { flex-shrink: 0; overflow: visible; }
+  .op-side + .op-main { min-height: 96px; }
+  .pp-target { flex-direction: row; flex-wrap: wrap; align-items: baseline; column-gap: 8px; }
   .op-side::-webkit-scrollbar { display: none; }
   .op-main { flex: 1 1 auto; min-height: 116px; }
-  .pp-page { max-height: 3.9em; }
+  .pp-br .kz-br-page { height: 7.4em; }
+  .pp-check { gap: 3px 8px; padding: 4px 10px 5px; } .pp-check-i { font-size: 12px; }
+  .pp-target { padding: 4px 12px 5px; } .pp-target-s { font-size: 15px; }
   .pp-br .kz-br-page { margin: 5px 9px 7px; }
   .ed-line.is-static { font-size: .9em; }
   .ed-line.is-static .ed-n { font-size: .8em; line-height: 2.01em; }
-  .pp-bp { padding: 4px 10px; gap: 8px; }
-  .pp-bp-tree { font-size: 12.5px; line-height: 1.32; }
-  .pp-slot { font-size: 12.5px; padding: 3px 9px 4px; }
-  .pp-slots { gap: 4px; }
-}
-@media (max-width: 400px) {
-  .pp-slot { font-size: 11.5px; padding: 2px 7px 3px; gap: 4px; }
-  .pp-slot b { width: 15px; height: 15px; font-size: 10px; }
 }
 @media (max-height: 700px) {
   .lesson-root { --cv-fs: clamp(11.5px, 3.2vw, 13.5px); }
@@ -10453,7 +10858,6 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
   .lesson-root .pp-note-body { font-size: 14px; }
   .lesson-root .cv { line-height: 1.3; padding-block: 4px; }
   .lesson-root .ed { padding-block: 4px; }
-  .lesson-root .pp-bp-note { display: none; }
 }
 
 /* ══ КЛАВИАТУРА ТЕЛЕФОНА ОТКРЫТА ═══════════════════════════════════════════
@@ -10467,7 +10871,16 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 .is-kbd .kz-br-bar { height: 22px; }
 .is-kbd .kz-br-tool { display: none; }
 .is-kbd .pp-br .kz-br-page { margin: 3px 8px 4px; }
-.is-kbd .pp-page { min-height: 1.3em; max-height: 1.4em; font-size: 14px; line-height: 1.3; }
+.is-kbd .pp-br .kz-br-page { height: 2.9em; font-size: 12.5px; }
+.is-kbd .pp-check, .is-kbd .op-side > .pp-left { display: none; }
+/* Клавиатура: образец остаётся, а редактор может стать ниже — строка ввода видна, он прокручивается. */
+.is-kbd .op-side + .op-main { min-height: 0; }
+.is-kbd .op-side:has(.pp-target) + .op-main > .pp-edpad, .is-kbd .op-work.is-big .op-main > .pp-edpad { min-height: 52px; }
+.is-kbd .op-work.is-big .pp-edpad > .ed { min-height: 3em; }
+.is-kbd .kz-sheet-body > .op-work.is-big, .is-kbd .op-work.is-big .op-main { min-height: 0; }
+.is-kbd .op-side:has(.pp-target) .kz-br-page { height: 2.4em; }
+.is-kbd .op-side:has(.pp-target) { gap: 4px; }
+.is-kbd .pp-target { padding: 3px 10px 4px; } .is-kbd .pp-target-h { display: none; } .is-kbd .pp-target-s { font-size: 14px; }
 .is-kbd .op-main > .pp-edpad { min-height: 84px; }
 .is-kbd .kz-sheet-body > .pp-note { max-height: 34%; }
 .is-kbd .op-work { gap: 5px; }
@@ -10481,4 +10894,148 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 @media (prefers-reduced-motion: reduce) {
   .pp-note, .pp-street-h, .pp-street.is-glow .pp-h-art, .pp-stamp, .pp-skill, .pp-gap.is-led, .ed-edit.is-led-in, .tk-input.is-led-in { animation: none !important; }
 }
+/* Клавиатура: образец списка — в одну строку, чтобы редактор и кнопки остались на виду. */
+.is-kbd .pp-target-s { flex-direction: row; flex-wrap: wrap; column-gap: 1.6em; padding-left: 1.2em; font-size: 13.5px; }
+.is-kbd .pp-target { padding: 2px 10px 3px; }
+
+/* ══ УРОКИ 4–5: АТРИБУТЫ, ССЫЛКИ, КАРТИНКИ ══════════════════════════════════ */
+/* Атрибут в коде: имя бирюзовое, «=» коралловый, значение горчично-коричневое. */
+.ed-an { color: #1C7A6C; }
+.ed-eq { color: #D2522C; }
+.ed-av { color: #8A5300; }
+.ed-line.is-static .ed-an { color: #2C7D71; }
+/* Ссылка на странице — как в настоящем браузере: синяя, подчёркнутая, нажимается. */
+.pg-a { display: inline; padding: 0; margin: 0; border: none; background: none; font: inherit; color: #1A0DAB; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; text-align: left; }
+span.pg-a { cursor: default; }
+.pg-a:focus-visible { outline: 2px solid #E0643F; outline-offset: 2px; }
+.pg-back { margin-top: .3em; font-size: .9em; }
+/* Страница острова, куда привела ссылка; «Файл не найден». */
+.pg-site { display: flex; flex-direction: column; align-items: flex-start; }
+.pg-site-pic { position: relative; display: block; width: 3em; height: 2.4em; margin: .1em 0 .3em; }
+.pg-site-pic i { position: absolute; display: block; }
+.pg-site-parrots i:nth-child(1) { left: 34%; top: 6%; width: 36%; height: 88%; border-radius: 50% 50% 42% 42%; background: #E0643F; }
+.pg-site-parrots i:nth-child(2) { left: 18%; top: 14%; width: 20%; height: 18%; background: #F0B13F; clip-path: polygon(100% 0, 100% 100%, 0 60%); }
+.pg-site-parrots i:nth-child(3) { left: 50%; top: 42%; width: 30%; height: 44%; border-radius: 10% 80% 60% 40%; background: #2A8C7E; }
+.pg-site-cave i:nth-child(1) { left: 0; top: 10%; width: 100%; height: 90%; border-radius: 50% 50% 4px 4px; background: #8C7A6B; }
+.pg-site-cave i:nth-child(2) { left: 32%; top: 46%; width: 36%; height: 54%; border-radius: 50% 50% 0 0; background: #1F2A44; }
+.pg-site-cave i:nth-child(3) { left: 44%; top: 70%; width: 14%; height: 14%; border-radius: 3px; background: #F0B13F; }
+.pg-site-volcano i:nth-child(1) { left: 0; top: 30%; width: 100%; height: 70%; background: #7A4A2A; clip-path: polygon(38% 0, 62% 0, 100% 100%, 0 100%); }
+.pg-site-volcano i:nth-child(2) { left: 36%; top: 26%; width: 28%; height: 14%; background: #E0643F; border-radius: 50%; }
+.pg-site-volcano i:nth-child(3) { left: 40%; top: 0; width: 20%; height: 26%; background: #C9BFAA; border-radius: 50%; opacity: .8; }
+.pg-site-light i:nth-child(1) { left: 38%; top: 22%; width: 24%; height: 78%; background: repeating-linear-gradient(#FBF6EA 0 20%, #E0643F 20% 40%); clip-path: polygon(20% 0, 80% 0, 100% 100%, 0 100%); }
+.pg-site-light i:nth-child(2) { left: 34%; top: 6%; width: 32%; height: 18%; background: #F0B13F; border-radius: 50% 50% 0 0; }
+.pg-site-light i:nth-child(3) { left: 0; top: 4%; width: 34%; height: 12%; background: linear-gradient(90deg, transparent, #F0B13F); opacity: .7; }
+.pg-site-map i:nth-child(1) { left: 0; top: 10%; width: 100%; height: 80%; background: #CFE6EE; border-radius: 4px; }
+.pg-site-map i:nth-child(2) { left: 14%; top: 30%; width: 30%; height: 30%; background: #F3DFA8; border-radius: 50%; }
+.pg-site-map i:nth-child(3) { left: 56%; top: 46%; width: 28%; height: 28%; background: #F3DFA8; border-radius: 50%; }
+.pg-nf { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .15em; width: 100%; min-height: 100%; font-family: 'Manrope', sans-serif; text-align: center; }
+.pg-nf b { font-size: 1.05em; }
+.pg-nf span { font: 600 .78em 'JetBrains Mono', monospace; color: #7E7666; }
+.pg-nf-ic { width: 1.8em; height: 1.8em; border-radius: 50%; background: #C9BFAA radial-gradient(circle at 36% 40%, #1F2A44 0 7%, transparent 8%), radial-gradient(circle at 64% 40%, #1F2A44 0 7%, transparent 8%); }
+/* Картинка на странице (урок 5): фото, текст alt, сломанная картинка. */
+.pg-alt { display: inline; }
+.pg-noimg { display: inline-block; width: 0; height: 1em; }
+.pg-broken { display: inline-flex; align-items: center; gap: .3em; vertical-align: bottom; }
+.pg-broken-ic { position: relative; display: inline-block; flex: none; width: 1em; height: 1.15em; background: #F2EEE4; border: 1.5px solid #8C8476; border-radius: 2px;
+  clip-path: polygon(0 0, 100% 0, 100% 62%, 80% 52%, 62% 70%, 40% 55%, 18% 72%, 0 60%); }
+.pg-broken-ic::after { content: ''; position: absolute; left: 18%; top: 18%; width: 36%; height: 30%; border-radius: 50%; background: #9EC9E0; }
+
+/* ══ ОСТРОВА (карта 04p) ═════════════════════════════════════════════════ */
+.pp-street.pp-trail .kz-cut.pp-board .kz-cut-in { background: #CFE6EE !important; }
+.pp-trail-path { border-top-color: rgba(31, 42, 68, .45) !important; }
+.pp-street.is-blown .pp-trail-path { opacity: .15; }
+.pp-isle { position: absolute; z-index: 2; inset: 0; }
+.pp-isle i { position: absolute; display: block; }
+.pp-isle i:nth-child(1) { left: 46%; top: 16%; width: 6%; height: 54%; background: #1F2A44; border-radius: 2px; }
+.pp-isle i:nth-child(2) { left: 52%; top: 16%; width: 30%; height: 22%; background: var(--hc); clip-path: polygon(0 0, 100% 50%, 0 100%); transition: rotate .4s steps(4, end); transform-origin: left center; }
+.pp-isle i:nth-child(3) { left: 18%; top: 54%; width: 30%; height: 26%; border-radius: 50% 50% 40% 40%; background: #2A8C7E; }
+.pp-isle.is-mess i:nth-child(2) { rotate: 70deg; opacity: .55; }
+/* Файлы островов — подсказка-шпаргалка рядом с браузером. */
+.pp-files { display: flex; flex-direction: column; gap: 4px; align-self: stretch; padding: 6px 12px 8px; background: #FBF6EA; rotate: .5deg;
+  clip-path: polygon(0 4%, 3% 0, 97% 3%, 100% 0, 99% 50%, 100% 100%, 50% 97%, 0 100%, 1% 50%); filter: drop-shadow(0 2px 2px rgba(74, 48, 18, .25)); }
+.pp-files-h { font: 800 11px 'Manrope', sans-serif; letter-spacing: .05em; text-transform: uppercase; color: #8A6A1A; }
+.pp-files-row { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.pp-file { display: inline-flex; align-items: center; gap: 5px; padding: 1px 4px; border-radius: 4px; }
+.pp-file i { width: 9px; height: 9px; border-radius: 50%; background: var(--hc); }
+.pp-file code { font: 700 clamp(11.5px, 1.7dvh, 13.5px) 'JetBrains Mono', ui-monospace, monospace; color: #1F2A44; }
+.pp-file.is-hl { background: #FFE9A8; }
+.pp-files-tip { font: 600 11.5px 'Manrope', sans-serif; color: #7E7666; }
+.is-kbd .pp-files { display: none; }
+/* Телефон: своя работа (t5) — окно ниже, шпаргалка с файлами компактной строкой. */
+@media (max-width: 759px) {
+  .op-work.is-big .pp-br .kz-br-page { height: 4.6em; }
+  .op-work.is-big .pp-files { padding: 3px 9px 4px; gap: 2px; }
+  .op-work.is-big .pp-files-h, .op-work.is-big .pp-files-tip { display: none; }
+  .op-work.is-big .pp-files-row, .op-work.is-big .pp-shelf-row { gap: 1px 8px; }
+}
+/* Открытая клавиатура: счётчик «осталось исправить» не занимает строку. */
+.is-kbd .pp-left { display: none; }
+/* ── ПРАКТИКА К УРОКУ 5 «Выставка» — поверх общего вида практик 4–5 (p04.css) ──
+   Бумажные фото картинок (как в уроке 5), рамы на стене выставки, полка файлов,
+   что «скажет» программа чтения экрана. */
+
+/* ══ БУМАЖНОЕ ФОТО ═════════════════════════════════════════════════════════ */
+.pg-photo { position: relative; display: inline-block; flex: none; width: 5.6em; height: 4.1em; vertical-align: bottom; margin: .1em .15em .1em 0; }
+.kz-cut.pg-photo-cut { inset: 0; }
+.pg-photo .pg-pic { position: absolute; left: 50%; top: 52%; translate: -50% -50%; font-size: 1.2em; margin: 0; }
+.pg-pic { position: relative; display: block; flex: none; width: 2.6em; height: 2.2em; filter: drop-shadow(0 1.5px 1px rgba(74, 48, 18, .3)); }
+.pg-pic i { position: absolute; display: block; }
+/* кот: голова, уши (спит — глаза-чёрточки) */
+.pg-pic-cat i:nth-child(1) { left: 14%; top: 22%; width: 72%; height: 78%; border-radius: 50%; background: #E0643F;
+  background-image: linear-gradient(#1F2A44, #1F2A44), linear-gradient(#1F2A44, #1F2A44), radial-gradient(ellipse at 50% 70%, #F2D7BC 0 9%, transparent 10%);
+  background-size: 22% 6%, 22% 6%, 100% 100%; background-position: 24% 46%, 76% 46%, 0 0; background-repeat: no-repeat; }
+.pg-pic-cat i:nth-child(2) { left: 14%; top: 0; width: 30%; height: 42%; background: #E0643F; clip-path: polygon(0 100%, 30% 0, 100% 80%); }
+.pg-pic-cat i:nth-child(3) { right: 14%; top: 0; width: 30%; height: 42%; background: #E0643F; clip-path: polygon(100% 100%, 70% 0, 0 80%); }
+/* собака: голова, висячие уши */
+.pg-pic-dog i:nth-child(1) { left: 20%; top: 8%; width: 60%; height: 86%; border-radius: 46% 46% 50% 50%; background: #F2D7BC;
+  background-image: radial-gradient(circle at 36% 42%, #1F2A44 0 7%, transparent 8%), radial-gradient(circle at 64% 42%, #1F2A44 0 7%, transparent 8%), radial-gradient(ellipse at 50% 68%, #1F2A44 0 10%, transparent 11%); }
+.pg-pic-dog i:nth-child(2) { left: 4%; top: 10%; width: 24%; height: 60%; border-radius: 50%; background: #7A4A2A; rotate: 14deg; }
+.pg-pic-dog i:nth-child(3) { right: 4%; top: 10%; width: 24%; height: 60%; border-radius: 50%; background: #7A4A2A; rotate: -14deg; }
+/* попугай: тело, клюв, крыло */
+.pg-pic-parrot i:nth-child(1) { left: 30%; top: 4%; width: 42%; height: 90%; border-radius: 50% 50% 42% 42%; background: #E0643F;
+  background-image: radial-gradient(circle at 42% 20%, #FBF6EA 0 9%, transparent 10%), radial-gradient(circle at 42% 20%, #1F2A44 0 14%, transparent 15%); }
+.pg-pic-parrot i:nth-child(2) { left: 12%; top: 12%; width: 22%; height: 20%; background: #F0B13F; clip-path: polygon(100% 0, 100% 100%, 0 60%); }
+.pg-pic-parrot i:nth-child(3) { left: 46%; top: 40%; width: 34%; height: 46%; border-radius: 10% 80% 60% 40%; background: #2A8C7E; }
+/* рыбка: тело, хвост, пузырьки */
+.pg-pic-fish i:nth-child(1) { left: 10%; top: 24%; width: 62%; height: 56%; border-radius: 50%; background: #F0B13F;
+  background-image: radial-gradient(circle at 26% 42%, #1F2A44 0 8%, transparent 9%); }
+.pg-pic-fish i:nth-child(2) { left: 66%; top: 26%; width: 30%; height: 52%; background: #E0643F; clip-path: polygon(0 50%, 100% 0, 85% 50%, 100% 100%); }
+.pg-pic-fish i:nth-child(3) { left: 4%; top: 0; width: 30%; height: 26%; background: radial-gradient(circle at 30% 70%, #FBF6EA 0 18%, transparent 20%), radial-gradient(circle at 75% 25%, #FBF6EA 0 14%, transparent 16%); }
+
+/* солнце: круг, лучи, облачко */
+.pg-pic-sun i:nth-child(1) { left: 26%; top: 14%; width: 48%; height: 56%; border-radius: 50%; background: #F0B13F; box-shadow: 0 0 0 .18em rgba(240, 177, 63, .35); }
+.pg-pic-sun i:nth-child(2) { left: 14%; top: 4%; width: 72%; height: 76%; background: conic-gradient(from 0deg, #F0B13F 0 8deg, transparent 8deg 45deg, #F0B13F 45deg 53deg, transparent 53deg 90deg, #F0B13F 90deg 98deg, transparent 98deg 135deg, #F0B13F 135deg 143deg, transparent 143deg 180deg, #F0B13F 180deg 188deg, transparent 188deg 225deg, #F0B13F 225deg 233deg, transparent 233deg 270deg, #F0B13F 270deg 278deg, transparent 278deg 315deg, #F0B13F 315deg 323deg, transparent 323deg); border-radius: 50%; z-index: -1; }
+.pg-pic-sun i:nth-child(3) { left: 46%; top: 60%; width: 50%; height: 30%; border-radius: 40% 50% 30% 30%; background: #FBF6EA; }
+/* цветок: лепестки, середина, стебель */
+.pg-pic-flower i:nth-child(1) { left: 30%; top: 4%; width: 40%; height: 46%; border-radius: 50%; background: #E0643F; box-shadow: -.45em .1em 0 -.08em #E0643F, .45em .1em 0 -.08em #E0643F, 0 -.3em 0 -.08em #E0643F; }
+.pg-pic-flower i:nth-child(2) { left: 40%; top: 16%; width: 20%; height: 22%; border-radius: 50%; background: #F0B13F; }
+.pg-pic-flower i:nth-child(3) { left: 47%; top: 48%; width: 6%; height: 52%; background: #2A8C7E; border-radius: 2px; box-shadow: .3em .1em 0 0 #2A8C7E; }
+
+/* ══ РАМЫ НА СТЕНЕ (карта 05p) ═════════════════════════════════════════════ */
+.pp-street.pp-trail .kz-cut.pp-board .kz-cut-in { background: #E9D9C0 !important; }
+.pp-trail-path { opacity: 0; }
+.kz-cut.pp-frame { border-radius: 0; }
+.pp-frame-in { position: absolute; z-index: 2; inset: 14%; display: grid; place-items: center; overflow: hidden; background: #FBF6EA; }
+.pp-frame-in b { font: 800 1.1em 'Manrope', sans-serif; color: #C9BFAA; }
+.pp-frame-in .pg-photo { font-size: calc(var(--hw, 30px) / 8); margin: 0; }
+.pp-house.is-s .pp-frame-in .pg-photo { font-size: calc(var(--hw, 26px) / 8); }
+.pp-street.is-blown .pp-frame-in .pg-photo { animation: kzOut .6s steps(5, end) both; }
+
+/* ══ ПОЛКА ФАЙЛОВ ══════════════════════════════════════════════════════════ */
+.pp-shelf-row { display: flex; flex-wrap: wrap; gap: 6px 10px; }
+.pp-shelf-f { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; padding: 2px 3px; border-radius: 4px; }
+.pp-shelf-f .pg-photo { font-size: 6.5px; margin: 0; }
+.pp-shelf-f code { font: 700 clamp(10.5px, 1.55dvh, 12.5px) 'JetBrains Mono', ui-monospace, monospace; color: #1F2A44; }
+.pp-shelf-f.is-hl { background: #FFE9A8; }
+@media (max-width: 759px) { .pp-shelf-f .pg-photo { display: none; } .pp-shelf-row { gap: 3px 8px; } }
+
+/* ══ ПРОГРАММА ЧТЕНИЯ ЭКРАНА (t3) ══════════════════════════════════════════ */
+.pp-reader { display: flex; flex-direction: column; gap: 4px; align-self: stretch; padding: 6px 12px 8px; background: #1F2A44; color: #FBF6EA;
+  clip-path: polygon(0 4%, 3% 0, 97% 3%, 100% 0, 99% 50%, 100% 100%, 50% 97%, 0 100%, 1% 50%); }
+.pp-reader .pp-files-h { color: #F0B13F; }
+.pp-reader-l { display: flex; align-items: center; gap: 8px; font: 700 clamp(12.5px, 1.9dvh, 15px)/1.25 'Manrope', sans-serif; opacity: .65; }
+.pp-reader-l.is-ok { opacity: 1; }
+.pp-spk { flex: none; width: 11px; height: 11px; background: #F0B13F; clip-path: polygon(0 30%, 35% 30%, 80% 0, 80% 100%, 35% 70%, 0 70%); }
+.is-kbd .pp-reader { display: none; }
+.pp-frame-in b.is-star { color: #F0B13F; font-size: 1.4em; }
 `;

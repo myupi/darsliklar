@@ -1,17 +1,23 @@
-# Эталон курса — урок 1 «Бумажная страница» (заказчик, 22.10.2026)
+# Бумажный эталон — урок «Бумажная страница» (эталон курса 22.10–02.11.2026)
 
-Главный образец для каждого нового урока и переделки: стиль, структура, подача, тон Коди, механики, звук и проверка. Урок прошёл десятки правок заказчика (20–22.10.2026); каждая правка ниже записана как правило с местом в уроке, где на него посмотреть. Это **правила и приёмы, а не шаблон**: новый урок берёт стиль и подачу, а сюжет, образ и игры придумывает под свою тему.
+**С 02.11.2026 эталон курса — урок 1 в облике «Kodi playground»: `etalon-playground.md`.** Бумажный урок ушёл в тестовые (`lessons/test/18-struktura-dokumenta.jsx`). Урок 1 курса — это те же экраны и механики в новом облике, поэтому из этого файла **в силе**:
+- разделы 4–6 — структура урока, объяснения показом, правила подачи, тон Коди и озвучка (с отличиями из `etalon-playground.md`, раздел 4: части образа не подсвечиваются — облачко с названием; подсказки и ошибки — в панелях низа);
+- раздел 7 — устройство набора (`Cut`, `KzAsk`, `KzCode`, `PaperBrowser`, `useKzDrag`, `useKzDemo`, `useTypedDone`…): набор тот же, облик на него накладывает `naborPlayground`.
+
+**Не в силе для новых уроков:** раздел 2 (бумажный коллаж) и раздел 3 (stop-motion, шорох, «разбор и сборка») — облик и движение теперь по `etalon-playground.md`, разделы 2 и 5. Бумажный стиль — только для правок тестовых бумажных уроков (тестовые 18–27).
+
+Урок прошёл десятки правок заказчика (20–22.10.2026); каждая правка ниже записана как правило с местом в уроке, где на него посмотреть.
 
 ## Где эталон
 
 | Что | Где |
 |---|---|
-| Урок | `lessons/html/01-struktura-dokumenta.jsx` (`lessonId: html-01-struktura-dokumenta`) |
+| Урок | `lessons/test/18-struktura-dokumenta.jsx` (`lessonId: test-18-struktura-dokumenta`); до 02.11.2026 — урок 1 курса |
 | Исходник | `tools/kollazh/`: `kollazh.src.jsx` (META, `UI`, `C`), `kollazh-screens.jsx` (17 экранов, корень), `kollazh-kit.jsx` (бумажный набор), `kollazh-trans.jsx` (переход «разбор и сборка»), `kollazh-paper.jsx` + `kollazh-paper-data.jsx` (шорох бумаги), `kollazh.css` |
-| Сборка | `node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/kollazh/kollazh.src.jsx lessons/html/01-struktura-dokumenta.jsx` |
+| Сборка | `node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/kollazh/kollazh.src.jsx lessons/test/18-struktura-dokumenta.jsx`, затем в собранном файле `lessonId` — `test-18-struktura-dokumenta` (META исходника — урока 1 курса, его берёт сборка эталона) |
 | Полное описание (все экраны, анимации, все реплики на 3 языках) | `docs/urok-01-opisanie.md` |
 | Сценарий (первая версия, до правок; актуальное — в описании) | `docs/scenarij-01-bumazhnaya-stranitsa.md` |
-| Автопроверка | `tools/qa/lesson-team/scenarios/html-01-struktura-dokumenta.qa.mjs` |
+| Автопроверка | `tools/qa/lesson-team/scenarios/test-18-struktura-dokumenta.qa.mjs` |
 | Ролик-источник стиля | `/Users/mac/Downloads/html.mp4`, исходники ролика — `/Users/mac/Documents/motion video/html-kids/` |
 
 Прежний урок 1 «Робот Пиксель» — теперь `lessons/test/13-struktura-robot.jsx`. Образцом больше не служит; из него в эталон перешли лесенка подсказок, разбор ошибок по существу, дополнительный раунд, «Коди ошибся — исправь».
@@ -122,7 +128,7 @@
 - **Знак в речи**: писать название знака рядом со знаком — «chap «<» qavsdan», «уголка «<»», «the bracket “<”»; в озвучку уходит только название.
 - Полный разбор всех реплик урока 1 на трёх языках — `docs/urok-01-opisanie.md`, приложение.
 
-## 7. Как собрать новый урок по эталону
+## 7. Как собрать урок из бумажного набора (для новых уроков — `etalon-playground.md`, раздел 7)
 
 Новый урок — свой исходник `tools/<slug>/` и сборка `sobrat.mjs`. Бумажный набор **не копировать, а подключать** из исходника эталона, чтобы стиль курса был один:
 
@@ -143,7 +149,7 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 - В корне урока: `useParallax()`, `usePaperSound()`, `const go = useKzTransition(cur.id + ':' + R.runN)` и `next: go(R.next), prev: go(R.prev)` в пропсах экрана — как в корне `kollazh-screens.jsx`.
 - Озвучку знаков и тегов набор готовит сам (в начале `kollazh-kit.jsx`): знак в кавычках рядом со своим названием не дублируется, без названия читается словами; узбекский закрывающий тег — «yopuvchi title tegi».
 - **Общее и решения урока 1:** `Cut`, `Sheet`, `KzAsk`, `TagK`/`T_`/`W_`, `KzLabel`, `KzCode` (строки, `move` для ▲▼, `place` для перетаскивания), `PaperBrowser`, `useKzDrag` + `KzGhost`, `KzHand`, `kzFly`, `useKzLadder` + `hintAt`, `navOf`, `useKzDemo` (показ на объяснениях), `useTypedDone` + `ReadyBtn` (свой текст по «Готово»; в `UI` урока нужен ключ `ready`) — общий набор. `PaperMan`, `Frame`, `ManBox`, `PageBits`, `PageCollage`, `useMine`, `makeArtifact` — решения урока 1: брать, только если подходят теме, иначе писать своё в `<slug>-screens.jsx` по их образцу.
-- **Набор общий.** Правка `tools/kollazh/kollazh-kit.jsx`, `kollazh-trans.jsx`, `kollazh-paper.jsx` или `kollazh.css` меняет и урок 1: после такой правки пересобрать урок 1 и прогнать его автопроверку.
+- **Набор общий.** Правка `tools/kollazh/kollazh-kit.jsx`, `kollazh-trans.jsx`, `kollazh-paper.jsx` или `kollazh.css` меняет урок 1 курса (через `naborPlayground`), тестовый 18 и бумажные тестовые уроки: пересобрать урок 1 (`node tools/problemitas17/build.mjs`) и прогнать его автопроверку.
 - Помощники набора тега (`InlineInput`, `useTagTyping`, `tagTypingIssue`, `KeyRow`, `SpokenTags`) — из урока 2 (`/*@L2_HELPERS@*/`), как в уроке 1.
 - Экран — по образцу экранов `kollazh-screens.jsx`: `useVoice` (очередь реплик), `useCanAnswer`, `useAdvanceGate`, `useIdleLed`, `useRec` (решённый экран открывается решённым), `KzAsk` сверху, `Stage voiceTop`, `navOf`.
 

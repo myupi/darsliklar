@@ -11,7 +11,7 @@
 //
 // Запуск — в браузерной панели (javascript_tool) на любой странице dev-сервера:
 //   const m = await import('/tools/layout-sweep.js');
-//   await m.sweep({ lessons: [{ file: 'html/02-zagolovki-i-tekst', screens: 19 }] });
+//   await m.sweep({ lessons: [{ file: 'html/01-struktura-dokumenta', screens: 17 }] });
 // Долгий прогон (больше ~40 запусков) — фоном, чтобы не упереться в таймаут:
 //   m.sweepBg({ ... }); затем m.result() через полминуты-минуту.
 // Проверяется НАЧАЛЬНОЕ состояние экранов; состояния по ходу задания
@@ -51,7 +51,7 @@ async function probe(file, lang, w, h, s, wait, slack) {
   return row;
 }
 
-// lessons: [{ file: 'html/02-zagolovki-i-tekst', screens: 19 }]
+// lessons: [{ file: 'html/01-struktura-dokumenta', screens: 17 }]
 export async function sweep({ lessons, langs = LANGS, sizes = SIZES, wait = 600, slack = false, all = false } = {}) {
   const rows = [];
   for (const L of lessons) {

@@ -2,7 +2,7 @@
 // КУРС «HTML» · Модуль 1 «Основы разметки» · Урок 2 — «Заголовки и текст»
 // (бумажный коллаж, по эталону урока 1). Дети 10–14, проходят сами.
 // Один самодостаточный JSX: канон курса (до пометки «УРОК») + урок.
-// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/zagolovki/z2.src.jsx lessons/html/02-zagolovki-i-tekst.jsx
+// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/zagolovki/z2.src.jsx lessons/test/20-zagolovki-i-tekst.jsx
 // =============================================================================
 /*@CANON@*/
 // =============================================================================
@@ -36,7 +36,7 @@
 // ОБРАЩЕНИЕ: UZ — Siz, RU — «ты» без рода, EN — «you».
 // =============================================================================
 const META = {
-  lessonId: 'html-02-zagolovki-i-tekst',
+  lessonId: 'test-20-zagolovki-i-tekst',
   module: 'html-m1-osnovy',
   lessonTitle: {
     uz: '2-dars. Sarlavhalar va matn',

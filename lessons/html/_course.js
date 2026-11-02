@@ -13,16 +13,13 @@ export default {
   order: 1,
   practice: true,   // после каждого урока — практика (<NN>p-<slug>.jsx)
   lessons: [
-    { n: 1, slug: 'struktura-dokumenta', title: 'Структура HTML-документа', topics: ['html', 'head', 'body', 'title'],
-      practiceTitle: 'Бумажная улица' },
-    { n: 2, slug: 'zagolovki-i-tekst', title: 'Заголовки и текст', topics: ['h1–h6', 'p', 'b', 'i'],
-      practiceTitle: 'Стенгазета' },
-    { n: 3, slug: 'spiski', title: 'Списки', topics: ['ul', 'ol', 'li'],
-      practiceTitle: 'Походный блокнот' },
-    { n: 4, slug: 'ssylki-i-atributy', title: 'Ссылки и атрибуты', topics: ['a', 'href'],
-      practiceTitle: 'Острова' },
-    { n: 5, slug: 'izobrazheniya', title: 'Изображения', topics: ['img', 'src', 'alt'],
-      practiceTitle: 'Выставка' },
+    // 02.11.2026 (заказчик): в курсе — только урок 1 в облике «Kodi playground» (эталон курса).
+    // Прежние уроки 1–5 и практики 01p–05p — в тестовых (lessons/test/18–27); здесь их ещё нет.
+    { n: 1, slug: 'struktura-dokumenta', title: 'Структура HTML-документа', topics: ['html', 'head', 'body', 'title'] },
+    { n: 2, slug: 'zagolovki-i-tekst', title: 'Заголовки и текст', topics: ['h1–h6', 'p', 'b', 'i'] },
+    { n: 3, slug: 'spiski', title: 'Списки', topics: ['ul', 'ol', 'li'] },
+    { n: 4, slug: 'ssylki-i-atributy', title: 'Ссылки и атрибуты', topics: ['a', 'href'] },
+    { n: 5, slug: 'izobrazheniya', title: 'Изображения', topics: ['img', 'src', 'alt'] },
     { n: 6, slug: 'formy-vvod', title: 'Формы, часть 1: ввод данных', topics: ['form', 'label', 'input', 'type', 'placeholder'] },
     { n: 7, slug: 'formy-vybor', title: 'Формы, часть 2: выбор и отправка', topics: ['select', 'option', 'textarea', 'button'] },
     { n: 8, slug: 'struktura-sajta', title: 'Структура настоящего сайта', topics: ['header', 'nav', 'main', 'section', 'footer'] },

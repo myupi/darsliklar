@@ -1,7 +1,7 @@
 // =============================================================================
 // КУРС «HTML» · Модуль 1 · Практика к уроку 5 — «Выставка». Дети 10–14, проходят сами.
 // Один самодостаточный JSX: канон курса (до пометки «УРОК») + практика.
-// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/praktika-05/p05.src.jsx lessons/html/05p-izobrazheniya.jsx
+// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/praktika-05/p05.src.jsx lessons/test/27-izobrazheniya-praktika.jsx
 // =============================================================================
 /*@CANON@*/
 // =============================================================================
@@ -31,7 +31,7 @@
 // браузер честный и без прокрутки; код не исполняется; конфетти только в финале.
 // =============================================================================
 const META = {
-  lessonId: 'html-05p-korgazma',
+  lessonId: 'test-27-izobrazheniya-praktika',
   module: 'html-m1-osnovy',
   lessonTitle: {
     uz: '5-dars amaliyoti. Ko‘rgazma',

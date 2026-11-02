@@ -1,7 +1,7 @@
 // =============================================================================
 // КУРС «HTML» · Модуль 1 · Практика к уроку 3 — «Походный блокнот». Дети 10–14, проходят сами.
 // Один самодостаточный JSX: канон курса (до пометки «УРОК») + практика.
-// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/praktika-03/p03.src.jsx lessons/html/03p-spiski.jsx
+// Сборка: node .claude/skills/novyy-urok/scripts/sobrat.mjs tools/praktika-03/p03.src.jsx lessons/test/23-spiski-praktika.jsx
 // =============================================================================
 /*@CANON@*/
 // =============================================================================
@@ -29,7 +29,7 @@
 // браузер честный и без прокрутки; код не исполняется; конфетти только в финале.
 // =============================================================================
 const META = {
-  lessonId: 'html-03p-pohodnyy-bloknot',
+  lessonId: 'test-23-spiski-praktika',
   module: 'html-m1-osnovy',
   lessonTitle: {
     uz: '3-dars amaliyoti. Sayohat daftari',

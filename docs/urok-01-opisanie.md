@@ -1,5 +1,7 @@
 # Урок 1 курса HTML «Бумажная страница» — полное описание (эталон курса)
 
+> **02.11.2026 (заказчик):** урок 1 курса и эталон — тот же урок в облике «Kodi playground» (`lessons/html/01-struktura-dokumenta.jsx`, сборка `tools/problemitas17/build.mjs`, правила облика — `.claude/skills/novyy-urok/references/etalon-playground.md`). Экраны, механики и подача ниже — те же; облик, звук и переход здесь описаны бумажные (бумажная версия — `lessons/test/18-struktura-dokumenta.jsx`), актуальные реплики — `tools/bdizayn16/b16-texts.jsx`.
+
 **Главный эталон курса HTML с 22.10.2026** (заказчик): по нему строятся стиль, структура, подача, тон и механики следующих уроков. До этого — тестовый урок 12 (`lessons/test/12-struktura-kollazh.jsx`); прежний урок 1 «Робот Пиксель» перенесён в `lessons/test/13-struktura-robot.jsx` (описание — `docs/urok-test-13-robot-opisanie.md`). Правила эталона для новых уроков собраны в навыке `/novyy-urok`: `.claude/skills/novyy-urok/references/etalon-bumazhnaya.md`.
 
 Все реплики подряд с моментом и действием на экране — отдельным списком в `docs/urok-01-repliki-i-deystviya.md`.

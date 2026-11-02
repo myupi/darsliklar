@@ -6696,7 +6696,7 @@ const CANON_SCREEN_CSS = CANON_SCREEN_CSS_BASE + CANON_MECH_CSS + CANON_DZ_CSS +
 // ОБРАЩЕНИЕ: UZ — Siz, RU — «ты» без рода, EN — «you».
 // =============================================================================
 const META = {
-  lessonId: 'html-05-izobrazheniya',
+  lessonId: 'test-26-izobrazheniya',
   module: 'html-m1-osnovy',
   lessonTitle: {
     uz: '5-dars. Rasmlar',

@@ -1,4 +1,6 @@
-// Исходник новой практики — копия исходника эталона 01p «Бумажная улица» (tools/praktika-01/).
+// Исходник новой практики — копия исходника каркаса 01p «Бумажная улица» (tools/praktika-01/;
+// собранная 01p с 02.11.2026 — тестовая 19). Облик новой практики — эталона урока 1 «Kodi playground»
+// (naborPlayground, см. SKILL.md навыка praktika, шаг Г.1а), а не бумажный набор, который подключает копия.
 //
 //   node .claude/skills/praktika/scripts/shablon.mjs tools/praktika-<NN> [эталон-папка]
 //
@@ -30,7 +32,7 @@ files.forEach((f) => {
     s = s.replace(/\/\*@FILE:p01-engine\.jsx@\*\//, '/*@FILE:' + name('p01-engine.jsx') + '@*/')
       .replace(/\/\*@FILE:p01-screens\.jsx@\*\//, '/*@FILE:' + name('p01-screens.jsx') + '@*/')
       .replace(/\/\*@FILE:p01\.css@\*\//, '/*@FILE:' + name('p01.css') + '@*/')
-      .replace(/tools\/praktika-01\/p01\.src\.jsx lessons\/html\/01p-struktura-dokumenta\.jsx/, outArg.replace(/\/$/, '') + '/' + name('p01.src.jsx') + ' lessons/<курс>/<NN>p-<slug>.jsx  ← заполнить');
+      .replace(/tools\/praktika-01\/p01\.src\.jsx lessons\/\S+\.jsx/, outArg.replace(/\/$/, '') + '/' + name('p01.src.jsx') + ' lessons/<курс>/<NN>p-<slug>.jsx  ← заполнить');
   }
   writeFileSync(resolve(out, name(f)), s);
 });
