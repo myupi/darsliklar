@@ -4,7 +4,7 @@
 
 ## 1. Предмет и аудитория
 - HTML для начинающих, модуль `html-m1-osnovy`. План — `lessons/html/_course.js`: 9 уроков (последний — финальный проект, `final: true`), практика после каждого урока, кроме финального (`practice: true`).
-- Готов (с 02.11.2026 в курсе только он): урок 1 `01-struktura-dokumenta.jsx` — **главный эталон**, облик «Kodi playground» (бывший тестовый 17). Прежние уроки и практики курса — тестовые 18–27 (18 «Бумажная страница», 19 «Бумажная улица», 20–27 — уроки 2–5 с практиками). Тестовые варианты — `lessons/test/` (песочница, `sandbox: true`); ещё более ранние уроки 1 — `lessons/test/13-struktura-robot.jsx` («Робот Пиксель») и `lessons/test/09-struktura-dokumenta-kodi.jsx`.
+- Готов (с 02.11.2026 в курсе только он): урок 1 `01-struktura-dokumenta.jsx` — **главный эталон**, облик «Редактор» (бывший тестовый 28). Прежние уроки и практики курса — тестовые 18–27 и 29 («Kodi playground») (18 «Бумажная страница», 19 «Бумажная улица», 20–27 — уроки 2–5 с практиками). Тестовые варианты — `lessons/test/` (песочница, `sandbox: true`); ещё более ранние уроки 1 — `lessons/test/13-struktura-robot.jsx` («Робот Пиксель») и `lessons/test/09-struktura-dokumenta-kodi.jsx`.
 - Ученики 10–14 лет, проходят **сами, без преподавателя**, ~90% с телефона; основная аудитория — узбекоязычные дети.
 
 ## 2. Языки
@@ -23,11 +23,11 @@
 ## 4. Утверждённые источники и образцы
 | Файл | Статус | Что брать | Чего не брать |
 |---|---|---|---|
-| `lessons/html/01-struktura-dokumenta.jsx` | **Главный эталон** (заказчик, 02.11.2026): урок 1 в облике «Kodi playground» (бывший тестовый 17); сборка `node tools/problemitas17/build.mjs`, экраны и реплики `tools/bdizayn16/`, основа `tools/kollazh/`, описание `docs/urok-01-opisanie.md`, правила — `references/etalon-playground.md` и `etalon-bumazhnaya.md` (разделы 4–7) навыка | Облик и рамку B через `naborPlayground`, облачка вместо подсветки образа, «Клубки шерсти»; структуру, подачу, тон, механики | Героиню как обязательный образ, тексты и сюжет; бумажный стиль прежнего урока 1 |
+| `lessons/html/01-struktura-dokumenta.jsx` | **Главный эталон** (заказчик, 02.11.2026): урок 1 в облике «Редактор» (бывший тестовый 28); сборка `node tools/redaktor28/build.mjs`, набор облика `tools/redaktor28/nabor.mjs`, экраны и реплики `tools/bdizayn16/`, основа `tools/kollazh/`, описание `docs/urok-01-opisanie.md`, правила — `references/etalon-redaktor.md`, `etalon-playground.md` (раздел 4) и `etalon-bumazhnaya.md` (разделы 4–7) навыка | Облик «Редактор» через `naborRedaktor` (редактор кода, Chrome, оранжевый акцент, шапка и низ CoddyCamp, глитч), облачка вместо подсветки образа; структуру, подачу, тон, механики | Героя как обязательный образ, тексты и сюжет; облик прежних уроков 1 |
 | `lessons/test/19-struktura-dokumenta-praktika.jsx` | Прежняя практика 01p «Бумажная улица» (исходник `tools/praktika-01/`; в тестовых с 02.11.2026) | Каркас практики: `PStage`, проверка «Проверить», разбор кода, лесенка письма | Бумажный облик (облик — по эталону урока 1), улицу и дома |
 | `docs/brif-uroka.md` | Правила и контракт (v2) | Всё, кроме устаревшего (таблица в `istochniki.md`) | — |
 
-Не образцы: `lessons/test/**`, исходники в `tools/**` (кроме `tools/problemitas17/`, `tools/bdizayn16/` и `tools/kollazh/` — сборка, экраны и набор эталона урока 1), `docs/scenarij-*.md` (кроме `scenarij-01-bumazhnaya-stranitsa.md`), `docs/test-*.md`, `lessons/_reference/**` (эталоны других курсов — только чтобы понять платформу).
+Не образцы: `lessons/test/**`, исходники в `tools/**` (кроме `tools/redaktor28/`, `tools/problemitas17/`, `tools/bdizayn16/` и `tools/kollazh/` — сборка, экраны и набор эталона урока 1), `docs/scenarij-*.md` (кроме `scenarij-01-bumazhnaya-stranitsa.md`), `docs/test-*.md`, `lessons/_reference/**` (эталоны других курсов — только чтобы понять платформу).
 
 ## 5. Канон и технические ограничения
 - Канон `canon/html/canon-v1.jsx` копируется в урок **дословно** сверху, урок — ниже пометки «УРОК». Внутри урока канон не правится; правки — `tools/build-canon.mjs`, `canon/html/*.part.jsx`, затем `npm run canon` (только по задаче о каноне).

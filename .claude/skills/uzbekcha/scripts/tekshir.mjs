@@ -57,10 +57,11 @@ const fixOf = (w, a) => {
   const x = AFX[(a || 'ni').toLowerCase()] || 'ni';
   return ATTR.test(w) ? `«${w} atributi${x}»` : `«${w} tegi${x}»` + (/^(da|dagi|dan)$/i.test(a) ? ` или «${w} ichi${x}»` : '');
 };
+// Правила ниже написаны с ASCII-апострофом; строка перед ними приводится к нему (norm).
+const APOS = /[‘’ʻʼ´]/g;
 const RULES = [
-  // Написание
-  { lvl: 'ОШИБКА', re: /[oOgG](['`ʻʼ´])/g, msg: (m) => `«${m[0]}» → o‘ / g‘ (знак ‘ U+2018)` },
-  { lvl: 'ОШИБКА', re: /[a-fh-np-zA-FH-NP-Z](['ʻʼ`])(?=[a-z])/g, msg: (m) => `«${m[0]}…» → ’ (U+2019): ma’lumot, a’lo` },
+  // Написание: апостроф — только ASCII ' (заказчик, 03.11.2026: o', g', ma'lumot). Типографские ‘ ’ ʻ ʼ —
+  // ошибка (проверяется по исходной строке, до приведения; см. APOS ниже).
   { lvl: 'ОШИБКА', re: /[А-Яа-яЁё]{2,}/g, msg: (m) => `кириллица в узбекской строке: «${m[0]}»` },
   // Обращение — только «Siz»
   { lvl: 'ОШИБКА', re: /\b(sen|seni|senga|sening|sendan|senda)\b/gi, msg: (m) => `«${m[0]}» — обращение только на «Siz»` },
@@ -73,6 +74,13 @@ const RULES = [
   { lvl: 'СОВЕТ', re: /\b(xato\w*|noto‘g‘ri\w*)/gi, msg: (m) => `«${m[0]}» — если это про ответ ученика, заменить: «Oz qoldi!», «Hechqisi yo‘q!», «Unday emas:», «Bu safar adashdingiz!»; про сломанную страницу или промах Коди — можно` },
   { lvl: 'ОШИБКА', re: /\b(veb-usta|varaqcha)\b/gi, msg: (m) => `«${m[0]}» — не используется (veb-dasturchi; yorliq)` },
   { lvl: 'СОВЕТ', re: /\bKlass\b/g, msg: () => '«Klass!» — заказчик просил «Ajoyib!»' },
+  // Правки заказчика к уроку 2 (03.11.2026) — uslub.md, раздел 6.
+  { lvl: 'ОШИБКА', re: /\b[Xx]atboshi\w*/g, msg: (m) => `«${m[0]}» — непонятно звучит: «abzas» (abzaslar, abzasga, abzasni, abzasda)` },
+  { lvl: 'ОШИБКА', re: /\bDiqqat:/g, msg: () => '«Diqqat:» → «Diqqat qiling:»' },
+  { lvl: 'СОВЕТ', re: /\bya‘ni\s+(?:(?!degani)[^.!?])+[.!?]/g, msg: (m) => `«${m[0].slice(0, 40)}…» — пояснение через «ya‘ni» кончается на «degani»: «ya‘ni sarlavha degani»` },
+  { lvl: 'СОВЕТ', re: /\blekin\b[^.!?]*\besa\b/g, msg: () => '«lekin» и «esa» в одной фразе — двойное противопоставление: оставить «lekin»' },
+  { lvl: 'СОВЕТ', re: /\bfaqat\s+\S+\s+(qiladi|yasaydi)\b/g, msg: (m) => `«${m[0]}» — «только он умеет»: «faqat … ${m[1] === 'qiladi' ? 'qila oladi' : 'yasay oladi'}»` },
+  { lvl: 'СОВЕТ', re: /\bdegani\s+hali\b/g, msg: () => '«… degani hali …» — «это ещё не значит» пишется «… hali … degani emas»' },
 ];
 // Текст, который уйдёт в озвучку: теги в угловых скобках и знак в «» рядом с названием движок убирает сам.
 const speechRules = (t) => {
@@ -89,12 +97,15 @@ const speechRules = (t) => {
   if (/\s[—–-]\s/.test(s)) out.push({ lvl: 'СОВЕТ', msg: 'тире в реплике: движок сделает из него точку — если это пауза-пояснение, переписать двумя фразами или через двоеточие' });
   if (/[()]/.test(s)) out.push({ lvl: 'СОВЕТ', msg: 'скобки в реплике — переписать фразу без скобок' });
   const words = s.split(/\s+/).filter(Boolean).length;
-  if (words > 80) out.push({ lvl: 'ОШИБКА', msg: `${words} слов — реплика до 60–80 слов (~25 с)` });
+  // Длина (заказчик, 03.11.2026): обычно — до 60–80 слов (~25 с); экран-объяснение, где без подробного
+  // рассказа не понять, — 120–220 слов (~1–1,5 мин); больше 220 — это два экрана.
+  if (words > 220) out.push({ lvl: 'ОШИБКА', msg: `${words} слов — больше 220: это два экрана, а не одна реплика` });
+  else if (words > 80) out.push({ lvl: 'СОВЕТ', msg: `${words} слов — длинная реплика: допустима только на экране-объяснении, где без подробного рассказа не понять (120–220 слов); иначе — до 60–80` });
   else if (words > 55) out.push({ lvl: 'СОВЕТ', msg: `${words} слов — длинно, лучше разбить на две реплики` });
   return out;
 };
 // Книжное → разговорное (по сравнению v2 → v3 заказчика, references/uslub.md).
-const BOOKISH = [
+const BOOKISH0 = [
   [/\bavval\b/gi, 'avval → oldin'],
   [/\bdarhol\b/gi, 'darhol → darrov / shu zahoti'],
   [/\bDeyarli\b/g, 'Deyarli! → Oz qoldi!'],
@@ -113,15 +124,23 @@ const BOOKISH = [
   [/\beslang\b/gi, 'eslang → …esingizdami?'],
 ];
 
+// Регулярки правил и подсказки — тоже с ASCII-апострофом.
+const asc = (x) => String(x).replace(APOS, "'");
+for (const r of RULES) { r.re = new RegExp(asc(r.re.source), r.re.flags); const f0 = r.msg; r.msg = (m) => asc(f0(m)); }
+const BOOKISH = BOOKISH0.map(([re, tip]) => [new RegExp(asc(re.source), re.flags), asc(tip)]);
+
 let errN = 0, sovN = 0;
 for (const f of files) {
   const src = readFileSync(f, 'utf8');
   const strs = uzStrings(src);
   const hasYorliq = strs.some((s) => /\byorliq/i.test(s.text));
-  const hasVaraq = strs.some((s) => /brauzer varag‘/i.test(s.text));
+  const hasVaraq = strs.some((s) => /brauzer varag['‘]/i.test(s.text));
   console.log(`\n${f}: узбекских строк — ${strs.length}`);
-  for (const { text, line } of strs) {
+  for (const { text: raw, line } of strs) {
     const found = [];
+    const bad = raw.match(APOS);
+    if (bad) found.push({ lvl: 'ОШИБКА', msg: `типографский апостроф «${[...new Set(bad)].join(' ')}» — только ASCII ': o', g', ma'lumot (заказчик, 03.11.2026)` });
+    const text = raw.replace(APOS, "'");
     for (const r of RULES) {
       r.re.lastIndex = 0;
       let m;
@@ -131,7 +150,7 @@ for (const f of files) {
     for (const [re, tip] of BOOKISH) { re.lastIndex = 0; if (re.test(text)) found.push({ lvl: 'СОВЕТ', msg: tip }); }
     const shown = onlyErr ? found.filter((x) => x.lvl === 'ОШИБКА') : found;
     if (!shown.length) continue;
-    const cut = text.length > 110 ? text.slice(0, 107) + '…' : text;
+    const cut = raw.length > 110 ? raw.slice(0, 107) + '…' : raw;
     console.log(`  ${f}:${line}  «${cut}»`);
     for (const x of shown) {
       console.log(`    ${x.lvl}: ${x.msg}`);

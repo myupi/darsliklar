@@ -76,7 +76,23 @@
 
 ## 5. Длина и ритм
 
-- Реплика — 1–3 предложения, до ~25 с (60–80 слов — потолок, обычно 15–35).
+- Реплика — 1–3 предложения, до ~25 с (60–80 слов — потолок, обычно 15–35). Исключение — экран-объяснение, где без подробного рассказа не понять: 120–220 слов связным рассказом (`hikoya.md`).
 - Первое слово несёт эмоцию: от него движок выбирает интонацию (`ovoz.md`).
 - Вопрос → пауза в показе → ответ следующей репликой (как `s1.sayGo` → `s1.magic`).
 - Действие ученика — в конце реплики, одним глаголом: «… «Tekshirish»ni bosing.»
+
+## 6. Полные фразы — правки заказчика к уроку 2 (03.11.2026)
+
+Заказчик поправил реплики урока 2 и попросил так же исправить весь урок. Структура правок — правило для всех уроков:
+
+| Правило | Было | Стало |
+|---|---|---|
+| Пояснение через «ya'ni» кончается на **degani** | …heading so'zidan olingan, ya'ni sarlavha. | …ya'ni sarlavha **degani**. |
+| У фразы без глагола есть сказуемое: **bo'ladi** (признак), **bor** (наличие), **turadi / turibdi** (место), **keladi** (порядок) | h1 bitta va eng katta. · kodda uchta qator · teglar joyida | …eng katta **bo'ladi**. · kodda uchta qator **bor** · teglar joyida **turibdi** |
+| «Diqqat:» → **Diqqat qiling:** | Diqqat: raqam… | **Diqqat qiling:** raqam… |
+| Противопоставление — через **lekin** | kodda uchta qator, brauzer esa… | kodda uchta qator bor, **lekin** brauzer… (одно противопоставление: «lekin» без «esa») |
+| «faqat X qiladi» → **faqat X qila oladi** (только он умеет) | abzasni faqat p qiladi | abzasni faqat p **qila oladi** |
+| «это ещё не значит» — **… degani emas** | yangi qatorga o'tish hali yangi abzas emas | yangi qatorga o'tish hali yangi abzas boshlandi **degani emas** |
+| Простое слово вместо книжного | xatboshi | **abzas** (`lugat.md`) |
+
+Короткие подписи (ярлык раздела, кнопка, «p — abzas» в карточке вывода, строка задания «Qarang: eng katta sarlavha») — без сказуемого, как есть.
