@@ -1,0 +1,302 @@
+/* ── УРОК 3 «Списки» — свои части в облике «Редактор» (классы z3-*) ──────────────────────────
+   Весь CSS урока — здесь (основа — CSS урока 2, tools/zagolovki2/z2r.css), поверх r28.css эталона.
+   Бумаги нет нигде (заказчик, 03.11.2026): ни рваных краёв, ни скотча, ни наклонов, ни «штампов», ни шороха.
+   Страница в Chrome — как браузер по умолчанию: шрифт с засечками, ul — точки, ol — номера 1. 2. 3. */
+
+/* ══ СТРАНИЦА В БРАУЗЕРЕ ══ */
+/* Без прокрутки: страница помещается целиком (шрифт подгоняет useFitPage). */
+.z3-br .kz-br-page { overflow: hidden; }
+.z3-doc { display: flex; flex-direction: column; align-items: flex-start; gap: 0; overflow-wrap: anywhere; padding: 4px 4px 0; }   /* запас под заливку подсветки: окно её не подрезает */
+.z3-blk { position: relative; max-width: 100%; transition: background .2s; border-radius: 3px; }
+.z3-h1 { font-size: 1.75em; font-weight: 700; line-height: 1.12; margin: 0 0 .32em; }
+.z3-h2 { font-size: 1.4em; font-weight: 700; line-height: 1.15; margin: .2em 0 .28em; }
+.z3-h3 { font-size: 1.17em; font-weight: 700; margin: .2em 0 .24em; }
+.z3-h4 { font-size: 1em; font-weight: 700; margin: .2em 0 .2em; }
+.z3-h5 { font-size: .83em; font-weight: 700; margin: .2em 0 .2em; }
+.z3-h6 { font-size: .7em; font-weight: 700; margin: .2em 0 .2em; }
+.z3-p { font-weight: 400; margin: 0 0 .62em; line-height: 1.32; }
+.z3-raw { font-weight: 400; line-height: 1.32; }
+.z3-p.z3-inh1 { font-size: 1.75em; font-weight: 700; line-height: 1.12; }   /* p внутри незакрытого h1 */
+.z3-big { font-size: 1.12em; }
+.z3-wall { display: block; font-weight: 400; line-height: 1.32; }   /* каша — слитный текст, а не столбик */
+.z3-b { font-weight: 700; }
+.z3-i { font-style: italic; }
+/* Подсветка за речью Коди — мягкая заливка, как у инспектора DevTools, без рамок
+   (тонкая рамка впритык к тексту выглядела странно — заказчик, 03.11.2026). */
+.r28 .z3-blk.is-hl, .r28 .z3-b.is-hl, .r28 .z3-i.is-hl { background: rgba(250, 79, 40, .13); box-shadow: 0 0 0 4px rgba(250, 79, 40, .13); }
+.r28 .z3-b.is-hl, .r28 .z3-i.is-hl { border-radius: 2px; }
+
+/* Плавное появление нового (вместо «штампа»). */
+.z3-a-in { animation: z3In .35s cubic-bezier(.2, .7, .2, 1) both; }
+@keyframes z3In { from { opacity: 0; translate: 0 4px; } to { opacity: 1; translate: 0 0; } }
+
+/* Ярлык тега над частью страницы — как подпись блока в инспекторе. */
+.r28 .z3-chip { display: inline-flex; align-items: center; padding: 2px 8px 3px; border-radius: 6px; background: #fff; border: 1px solid var(--r-edge);
+  font: 600 clamp(12px, 1.8dvh, 15px)/1.2 var(--r-mono); white-space: nowrap; transition: background .2s, border-color .2s, box-shadow .2s; }
+.r28 .z3-chip .kz-tk-b { color: var(--r-pri); }
+.r28 .z3-chip .kz-tk-n { color: var(--r-ink); }
+.r28 .z3-chip.is-on, .r28 .z3-chip.is-hl { background: #FFF1EC; border-color: var(--r-insp-edge); }
+.r28 .z3-chip.is-hl { box-shadow: 0 0 0 3px #FFD3C6; }
+
+/* ══ s1 — каша → страница: каша тает, страница собирается по блокам сверху вниз ══ */
+.z3-s1-box { position: relative; }
+.z3-chunk { display: inline; }
+.z3-wall-out { position: absolute; left: 0; top: 0; right: 0; animation: z3Out .3s ease-in both; pointer-events: none; }
+@keyframes z3Out { to { opacity: 0; filter: blur(2px); } }
+.z3-build { animation: z3Build .45s cubic-bezier(.2, .7, .2, 1) var(--dl, 0s) both; transform-origin: 0 50%; }
+@keyframes z3Build { from { opacity: 0; scale: .7; translate: 0 6px; } to { opacity: 1; scale: 1; translate: 0 0; } }
+.z3-s1 { align-items: center; }
+.z3-s1-man { height: min(100%, 38dvh); flex: 0 0 auto; }
+.z3-s1-page { max-width: 640px; flex: 1 1 0; }
+@media (max-width: 759px) {
+  .z3-s1 { flex-direction: column; }
+  .z3-s1-man { display: none; }
+  .z3-s1 .z3-s1-page { width: 100%; align-self: stretch; flex: 0 0 auto; }
+  .z3-s1 .z3-s1-page .kz-br.z3-br { --brh: 34dvh; }
+}
+
+/* ══ s3 — лист body с шестью заголовками ══ */
+.z3-body { position: relative; width: min(100%, 620px); align-self: center; padding: clamp(26px, 4.5dvh, 40px) clamp(12px, 3vw, 26px) clamp(14px, 2.4dvh, 22px);
+  background: #F0FDFA; border-radius: 12px; box-shadow: inset 0 0 0 1.5px #5EEAD4; }
+.z3-body-lbl { position: absolute; left: 16px; top: -12px; }
+.z3-body-in { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: flex-start; gap: clamp(5px, 1dvh, 9px); }
+.z3-hstrip { position: relative; display: inline-flex; border: none; background: none; padding: 0; cursor: default; }
+.z3-hstrip.is-tap { cursor: pointer; }
+.z3-hstrip-paper { display: inline-flex; align-items: center; gap: .5em; padding: .22em .7em .26em .55em; background: #fff; color: var(--r-ink); border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--r-line), 0 1px 2px rgba(15, 23, 42, .08); transition: background .2s, box-shadow .2s; }
+.z3-hstrip .kz-tag { font: 600 clamp(11px, 1.6dvh, 14px) var(--r-mono); color: var(--r-muted); }
+.z3-hstrip-w { font: 700 calc(clamp(24px, 4.6dvh, 42px) * var(--hs, 1)) / 1.1 var(--r-font); letter-spacing: -.02em; }
+.z3-hstrip.is-hl .z3-hstrip-paper { background: #FFF1EC; box-shadow: inset 0 0 0 1.5px var(--r-insp-edge), 0 1px 2px rgba(15, 23, 42, .08); }
+.z3-hstrip .led { top: -4px; right: -4px; }
+.z3-star { position: absolute; right: -16px; top: -14px; font-size: 26px; color: var(--r-pri); }
+.z3-loupe { position: absolute; right: -30px; top: 50%; translate: 0 -55%; width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--r-ink); background: rgba(255, 255, 255, .8); }
+.z3-loupe::after { content: ''; position: absolute; right: -8px; bottom: -8px; width: 4px; height: 10px; background: var(--r-ink); rotate: -45deg; border-radius: 2px; }
+
+/* ══ s5, s6, s12, s14 — код и браузер рядом (на телефоне — в колонку) ══ */
+.z3-s5 { align-items: stretch; }
+.z3-s5 > .kz-col { justify-content: center; }
+@media (max-width: 759px) {
+  .z3-s5 { flex-direction: column; gap: 10px; }
+  .z3-s5 .kz-br.z3-br { --brh: 26dvh; }
+}
+/* Строки-цели в тёмном редакторе. */
+.r28 .kz-line.z3-hline { background: rgba(255, 255, 255, .05); }
+.r28 .kz-line.z3-hline.kz-tap:not(:disabled) { cursor: pointer; }
+.r28 .kz-line.z3-hline.kz-tap:not(:disabled):hover { background: #2A2D2E; }
+.r28 .kz-line.is-hover { background: #2A2D2E; outline: 1.5px dashed var(--r-pri); outline-offset: -2px; }
+.r28 .kz-line.z3-later { opacity: .45; }
+.r28 .kz-line.z3-hline.is-off { opacity: .5; }
+
+/* ══ s7, s10 — поля для тега; слово-цель ══ */
+.z3-slot .tk-input { min-width: 3.6em; }
+.r28 .kz-txt.z3-target { background: rgba(250, 79, 40, .28); color: #fff; padding: 0 3px; border-radius: 3px; }
+
+/* ══ s9 — карточка абзаца с ярлыками над словами ══ */
+.z3-pcard { position: relative; align-self: center; width: min(100%, 600px); padding: clamp(18px, 3dvh, 26px) clamp(14px, 3vw, 28px) clamp(12px, 2dvh, 18px);
+  background: #fff; border-radius: 10px; box-shadow: 0 1px 2px rgba(15, 23, 42, .08), 0 8px 18px rgba(15, 23, 42, .08); }
+.z3-pcard-lbl { position: absolute; left: 14px; top: -12px; }
+.z3-pcard-text { position: relative; z-index: 1; margin: 0; padding-top: 1.1em; font: 400 clamp(18px, 2.9dvh, 28px)/2.7 'Times New Roman', Times, serif; color: var(--r-ink); }
+@media (max-width: 759px) { .z3-pcard-text { font-size: clamp(16px, 4.6vw, 19px); line-height: 2.9; } }
+.z3-w { position: relative; display: inline-block; line-height: 1.2; }
+.z3-w-lbl { position: absolute; left: 50%; bottom: 100%; translate: -50% -6px; }
+.z3-w-txt { position: relative; z-index: 0; display: inline-block; transition: transform .3s ease; }
+.z3-w.is-b.is-on .z3-w-txt { font-weight: 700; }
+.r28 .z3-w.is-b.is-on .z3-w-txt::before { content: ''; position: absolute; z-index: -1; left: -.14em; right: -.14em; top: .1em; bottom: .02em; border-radius: 3px;
+  background: #FFD3C6; animation: z3In .3s ease-out both; }
+.z3-w.is-i.is-on .z3-w-txt { font-style: italic; }
+.r28 .z3-w.is-say .z3-w-txt { color: var(--r-pri-d); }
+
+/* ══ s11 — до и после; кнопки-теги ══ */
+.z3-card { position: relative; padding: 10px 16px 8px; align-self: center; width: min(100%, 520px); background: #fff; border-radius: 10px;
+  box-shadow: inset 0 0 0 1.5px var(--r-edge), 0 1px 2px rgba(15, 23, 42, .06);
+  font: 400 clamp(14px, 2dvh, 18px)/1.35 'Times New Roman', Times, serif; color: var(--r-ink); }
+.z3-card-h { display: block; margin-bottom: 2px; font: 700 11.5px var(--r-font); letter-spacing: .05em; text-transform: uppercase; color: var(--r-pri-d); }
+.r28 .z3-ba { display: flex; align-items: stretch; gap: 10px; align-self: center; width: min(100%, 620px); }
+.r28 .z3-ba .z3-card { flex: 1 1 0; min-width: 0; width: auto; }
+.r28 .z3-ba .z3-card.is-after { box-shadow: inset 0 0 0 1.5px var(--r-insp-edge), 0 1px 2px rgba(15, 23, 42, .06); }
+.r28 .z3-ba-arrow { flex: 0 0 auto; align-self: center; width: 22px; height: 2px; background: var(--r-pri); position: relative; }
+.r28 .z3-ba-arrow::after { content: ''; position: absolute; right: -1px; top: -5px; border: 6px solid transparent; border-left: 8px solid var(--r-pri); border-right: 0; }
+@media (max-width: 420px) { .r28 .z3-ba { gap: 6px; } .r28 .z3-ba-arrow { width: 12px; } }
+.r28 .kz-btn.z3-tagbtn .kz-tag { font: 700 22px var(--r-mono); }
+.r28 .kz-btn.z3-tagbtn.is-ghost .kz-tk-n { color: var(--r-ink); }
+.r28 .kz-btn.z3-tagbtn:not(.is-ghost) .kz-tk-b, .r28 .kz-btn.z3-tagbtn:not(.is-ghost) .kz-tk-n { color: #fff; }
+
+/* ══ s7 — Code Builder ══ */
+.r28 .z3-s7-tray { flex-wrap: wrap; justify-content: center; }
+.r28 .kz-scrap.z3-s7-text { font-family: var(--r-mono); font-weight: 500; max-width: 100%; white-space: normal; text-align: left; }
+.r28 .z3-s7 .kz-line .kz-dash { display: inline-block; min-width: 4.5em; height: 1.2em; vertical-align: middle; border: 1.5px dashed #5A5A5A; border-radius: 4px; background: rgba(255, 255, 255, .04); }
+.r28 .z3-s7 .kz-line.is-hl .kz-dash { border-color: var(--r-pri); background: rgba(250, 79, 40, .1); }
+.r28 .z3-s7 .kz-line .kz-dash.is-hover { background: rgba(250, 79, 40, .22); }
+
+/* ══ s8 — Visual Code Mapping: абзацы на странице нажимаются, как блоки в инспекторе ══ */
+.r28 button.z3-blk.z3-map { display: block; width: 100%; text-align: left; font: inherit; font-weight: 400; color: inherit; background: transparent; border: none;
+  padding: .12em .3em; margin-left: -.3em; border-radius: 4px; cursor: pointer; position: relative; }
+.r28 button.z3-blk.z3-map.is-call { box-shadow: inset 0 0 0 1px var(--r-edge); }
+.r28 button.z3-blk.z3-map.is-call:hover { background: var(--r-insp); box-shadow: inset 0 0 0 1.5px var(--r-insp-edge); }
+.r28 button.z3-blk.z3-map.is-hl { background: rgba(250, 79, 40, .13); box-shadow: none; }
+.r28 .z3-blk.z3-map.is-off { opacity: .45; }
+.r28 .z3-blk.z3-map:disabled { cursor: default; }
+.r28 .z3-blk.z3-map .led { top: 50%; right: 4px; translate: 0 -50%; }
+
+/* ══ q2 — True / False ══ */
+.r28 .z3-tf-card { width: min(100%, 520px); }
+.r28 .z3-tf-t { margin: 4px 0 2px; font: 600 clamp(17px, 2.6dvh, 22px)/1.35 var(--r-font); color: var(--r-ink); }
+.r28 .kz-pick.z3-tf-pick { grid-template-columns: repeat(2, minmax(0, 1fr)); width: min(100%, 520px); align-self: center; }
+.r28 .kz-pick.z3-tf-pick .kz-btn { font-size: 18px; }
+
+/* ══ s4, s10, s14, q1 — поломка заметнее: браузер вздрагивает, пустое место мигает ══ */
+.r28 .z3-broken.kz-br { animation: kzShake .5s ease-in-out .3s 2; }
+.z3-miss { position: relative; }
+.r28 .kz-dash.z3-miss { animation: z3Miss 1.2s ease-in-out infinite; }
+.r28 .z3-miss::after { content: '?'; position: absolute; right: -10px; top: -12px; width: 18px; height: 18px; border-radius: 50%; background: var(--r-pri); color: #fff;
+  font: 700 12px/18px var(--r-font); text-align: center; box-shadow: 0 0 0 2px #fff; animation: z3Q 1.2s ease-in-out infinite; }
+@keyframes z3Miss { 0%, 100% { border-color: var(--r-pri); } 50% { border-color: rgba(250, 79, 40, .25); } }
+@keyframes z3Q { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+/* Своё предложение (s13b) с длинным образцом: поле в строке кода сжимается и переносит текст,
+   а не уходит за край экрана (открытая клавиатура телефона). */
+.r28 .kz-line .kz-gap { min-width: 0; flex: 0 1 auto; max-width: 100%; }
+.r28 .kz-line .kz-gap .tk-grow { max-width: 100%; }
+
+/* ══ НОУТБУК: браузер крупнее, браузер и код — в ряд ══ */
+@media (min-width: 760px) {
+  .z3-br.kz-br { --brh: 46dvh; }
+  .z3-br.kz-br.is-short { --brh: 34dvh; }
+  .z3-s5 .z3-br.kz-br, .z3-s5 .z3-br.kz-br.is-short { --brh: 50dvh; aspect-ratio: 16 / 11; }
+  .z3-s1 .z3-s1-page .kz-br { --brh: 56dvh; }
+  .kz-s15 .z3-br.kz-br { --brh: 52dvh; }
+  .z3-s5 > .kz-col { max-width: none; }
+  .z3-br .kz-br-page { font-size: clamp(14px, 2.4dvh, 21px); }
+  .kz-scene-col .z3-br.kz-br.is-short { --brh: 25dvh; }
+  .z3-sheet .kz-scene-col { justify-content: center; }
+  .z3-sheet .kz-scene-col > .kz-col { width: min(100%, 760px); }
+  .z3-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) { flex-direction: row; align-items: center; gap: clamp(14px, 2vw, 26px); width: 100%; max-width: 1000px; }
+  .z3-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .kz-br { flex: 1 1 0; min-width: 0; --brh: 40dvh; aspect-ratio: 16 / 11; }
+  .z3-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .kz-code { flex: 1.15 1 0; min-width: 0; }
+  .z3-sheet .kz-code { font-size: clamp(15px, 2.3dvh, 20px); gap: 6px; }
+  .z3-sheet .kz-line { min-height: 34px; }
+  .z3-sheet .kz-code.kz-code-sm { font-size: clamp(14px, 2.05dvh, 18px); }
+}
+
+/* ══ НИЗКИЙ ТЕЛЕФОН (360 × 640): браузер ниже, строки кода плотнее ══ */
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .z3-s5 .kz-br.z3-br { --brh: 19dvh; }
+  .r28 .z3-s5 .kz-code.kz-code-sm .kz-line { padding-top: 0; padding-bottom: 0; }
+}
+
+/* ══ КЛАВИАТУРА ТЕЛЕФОНА (видимая высота ~330 px): задание, поле и кнопки на виду;
+   браузер — полоска вкладок и одна строка страницы; строки body и декор уходят ══ */
+.is-kbd .kz-deco, .is-kbd .kz-line.z3-edge, .is-kbd .kz-line.z3-ctx { display: none; }
+.is-kbd .kz-sheet-body { padding: 6px 8px; gap: 6px; }
+.is-kbd .kz-ask { font-size: 13.5px; padding: 4px 10px 5px; }
+.is-kbd .z3-br.kz-br { aspect-ratio: auto; max-width: 100%; padding-bottom: 6px; }
+.is-kbd .z3-br .kz-br-tool { display: none; }
+.is-kbd .z3-br .kz-br-bar { height: 22px; }
+.is-kbd .z3-br .kz-br-body { flex: 0 0 auto; height: 34px; }
+.is-kbd .z3-br .kz-br-page { inset: 4px 8px; font-size: 13px; }
+.is-kbd .kz-code { gap: 3px; }
+.is-kbd .kz-line { min-height: 26px; padding-top: 2px; padding-bottom: 2px; }
+.is-kbd .keys .key-b { min-height: 38px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .z3-a-in, .z3-build, .z3-wall-out, .r28 .z3-broken.kz-br, .r28 .kz-dash.z3-miss, .r28 .z3-miss::after, .r28 .z3-w.is-b.is-on .z3-w-txt::before{ animation: none !important; }
+}
+
+/* ══ СПИСКИ — как браузер по умолчанию: отступ слева, ul — точки, ol — номера ══ */
+.z3-doc ul.z3-ul, .z3-doc ol.z3-ol { margin: .1em 0 .55em; padding-left: 1.7em; line-height: 1.35; }
+.z3-doc ul.z3-ul { list-style: disc outside; }
+.z3-doc ol.z3-ol { list-style: decimal outside; }
+.z3-doc .z3-ul > li, .z3-doc .z3-ol > li { display: list-item; margin: 0; padding: 0 .15em; border-radius: 3px; transition: background .2s; }
+.z3-doc .z3-bare { display: block; padding: 0 .15em; }   /* текст в списке без li — без точки и номера */
+.r28 .z3-doc li.is-hl, .r28 .z3-doc .z3-bare.is-hl { background: rgba(250, 79, 40, .13); box-shadow: 0 0 0 3px rgba(250, 79, 40, .13); }
+.z3-doc li.z3-a-in { animation: z3In .35s cubic-bezier(.2, .7, .2, 1) both; }
+.z3-doc ul.z3-ul, .z3-doc ol.z3-ol, .z3-doc .z3-bare { font-weight: 400; }   /* страница браузера по умолчанию — 600 */
+.z3-doc li.z3-later-li { color: #94A3B8; }
+.r28 .z3-doc li::marker { color: var(--r-ink); }
+
+/* ══ s7 — Matching Pairs: теги слева, их дела справа ══ */
+.r28 .z3-match { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: clamp(12px, 3vw, 28px); align-items: stretch; align-self: center; width: min(100%, 560px); }
+.r28 .z3-match-col { display: flex; flex-direction: column; justify-content: space-around; gap: 12px; }
+.r28 .z3-mtag { min-width: 76px; min-height: 58px; justify-content: center; font-size: 20px; }
+.r28 .z3-mtag.is-ok { background: #F0FDF4; border-color: #86EFAC; color: #15803D; opacity: 1; }
+.r28 .z3-mcard { position: relative; display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 10px 14px; text-align: left; cursor: pointer;
+  background: #fff; border: 1px solid var(--r-edge); border-radius: 10px; font: 600 16px/1.25 var(--r-font); color: var(--r-ink); transition: border-color .2s, background .2s, box-shadow .2s; }
+.r28 .z3-mcard.is-call { border-color: var(--r-pri); box-shadow: 0 0 0 3px #FFE3D9; }
+.r28 .z3-mcard.is-ok { background: #F0FDF4; border-color: #86EFAC; cursor: default; }
+.r28 .z3-mcard:disabled { cursor: default; }
+.r28 .z3-mcard-t { flex: 1 1 auto; min-width: 0; }
+.r28 .z3-mcard-tag { font: 600 15px var(--r-mono); color: #15803D; }
+.r28 .z3-mcard .led { top: 50%; right: 8px; translate: 0 -50%; }
+.r28 .z3-mini { flex: 0 0 auto; display: inline-flex; flex-direction: column; gap: 1px; min-width: 30px; padding: 4px 6px; border-radius: 6px; background: #F4F5F7;
+  font: 700 11px/1.15 'Times New Roman', Times, serif; color: var(--r-ink2); }
+.r28 .z3-mini.is-one { justify-content: center; }
+
+/* ══ s8 — два примера рядом: покупки и утро ══ */
+.r28 .z3-exs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(10px, 2.5vw, 24px); align-self: center; width: min(100%, 640px); }
+.r28 .z3-ex { position: relative; padding: 12px 14px 14px; background: #fff; border-radius: 10px; box-shadow: inset 0 0 0 1.5px var(--r-edge), 0 1px 2px rgba(15, 23, 42, .06);
+  font: 400 clamp(15px, 2.2dvh, 19px)/1.35 'Times New Roman', Times, serif; color: var(--r-ink); transition: box-shadow .3s; }
+.r28 .z3-ex.is-good { box-shadow: inset 0 0 0 1.5px #86EFAC, 0 1px 2px rgba(15, 23, 42, .06); }
+.r28 .z3-ex.is-bad { box-shadow: inset 0 0 0 1.5px var(--r-insp-edge), 0 1px 2px rgba(15, 23, 42, .06); }
+.r28 .z3-ex .z3-doc { padding: 0; }
+.r28 .z3-ex li.z3-swap { animation: z3Swap .5s cubic-bezier(.2, .7, .2, 1) both; }
+@keyframes z3Swap { from { opacity: .2; translate: 0 -8px; } to { opacity: 1; translate: 0 0; } }
+.r28 .z3-ex-v { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 6px; background: #F0FDF4; color: #15803D; font: 600 13px var(--r-font); }
+.r28 .z3-ex-v.is-bad { background: #FFF1EC; color: var(--r-pri-d); }
+.r28 .z3-ex-tag { position: absolute; right: 10px; top: -12px; }
+@media (max-width: 420px) { .r28 .z3-exs { gap: 8px; } .r28 .z3-ex { padding: 10px 10px 12px; font-size: 15px; } }
+
+/* ══ s10 — до и после: на узком телефоне карточки одна под другой, стрелка вниз ══ */
+.r28 .z3-pick3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 480px) {
+  .r28 .z3-ba { flex-direction: column; align-items: stretch; gap: 6px; width: min(100%, 360px); }
+  .r28 .z3-ba-arrow { width: 2px; height: 14px; align-self: center; }
+  .r28 .z3-ba-arrow::after { right: -5px; top: auto; bottom: -2px; border: 6px solid transparent; border-top: 8px solid var(--r-pri); border-bottom: 0; }
+  .r28 .z3-ba .z3-card { padding: 6px 12px 4px; }
+}
+
+/* ══ s11 — вся страница: код плотнее и мельче, чтобы браузер был виден ══ */
+.r28 .z3-s11 .kz-code.z3-code-xs { font-size: clamp(12px, 1.9dvh, 16px); }
+.r28 .z3-s11 .kz-code.z3-code-xs .kz-line { min-height: 0; padding-top: 0; padding-bottom: 0; }
+@media (max-width: 759px) { .r28 .z3-s11 .kz-br.z3-br { --brh: 30dvh; } }
+
+/* ══ s9 — прежний тег ul, который заменяем: зачёркнут ══ */
+.r28 .z3-old { opacity: .45; text-decoration: line-through; margin-right: 6px; }
+.r28 .z3-out { opacity: .75; }
+.r28 .z3-step { font-family: var(--r-font); }
+.r28 .z3-match { align-items: center; }
+.r28 .z3-match-col { justify-content: flex-start; }
+.r28 .z3-exs { align-items: start; }
+@media (max-width: 759px) {
+  .r28 .z3-s5 .kz-code.kz-code-sm { font-size: 13px; }
+  .r28 .z3-s5 .kz-br.z3-br { --brh: 28dvh; }
+  .r28 .z3-s11 .kz-code.z3-code-xs { font-size: 12.5px; }
+}
+/* Списки выше абзацев: на телефоне окно браузера выше пропорции 16:7,4, чтобы пункты читались. */
+@media (max-width: 759px) and (min-height: 700px) { .r28 .kz-br.z3-br.is-short { aspect-ratio: 16 / 11; } }
+@media (max-width: 759px) and (max-height: 699px) { .r28 .kz-br.z3-br.is-short { aspect-ratio: 16 / 8.6; } }
+/* Крючок на ноутбуке: рецепт выше страницы урока 2 — окно браузера крупнее общего правила невысоких экранов. */
+@media (min-width: 760px) { .r28 .kz-scene.z3-s1 .z3-s1-page > .kz-br.z3-br { --brh: 52dvh; } }
+/* Клавиатура телефона открыта: окно — полоска (правило «списки выше» не действует), видны только строки с полями. */
+.is-kbd .r28 .kz-br.z3-br.is-short, .is-kbd .r28 .kz-br.z3-br { aspect-ratio: auto; }
+.is-kbd .r28 .z3-sheet .kz-code .kz-line:not(:has(textarea)) { display: none; }
+/* Ноутбук: код и браузер рядом (s2, s4, s5, s11, s14) — окно браузера крупнее общего 27dvh облика,
+   чтобы страница со списками читалась и помещалась. */
+@media (min-width: 760px) { .r28 .kz-sheet .kz-scene.z3-s5 > .kz-col > .kz-br.z3-br { --brh: 46dvh; } }
+/* s8 — код под каждым примером (заказчик, 03.11.2026: «показать и коды»). */
+.r28 .z3-ex .kz-code.z3-ex-code { margin: 10px -6px -6px; font-size: clamp(12px, 1.9dvh, 15px); }
+.r28 .z3-ex .kz-code.z3-ex-code .kz-line { min-height: 0; padding-top: 1px; padding-bottom: 1px; }
+@media (max-width: 420px) { .r28 .z3-ex .kz-code.z3-ex-code { font-size: 11px; margin: 8px -4px -4px; } .r28 .z3-ex .kz-code.z3-ex-code .kz-line { padding-right: 4px; } }
+@media (max-width: 480px) {
+  .r28 .z3-ex .kz-code.z3-ex-code .kz-line { padding-left: calc(2.1em + var(--d, 0) * .7em); }
+  .r28 .z3-ex .kz-code.z3-ex-code .kz-line::before { width: 1.4em; }
+  .r28 .z3-ex .kz-code.z3-ex-code { letter-spacing: -.02em; }
+}
+/* s8 на телефоне с запасом высоты: примеры один под другим — список слева, код справа, без переносов. */
+@media (max-width: 480px) and (min-height: 700px) {
+  .r28 .z3-exs { grid-template-columns: minmax(0, 1fr); gap: 16px; width: 100%; }
+  .r28 .z3-ex { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); column-gap: 10px; align-items: start; }
+  .r28 .z3-ex > .z3-card-h, .r28 .z3-ex > .z3-ex-v { grid-column: 1; }
+  .r28 .z3-ex > .z3-doc { grid-column: 1; }
+  .r28 .z3-ex .kz-code.z3-ex-code { grid-column: 2; grid-row: 1 / span 3; margin: 0 -4px 0 0; font-size: 11.5px; }
+}
+.r28 .z3-exs { align-content: center; }

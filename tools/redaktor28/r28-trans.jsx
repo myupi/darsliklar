@@ -5,12 +5,47 @@
 //   · старый экран (неподвижная копия поверх урока) четыре кадра «ломается»: красно-голубая кайма
 //     дрожит, полосы экрана прыгают вбок, — и исчезает;
 //   · новый экран появляется тоже со сбоем: кайма и сдвинутые полосы, за три кадра успокаивается;
-// Кадры сбоя — ступенями, без плавности (так выглядит настоящий сбой сигнала). Около 0,4 с.
+// Кадры сбоя — ступенями, без плавности (так выглядит настоящий сбой сигнала). Около 0,4 с. Звук — glitch.mp3 заказчика.
 // Новые вещи — настоящие: голос, кнопки и проверки работают как обычно. «Меньше движения» — без анимации.
 const R28_WAIT = 450;
 const _r28T = { busy: 0, pending: false, dir: 1 };
 const kzLiveSheet = () => Array.prototype.slice.call(document.querySelectorAll('.kz-sheet')).find((x) => !x.closest('.kz-snap')) || null;
 const r28Rnd = (a, b) => a + Math.random() * (b - a);
+// Звук глитча (заказчик прислал glitch.mp3, 02.11.2026): звучит в начале каждого перехода.
+// Файл встраивается сборкой (tools/redaktor28/sounds/glitch.mp3 → base64); в начале записи ~0,28 с тишины —
+// её пропускаем, чтобы звук совпал со сбоем. Выключенный звук урока (_soundOff канона) — тишина.
+const R28_GLITCH = '/*@R28_GLITCH@*/';
+const _r28S = { ctx: null, buf: null, loading: false };
+function r28SoundInit() {
+  if (_r28S.ctx || typeof window === 'undefined') return _r28S.ctx;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  _r28S.ctx = new AC();
+  try {
+    const bin = atob(R28_GLITCH);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+    _r28S.ctx.decodeAudioData(bytes.buffer, (b) => { _r28S.buf = b; }, () => {});
+  } catch (e) { /* без звука */ }
+  return _r28S.ctx;
+}
+function r28GlitchSound() {
+  if (_soundOff) return;
+  const ctx = r28SoundInit();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume();
+  if (!_r28S.buf) return;
+  const src = ctx.createBufferSource(), g = ctx.createGain();
+  src.buffer = _r28S.buf;
+  // Только сам «сбой» — 0,55 с (с 0,28 по 0,83 с записи) с затуханием в конце: голос Коди на новом
+  // экране запускается сразу после перехода, длинный хвост звука перебивал его первые слова.
+  const t = ctx.currentTime;
+  g.gain.setValueAtTime(0.55, t);
+  g.gain.setValueAtTime(0.55, t + 0.37);
+  g.gain.linearRampToValueAtTime(0.0001, t + 0.55);
+  src.connect(g); g.connect(ctx.destination);
+  src.start(t, 0.28, 0.56);
+}
 const r28Fringe = (d) => 'drop-shadow(' + (-d) + 'px 0 0 rgba(255, 0, 72, .55)) drop-shadow(' + d + 'px 0 0 rgba(0, 196, 255, .55))';
 const R28_OUT = 170;   // сколько длится сбой старого экрана, мс
 
@@ -89,6 +124,7 @@ function r28GlitchIn() {
 }
 
 function useKzTransition(screenKey) {
+  useEffect(() => { const f = () => r28SoundInit(); window.addEventListener('pointerdown', f, { once: true }); return () => window.removeEventListener('pointerdown', f); }, []);
   const go = useCallback((fn, dir) => {
     if (!fn) return fn;
     return () => {
@@ -99,6 +135,7 @@ function useKzTransition(screenKey) {
       _r28T.pending = false;
       if (!reduceMotion()) {
         _r28T.pending = r28GlitchOut();
+        if (_r28T.pending) r28GlitchSound();
       }
       fn();
     };

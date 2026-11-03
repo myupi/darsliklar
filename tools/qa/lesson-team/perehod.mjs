@@ -2,7 +2,7 @@
 // Запуск (нужен дев-сервер на 5173, npm run dev): node tools/qa/lesson-team/perehod.mjs test/22-spiski 15 360x640 [lang]
 // Аргументы: файл урока, число экранов, размер. На каждом экране i нажимается «Назад» и ловится:
 // в снимке старого листа — видимое, что не разлетается; в новом листе — видимое без влёта. ✗ — переход сломан.
-import { launchChrome, openPage } from '/Users/mac/Documents/darsliklar/tools/qa/lesson-team/lib/chrome.mjs';
+import { launchChrome, openPage } from './lib/chrome.mjs';
 const [file, n, size = '360x640', lang = 'ru'] = process.argv.slice(2);
 const [w, h] = size.split('x').map(Number);
 const ch = await launchChrome(); const pg = await openPage(ch.port);

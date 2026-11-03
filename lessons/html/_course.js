@@ -13,7 +13,8 @@ export default {
   order: 1,
   practice: true,   // после каждого урока — практика (<NN>p-<slug>.jsx)
   lessons: [
-    // 02.11.2026 (заказчик): в курсе — только урок 1 в облике «Kodi playground» (эталон курса).
+    // 02.11.2026 (заказчик): в курсе — только урок 1 в облике «Редактор» (эталон курса; бывший тестовый 28).
+    // Прежний урок 1 «Kodi playground» — тестовый 29.
     // Прежние уроки 1–5 и практики 01p–05p — в тестовых (lessons/test/18–27); здесь их ещё нет.
     { n: 1, slug: 'struktura-dokumenta', title: 'Структура HTML-документа', topics: ['html', 'head', 'body', 'title'] },
     { n: 2, slug: 'zagolovki-i-tekst', title: 'Заголовки и текст', topics: ['h1–h6', 'p', 'b', 'i'] },

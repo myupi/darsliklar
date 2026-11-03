@@ -1,7 +1,8 @@
-// Сборка урока 1 курса HTML «Структура HTML-документа» — ЭТАЛОН КУРСА (заказчик, 02.11.2026:
-// бывший тестовый урок 17 «Kodi playground» стал первым уроком; прежний бумажный урок 1 —
-// теперь lessons/test/18-struktura-dokumenta.jsx). Имя папки tools/problemitas17/ — историческое.
-//   node tools/problemitas17/build.mjs   → lessons/html/01-struktura-dokumenta.jsx
+// Сборка тестового урока 29 «Структура HTML-документа — Kodi playground» (урок 1 курса и эталон
+// 02.11.2026 до замены уроком «Редактор»; заказчик, 02.11.2026: «сделай урок 28 первым, а этот — в тестовый»).
+//   node tools/problemitas17/build.mjs   → lessons/test/29-struktura-playground.jsx
+// --gen-only — только папка gen/: экраны, реплики и исходник урока 1 (с META урока 1 курса) для урока 1
+// курса в облике «Редактор» (tools/redaktor28/build.mjs); в ней lessonId НЕ меняется.
 // Основа — урок 16 «B · O'yin» как есть (реплики, экраны, шапка и низ рамки B, tools/bdizayn16/),
 // он же — бумажный урок 1 (tools/kollazh/) с рамкой B; облик — «Kodi playground»: тёплый фон,
 // Nunito, мягкие карточки с нажимной тенью, браузер как Chrome в Windows, героиня в манере
@@ -93,8 +94,7 @@ naborPlayground(gen);
 writeFileSync(join(gen, 'b16-texts.jsx'), readFileSync(join(B16, 'b16-texts.jsx'), 'utf8'));
 
 let src = readFileSync(join(L1, 'kollazh.src.jsx'), 'utf8');
-// Урок 1 курса HTML (заказчик, 02.11.2026: урок 17 стал первым уроком курса и эталоном):
-// lessonId и название — урока 1 из META исходника (tools/kollazh/kollazh.src.jsx), без замены.
+// В gen — META урока 1 курса (lessonId html-01-struktura-dokumenta): исходник берёт урок 1 курса (tools/redaktor28).
 src = must(src, '/*@L2_HELPERS@*/', '/*@FILE:b16-texts.jsx@*/\n\n/*@L2_HELPERS@*/', 'texts');
 src = must(src, '/*@FILE:kollazh-paper-data.jsx@*/', '/*@FILE:b16-chrome.jsx@*/\n\n/*@FILE:p17-skin.jsx@*/\n\n/*@FILE:kollazh-paper-data.jsx@*/', 'chrome');
 src = must(src, '/*@FILE:kollazh.css@*/', '/*@FILE:kollazh.css@*/\n/*@FILE:b16.css@*/\n/*@FILE:p17.css@*/', 'css');
@@ -102,7 +102,13 @@ src = '// СГЕНЕРИРОВАНО tools/problemitas17/build.mjs из tools/ko
 const srcOut = join(gen, 'p17.src.jsx');
 writeFileSync(srcOut, src);
 
-// --gen-only: только папка gen/ (экраны и набор урока 1 для других обликов, например тестового 28), без сборки урока.
+// --gen-only: только папка gen/ (экраны и исходник урока 1 для урока 1 курса в облике «Редактор»), без сборки.
+// Сборка тестового 29: свой lessonId и название (прогресс не делится с уроком 1 курса) — в отдельной копии исходника.
 if (!process.argv.includes('--gen-only')) {
-  execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), srcOut, join(root, 'lessons/html/01-struktura-dokumenta.jsx')], { stdio: 'inherit' });
+  let t = must(src, "lessonId: 'html-01-struktura-dokumenta',", "lessonId: 'test-29-struktura-playground',", 'lessonId');
+  t = must(t, "    uz: '1-dars. HTML hujjatining tuzilishi',\n    ru: 'Урок 1. Структура HTML-документа',\n    en: 'Lesson 1. HTML document structure'",
+    "    uz: 'HTML hujjatining tuzilishi — «Kodi playground»',\n    ru: 'Структура HTML-документа — «Kodi playground»',\n    en: 'HTML document structure — “Kodi playground”'", 'title');
+  const srcT = join(gen, 'p17-test29.src.jsx');
+  writeFileSync(srcT, t);
+  execFileSync('node', [join(root, '.claude/skills/novyy-urok/scripts/sobrat.mjs'), srcT, join(root, 'lessons/test/29-struktura-playground.jsx')], { stdio: 'inherit' });
 }

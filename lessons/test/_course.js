@@ -58,7 +58,8 @@ export default {
       topics: ['img', 'src', 'alt'] },
     { n: 27, slug: 'izobrazheniya-praktika', title: 'Практика «Выставка» — прежняя 05p курса',
       topics: ['img', 'src', 'alt'] },
-    { n: 28, slug: 'struktura-redaktor', title: 'Структура HTML-документа — урок 1 в облике «Редактор»: код в центре, как в настоящем редакторе (02.11.2026)',
-      topics: ['html', 'head', 'title', 'body', 'облик «Редактор»'] },
+    // 28 «Редактор» стал уроком 1 курса HTML и эталоном (02.11.2026); прежний урок 1 — тестовый 29.
+    { n: 29, slug: 'struktura-playground', title: 'Структура HTML-документа — «Kodi playground» (урок 1 курса и эталон до 02.11.2026)',
+      topics: ['html', 'head', 'title', 'body', 'Kodi playground'] },
   ],
 };
