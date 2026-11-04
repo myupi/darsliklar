@@ -237,3 +237,17 @@
   .r28 .kz-pick.z6-pick3 { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .r28 .kz-pick.z6-pick3 .kz-btn { min-height: 46px; }
 }
+
+
+/* ══ НЕВЫСОКИЙ ТЕЛЕФОН (ниже 700 px, 04.11.2026): окно браузера по пропорциям выходило слишком высоким, и вместе
+   с кодом и кнопками не влезало в сцену — элементы наезжали друг на друга (код на клавиатуру, окно на лоток).
+   Окно ниже, строки кода плотнее; !important — потому что выше по файлу пропорции заданы более узкими правилами. ══ */
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .kz-sheet .kz-scene-col .kz-br.z6-br.is-short { aspect-ratio: 16 / 6 !important; }
+  .r28 .kz-sheet .kz-scene.z6-s5 .kz-br.z6-br { aspect-ratio: 16 / 6.5 !important; }
+  .r28 .z6-sheet .kz-code.kz-code-sm .kz-line { padding-top: 0; padding-bottom: 0; min-height: 0; }
+}
+/* Планшет стоя: на крючке человечек над окном не помещается и наезжает на кнопку — окно важнее (как на телефоне). */
+@media (min-width: 760px) and (orientation: portrait) { .r28 .kz-sheet .kz-scene.z6-s1 > .z6-s1-man { display: none; } }
+/* Клавиатура телефона открыта: окно — полоска; правила невысокого телефона выше (с !important) здесь не действуют. */
+.is-kbd .r28 .kz-sheet .kz-scene-col .kz-br.z6-br.is-short, .is-kbd .r28 .kz-sheet .kz-scene.z6-s5 .kz-br.z6-br { aspect-ratio: auto !important; }

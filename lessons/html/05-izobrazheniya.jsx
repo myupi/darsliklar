@@ -13660,4 +13660,18 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 /* Вывод: у img, src и alt — свои цвета (общее правило урока 1 красит 2-ю и 3-ю роль одинаково — head и title). */
 .r28 .z5-sheet .kz-role:nth-child(2) { --c: #7C5CFA !important; }
 .r28 .z5-sheet .kz-role:nth-child(3) { --c: #0FA38E !important; }
+
+
+/* ══ НЕВЫСОКИЙ ТЕЛЕФОН (ниже 700 px, 04.11.2026): окно браузера по пропорциям выходило слишком высоким, и вместе
+   с кодом и кнопками не влезало в сцену — элементы наезжали друг на друга (код на клавиатуру, окно на лоток).
+   Окно ниже, строки кода плотнее; !important — потому что выше по файлу пропорции заданы более узкими правилами. ══ */
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .kz-sheet .kz-scene-col .kz-br.z5-br.is-short { aspect-ratio: 16 / 6 !important; }
+  .r28 .kz-sheet .kz-scene.z5-s5 .kz-br.z5-br { aspect-ratio: 16 / 6.5 !important; }
+  .r28 .z5-sheet .kz-code.kz-code-sm .kz-line { padding-top: 0; padding-bottom: 0; min-height: 0; }
+}
+/* Планшет стоя: на крючке человечек над окном не помещается и наезжает на кнопку — окно важнее (как на телефоне). */
+@media (min-width: 760px) and (orientation: portrait) { .r28 .kz-sheet .kz-scene.z5-s1 > .z5-s1-man { display: none; } }
+/* Клавиатура телефона открыта: окно — полоска; правила невысокого телефона выше (с !important) здесь не действуют. */
+.is-kbd .r28 .kz-sheet .kz-scene-col .kz-br.z5-br.is-short, .is-kbd .r28 .kz-sheet .kz-scene.z5-s5 .kz-br.z5-br { aspect-ratio: auto !important; }
 `;

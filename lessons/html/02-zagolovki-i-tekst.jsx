@@ -13820,4 +13820,21 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
    27dvh облика, чтобы весь код и окно помещались с заданием. */
 @media (max-width: 759px) and (max-height: 700px) { .r28 .kz-sheet .kz-scene.z2-s5 > .kz-col > .kz-br.z2-br { --brh: 24dvh; } }
 @media (max-width: 759px) and (max-height: 700px) { .r28 .kz-sheet .kz-scene.z2-s5 > .kz-col > .kz-br.z2-br:not(.is-short) { aspect-ratio: 16 / 9.4; } }
+
+
+/* ══ НЕВЫСОКИЙ ТЕЛЕФОН (ниже 700 px, 04.11.2026): окно браузера по пропорциям выходило слишком высоким, и вместе
+   с кодом и кнопками не влезало в сцену — элементы наезжали друг на друга (код на клавиатуру, окно на лоток).
+   Окно ниже, строки кода плотнее; !important — потому что выше по файлу пропорции заданы более узкими правилами. ══ */
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .kz-sheet .kz-scene-col .kz-br.z2-br.is-short { aspect-ratio: 16 / 6 !important; }
+  .r28 .kz-sheet .kz-scene.z2-s5 .kz-br.z2-br { aspect-ratio: 16 / 6.5 !important; }
+  .r28 .z2-sheet .kz-code.kz-code-sm .kz-line { padding-top: 0; padding-bottom: 0; min-height: 0; }
+}
+/* Невысокий телефон: s4 (код + окно + лоток) — окно ещё чуть ниже, иначе 4 px отступов уходили за край. */
+@media (max-width: 759px) and (max-height: 699px) { .r28 .kz-sheet .kz-scene.z2-s5 .kz-br.z2-br.is-short { aspect-ratio: 16 / 5.6 !important; } }
+/* Клавиатура телефона открыта: окно — полоска; правила невысокого телефона выше (с !important) здесь не действуют. */
+.is-kbd .r28 .kz-sheet .kz-scene-col .kz-br.z2-br.is-short, .is-kbd .r28 .kz-sheet .kz-scene.z2-s5 .kz-br.z2-br { aspect-ratio: auto !important; }
+/* Невысокий телефон: рука-подсказка (s4, перетаскивание к коду) у нижнего лотка выходила за лист — слой руки
+   разрешает ей выход на 90 px, и страница прокручивалась на 4–10 px. Здесь рука не выходит за лист. */
+@media (max-width: 759px) and (max-height: 699px) { .r28 .z2-sheet .kz-hand-layer { overflow-clip-margin: 0px; } }
 `;

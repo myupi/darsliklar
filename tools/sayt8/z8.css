@@ -406,3 +406,20 @@
 .is-kbd .r28 .kz-sheet .kz-scene-col .kz-br.z8-br.is-short, .is-kbd .r28 .kz-sheet .kz-scene.z8-s5 .kz-br.z8-br { aspect-ratio: auto; }
 .is-kbd .z8-insp-badge { display: none; }
 .is-kbd .z8-doc.is-insp { padding-top: 2px; }
+
+
+/* ══ НЕВЫСОКИЙ ТЕЛЕФОН (ниже 700 px, 04.11.2026): окно браузера по пропорциям выходило слишком высоким, и вместе
+   с кодом и кнопками не влезало в сцену — элементы наезжали друг на друга (код на клавиатуру, окно на лоток).
+   Окно ниже, строки кода плотнее; !important — потому что выше по файлу пропорции заданы более узкими правилами. ══ */
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .kz-sheet .kz-scene-col .kz-br.z8-br.is-short { aspect-ratio: 16 / 6 !important; }
+  .r28 .kz-sheet .kz-scene.z8-s5 .kz-br.z8-br { aspect-ratio: 16 / 6.5 !important; }
+  .r28 .z8-sheet .kz-code.kz-code-sm .kz-line { padding-top: 0; padding-bottom: 0; min-height: 0; }
+}
+/* Невысокий телефон: лоток из длинных кусков (s6) — куски компактнее, чтобы встал в два ряда. */
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .z8-sheet .kz-tray { gap: 5px; }
+  .r28 .z8-sheet .kz-tray .kz-scrap { min-height: 34px; padding: 4px 9px; font-size: 13px; }
+}
+/* Клавиатура телефона открыта: окно — полоска; правила невысокого телефона выше (с !important) здесь не действуют. */
+.is-kbd .r28 .kz-sheet .kz-scene-col .kz-br.z8-br.is-short, .is-kbd .r28 .kz-sheet .kz-scene.z8-s5 .kz-br.z8-br { aspect-ratio: auto !important; }
