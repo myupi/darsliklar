@@ -24,7 +24,6 @@
 | Файл | Статус | Что брать | Чего не брать |
 |---|---|---|---|
 | `lessons/html/01-struktura-dokumenta.jsx` | **Главный эталон** (заказчик, 02.11.2026): урок 1 в облике «Редактор» (бывший тестовый 28); сборка `node tools/redaktor28/build.mjs`, набор облика `tools/redaktor28/nabor.mjs`, экраны и реплики `tools/bdizayn16/`, основа `tools/kollazh/`, описание `docs/urok-01-opisanie.md`, правила — `references/etalon-redaktor.md`, `etalon-playground.md` (раздел 4) и `etalon-bumazhnaya.md` (разделы 4–7) навыка | Облик «Редактор» через `naborRedaktor` (редактор кода, Chrome, оранжевый акцент, шапка и низ CoddyCamp, глитч), облачка вместо подсветки образа; структуру, подачу, тон, механики | Героя как обязательный образ, тексты и сюжет; облик прежних уроков 1 |
-| `lessons/test/19-struktura-dokumenta-praktika.jsx` | Прежняя практика 01p «Бумажная улица» (исходник `tools/praktika-01/`; в тестовых с 02.11.2026) | Каркас практики: `PStage`, проверка «Проверить», разбор кода, лесенка письма | Бумажный облик (облик — по эталону урока 1), улицу и дома |
 | `docs/brif-uroka.md` | Правила и контракт (v2) | Всё, кроме устаревшего (таблица в `istochniki.md`) | — |
 
 Не образцы: `lessons/test/**`, исходники в `tools/**` (кроме `tools/redaktor28/`, `tools/problemitas17/`, `tools/bdizayn16/` и `tools/kollazh/` — сборка, экраны и набор эталона урока 1), `docs/scenarij-*.md` (кроме `scenarij-01-bumazhnaya-stranitsa.md`), `docs/test-*.md`, `lessons/_reference/**` (эталоны других курсов — только чтобы понять платформу).
