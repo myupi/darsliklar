@@ -16,11 +16,11 @@ export default {
     // 02.11.2026 (заказчик): в курсе — только урок 1 в облике «Редактор» (эталон курса; бывший тестовый 28).
     // Прежний урок 1 «Kodi playground» — тестовый 29.
     // Прежние уроки 1–5 — в тестовых (lessons/test/18–26); прежние практики удалены (04.11.2026).
-    // Практики в облике «Редактор»: 01p «Пять вкладок Коди» (04.11.2026, tools/amaliyot1/), 02p «Газета Коди» (04.11.2026, tools/amaliyot2/).
+    // Практики в облике «Редактор»: 01p «Пять вкладок Коди» (04.11.2026, tools/amaliyot1/), 02p «Газета Коди» (04.11.2026, tools/amaliyot2/), 03p «Праздник Коди» (04.11.2026, tools/amaliyot3/), 04p «Путешествие Коди» (04.11.2026, tools/amaliyot4/).
     { n: 1, slug: 'struktura-dokumenta', title: 'Структура HTML-документа', topics: ['html', 'head', 'body', 'title'], practiceTitle: 'Пять вкладок Коди' },
     { n: 2, slug: 'zagolovki-i-tekst', title: 'Заголовки и текст', topics: ['h1–h6', 'p', 'b', 'i'], practiceTitle: 'Газета Коди' },
-    { n: 3, slug: 'spiski', title: 'Списки', topics: ['ul', 'ol', 'li'] },
-    { n: 4, slug: 'ssylki-i-atributy', title: 'Ссылки и атрибуты', topics: ['a', 'href'] },
+    { n: 3, slug: 'spiski', title: 'Списки', topics: ['ul', 'ol', 'li'], practiceTitle: 'Праздник Коди' },
+    { n: 4, slug: 'ssylki-i-atributy', title: 'Ссылки и атрибуты', topics: ['a', 'href'], practiceTitle: 'Путешествие Коди' },
     { n: 5, slug: 'izobrazheniya', title: 'Изображения', topics: ['img', 'src', 'alt'] },
     { n: 6, slug: 'formy-vvod', title: 'Формы, часть 1: ввод данных', topics: ['form', 'label', 'input', 'type', 'placeholder'] },
     { n: 7, slug: 'formy-vybor', title: 'Формы, часть 2: выбор и отправка', topics: ['select', 'option', 'textarea', 'button'] },

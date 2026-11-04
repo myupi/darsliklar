@@ -1,0 +1,220 @@
+/* ── ПРАКТИКА 4 «Путешествие Коди» — облик «Редактор» поверх .r28 (рамка B, стол, Chrome), на каркасе 01p ──
+   Свои классы — с префиксом a4-. Бумаги нет: плоские панели, цвета облика (var(--r-…)). */
+
+/* Рабочая область: на телефоне в столбик (браузер сверху, редактор — главный), на широком — в ряд. */
+.r28 .a4-sheet .kz-sheet-body { gap: 10px; }
+.r28 .a4-work { display: flex; flex-direction: column; gap: 10px; width: 100%; min-width: 0; }
+.r28 .a4-side, .r28 .a4-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+@media (min-width: 760px) and (orientation: landscape), (min-width: 1000px) {
+  .r28 .a4-work { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); align-items: start; gap: 16px; }
+  .r28 .a4-work.is-big { grid-template-columns: minmax(0, .9fr) minmax(0, 1.3fr); }
+}
+
+/* ── БРАУЗЕР С ПЯТЬЮ ВКЛАДКАМИ (карта) ── */
+.r28 .kz-br.a4-br { align-self: stretch; width: 100%; max-width: 100%; }
+.r28 .a4-br.is-short { aspect-ratio: 16 / 7; }
+.r28 .a4-s1 .a4-br, .r28 .a4-fin .a4-br { aspect-ratio: 16 / 9; }
+.r28 .a4-bar { gap: 2px; padding-right: 4px; }
+.r28 .a4-tab { min-width: 0; }
+.r28 .a4-br .kz-br-tab.a4-tab.is-cur { flex: 0 1 auto; min-width: 96px; max-width: 56%; gap: 6px; }
+.r28 .a4-tab.is-side { position: relative; display: flex; align-items: center; gap: 6px; flex: 0 0 auto; width: 28px; justify-content: center; height: 76%; padding: 0;
+  color: #5F6368; font: 500 12px/1 var(--chr-font, var(--r-font)); white-space: nowrap; }
+.r28 .a4-tab.is-side + .a4-tab.is-side::before { content: ''; position: absolute; left: -1px; top: 22%; bottom: 22%; width: 1px; background: #B9BEC4; }
+.r28 .a4-tab-t { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.r28 .a4-tab.is-side .a4-tab-t { display: none; }
+.r28 .a4-tab.is-off .a4-tab-t { color: #9AA0A6; }
+.r28 .a4-fav { flex: none; display: block; width: 14px; height: 14px; color: var(--fc); background: none !important; rotate: 0deg; }
+.r28 .a4-fav.is-off { opacity: .9; }
+.r28 .a4-br .kz-br-fav { display: none; }
+.r28 .a4-br .kz-br-win { margin-left: auto; flex: none; }
+/* Страница в окне — как браузер по умолчанию (урок 2): заголовки жирные и убывают от h1 к h6, абзацы с отступом.
+   Помещается целиком: шрифт уменьшает useA4Fit. */
+.r28 .a4-br .kz-br-page { overflow: hidden; }
+.r28 .a4-doc { display: flex; flex-direction: column; align-items: flex-start; padding: 8px 12px 0; color: #202124; text-align: left; overflow-wrap: anywhere;
+  font: 400 clamp(13px, 1.9dvh, 16px)/1.3 var(--chr-font, var(--r-font)); }
+.r28 .a4-blk { max-width: 100%; }
+.r28 .a4-h1, .r28 .a4-inh1 { font-size: 1.75em; font-weight: 700; line-height: 1.12; }
+.r28 .a4-h2, .r28 .a4-inh2 { font-size: 1.4em; font-weight: 700; line-height: 1.15; }
+.r28 .a4-h3, .r28 .a4-inh3 { font-size: 1.17em; font-weight: 700; }
+.r28 .a4-h4, .r28 .a4-inh4 { font-size: 1em; font-weight: 700; }
+.r28 .a4-h5, .r28 .a4-inh5 { font-size: .83em; font-weight: 700; }
+.r28 .a4-h6, .r28 .a4-inh6 { font-size: .7em; font-weight: 700; }
+.r28 .a4-h1, .r28 .a4-h2, .r28 .a4-h3, .r28 .a4-h4, .r28 .a4-h5, .r28 .a4-h6 { margin: 0 0 .3em; }
+.r28 .a4-p { margin: 0 0 .55em; }
+.r28 .a4-wb { font-weight: 700; }
+.r28 .a4-wi { font-style: italic; }
+.r28 .a4-pop { animation: a4Pop .45s cubic-bezier(.2, .7, .2, 1) both; }
+.r28 .a4-in { animation: a4In .35s ease-out both; }
+@keyframes a4Pop { 0% { transform: translateY(3px) scale(.96); background: #FFE3D9; } 60% { transform: none; background: #FFE3D9; } 100% { transform: none; } }
+@keyframes a4In { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+/* Сбой в крючке — коротко дёргается и выцветает. */
+.r28 .a4-glitch { animation: a4Glitch .6s steps(1, end) both; }
+@keyframes a4Glitch {
+  0% { transform: translate(0, 0); filter: none; }
+  15% { transform: translate(-4px, 1px); filter: hue-rotate(80deg) saturate(2); clip-path: inset(10% 0 40% 0); }
+  30% { transform: translate(3px, -2px); filter: contrast(1.6); clip-path: inset(50% 0 5% 0); }
+  45% { transform: translate(-2px, 2px); filter: hue-rotate(-60deg); clip-path: inset(0 0 70% 0); }
+  60% { transform: translate(2px, 0); filter: grayscale(1); clip-path: none; }
+  100% { transform: none; filter: none; clip-path: none; }
+}
+@media (max-width: 759px) {
+  /* На телефоне боковые вкладки — только значок, как в Chrome при многих вкладках. */
+  .r28 .a4-br .kz-br-tab.a4-tab.is-cur { max-width: 58%; }
+  .r28 .a4-br .kz-br-win { display: none; }
+}
+
+/* ── РЕДАКТОР: рамка .kz-code урока, свои строки (номер слева), прозрачная textarea сверху ── */
+.r28 .a4-ed { display: block; position: relative; font: 500 16px/1.45 var(--r-mono); text-align: left; overflow: auto; overscroll-behavior: contain;
+  max-height: 52dvh; -webkit-overflow-scrolling: touch; }
+.r28 .a4-ed.a4-static { overflow: hidden; max-height: none; }
+.r28 .a4-ln { position: relative; display: block; min-height: 1.45em; padding: 0 12px 0 3.1em; color: var(--r-ed-tx);
+  white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; tab-size: 2; }
+.r28 .a4-ln::before { content: attr(data-n); position: absolute; left: 0; width: 2.2em; text-align: right; color: var(--r-ed-ln); pointer-events: none; }
+.r28 .a4-ln.is-mark { background: #262626; box-shadow: inset 2px 0 0 #FA4F28; }
+.r28 .a4-b { color: var(--r-ed-br); }
+.r28 .a4-n { color: var(--r-ed-tag); }
+.r28 .a4-a { color: #9CDCFE; }
+.r28 .a4-t { color: var(--r-ed-tx); }
+.r28 .a4-edit { position: relative; background: #262626; box-shadow: inset 0 0 0 1px #333; cursor: text; }
+.r28 .a4-edit:focus-within { background: #2A2A2A; box-shadow: inset 0 0 0 1px #3A3A3A, inset 2px 0 0 #FA4F28; }
+.r28 .a4-edit.is-led { animation: r28LineBreath 1.4s ease-in-out infinite; }
+.r28 .a4-hl { pointer-events: none; }
+.r28 .a4-ta { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; border: 0; outline: 0; border-radius: 0; resize: none; overflow: hidden;
+  background: transparent; color: transparent; -webkit-text-fill-color: transparent; caret-color: #E8E8E8;
+  font: inherit; line-height: inherit; letter-spacing: inherit; padding: 0 12px 0 3.1em; white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; tab-size: 2;
+  -webkit-appearance: none; appearance: none; box-shadow: none; }
+.r28 .a4-ta::selection { background: rgba(38, 79, 120, .85); -webkit-text-fill-color: transparent; }
+.r28 .a4-ed:not(.is-single):not(.is-big) .a4-edit { min-height: 4.35em; }
+.r28 .a4-ed.is-big { max-height: none; }
+.r28 .a4-ed.is-big .a4-edit { min-height: 10.2em; }
+/* Строки, которые можно нажать (Т4). */
+.r28 .a4-ed .a4-tap { display: block; width: 100%; border: 0; border-radius: 0; background: none; font: inherit; font-family: var(--r-mono) !important; letter-spacing: normal; text-align: left; cursor: pointer; color: var(--r-ed-tx); margin: 0; box-shadow: none; }
+.r28 .a4-tap:hover { background: #2A2D2E; }
+.r28 .a4-tap:focus-visible { outline: 2px solid #FA4F28; outline-offset: -2px; }
+.r28 .a4-tap.is-led { animation: r28LineBreath 1.4s ease-in-out infinite; }
+.r28 .a4-shake { animation: a4Shake .4s ease both; }
+@keyframes a4Shake { 0%, 100% { transform: none; } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
+
+/* Т1: поле в строке — кодом урока (KzCode), шрифт поля 16 px. */
+.r28 .a4-kz .tk-input { font-size: 16px; }
+
+/* Ряд кнопок: символы и «Tekshirish». */
+.r28 .a4-keys { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.r28 .a4-keys .key-b { min-width: 46px; height: 44px; font-size: 18px; }
+.r28 .a4-keys .key-b.key-go { display: inline-flex; align-items: center; gap: 6px; padding: 0 18px; font-size: 16px; font-weight: 600; margin-left: auto; }
+.r28 .a4-row { justify-content: center; }
+.r28 .a4-publish { display: inline-flex; align-items: center; gap: 8px; position: relative; }
+
+/* ── НАГЛЯДНАЯ ПОМОЩЬ ── */
+.r28 .a4-slots { display: flex; gap: 6px; flex-wrap: wrap; padding: 8px; background: #fff; border: 1px solid var(--r-line); border-radius: 10px; }
+.r28 .a4-slots.is-rows { flex-direction: column; }
+.r28 .a4-slot { display: inline-flex; align-items: center; gap: 7px; padding: 4px 9px 4px 4px; border-radius: 8px; background: #F8FAFC; border: 1px solid var(--r-line);
+  font: 500 14px/1.2 var(--r-font); color: var(--r-ink2); }
+.r28 .a4-slot b { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--r-ink); color: #fff; font-size: 12px; }
+.r28 .a4-slot code { font: 600 14px var(--r-mono); color: var(--pc); }
+.r28 .a4-slot em { font-style: normal; font-weight: 600; color: var(--r-ink); }
+.r28 .a4-rep { align-self: center; padding: 3px 8px; border-radius: 999px; background: var(--r-ink); color: #fff; font: 600 13px/1.2 var(--r-font); }
+.r28 .a4-tree { padding: 8px 12px; background: #fff; border: 1px solid var(--r-line); border-radius: 10px; font: 500 14px/1.6 var(--r-mono); color: var(--r-ink2); }
+.r28 .a4-tree-r { display: flex; align-items: center; gap: 4px; white-space: pre; }
+.r28 .a4-tree-pre { color: #94A3B8; }
+.r28 .a4-tree code { font: 700 14px var(--r-mono); color: var(--pc); }
+.r28 .a4-tree-note { font-family: var(--r-font); color: var(--r-muted); white-space: normal; }
+.r28 .a4-tree-ok { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--b-ok, #16A34A); color: #fff; margin-left: 4px; }
+.r28 .a4-sample { display: flex; flex-direction: column; gap: 4px; }
+.r28 .a4-sample-l { display: inline-flex; align-items: center; gap: 6px; font: 600 13px var(--r-font); color: var(--b-tip-text, #92400E); }
+.r28 .a4-sample-code { font-size: 14px; }
+.r28 .a4-sample-code::before { content: 'namuna.html'; }
+
+/* ── ВЫВОД ── */
+.r28 .a4-ready { align-self: center; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--b-ok-soft, #F0FDF4);
+  color: var(--b-ok-text, #15803D); font: 600 14px var(--r-font); border: 1px solid #BBF7D0; }
+.r28 .a4-roles { display: flex; flex-wrap: wrap; gap: 6px; }
+.r28 .a4-fin .a4-ed { font-size: 14px; }
+@media (max-width: 759px) { .r28 .a4-fin .a4-ed, .r28 .a4-fin .a4-ready { display: none; } }
+
+/* ── ТЕЛЕФОН: компактнее ── */
+@media (max-width: 759px) {
+  .r28 .a4-ed { max-height: 34dvh; }
+  .r28 .a4-ed.is-big { max-height: 40dvh; }
+  .r28 .a4-ed.is-big .a4-edit { min-height: 7.25em; }
+  .r28 .a4-ed .a4-ln.is-static, .r28 .a4-ed.a4-static { font-size: 14px; }
+  .r28 .a4-ln::before { font-size: 13px; }
+  .r28 .a4-br.is-short { aspect-ratio: 16 / 7.5; }   /* заголовки и абзацы — выше окно, чем в 01p */
+  .r28 .a4-slots { padding: 5px; gap: 4px; }
+  .r28 .a4-slots.is-rows { flex-direction: row; }
+  .r28 .a4-slot { font-size: 13px; padding: 3px 7px 3px 3px; }
+  .r28 .a4-tree { font-size: 13px; line-height: 1.45; padding: 6px 10px; }
+  .r28 .a4-tree code { font-size: 13px; }
+  .r28 .a4-keys { flex-wrap: nowrap; gap: 6px; }   /* символы и «Проверить» — одним рядом: место окну браузера */
+  .r28 .a4-keys .key-b { height: 42px; min-width: 40px; padding: 0 6px; }
+  .r28 .a4-keys .key-b.key-go { padding: 0 14px; flex: 0 1 auto; min-width: 0; }
+}
+@media (max-width: 759px) and (min-height: 800px) {
+  .r28 .a4-sheet:not(.is-big) .a4-br.is-short { aspect-ratio: 16 / 9.5; }   /* высокий телефон (кроме своей статьи): место есть — окно выше, страница крупнее */
+}
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .a4-br.is-short { aspect-ratio: 16 / 7.5; }
+  .r28 .a4-s1 .a4-br, .r28 .a4-fin .a4-br { aspect-ratio: 16 / 7.5; }
+  .r28 .a4-ed.a4-static, .r28 .a4-ed .a4-ln.is-static { font-size: 13px; line-height: 1.35; }
+  .r28 .a4-ed { max-height: 22dvh; }
+  .r28 .a4-ed.is-big { max-height: 21dvh; }
+  .r28 .a4-ed.is-big .a4-edit { min-height: 4.35em; }
+  .r28 .a4-tree { font-size: 12px; line-height: 1.25; padding: 4px 10px; }
+  .r28 .a4-tree code { font-size: 12px; }
+  .r28 .a4-sheet .kz-sheet-body, .r28 .a4-work, .r28 .a4-side, .r28 .a4-main { gap: 6px; }
+  .r28 .a4-keys .key-b { height: 40px; }
+}
+/* Открытая клавиатура телефона: остаются вкладка с окном (узкой полосой), поле и кнопки. */
+.is-kbd .r28 .a4-slots, .is-kbd .r28 .a4-tree, .is-kbd .r28 .a4-sample { display: none; }
+/* Клавиатура открыта: видны задание, код с полем и «Проверить»; браузер вернётся, когда клавиатура закроется. */
+.is-kbd .r28 .a4-side { display: none; }
+.is-kbd .r28 .a4-ed, .is-kbd .r28 .a4-ed.is-big, .is-kbd .r28 .a4-ed.a4-static, .is-kbd .r28 .a4-kz { max-height: 86px; overflow: auto; }
+.is-kbd .r28 .a4-keys .key-b { height: 36px; }
+.is-kbd .r28 .a4-ed.is-big .a4-edit { min-height: 2.9em; }
+.is-kbd .r28 .a4-sheet .kz-sheet-body, .is-kbd .r28 .a4-work, .is-kbd .r28 .a4-side, .is-kbd .r28 .a4-main { gap: 4px; }
+.is-kbd .r28 .a4-ed::before, .is-kbd .r28 .a4-ed::after { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .r28 .a4-glitch, .r28 .a4-pop, .r28 .a4-in, .r28 .a4-shake, .r28 .a4-edit.is-led, .r28 .a4-tap.is-led { animation: none !important; }
+}
+.r28 .a4-roles .kz-role i { background: var(--c) !important; }
+/* ── СПИСКИ НА СТРАНИЦЕ (урок 3): ul — точки, ol — номера, текст без li — без точки, li без списка — с точкой. ── */
+.r28 .a4-list { margin: 0 0 .5em; padding-left: 1.5em; }
+.r28 .a4-ul { list-style: disc outside; }
+.r28 .a4-ol { list-style: decimal outside; }
+.r28 .a4-loose { list-style: disc outside; padding-left: 1.1em; }
+.r28 .a4-list > li { display: list-item; margin: 0; }
+.r28 .a4-bare { display: block; }
+.r28 .a4-slot.is-wrap { padding: 4px 9px; }
+/* ── ССЫЛКИ НА СТРАНИЦЕ (урок 4): с href — синие подчёркнутые, нажимаются; без href — простой текст. ── */
+.r28 .a4-doc .a4-a { display: inline; padding: 0; margin: 0; border: 0; background: none; font: inherit; color: #0000EE; text-decoration: underline;
+  text-underline-offset: 2px; cursor: pointer; border-radius: 2px; box-shadow: none; }
+.r28 .a4-doc .a4-a:active { color: #EE0000; }
+.r28 .a4-doc .a4-a:focus-visible { outline: 2px solid #FA4F28; outline-offset: 1px; }
+.r28 .a4-br.is-nf .a4-doc { color: #5F6368; }
+.r28 .a4-files { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 6px 8px; background: #fff; border: 1px solid var(--r-line); border-radius: 10px;
+  font: 500 13px/1.3 var(--r-font); color: var(--r-muted); }
+.r28 .a4-files code { font: 600 13px var(--r-mono); color: var(--r-ink); background: #F1F5F9; border-radius: 6px; padding: 1px 6px; }
+.r28 .a4-back { cursor: pointer; }
+@media (max-width: 759px) { .r28 .a4-files { padding: 4px 6px; font-size: 12px; } .r28 .a4-files code { font-size: 12px; } }
+.is-kbd .r28 .a4-files { display: none; }
+/* Невысокий телефон (360 × 640): строки со ссылками длинные — окно браузера ниже, подписи помощи короче. */
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .a4-t1 .a4-br.is-short, .r28 .a4-t3 .a4-br.is-short, .r28 .a4-t5 .a4-br.is-short { aspect-ratio: 16 / 5.6; }
+  .r28 .a4-files-l { display: none; }
+  .r28 .a4-files { gap: 3px 4px; padding: 3px 6px; }
+  .r28 .a4-files code { font-size: 11.5px; padding: 0 4px; }
+  .r28 .a4-t5 .a4-tree { line-height: 1.2; }
+}
+/* Телефон до 800 px высоты (375 × 740): у экранов с помощью (задания 1, 3, 5) окно браузера ниже. */
+@media (max-width: 759px) and (max-height: 799px) {
+  .r28 .a4-t1 .a4-br.is-short, .r28 .a4-t3 .a4-br.is-short, .r28 .a4-t5 .a4-br.is-short { aspect-ratio: 16 / 5.6; }
+  .r28 .a4-t5 .a4-ed.is-big { max-height: 26dvh; }
+  .r28 .a4-t5 .a4-ed.is-big .a4-edit { min-height: 4.35em; }
+  .r28 .a4-t5 .a4-tree { line-height: 1.25; padding: 4px 10px; }
+}
+/* 360 × 640: экран своей страницы (схема, файлы и большой редактор) вылезал на 5 px — помощь плотнее. */
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .a4-t5 .a4-tree { line-height: 1.12; padding: 3px 8px; }
+  .r28 .a4-t5 .a4-files { padding: 2px 6px; }
+  .r28 .a4-t5 .a4-work, .r28 .a4-t5 .a4-side, .r28 .a4-t5 .a4-main { gap: 4px; }
+}
