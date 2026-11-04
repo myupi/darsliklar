@@ -233,6 +233,10 @@
 
 /* ══ s8 — два примера рядом: покупки и утро ══ */
 .r28 .z3-exs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(10px, 2.5vw, 24px); align-self: center; width: min(100%, 640px); }
+/* Две карточки примера — одной высоты, код в обеих — у нижнего края (заказчик, 04.11.2026: «размеры где должны быть одинаковыми»). */
+.r28 .z3-exs { align-items: stretch; align-content: center; }
+.r28 .z3-ex { display: flex; flex-direction: column; gap: 10px; }
+.r28 .z3-exs .z3-ex > .kz-code.z3-ex-code { margin-top: auto; }
 .r28 .z3-ex { position: relative; padding: 12px 14px 14px; background: #fff; border-radius: 10px; box-shadow: inset 0 0 0 1.5px var(--r-edge), 0 1px 2px rgba(15, 23, 42, .06);
   font: 400 clamp(15px, 2.2dvh, 19px)/1.35 'Times New Roman', Times, serif; color: var(--r-ink); transition: box-shadow .3s; }
 .r28 .z3-ex.is-good { box-shadow: inset 0 0 0 1.5px #86EFAC, 0 1px 2px rgba(15, 23, 42, .06); }

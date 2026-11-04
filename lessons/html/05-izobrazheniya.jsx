@@ -13440,6 +13440,46 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .r28 .kz-sheet .kz-scene-col > .kz-col > .kz-br:not(.is-short) { --brh: 26dvh; }
   .r28 .kz-sheet .kz-scene-col > .kz-col > .kz-br.is-short { --brh: 27dvh; }
 }
+
+/* ── ВЫРАВНИВАНИЕ (заказчик, 04.11.2026, по скриншотам уроков 1 и 2: «размеры где должны быть одинаковыми,
+   или выровнены по лайоуту, во всех уроках») ────────────────────────────────────────────────────────
+   Образец — урок 2, экран 8: карточка и код друг под другом одной ширины, край к краю.
+   1. Края сцены — по краям шапки и низа (ярлык раздела слева, кнопки справа): у листа нет
+      своих боковых полей. */
+/*    На телефоне так же: шапка и низ — с полями 14 px, сцена — по ним же. */
+.r28 .kz-sheet-body { padding-left: 0; padding-right: 0; }
+/* 2. Браузер и код друг под другом — одной ширины: браузер во всю ширину столбца, как код. Высота та же,
+      что была: по пропорции окна, но не выше своей меры --brh (раньше мера сужала окно). */
+.r28 .kz-col > .kz-br { width: 100%; max-width: none; align-self: stretch; max-height: var(--brh, 34dvh); }
+.r28 .kz-col > .kz-br.is-short { max-height: var(--brh, 24dvh); }
+@media (max-width: 759px) {
+  .r28 .kz-col > .kz-br { max-height: var(--brh, 24dvh); }
+  .r28 .kz-col > .kz-br.is-short { max-height: var(--brh, 19dvh); }
+}
+/* 3. Браузер и код рядом — одной высоты, верх и низ на одной линии: сетка, ряд по самому высокому,
+      оба тянутся на весь ряд (код — тёмным полем ниже строк, как в редакторе). */
+@media (min-width: 760px) {
+  .r28 .kz-scene:not(.kz-scene-col):has(> .kz-col > .kz-br:only-child):has(> .kz-col > .kz-code:only-child) {
+    display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 560px); justify-content: center; align-content: center; align-items: stretch; }
+  .r28 .kz-scene:not(.kz-scene-col):has(> .kz-col > .kz-br:only-child):has(> .kz-col > .kz-code:only-child) > .kz-col { max-width: none; }
+  .r28 .kz-scene:not(.kz-scene-col):has(> .kz-col > .kz-br:only-child):has(> .kz-col > .kz-code:only-child) > .kz-col > .kz-br,
+  .r28 .kz-scene:not(.kz-scene-col):has(> .kz-col > .kz-br:only-child):has(> .kz-col > .kz-code:only-child) > .kz-col > .kz-code { flex: 1 1 auto; max-height: none; }
+}
+/* 4. Уроки 2–9 на ноутбуке ставят браузер и код рядом внутри одного столбца (kz-col в ряд, своё правило урока
+      с align-items: center): код был ниже окна. Оба тянутся на высоту ряда — код тёмным полем до низа окна. */
+@media (min-width: 760px) {
+  .r28 .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .kz-code,
+  .r28 .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .kz-br,
+  .r28 .kz-scene-col > .kz-col:has(> .kz-br + [class*="codecol"]) > .kz-br,
+  .r28 .kz-scene-col > .kz-col:has(> .kz-br + [class*="codecol"]) > [class*="codecol"] { align-self: stretch; }
+  .r28 .kz-scene-col > .kz-col:has(> .kz-br + [class*="codecol"]) > [class*="codecol"] > .kz-code:first-child { flex: 1 1 auto; }
+}
+/* 5. Полоска кода над браузером (урок 1, экран 10) — во всю ширину столбца, как браузер под ней. */
+.r28 .kz-col > .kz-slip-wrap { align-self: stretch; }
+.r28 .kz-col > .kz-slip-wrap > .kz-code { width: 100%; }
+/* 6. Мера --brh задаёт только высоту окна: ширину браузера в столбце она больше не сужает — и там, где урок
+      ставил своё max-width (урок 1, экраны 6 и 8 на невысоком телефоне: окно уже кода под ним). */
+.r28 .kz-col > .kz-br { max-width: none !important; }
 /* ── УРОК 5 «Изображения» — свои части в облике «Редактор» (классы z5-*) ───────────────────
    Весь CSS урока — здесь (основа — CSS уроков 2–4), поверх r28.css эталона. Бумаги нет нигде.
    Страница в Chrome — как браузер по умолчанию; картинка — рисунок-«фото»; нет файла — значок
