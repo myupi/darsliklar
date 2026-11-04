@@ -86,7 +86,7 @@ description: Самостоятельно создать или передела
    ```bash
    node .claude/skills/praktika/scripts/shablon.mjs tools/amaliyot<N>
    ```
-   Скрипт копирует `tools/amaliyot1/` (`build.mjs`, `aN.src.jsx`, `aN-screens.jsx`, `aN.css`) и правит пути; в `build.mjs` указать файл практики. Облик эталона в каркасе уже есть: `naborRedaktor`, экран `StageB`; свой CSS — поверх `.r28`, без бумаги.
+   Скрипт копирует `tools/amaliyot1/` (`build.mjs`, `aN.src.jsx`, `aN-screens.jsx`, `aN.css`) и правит пути; в `build.mjs` указать файл практики. Для практики к уроку 3 и дальше вторым параметром дать `tools/amaliyot2` — практику 02p «Газета Коди»: в ней уже есть страница из блоков (заголовки, абзацы, `b` и `i`) и разбор текста с `b` / `i` (`references/karkas.md`). Облик эталона в каркасе уже есть: `naborRedaktor`, экран `StageB`; свой CSS — поверх `.r28`, без бумаги.
 2. **Общий каркас не трогать:** `lexA1`, `a1Plan`, `A1Editor`, `A1Code`, `A1Keys`, `a1Insert`, `A1Browser`, `useA1Task`, `A1TaskScreen` (`references/karkas.md`).
 3. **Переписать под тему:** операцию и объекты карты (`TABS` — свой образ вместо вкладок), тексты, знакомые теги и планы проверки, честную страницу в браузере (`a1Page`), наглядную помощь, конфиги заданий, сценарий автопроверки.
 4. Собрать файл: `node tools/<папка>/build.mjs`.
