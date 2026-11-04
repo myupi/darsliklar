@@ -1,0 +1,520 @@
+/* ── УРОК 9 «Финальный HTML-проект» (повторение) — свои части в облике «Редактор» (классы z9-*) ───────────────────
+   Весь CSS урока — здесь (основа — CSS уроков 2–5), поверх r28.css эталона. Бумаги нет нигде.
+   Части сайта (header, nav, main, section, footer) страницу не меняют; рамки — только в «Инспекторе». */
+
+/* ══ СТРАНИЦА В БРАУЗЕРЕ ══ */
+.z9-br .kz-br-page { overflow: hidden; }
+.z9-doc { display: flex; flex-direction: column; align-items: flex-start; gap: 0; overflow-wrap: anywhere; padding: 4px 4px 0; }
+.z9-blk { position: relative; max-width: 100%; transition: background .2s; border-radius: 3px; }
+.z9-h1 { font-size: 1.75em; font-weight: 700; line-height: 1.12; margin: 0 0 .32em; }
+.z9-p { font-weight: 400; margin: 0 0 .62em; line-height: 1.32; }
+.r28 .z9-blk.is-hl { background: rgba(250, 79, 40, .13); box-shadow: 0 0 0 4px rgba(250, 79, 40, .13); }
+.z9-a-in { animation: z9In .35s cubic-bezier(.2, .7, .2, 1) both; }
+@keyframes z9In { from { opacity: 0; translate: 0 4px; } to { opacity: 1; translate: 0 0; } }
+
+/* Картинка: блок img — строчный, высота подстраивается под окно (--imh). */
+.z9-doc { --imh: 4.6em; }
+/* Нет файла — значок и alt, как рисует Chrome. */
+/* s4 — картинка-кнопка (Visual Code Mapping). */
+
+/* Ярлык тега. */
+.r28 .z9-chip { display: inline-flex; align-items: center; padding: 2px 8px 3px; border-radius: 6px; background: #fff; border: 1px solid var(--r-edge);
+  font: 600 clamp(12px, 1.8dvh, 15px)/1.2 var(--r-mono); white-space: nowrap; color: var(--r-ink); }
+.r28 .z9-chip.is-on { background: #FFF1EC; border-color: var(--r-insp-edge); }
+/* s5 — «</img> не нужен»: ярлык зачёркнут. */
+
+/* ══ s1 — крючок ══ */
+.z9-s1 { align-items: center; }
+.z9-s1-man { height: min(100%, 38dvh); flex: 0 0 auto; }
+.z9-s1-page { max-width: 640px; flex: 1 1 0; }
+@media (max-width: 759px) {
+  .z9-s1 { flex-direction: column; }
+  .z9-s1-man { display: none; }
+  .z9-s1 .z9-s1-page { width: 100%; align-self: stretch; flex: 0 0 auto; }
+  .z9-s1 .z9-s1-page .kz-br.z9-br { --brh: 34dvh; }
+}
+
+/* ══ Код и браузер рядом (на телефоне — в колонку) ══ */
+.z9-s5 { align-items: stretch; }
+.z9-s5 > .kz-col { justify-content: center; }
+@media (max-width: 759px) {
+  .z9-s5 { flex-direction: column; gap: 10px; }
+  .r28 .z9-s5 .kz-code.kz-code-sm { font-size: 13px; }
+  .r28 .z9-s5 .kz-br.z9-br { --brh: 28dvh; }
+}
+/* Строки-цели в тёмном редакторе. */
+.r28 .kz-line.z9-hline { background: rgba(255, 255, 255, .05); }
+.r28 .kz-line.z9-hline.kz-tap:not(:disabled) { cursor: pointer; }
+.r28 .kz-line.z9-hline.kz-tap:not(:disabled):hover { background: #2A2D2E; }
+.r28 .kz-line.z9-hline.is-off { opacity: .5; }
+/* Атрибут — как в VS Code: имя голубое, значение рыжее. */
+.r28 .kz-line .z9-attr { color: #9CDCFE; font-family: var(--r-mono); }
+.r28 .kz-line .z9-val { color: #CE9178; font-family: var(--r-mono); }
+.r28 .kz-line .z9-slot .tk-input { color: #CE9178; min-width: 5.5em; }
+.r28 .kz-line .kz-gap { min-width: 0; flex: 0 1 auto; max-width: 100%; }
+.r28 .kz-line .kz-gap .tk-grow { max-width: 100%; }
+
+/* Панель «Файлы» — список файлов проекта, у картинок — миниатюры. */
+
+/* ══ s6 — Code Builder ══ */
+.r28 .z9-built { font-family: var(--r-mono); margin-right: 1px; }
+.r28 .kz-line .z9-bslot { display: inline-block; min-width: 2.6em; height: 1.2em; vertical-align: middle; margin-right: 3px; border: 1.5px dashed #5A5A5A; border-radius: 4px; background: rgba(255, 255, 255, .04); }
+.r28 .kz-line .z9-bslot.is-next { border-color: var(--r-pri); background: rgba(250, 79, 40, .1); }
+.r28 .kz-line .z9-bslot.is-hover { background: rgba(250, 79, 40, .22); }
+.r28 .z9-piece { font-family: var(--r-mono); }
+.r28 .z9-s6 + .kz-tray, .r28 .kz-tray { flex-wrap: wrap; justify-content: center; }
+
+/* ══ s7 — Matching Pairs ══ */
+.r28 .z9-match { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: clamp(12px, 3vw, 28px); align-items: center; align-self: center; width: min(100%, 560px); }
+.r28 .z9-match-col { display: flex; flex-direction: column; justify-content: flex-start; gap: 12px; }
+.r28 .z9-mtag { min-width: 96px; min-height: 58px; justify-content: center; font: 600 18px var(--r-mono); }
+.r28 .z9-mtag-src span { color: #2F6FB0; }
+.r28 .z9-mtag-alt span { color: #A0522D; }
+.r28 .z9-mtag.is-ok { background: #F0FDF4; border-color: #86EFAC; color: #15803D; opacity: 1; }
+.r28 .z9-mcard { position: relative; display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 10px 14px; text-align: left; cursor: pointer;
+  background: #fff; border: 1px solid var(--r-edge); border-radius: 10px; font: 600 16px/1.25 var(--r-font); color: var(--r-ink); transition: border-color .2s, background .2s, box-shadow .2s; }
+.r28 .z9-mcard.is-call { border-color: var(--r-pri); box-shadow: 0 0 0 3px #FFE3D9; }
+.r28 .z9-mcard.is-ok { background: #F0FDF4; border-color: #86EFAC; cursor: default; }
+.r28 .z9-mcard:disabled { cursor: default; }
+.r28 .z9-mcard-t { flex: 1 1 auto; min-width: 0; }
+.r28 .z9-mcard-tag { font: 600 14px var(--r-mono); color: #15803D; }
+.r28 .z9-mcard .led { top: 50%; right: 8px; translate: 0 -50%; }
+
+/* ══ s10 — до и после ══ */
+.z9-card { position: relative; padding: 10px 16px 8px; align-self: center; width: min(100%, 520px); background: #fff; border-radius: 10px;
+  box-shadow: inset 0 0 0 1.5px var(--r-edge), 0 1px 2px rgba(15, 23, 42, .06);
+  font: 400 clamp(14px, 2dvh, 18px)/1.35 'Times New Roman', Times, serif; color: var(--r-ink); }
+.z9-card-h { display: block; margin-bottom: 4px; font: 700 11.5px var(--r-font); letter-spacing: .05em; text-transform: uppercase; color: var(--r-pri-d); }
+.r28 .z9-ba { display: flex; align-items: stretch; gap: 10px; align-self: center; width: min(100%, 620px); }
+.r28 .z9-ba .z9-card { flex: 1 1 0; min-width: 0; width: auto; }
+.r28 .z9-ba .z9-card .z9-doc { --imh: clamp(64px, 11dvh, 110px); min-height: calc(var(--imh) + 8px); padding: 0; }
+.r28 .z9-ba .z9-card.is-after { box-shadow: inset 0 0 0 1.5px var(--r-insp-edge), 0 1px 2px rgba(15, 23, 42, .06); }
+.r28 .z9-ba-arrow { flex: 0 0 auto; align-self: center; width: 22px; height: 2px; background: var(--r-pri); position: relative; }
+.r28 .z9-ba-arrow::after { content: ''; position: absolute; right: -1px; top: -5px; border: 6px solid transparent; border-left: 8px solid var(--r-pri); border-right: 0; }
+.r28 .z9-tagbtn span { font-family: var(--r-mono); font-size: 15px; }
+@media (max-width: 420px) { .r28 .z9-ba { gap: 6px; } .r28 .z9-ba-arrow { width: 12px; } .r28 .z9-tagbtn span { font-size: 13px; } }
+
+/* ══ s13 — как alt прочтёт программа чтения вслух ══ */
+
+/* ══ q2 — True / False ══ */
+.r28 .z9-tf-card { width: min(100%, 520px); }
+.r28 .z9-tf-t { margin: 4px 0 2px; font: 600 clamp(17px, 2.6dvh, 22px)/1.35 var(--r-font); color: var(--r-ink); }
+.r28 .kz-pick.z9-tf-pick { grid-template-columns: repeat(2, minmax(0, 1fr)); width: min(100%, 520px); align-self: center; }
+.r28 .kz-pick.z9-tf-pick .kz-btn { font-size: 18px; }
+
+/* ══ Поломка: браузер вздрагивает, пустое место мигает ══ */
+.r28 .z9-broken-br.kz-br { animation: kzShake .5s ease-in-out .3s 2; }
+.z9-miss { position: relative; }
+.r28 .kz-dash.z9-miss { display: inline-block; min-width: 2.6em; height: 1.2em; vertical-align: middle; border: 1.5px dashed var(--r-pri); border-radius: 4px; animation: z9Miss 1.2s ease-in-out infinite; }
+.r28 .kz-dash.z9-miss.is-hover { background: rgba(250, 79, 40, .22); }
+.r28 .z9-miss::after { content: '?'; position: absolute; right: -10px; top: -12px; width: 18px; height: 18px; border-radius: 50%; background: var(--r-pri); color: #fff;
+  font: 700 12px/18px var(--r-font); text-align: center; box-shadow: 0 0 0 2px #fff; animation: z9Q 1.2s ease-in-out infinite; }
+@keyframes z9Miss { 0%, 100% { border-color: var(--r-pri); } 50% { border-color: rgba(250, 79, 40, .25); } }
+@keyframes z9Q { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+/* ══ НОУТБУК: браузер крупнее, браузер и код — в ряд ══ */
+@media (min-width: 760px) {
+  .z9-br.kz-br { --brh: 46dvh; }
+  .z9-br.kz-br.is-short { --brh: 34dvh; }
+  .z9-s5 .z9-br.kz-br, .z9-s5 .z9-br.kz-br.is-short { --brh: 50dvh; aspect-ratio: 16 / 11; }
+  .kz-s15 .z9-br.kz-br { --brh: 52dvh; }
+  .z9-s5 > .kz-col { max-width: none; }
+  .z9-br .kz-br-page { font-size: clamp(14px, 2.4dvh, 21px); }
+  .z9-sheet .kz-scene-col { justify-content: center; }
+  .z9-sheet .kz-scene-col > .kz-col { width: min(100%, 760px); }
+  .z9-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; gap: clamp(12px, 2vw, 24px); width: 100%; max-width: 1000px; }
+  .z9-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .kz-br { flex: 1 1 0; min-width: 0; --brh: 40dvh; aspect-ratio: 16 / 11; }
+  .z9-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .kz-code { flex: 1.15 1 0; min-width: 0; }
+  .z9-sheet .kz-code { font-size: clamp(15px, 2.3dvh, 20px); gap: 6px; }
+  .z9-sheet .kz-line { min-height: 34px; }
+  .z9-sheet .kz-code.kz-code-sm { font-size: clamp(14px, 2.05dvh, 18px); }
+  .r28 .kz-sheet .kz-scene.z9-s5 > .kz-col > .kz-br.z9-br { --brh: 46dvh; }
+  .r28 .kz-scene.z9-s1 .z9-s1-page > .kz-br.z9-br { --brh: 52dvh; }
+  .z9-br .z9-doc { --imh: 6.2em; }
+}
+/* На телефоне окно браузера выше пропорции 16:7,4 — картинка должна читаться. */
+@media (max-width: 759px) and (min-height: 700px) { .r28 .kz-br.z9-br.is-short { aspect-ratio: 16 / 10; } }
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .kz-br.z9-br.is-short { aspect-ratio: 16 / 8.6; }
+  .r28 .z9-s5 .kz-br.z9-br { --brh: 19dvh; }
+  .r28 .z9-s5 .kz-code.kz-code-sm .kz-line { padding-top: 0; padding-bottom: 0; }
+}
+
+/* ══ КЛАВИАТУРА ТЕЛЕФОНА: задание, поле и кнопки на виду; браузер — полоска ══ */
+.is-kbd .kz-sheet-body { padding: 6px 8px; gap: 6px; }
+.is-kbd .kz-ask { font-size: 13.5px; padding: 4px 10px 5px; }
+.is-kbd .z9-br .kz-br-tool { display: none; }
+.is-kbd .z9-br .kz-br-bar { height: 22px; }
+.is-kbd .z9-br .kz-br-body { flex: 0 0 auto; height: 44px; }
+.is-kbd .z9-br .kz-br-page { inset: 4px 8px; font-size: 13px; }
+.is-kbd .z9-br .z9-doc { --imh: 30px; }
+.is-kbd .z9-br .z9-blk.z9-h1 { display: none; }
+.is-kbd .kz-code { gap: 3px; }
+.is-kbd .kz-line { min-height: 26px; padding-top: 2px; padding-bottom: 2px; }
+.is-kbd .keys .key-b { min-height: 38px; }
+.is-kbd .r28 .kz-br.z9-br.is-short, .is-kbd .r28 .kz-br.z9-br { aspect-ratio: auto; max-width: 100%; padding-bottom: 6px; }
+.is-kbd .r28 .z9-sheet .kz-code .kz-line:not(:has(textarea)) { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .z9-a-in, .r28 .z9-broken-br.kz-br, .r28 .kz-dash.z9-miss, .r28 .z9-miss::after { animation: none !important; }
+}
+
+/* Код картинки — по кускам: <img, каждый атрибут отдельно. Отступ-пробел перед атрибутом — полем,
+   поэтому на телефоне длинная строка переносится между атрибутами, а не обрезается. */
+.r28 .kz-line .z9-att { margin-left: .6em; }
+.r28 .kz-line { flex-wrap: wrap; row-gap: 0; }
+
+/* s3, s12 — код и панель «Файлы» одной колонкой; на ноутбуке колонка стоит рядом с браузером. */
+@media (min-width: 760px) {
+}
+/* Сломанная картинка в ряду (галерея): подпись alt не сжимается в столбик. */
+/* Вывод: у img, src и alt — свои цвета (общее правило урока 1 красит 2-ю и 3-ю роль одинаково — head и title). */
+.r28 .z9-sheet .kz-role:nth-child(2) { --c: #7C5CFA !important; }
+.r28 .z9-sheet .kz-role:nth-child(3) { --c: #0FA38E !important; }
+
+
+/* ══ ПОЛЯ — как Chrome по умолчанию ══ */
+.z9-doc .z9-p { margin: 0 0 .3em; }
+.z9-blk.z9-fld { margin: 0 0 .7em; }
+.z9-blk.z9-lab { display: flex; align-items: center; flex-wrap: wrap; gap: .1em .35em; margin: 0 0 .5em; font-weight: 400; }
+.z9-cap { font-weight: 400; border-radius: 3px; transition: background .2s, box-shadow .2s; }
+.r28 .z9-cap.is-hl { background: rgba(250, 79, 40, .13); box-shadow: 0 0 0 3px rgba(250, 79, 40, .13); }
+.z9-in { position: relative; display: inline-flex; align-items: center; box-sizing: border-box; width: 9.5em; max-width: 100%; height: 1.55em; padding: 0 .25em;
+  background: #fff; border: 1px solid #767676; border-radius: 2px; font: 400 .82em/1 Arial, Helvetica, sans-serif; color: #000; overflow: hidden; white-space: nowrap;
+  transition: box-shadow .2s, outline-color .2s; vertical-align: middle; }
+.z9-in.is-num { padding-right: 1.1em; width: 6em; }
+.z9-in-v { overflow: hidden; text-overflow: clip; }
+.z9-in.is-pass .z9-in-v { letter-spacing: .08em; }
+.z9-in-ph { color: #757575; overflow: hidden; text-overflow: ellipsis; }
+.z9-spin { position: absolute; right: 2px; top: 50%; translate: 0 -50%; width: .55em; height: 1.05em; }
+.z9-spin::before, .z9-spin::after { content: ''; position: absolute; left: 50%; translate: -50% 0; border: .2em solid transparent; }
+.z9-spin::before { top: .05em; border-bottom: .26em solid #505050; border-top: 0; }
+.z9-spin::after { bottom: .05em; border-top: .26em solid #505050; border-bottom: 0; }
+/* Поле выбрано — двойная рамка фокуса Chrome (тёмная с белой). */
+.z9-in.is-focus { outline: 2px solid #101010; outline-offset: 0; box-shadow: 0 0 0 4px #fff; border-radius: 3px; }
+.z9-caret { position: absolute; left: .3em; top: .25em; bottom: .25em; width: 1px; background: #000; animation: z9Blink 1s steps(1) infinite; }
+@keyframes z9Blink { 50% { opacity: 0; } }
+.r28 .z9-in.is-hl { box-shadow: 0 0 0 4px rgba(250, 79, 40, .22); }
+.r28 .z9-in.is-hl.is-focus { box-shadow: 0 0 0 4px #fff, 0 0 0 7px rgba(250, 79, 40, .22); }
+/* Пустое место (тег не узнан браузером) — подсвечено, чтобы было видно, где ждали поле. */
+.z9-none { display: inline-block; width: 4em; height: 1.3em; border-radius: 3px; }
+.r28 .z9-blk.z9-none.is-hl .z9-none { background: rgba(250, 79, 40, .13); }
+
+/* Код: отступ-пробел перед атрибутом, перенос между кусками. */
+.r28 .kz-line .z9-att { margin-left: .6em; }
+.r28 .kz-line { flex-wrap: wrap; row-gap: 0; }
+.r28 .kz-line .z9-slot-tag .tk-input { min-width: 3.4em; color: var(--r-ed-tag, #569CD6); }
+
+/* s7 — карточки с маленьким полем. */
+.r28 .z9-mcard-f { flex: 0 0 auto; font-size: 17px; }
+.r28 .z9-mcard-f .z9-in { width: 6.2em; }
+.r28 .z9-mtag { min-width: 112px; }
+
+/* s10 — поля в карточках «до/после». */
+.r28 .z9-ba .z9-card .z9-doc { padding: 0; font-size: clamp(15px, 2.2dvh, 19px); }
+
+/* s14 — пустое место для значения type. */
+.r28 .kz-dash.z9-miss { display: inline-block; min-width: 4.2em; height: 1.2em; vertical-align: middle; border: 1.5px dashed var(--r-pri); border-radius: 4px; animation: z9Miss 1.2s ease-in-out infinite; }
+
+/* Вывод: четыре роли — свои цвета (общее правило урока 1 красит роли как части html). */
+.r28 .z9-sheet .kz-role:nth-child(1) { --c: #FA4F28 !important; }
+.r28 .z9-sheet .kz-role:nth-child(2) { --c: #7C5CFA !important; }
+.r28 .z9-sheet .kz-role:nth-child(3) { --c: #0FA38E !important; }
+.r28 .z9-sheet .kz-role:nth-child(4) { --c: #DB2777 !important; }
+
+@media (prefers-reduced-motion: reduce) { .z9-caret { animation: none; } }
+
+/* s10 — три кнопки в ряд; клавиатура телефона открыта — декор и строки-контекст уходят. */
+.r28 .z9-pick3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.is-kbd .kz-deco, .is-kbd .kz-line.z9-edge, .is-kbd .kz-line.z9-ctx { display: none; }
+
+/* s4 — пять вещей на странице: окно выше обычного короткого. */
+@media (max-width: 759px) { .r28 .kz-sheet .kz-br.z9-br.z9-s4-br { --brh: 30dvh; } }
+/* Длинное значение атрибута (подсказка из двух слов) переносится по пробелу, а не обрезается. */
+.r28 .kz-line .kz-tag.z9-att { white-space: normal; }
+/* s10 на узком телефоне — кнопки одна под другой: код в них длинный. */
+@media (max-width: 480px) {
+  .r28 .kz-pick.z9-pick3 { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .r28 .kz-pick.z9-pick3 .kz-btn { min-height: 46px; }
+}
+
+
+/* ══ УРОК 7: СПИСОК, БОЛЬШОЕ ПОЛЕ, КНОПКА — как Chrome по умолчанию ══ */
+.z9-blk.z9-b-sel, .z9-blk.z9-b-ta, .z9-blk.z9-b-in { margin: 0 0 .55em; }
+.z9-blk.z9-b-btn { margin: .1em 0 .3em; }
+.z9-selw { position: relative; display: inline-flex; flex-direction: column; align-items: stretch; vertical-align: top; }
+.z9-sel { position: relative; display: inline-flex; align-items: center; box-sizing: border-box; min-width: 7.5em; height: 1.6em; padding: 0 1.5em 0 .35em;
+  background: #fff; border: 1px solid #767676; border-radius: 3px; font: 400 .82em/1 Arial, Helvetica, sans-serif; color: #000; white-space: nowrap; transition: box-shadow .2s; }
+.z9-chev { position: absolute; right: .45em; top: 50%; width: .42em; height: .42em; border-right: 1.5px solid #3c3c3c; border-bottom: 1.5px solid #3c3c3c; translate: 0 -70%; rotate: 45deg; }
+.z9-sel.is-focus { outline: 2px solid #101010; box-shadow: 0 0 0 4px #fff; }
+.r28 .z9-sel.is-hl { box-shadow: 0 0 0 4px rgba(250, 79, 40, .22); }
+/* Раскрытый список — панель под полем (в Chrome он всплывает над страницей; здесь — в потоке, чтобы не уходил за окно). */
+.z9-pop { display: flex; flex-direction: column; margin-top: 2px; min-width: 7.5em; padding: 2px 0; background: #fff; border: 1px solid #a0a0a0; border-radius: 3px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, .18); font: 400 .82em/1.25 Arial, Helvetica, sans-serif; color: #000; }
+.z9-opt { position: relative; display: block; padding: .18em .5em; text-align: left; white-space: nowrap; border-radius: 2px; }
+.z9-opt.is-cur { font-weight: 700; }
+.z9-opt.is-hl { background: #E3E3E3; }
+.r28 button.z9-opt.z9-map { font: inherit; color: inherit; border: none; background: transparent; cursor: pointer; padding: .32em .6em; margin: 1px 2px; }
+.r28 button.z9-opt.z9-map:not(:disabled):hover { background: var(--r-insp); }
+.r28 button.z9-opt.z9-map.is-hl { background: #DCFCE7; box-shadow: inset 0 0 0 1.5px #86EFAC; }
+.r28 button.z9-opt.z9-map.is-off { opacity: .45; }
+.r28 button.z9-opt.z9-map:disabled { cursor: default; }
+.r28 button.z9-opt.z9-map .led { top: 50%; right: 4px; translate: 0 -50%; }
+.z9-pop-empty { display: block; height: 1.1em; }
+.z9-pop-one { display: inline-flex; min-width: 6em; }
+/* Большое поле. */
+.z9-ta { position: relative; display: inline-block; box-sizing: border-box; width: 13em; max-width: 100%; min-height: 3.3em; padding: .2em .3em 1em;
+  background: #fff; border: 1px solid #767676; border-radius: 2px; font: 400 .8em/1.3 'Courier New', Courier, monospace; color: #000; white-space: pre-wrap; overflow-wrap: anywhere;
+  vertical-align: top; transition: box-shadow .2s; }
+.z9-ta-ph { color: #757575; }
+.z9-ta.is-mono .z9-ta-v { color: #000; }
+.z9-grip { position: absolute; right: 2px; bottom: 2px; width: .55em; height: .55em;
+  background: linear-gradient(135deg, transparent 0 45%, #8a8a8a 45% 52%, transparent 52% 68%, #8a8a8a 68% 75%, transparent 75%); }
+.z9-ta.is-focus { outline: 2px solid #101010; box-shadow: 0 0 0 4px #fff; }
+.r28 .z9-ta.is-hl { box-shadow: 0 0 0 4px rgba(250, 79, 40, .22); }
+/* Кнопка — серая кнопка Chrome. */
+.z9-btn { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 1.6em; padding: .1em .6em; background: #EFEFEF;
+  border: 1px solid #767676; border-radius: 3px; font: 400 .82em/1.2 Arial, Helvetica, sans-serif; color: #000; white-space: nowrap; transition: background .12s, box-shadow .2s; }
+.z9-btn.is-down { background: #D4D4D4; border-color: #5a5a5a; }
+.r28 .z9-btn.is-hl { box-shadow: 0 0 0 4px rgba(250, 79, 40, .22); }
+/* Однострочное поле — длинный текст обрезается. */
+.z9-in { display: inline-flex; align-items: center; box-sizing: border-box; width: 11em; max-width: 100%; height: 1.55em; padding: 0 .25em; background: #fff; border: 1px solid #767676;
+  border-radius: 2px; font: 400 .82em/1 Arial, Helvetica, sans-serif; color: #000; overflow: hidden; white-space: nowrap; }
+.z9-in-v { overflow: hidden; }
+.r28 .z9-in.is-hl { box-shadow: 0 0 0 4px rgba(250, 79, 40, .22); }
+/* Анкета отправлена — страница открывается заново (короткая вспышка). */
+.r28 .z9-br.z9-reload .kz-br-page { animation: z9Reload .5s ease-out both; }
+@keyframes z9Reload { 0% { opacity: .15; } 100% { opacity: 1; } }
+.r28 .kz-line .z9-bare { color: var(--r-ed-tx, #D4D4D4); }
+.r28 .kz-line .z9-dots { opacity: .6; }
+/* s7 — карточки с маленькой вещью. */
+.r28 .z9-mcard-f { flex: 0 0 auto; font-size: 16px; }
+.r28 .z9-mcard-f .z9-ta { width: 7.5em; min-height: 2.8em; }
+.r28 .z9-mtag { min-width: 112px; }
+@media (prefers-reduced-motion: reduce) { .r28 .z9-br.z9-reload .kz-br-page { animation: none; } }
+
+/* s4 — раскрытый список нажимают: окно выше обычного короткого, пункты крупнее. */
+@media (max-width: 759px) { .r28 .kz-sheet .kz-scene.z9-s5 .kz-br.z9-br.z9-s4-br { --brh: 36dvh; } }
+.r28 .z9-s4-br .z9-pop { font-size: .95em; }
+
+
+/* ══ УРОК 8: СТРАНИЦА САЙТА — как браузер по умолчанию ══ */
+.z9-doc { position: relative; display: block; padding: 6px 6px 0; }
+.z9-doc .z9-h1 { font-size: 1.6em; font-weight: 700; line-height: 1.12; margin: 0 0 .2em; }
+.z9-menu { display: flex; flex-wrap: wrap; gap: .2em .9em; margin: 0 0 .5em; font-weight: 400; }
+.z9-a { color: #0000EE; text-decoration: underline; text-underline-offset: 2px; }
+.z9-sec { margin: 0 0 .35em; }
+.z9-h2 { font-size: 1.2em; font-weight: 700; line-height: 1.15; margin: .15em 0 .1em; }
+.z9-p { font-weight: 400; line-height: 1.3; }
+.z9-foot { font-size: .8em; font-weight: 400; color: #333; margin: .3em 0 .2em; }
+/* Части сайта: без инспектора — обычные блоки без вида (страница та же). */
+.z9-reg { position: relative; display: block; border-radius: 3px; }
+/* Инспектор — рамки поверх, без сдвига страницы (как подсветка в инструментах разработчика). */
+.z9-reg.is-insp { outline: 1.5px dashed var(--c); outline-offset: 2px; background: color-mix(in srgb, var(--c) 7%, transparent); }
+.z9-reg.is-insp .z9-reg { outline-offset: -1px; }
+.z9-reg-tag { position: absolute; right: 2px; top: -.55em; z-index: 2; padding: 0 .4em; border-radius: 4px; background: var(--c); color: #fff;
+  font: 600 .55em/1.5 var(--r-mono, ui-monospace, monospace); letter-spacing: .02em; pointer-events: none; }
+.z9-reg .z9-reg .z9-reg-tag { top: auto; bottom: -.45em; }
+.r28 .z9-reg.is-insp.is-hl { outline-style: solid; outline-width: 2.5px; background: color-mix(in srgb, var(--c) 18%, transparent); }
+.r28 .z9-reg.is-insp.is-off { opacity: .45; }
+.z9-insp-badge { position: absolute; right: 4px; top: -2px; z-index: 3; display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; border-radius: 999px;
+  background: #1F2937; color: #fff; font: 600 9px/1.6 var(--r-font, system-ui); }
+.z9-insp-badge i { width: 8px; height: 8px; border-radius: 2px; border: 1.5px solid #fff; }
+.z9-doc.is-insp { padding-top: 14px; }
+/* Код: многоточие свёрнутого содержимого, неверный тег (s14). */
+.r28 .kz-line .z9-dots { opacity: .55; }
+.r28 .kz-line .z9-wrong { margin-left: .5em; font-family: var(--r-mono); color: #F28B82; text-decoration: line-through; opacity: .8; }
+.r28 .kz-line .z9-bslot { display: inline-block; min-width: 9em; height: 1.2em; vertical-align: middle; border: 1.5px dashed #5A5A5A; border-radius: 4px; background: rgba(255, 255, 255, .04); }
+.r28 .kz-line .z9-bslot.is-next { border-color: var(--r-pri); background: rgba(250, 79, 40, .1); }
+.r28 .kz-line .z9-bslot.is-hover { background: rgba(250, 79, 40, .22); }
+.r28 .kz-dash.z9-miss { display: inline-block; min-width: 4.5em; height: 1.2em; vertical-align: middle; border: 1.5px dashed var(--r-pri); border-radius: 4px; animation: z9Miss 1.2s ease-in-out infinite; }
+/* s5 — head и header рядом. */
+.r28 .z9-vs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.r28 .z9-vs-i { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 10px; background: #fff; box-shadow: inset 0 0 0 1px var(--r-edge); font: 500 13px/1.3 var(--r-font); color: var(--r-ink2); }
+.r28 .z9-vs-i b { font: 700 15px var(--r-mono); color: var(--r-ink); }
+.r28 .z9-vs-i.is-on { box-shadow: inset 0 0 0 1.5px var(--r-insp-edge); background: #FFF1EC; }
+/* s7 — схема сайта в карточке. */
+.r28 .z9-mtag { min-width: 104px; min-height: 50px; justify-content: center; font: 600 17px var(--r-mono); }
+.r28 .z9-mtag.is-ok { background: #F0FDF4; border-color: #86EFAC; color: #15803D; opacity: 1; }
+.r28 .z9-mcard { position: relative; display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 12px; text-align: left; cursor: pointer;
+  background: #fff; border: 1px solid var(--r-edge); border-radius: 10px; font: 600 15px/1.25 var(--r-font); color: var(--r-ink); transition: border-color .2s, background .2s, box-shadow .2s; }
+.r28 .z9-mcard.is-call { border-color: var(--r-pri); box-shadow: 0 0 0 3px #FFE3D9; }
+.r28 .z9-mcard.is-ok { background: #F0FDF4; border-color: #86EFAC; cursor: default; }
+.r28 .z9-mcard:disabled { cursor: default; }
+.r28 .z9-mcard-t { flex: 1 1 auto; min-width: 0; }
+.r28 .z9-mcard-tag { font: 600 13px var(--r-mono); color: #15803D; }
+.r28 .z9-mcard .led { top: 50%; right: 8px; translate: 0 -50%; }
+.r28 .z9-match { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: clamp(12px, 3vw, 28px); align-items: center; align-self: center; width: min(100%, 560px); }
+.r28 .z9-match-col { display: flex; flex-direction: column; gap: 10px; }
+.z9-wire { flex: 0 0 auto; display: grid; grid-template-rows: 12px 22px 8px; gap: 3px; width: 54px; padding: 4px; border-radius: 5px; background: #F4F5F7; box-shadow: inset 0 0 0 1px var(--r-edge); }
+.z9-wire > i { display: block; border-radius: 2px; background: #D7DBE0; }
+.z9-wire .z9-w-top { position: relative; }
+.z9-wire .z9-w-nav { position: absolute; right: 3px; top: 3px; width: 22px; height: 6px; border-radius: 2px; background: #BFC5CC; }
+.z9-wire i.is-on { background: var(--r-pri) !important; }
+/* s10 — уменьшенный сайт в карточках «до/после». */
+.r28 .z9-ba { display: flex; align-items: stretch; gap: 10px; align-self: center; width: min(100%, 680px); }
+.r28 .z9-ba .z9-card { flex: 1 1 0; min-width: 0; width: auto; }
+.r28 .z9-ba .z9-card.is-after { box-shadow: inset 0 0 0 1.5px var(--r-insp-edge), 0 1px 2px rgba(15, 23, 42, .06); }
+.r28 .z9-mini { font: 400 clamp(10px, 1.6dvh, 13px)/1.3 'Times New Roman', Times, serif; }
+.r28 .z9-mini .z9-doc { padding-bottom: 4px; }
+/* s11 — что видит программа чтения с экрана. */
+.r28 .z9-reader { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; background: #111827; color: #E5E7EB; font: 500 14px/1.3 var(--r-font); }
+.r28 .z9-reader-h { display: flex; align-items: center; gap: 8px; font: 700 12px var(--r-font); letter-spacing: .04em; text-transform: uppercase; color: #9CA3AF; }
+.r28 .z9-reader-h i { width: 14px; height: 12px; background: var(--r-pri); clip-path: polygon(0 30%, 30% 30%, 62% 0, 62% 100%, 30% 70%, 0 70%); }
+.r28 .z9-land { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 8px; background: rgba(255, 255, 255, .05); border-left: 4px solid var(--c); transition: background .2s; }
+.r28 .z9-land b { min-width: 4.4em; font: 600 14px var(--r-mono); color: #fff; }
+.r28 .z9-land.is-on { background: rgba(250, 79, 40, .22); }
+/* s4, q1 — рамки и строки нажимаются. */
+.r28 button.z9-reg.z9-map { width: 100%; text-align: left; font: inherit; color: inherit; border: none; cursor: pointer; }
+/* Вывод: пять ролей — свои цвета. */
+.r28 .z9-sheet .kz-role:nth-child(1) { --c: #FA4F28 !important; }
+.r28 .z9-sheet .kz-role:nth-child(2) { --c: #7C5CFA !important; }
+.r28 .z9-sheet .kz-role:nth-child(3) { --c: #0FA38E !important; }
+.r28 .z9-sheet .kz-role:nth-child(4) { --c: #D97706 !important; }
+.r28 .z9-sheet .kz-role:nth-child(5) { --c: #DB2777 !important; }
+@keyframes z9Miss { 0%, 100% { border-color: var(--r-pri); } 50% { border-color: rgba(250, 79, 40, .25); } }
+@media (max-width: 480px) {
+  .r28 .z9-ba { flex-direction: column; gap: 6px; }
+  .r28 .z9-ba-arrow { width: 2px; height: 12px; align-self: center; }
+  .r28 .z9-vs { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) { .r28 .kz-dash.z9-miss { animation: none; } }
+
+/* Сайт из пяти частей с рамками — окно браузера на телефоне выше, чтобы страница читалась. */
+@media (max-width: 759px) {
+  .r28 .kz-sheet .kz-scene.z9-s5 .kz-br.z9-br { --brh: 36dvh; }
+  .r28 .kz-sheet .kz-scene-col .kz-br.z9-br.is-short { aspect-ratio: 16 / 12; }
+}
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .kz-sheet .kz-scene.z9-s5 .kz-br.z9-br { --brh: 30dvh; }
+  .r28 .kz-sheet .kz-scene-col .kz-br.z9-br.is-short { aspect-ratio: 16 / 10; }
+}
+/* s10 — карточки «до/после»: маленькая копия страницы, без прокрутки. */
+.r28 .z9-ba .z9-card .z9-mini { font-size: 10px; line-height: 1.25; }
+.r28 .z9-ba .z9-card .z9-mini .z9-doc { padding: 12px 4px 2px; font-size: inherit; }
+@media (min-width: 760px) { .r28 .z9-ba .z9-card .z9-mini { font-size: 12px; } }
+/* s10 на невысоком телефоне: карточки рядом, кнопки в ряд — иначе кнопки наезжают на карточку «после». */
+@media (max-width: 480px) and (max-height: 699px) {
+  .r28 .z9-ba { flex-direction: row; gap: 6px; }
+  .r28 .z9-ba-arrow { width: 10px; height: 2px; }
+  .r28 .z9-ba .z9-card .z9-mini { font-size: 8px; }
+  .r28 .kz-pick.z9-pick3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+/* Вывод на ноутбуке: сайт из пяти частей — окно выше общего 27dvh облика. */
+@media (min-width: 760px) { .r28 .kz-sheet .kz-scene.kz-s15 .kz-col .kz-br.z9-br { --brh: 40dvh; } }
+/* Клавиатура телефона открыта: окно — полоска (правило «окно выше на телефоне» не действует), значок Инспектора убран. */
+.is-kbd .r28 .kz-sheet .kz-scene-col .kz-br.z9-br.is-short, .is-kbd .r28 .kz-sheet .kz-scene.z9-s5 .kz-br.z9-br { aspect-ratio: auto; }
+.is-kbd .z9-insp-badge { display: none; }
+.is-kbd .z9-doc.is-insp { padding-top: 2px; }
+
+
+/* ══ УРОК 9: КАРТА СТАНЦИЙ — 8 уроков курса над заданием ══ */
+.r28 .z9-map { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; width: min(100%, 640px); align-self: center; margin: 0 auto 2px; }
+.r28 .z9-st { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 3px 0 4px; border-radius: 8px; background: #fff; box-shadow: inset 0 0 0 1px var(--r-edge);
+  color: var(--r-muted); transition: background .25s, box-shadow .25s, opacity .25s; }
+.r28 .z9-st b { font: 700 11px/1 var(--r-font); }
+.r28 .z9-st i { font: 600 10px/1.1 var(--r-mono); font-style: normal; max-width: 100%; overflow: hidden; text-overflow: clip; }
+.r28 .z9-st.is-done { background: #FFF1EC; box-shadow: inset 0 0 0 1.5px var(--r-pri); color: var(--r-pri-d); }
+.r28 .z9-st.is-cur { box-shadow: inset 0 0 0 2px var(--r-pri), 0 0 0 3px #FFE3D9; color: var(--r-ink); }
+.r28 .z9-st.is-off { opacity: .25; }
+.r28 .z9-st.is-shown { opacity: 1; animation: z9In .3s ease-out both; }
+.r28 .z9-map-wrap .z9-st { background: #F4F5F7; }
+@media (min-width: 760px) { .r28 .z9-st b { font-size: 12px; } .r28 .z9-st i { font-size: 11px; } }
+
+/* ══ СТРАНИЦА САЙТА — как браузер по умолчанию ══ */
+.z9-doc { position: relative; display: block; padding: 4px 4px 0; }
+.z9-doc .z9-h1 { font-size: 1.6em; font-weight: 700; line-height: 1.12; margin: 0 0 .25em; }
+.z9-doc .z9-h2 { font-size: 1.25em; font-weight: 700; margin: .1em 0 .2em; }
+.z9-doc .z9-h3 { font-size: 1.1em; font-weight: 700; margin: .1em 0 .2em; }
+.z9-doc .z9-h4 { font-size: 1em; font-weight: 700; margin: .1em 0 .2em; }
+.z9-doc .z9-h5 { font-size: .83em; font-weight: 700; margin: .1em 0 .2em; }
+.z9-doc .z9-h6 { font-size: .67em; font-weight: 700; margin: .1em 0 .2em; }
+.z9-doc .z9-txt { font-weight: 400; margin: 0 0 .25em; }
+.z9-doc .z9-p { margin: 0 0 .4em; }
+.r28 .z9-doc .z9-blk.is-hl { background: rgba(250, 79, 40, .13); box-shadow: 0 0 0 4px rgba(250, 79, 40, .13); border-radius: 3px; }
+.z9-doc .z9-b-img { margin: 0 0 .4em; }
+.z9-pic { display: block; height: 4.4em; aspect-ratio: 160 / 110; }
+.z9-pic svg { display: block; width: 100%; height: 100%; }
+.z9-alt { font-weight: 400; font-size: .9em; }
+.z9-imglink { display: inline-block; padding: 0; border: none; background: none; cursor: pointer; border-radius: 4px; }
+.r28 .z9-imglink { box-shadow: 0 0 0 2px rgba(250, 79, 40, .35); }
+.z9-doc .z9-list { margin: 0 0 .4em; padding-left: 1.6em; font-weight: 400; line-height: 1.3; }
+.z9-doc .z9-list.is-ul { list-style: disc outside; }
+.z9-doc .z9-list.is-ol { list-style: decimal outside; }
+.z9-doc .z9-list > li { display: list-item; }
+.z9-doc .z9-bare { display: block; }
+.z9-doc .z9-links { display: flex; flex-wrap: wrap; gap: .2em .9em; margin: 0 0 .4em; font-weight: 400; }
+.z9-doc .z9-a { color: #0000EE; text-decoration: underline; text-underline-offset: 2px; }
+.z9-doc .z9-an { color: inherit; }
+.z9-doc .z9-lab { display: flex; align-items: center; gap: .35em; margin: 0 0 .4em; font-weight: 400; }
+.z9-doc .z9-b-btn { margin: .1em 0 .3em; }
+/* Части сайта (s9) — цвета рамок как в уроке 8. */
+.z9-reg-header { --c: #FA4F28; } .z9-reg-main { --c: #0FA38E; } .z9-reg-footer { --c: #DB2777; }
+.z9-reg { position: relative; display: block; border-radius: 3px; }
+.r28 .z9-reg.is-hl { background: color-mix(in srgb, var(--c) 16%, transparent); }
+
+/* ══ s8 — маленькие вещи в карточках ══ */
+.r28 .z9-mtag { min-width: 104px; min-height: 48px; justify-content: center; font: 600 16px var(--r-mono); }
+.r28 .z9-mtag.is-ok { background: #F0FDF4; border-color: #86EFAC; color: #15803D; opacity: 1; }
+.r28 .z9-mcard { position: relative; display: flex; align-items: center; gap: 12px; min-height: 50px; padding: 8px 12px; text-align: left; cursor: pointer;
+  background: #fff; border: 1px solid var(--r-edge); border-radius: 10px; font: 600 15px/1.25 var(--r-font); color: var(--r-ink); transition: border-color .2s, background .2s, box-shadow .2s; }
+.r28 .z9-mcard.is-call { border-color: var(--r-pri); box-shadow: 0 0 0 3px #FFE3D9; }
+.r28 .z9-mcard.is-ok { background: #F0FDF4; border-color: #86EFAC; cursor: default; }
+.r28 .z9-mcard:disabled { cursor: default; }
+.r28 .z9-mcard-f { flex: 0 0 auto; font-size: 14px; }
+.r28 .z9-mcard-t { flex: 1 1 auto; min-width: 0; }
+.r28 .z9-mcard-tag { font: 600 13px var(--r-mono); color: #15803D; }
+.r28 .z9-mcard .led { top: 50%; right: 8px; translate: 0 -50%; }
+.r28 .z9-match { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: clamp(12px, 3vw, 28px); align-items: center; align-self: center; width: min(100%, 560px); }
+.r28 .z9-match-col { display: flex; flex-direction: column; gap: 10px; }
+.z9-mini-sel { position: relative; display: inline-flex; align-items: center; min-width: 6.5em; height: 1.6em; padding: 0 1.4em 0 .35em; background: #fff; border: 1px solid #767676; border-radius: 3px;
+  font: 400 .85em Arial, sans-serif; color: #000; }
+.z9-mini-sel i { position: absolute; right: .45em; top: 50%; width: .4em; height: .4em; border-right: 1.5px solid #3c3c3c; border-bottom: 1.5px solid #3c3c3c; translate: 0 -70%; rotate: 45deg; }
+.z9-mini-pop { display: inline-flex; padding: 2px; background: #fff; border: 1px solid #a0a0a0; border-radius: 3px; box-shadow: 0 2px 6px rgba(0, 0, 0, .15); font: 400 .85em Arial, sans-serif; }
+.z9-mini-pop span { padding: .15em .5em; background: #E3E3E3; border-radius: 2px; }
+.z9-mini-ta { display: inline-block; width: 7em; min-height: 2.6em; padding: .2em .3em; background: #fff; border: 1px solid #767676; border-radius: 2px; font: 400 .75em/1.25 'Courier New', monospace; color: #000; }
+
+/* ══ s12 — карточка окончания курса ══ */
+.r28 .z9-cert { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-radius: 14px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--r-edge), 0 6px 16px rgba(15, 23, 42, .08); transition: box-shadow .3s; }
+.r28 .z9-cert.is-on { box-shadow: inset 0 0 0 2px var(--r-pri), 0 0 0 4px #FFE3D9; }
+.r28 .z9-cert-h { font: 800 20px/1.1 var(--r-font); color: var(--r-pri-d); }
+.r28 .z9-cert-t { font: 600 14px/1.3 var(--r-font); color: var(--r-ink); }
+.r28 .z9-cert-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.r28 .z9-cert-tags i { font: 600 11px var(--r-mono); font-style: normal; padding: 2px 6px; border-radius: 5px; background: #FFF1EC; color: var(--r-pri-d); }
+.r28 .z9-built { font-family: var(--r-mono); }
+@keyframes z9In { from { opacity: 0; translate: 0 4px; } to { opacity: 1; translate: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .r28 .z9-st.is-shown { animation: none; } }
+/* Крючок и «босс»: на странице много частей — на телефоне окно выше, чтобы текст читался. */
+@media (max-width: 759px) {
+  .r28 .kz-sheet .kz-scene.z9-s1 .z9-s1-page .kz-br.z9-br { --brh: 44dvh; }
+  .r28 .kz-sheet .kz-scene.z9-s5.z9-boss .kz-br.z9-br { --brh: 40dvh; }
+}
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .kz-sheet .kz-scene.z9-s1 .z9-s1-page .kz-br.z9-br { --brh: 36dvh; }
+  .r28 .kz-sheet .kz-scene.z9-s5.z9-boss .kz-br.z9-br { --brh: 30dvh; }
+}
+/* Невысокий телефон: карта станций — только номера, тоньше; задание не наезжает на код. */
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .z9-st { padding: 2px 0; }
+  .r28 .z9-st i { display: none; }
+  .r28 .z9-map { margin-bottom: 0; }
+}
+.is-kbd .z9-map, .is-kbd .z9-map-wrap { display: none; }
+/* Невысокий телефон, экраны-сборки (лоток из длинных кусков): куски мельче, окно браузера ниже. */
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .z9-sheet .kz-tray { gap: 5px; }
+  .r28 .z9-sheet .kz-tray .kz-scrap { min-height: 34px; padding: 4px 9px; font-size: 13px; }
+  .r28 .kz-sheet .kz-scene.z9-s5 .kz-br.z9-br.is-short { --brh: 20dvh; }
+  .r28 .z9-sheet .kz-ask { margin-bottom: 2px; }
+}
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .kz-sheet .kz-scene-col .kz-br.z9-br.is-short { aspect-ratio: 16 / 7; }
+  .r28 .kz-sheet .kz-scene.z9-s5 .kz-br.z9-br.is-short { --brh: 17dvh; }
+  .r28 .z9-sheet .kz-code.kz-code-sm .kz-line { padding-top: 0; padding-bottom: 0; min-height: 0; }
+}
+/* Невысокий телефон: окно в паре «код + окно» — по пропорциям (высоту задаёт ширина), ниже — чтобы влез лоток. */
+@media (max-width: 759px) and (max-height: 699px) { .r28 .kz-sheet .kz-scene.z9-s5 .kz-br.z9-br.is-short { aspect-ratio: 16 / 6; } }
+/* Планшет стоя: окно крючка ниже, чтобы кнопка «Починить» не уходила под него. */
+@media (min-width: 760px) and (orientation: portrait) { .r28 .kz-sheet .kz-scene.z9-s1 .z9-s1-page > .kz-br.z9-br { --brh: 38dvh; } }
+/* Планшет стоя: на крючке человечек над окном не помещается — окно с картой важнее (как на телефоне). */
+@media (min-width: 760px) and (orientation: portrait) { .r28 .kz-sheet .kz-scene.z9-s1 > .z9-s1-man { display: none; } }
