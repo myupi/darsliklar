@@ -52,5 +52,11 @@ export default {
     // 28 «Редактор» стал уроком 1 курса HTML и эталоном (02.11.2026); прежний урок 1 — тестовый 29.
     { n: 29, slug: 'struktura-playground', title: 'Структура HTML-документа — «Kodi playground» (урок 1 курса и эталон до 02.11.2026)',
       topics: ['html', 'head', 'title', 'body', 'Kodi playground'] },
+    // 04.11.2026: тестовые копии уроков 1 и 2 под новые режимы платформы — «Подготовленная озвучка JSX»
+    // (LESSON_AUDIO + useAudio) и «Контракт завершения v1»; только узбекский. Сборка: node tools/managed-test/build.mjs.
+    { n: 30, slug: 'urok1-yangi-ovoz', title: 'Урок 1 — тест: подготовленная озвучка и завершение v1 (uz)',
+      topics: ['LESSON_AUDIO', 'useAudio', 'contractVersion: 1'] },
+    { n: 31, slug: 'urok2-yangi-ovoz', title: 'Урок 2 — тест: подготовленная озвучка и завершение v1 (uz)',
+      topics: ['LESSON_AUDIO', 'useAudio', 'contractVersion: 1'] },
   ],
 };

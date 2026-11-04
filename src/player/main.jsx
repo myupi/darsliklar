@@ -80,11 +80,33 @@ if (!window.__lessonPlayerInit) {
 }
 
 let finishedCount = 0;
+// Контракт завершения v1 (платформа, 04.11.2026): { contractVersion: 1, passed, results, analytics, meta? };
+// onFinished возвращает Promise. Неверный v1 платформа отклоняет — здесь тоже (Promise.reject + ошибка в журнале).
+// ?finishFail=1 — первая отправка «теряется» (проверка повтора в уроке).
+let finishFails = Number(q.get('finishFail') || 0);
+function v1Problem(p) {
+  const keys = Object.keys(p);
+  const extra = keys.filter((k) => ['contractVersion', 'passed', 'results', 'analytics', 'meta'].indexOf(k) < 0);
+  if (extra.length) return 'лишние поля верхнего уровня: ' + extra.join(', ');
+  if (typeof p.passed !== 'boolean') return 'passed — не true/false';
+  const obj = (v) => v && typeof v === 'object' && !Array.isArray(v);
+  if (!obj(p.results) || !obj(p.analytics)) return 'results и analytics должны быть объектами';
+  if ('coins' in p) return 'coins запрещён';
+  if (JSON.stringify(p).length > 1048576) return 'больше 1 МиБ';
+  return null;
+}
 function onFinished(payload) {
   finishedCount += 1;
   let data = payload;
   try { data = JSON.parse(JSON.stringify(payload === undefined ? null : payload)); } catch (e) { data = String(payload); }
   emit('finished', { payload: data, count: finishedCount });
+  if (payload && payload.contractVersion === 1) {
+    const bad = v1Problem(payload);
+    if (bad) { emit('error', { message: 'Контракт v1: ' + bad }); return Promise.reject(new Error(bad)); }
+    if (finishFails > 0) { finishFails -= 1; return new Promise((ok, no) => setTimeout(() => no(new Error('сеть (проверка повтора)')), 600)); }
+    return new Promise((ok) => setTimeout(ok, 400));
+  }
+  return undefined;
 }
 
 const container = document.getElementById('root');
@@ -124,6 +146,8 @@ async function boot() {
     emit('error', { message: 'В файле урока нет export default-компонента' });
     return;
   }
+  // «Подготовленная озвучка JSX»: объявление реплик урока — эмуляции useAudio ({ speechId }).
+  if (mod.LESSON_AUDIO) configureRuntime({ lessonAudio: mod.LESSON_AUDIO });
   const props = { studentName: name, lang, ttsApiBase, onFinished };
   if (start !== null) { props.startAt = start; props.startScreen = start; }
   emit('loaded', { file, ms: Math.round(performance.now() - t0), component: Lesson.name || 'Lesson', props: Object.keys(props) });

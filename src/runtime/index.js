@@ -6,6 +6,10 @@
 //                        replay(), toggleMute(), stop() }
 //   segments: [{ id, text, trigger: 'on_mount' | 'after_previous', waits_for?: { type, target? } }]
 //   Сегменты звучат по очереди; сегмент с waits_for после реплики ждёт triggerEvent(type, target).
+//   «Подготовленная озвучка JSX» (платформа, 04.11.2026): сегмент { speechId } без text — реплика из
+//   export const LESSON_AUDIO урока ({ schema: 1, speeches: [{ id, lang, voiceId, text, required }] }).
+//   Плеер передаёт объявление сюда (configureRuntime({ lessonAudio })); на платформе звучит принятая
+//   запись, здесь — её текст тем же движком эмуляции. Нет такой реплики — пропуск с предупреждением.
 // useSfx()   → { playCorrect(), playWrong(), playClick(), play(name) }
 // useAssets() → { resolveUrl(key) } — ссылка из манифеста урока или null.
 //
@@ -22,8 +26,17 @@ export { configureRuntime } from './bridge.js';
 const segKey = (list) =>
   (Array.isArray(list) ? list : [])
     .filter(Boolean)
-    .map((s) => (s.id || '') + '|' + (s.text || '') + '|' + (s.waits_for ? s.waits_for.type + ':' + (s.waits_for.target || '') : ''))
+    .map((s) => (s.id || s.speechId || '') + '|' + (s.text || '') + '|' + (s.n || '') + '|' + (s.waits_for ? s.waits_for.type + ':' + (s.waits_for.target || '') : ''))
     .join('¶');
+
+// { speechId } → { id, text } из объявления LESSON_AUDIO урока (язык урока, иначе любой с тем же id).
+function resolveSpeech(s) {
+  if (!s || s.text || !s.speechId) return s;
+  const list = (config.lessonAudio && Array.isArray(config.lessonAudio.speeches)) ? config.lessonAudio.speeches : [];
+  const hit = list.find((x) => x.id === s.speechId && x.lang === config.lang) || list.find((x) => x.id === s.speechId);
+  if (!hit) { emit('error', { message: 'LESSON_AUDIO: нет реплики ' + s.speechId + ' — пропуск' }); return null; }
+  return Object.assign({}, s, { id: s.speechId, text: hit.text });
+}
 
 const matches = (wf, type, target) =>
   wf && wf.type === type && (wf.target == null || target == null || wf.target === target);
@@ -73,7 +86,7 @@ export function useAudio(segments) {
   segRef.current = segments;
 
   useEffect(() => {
-    const list = (Array.isArray(segRef.current) ? segRef.current : []).filter((s) => s && s.text);
+    const list = (Array.isArray(segRef.current) ? segRef.current : []).map(resolveSpeech).filter((s) => s && s.text);
     if (!list.length) return undefined;
     const r = createRunner(list);
     runner.current = r;
