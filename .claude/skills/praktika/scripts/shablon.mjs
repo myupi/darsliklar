@@ -1,14 +1,12 @@
-// Исходник новой практики — копия исходника каркаса 01p «Бумажная улица» (tools/praktika-01/;
-// собранная 01p с 02.11.2026 — тестовая 19). Облик новой практики — эталона урока 1 «Редактор»
-// (naborRedaktor, см. SKILL.md навыка praktika, шаг Г.1а), а не бумажный набор, который подключает копия.
+// Исходник новой практики — копия каркаса практики 01p «Пять вкладок Коди» в облике «Редактор»
+// (tools/amaliyot1/, 04.11.2026; прежние бумажные практики удалены заказчиком).
 //
-//   node .claude/skills/praktika/scripts/shablon.mjs tools/praktika-<NN> [эталон-папка]
+//   node .claude/skills/praktika/scripts/shablon.mjs tools/<папка> [эталон-папка]
 //
-// Копирует p01.src.jsx, p01-engine.jsx, p01-screens.jsx, p01.css в новую папку под
-// именами pNN.* и правит в исходнике пути на свои файлы. Бумажный набор урока 1
-// (tools/kollazh/) не копируется — исходник подключает его как есть.
-// Дальше исходник правится под тему (см. references/karkas.md навыка praktika),
-// а файл практики собирается: node .claude/skills/novyy-urok/scripts/sobrat.mjs <папка>/pNN.src.jsx <файл>.
+// Копирует build.mjs, a1.src.jsx, a1-screens.jsx, a1.css, .gitignore в новую папку под именами aN.*
+// (N — число в конце имени папки, например tools/amaliyot2 → a2.*) и правит в них пути сборки.
+// Файл практики в build.mjs — заглушка lessons/<курс>/<NN>p-<slug>.jsx: заменить.
+// Дальше исходник правится под тему (references/karkas.md навыка praktika), сборка — node tools/<папка>/build.mjs.
 // Существующая папка с исходником не перезаписывается.
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
@@ -16,25 +14,23 @@ import { resolve, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const [outArg, refArg] = process.argv.slice(2);
-if (!outArg) { console.log('Использование: node shablon.mjs tools/praktika-<NN> [эталон-папка]'); process.exit(1); }
+if (!outArg) { console.log('Использование: node shablon.mjs tools/<папка> [эталон-папка]'); process.exit(1); }
 const root = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../../..');
 const out = resolve(root, outArg);
-const ref = resolve(root, refArg || 'tools/praktika-01');
+const ref = resolve(root, refArg || 'tools/amaliyot1');
 const m = /(\d+)\s*$/.exec(basename(out));
-const nn = m ? m[1].padStart(2, '0') : 'NN';
-const name = (f) => f.replace(/^p01/, 'p' + nn);
-const files = ['p01.src.jsx', 'p01-engine.jsx', 'p01-screens.jsx', 'p01.css'];
-if (existsSync(resolve(out, name(files[0])))) { console.log('Исходник уже есть, не перезаписываю: ' + outArg); process.exit(1); }
+const n = m ? String(Number(m[1])) : 'N';
+const name = (f) => f.replace(/^a1/, 'a' + n);
+const files = ['build.mjs', 'a1.src.jsx', 'a1-screens.jsx', 'a1.css', '.gitignore'];
+if (existsSync(resolve(out, name('a1.src.jsx')))) { console.log('Исходник уже есть, не перезаписываю: ' + outArg); process.exit(1); }
 mkdirSync(out, { recursive: true });
+const dir = outArg.replace(/\/$/, '');
 files.forEach((f) => {
   let s = readFileSync(resolve(ref, f), 'utf8');
-  if (f === 'p01.src.jsx') {
-    s = s.replace(/\/\*@FILE:p01-engine\.jsx@\*\//, '/*@FILE:' + name('p01-engine.jsx') + '@*/')
-      .replace(/\/\*@FILE:p01-screens\.jsx@\*\//, '/*@FILE:' + name('p01-screens.jsx') + '@*/')
-      .replace(/\/\*@FILE:p01\.css@\*\//, '/*@FILE:' + name('p01.css') + '@*/')
-      .replace(/tools\/praktika-01\/p01\.src\.jsx lessons\/\S+\.jsx/, outArg.replace(/\/$/, '') + '/' + name('p01.src.jsx') + ' lessons/<курс>/<NN>p-<slug>.jsx  ← заполнить');
-  }
+  s = s.split('a1-screens.jsx').join(name('a1-screens.jsx')).split('a1.src.jsx').join(name('a1.src.jsx')).split('/*@FILE:a1.css@*/').join('/*@FILE:' + name('a1.css') + '@*/')
+    .split('tools/amaliyot1/').join(dir + '/');
+  if (f === 'build.mjs') s = s.split('lessons/html/01p-struktura-dokumenta.jsx').join('lessons/<курс>/<NN>p-<slug>.jsx');
   writeFileSync(resolve(out, name(f)), s);
 });
-console.log('Исходник практики: ' + outArg + ' (' + files.map(name).join(', ') + ') — копия ' + (refArg || 'tools/praktika-01') + '.');
-console.log('Дальше: переписать под тему разделы «под тему» из references/karkas.md, затем собрать sobrat.mjs.');
+console.log('Исходник практики: ' + outArg + ' (' + files.map(name).join(', ') + ') — копия ' + (refArg || 'tools/amaliyot1') + '.');
+console.log('Дальше: в build.mjs — путь файла практики; под тему — разделы из references/karkas.md; классы a1- можно оставить или сменить на свой префикс.');
