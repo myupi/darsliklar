@@ -91,7 +91,7 @@ npm run canon:check
 То же, что на платформе:
 
 - пропсы `{ studentName, lang, ttsApiBase, onFinished }`;
-- `ttsApiBase` — сервис озвучки (`GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=…`). В просмотрщике его эмулирует `tools/vite-tts-service.mjs`: каждая реплика с маркером языка попадает в журнал. Так говорят уроки курса HTML, Курса 0 и 1-класса;
+- `ttsApiBase` — сервис озвучки (`GET {ttsApiBase}/api/tts?text=…&g=f&lesson_id=…&lesson_name=…`). В просмотрщике его эмулирует `tools/vite-tts-service.mjs` (на localhost, `npm run dev`), а в собранной версии (Vercel) — service worker `public/tts-sw.js` с тем же ответом: каждая реплика с маркером языка попадает в журнал. Файлы уроков от этого не зависят. Так говорят уроки курса HTML, Курса 0 и 1-класса;
 - `import { useAudio, useSfx, useAssets } from '@lesson/runtime'` — для эталонов Кибербеза и «Алгоритмов» (эталоны используют ещё `framer-motion` и `lucide-react` — просмотрщик их тоже поддерживает);
 - уроки курса HTML импортируют только `react`;
 - шрифты Manrope, Source Serif 4, Nunito, JetBrains Mono, Inter, Fraunces (на платформе их отдаёт LMS).

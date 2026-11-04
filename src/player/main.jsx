@@ -27,27 +27,44 @@ configureRuntime({ voice, lang, assets: (found && found.lesson.assets) || {} });
 // СЕРВИС ОЗВУЧКИ. Адрес свой у каждого запуска плеера: реплики в журнал
 // приходят только этому плееру, даже если открыто несколько уроков.
 // «Нет» — сервиса нет и голоса браузера тоже: урок обязан печатать реплики.
-// В собранном просмотрщике (npm run build) сервиса нет — урок говорит сам.
+// На localhost сервис — сервер разработки (tools/vite-tts-service.mjs, реплики приходят по HMR).
+// В собранном просмотрщике (Vercel, npm run build) — service worker public/tts-sw.js: он отвечает
+// уроку так же и шлёт текст реплики плееру (postMessage). Не встал за 2 с — сервиса нет, урок говорит сам.
+// Уроки от этого не меняются: им, как на платформе, передаётся только ttsApiBase.
 const sid = Math.random().toString(36).slice(2, 10);
-const ttsApiBase = import.meta.env.DEV && voice !== 'off'
+const ttsBase = voice !== 'off'
   ? window.location.origin + '/__tts/' + sid + '/' + (voice === 'fast' || voice === 'browser' ? voice : 'simulate')
   : '';
+let ttsApiBase = import.meta.env.DEV ? ttsBase : '';
+const emitTts = (d) => {
+  if (!d || d.sid !== sid) return;
+  const line = parseLine(d.text);
+  emit('tts', {
+    text: d.text, spoken: line.spoken, lang: line.lang, marker: line.marker,
+    voice: d.g ? 'g=' + d.g : null, kind: 'service', id: null, muted: false, mode: d.mode,
+  });
+};
+async function ttsWorker() {
+  if (import.meta.env.DEV || !ttsBase || !('serviceWorker' in navigator)) return;
+  try {
+    navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'darsliklar:tts') emitTts(e.data.data); });
+    await navigator.serviceWorker.register('/tts-sw.js', { scope: '/' });
+    if (!navigator.serviceWorker.controller) {
+      await Promise.race([
+        new Promise((ok) => navigator.serviceWorker.addEventListener('controllerchange', ok, { once: true })),
+        new Promise((ok) => setTimeout(ok, 2000)),
+      ]);
+    }
+    if (navigator.serviceWorker.controller) ttsApiBase = ttsBase;
+  } catch (e) { /* сервиса нет — урок говорит сам */ }
+}
 if (voice === 'off') {
   try {
     Object.defineProperty(window, 'speechSynthesis', { value: undefined, configurable: true });
     Object.defineProperty(window, 'SpeechSynthesisUtterance', { value: undefined, configurable: true });
   } catch (e) { /* no-op */ }
 }
-if (import.meta.hot) {
-  import.meta.hot.on('darsliklar:tts', (d) => {
-    if (!d || d.sid !== sid) return;
-    const line = parseLine(d.text);
-    emit('tts', {
-      text: d.text, spoken: line.spoken, lang: line.lang, marker: line.marker,
-      voice: d.g ? 'g=' + d.g : null, kind: 'service', id: null, muted: false, mode: d.mode,
-    });
-  });
-}
+if (import.meta.hot) import.meta.hot.on('darsliklar:tts', emitTts);
 
 // Модуль может выполниться повторно (горячая перезагрузка, когда файлы уроков
 // добавили или удалили) — слушатели и корень React создаём один раз.
@@ -95,7 +112,7 @@ async function boot() {
   const t0 = performance.now();
   let mod;
   try {
-    mod = await loader();
+    [mod] = await Promise.all([loader(), ttsWorker()]);
   } catch (e) {
     root.render(<Message title="Урок не собрался" text={String(e && e.message)} />);
     emit('error', { message: 'Урок не собрался: ' + String(e && e.message), stack: String((e && e.stack) || '') });
