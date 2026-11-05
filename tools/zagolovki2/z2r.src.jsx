@@ -242,6 +242,14 @@ const C = {
       one: L3("Qarang: bu so'z yuqorida ochilgan p ichida turibdi. p ikki qatorda yozilgan, lekin abzas bitta bo'ladi.", 'Смотри: это слово внутри p, который открыт строкой выше. p записан в двух строках, но абзац один.', 'Look: this word is inside the p opened on the line above. The p takes two lines, but it’s one paragraph.'),
       many: L3("Qarang: bitta qatorda ikkita p bor. Demak, sahifada ular ikkita alohida abzas bo'ladi.", 'Смотри: в одной строке два p. Значит, на странице это два отдельных абзаца.', 'Look: one line has two p tags. So on the page they are two separate paragraphs.')
     },
+    // Ступени подсказки (лампочка): 1 — куда смотреть, 2 — правило по виду раунда, 3 — причина и какой абзац нажать (он загорается).
+    hint1: L3("Kodda yonib turgan so'zni toping. U qaysi p tegi ichida turibdi?", 'Найди горящее слово в коде. Внутри какого тега p оно стоит?', 'Find the glowing word in the code. Which p tag is it inside?'),
+    hint2: {
+      one: L3("Abzas ochuvchi p tegidan boshlanib, yopuvchi p tegida tugaydi. Orada nechta qator bo'lsa ham, abzas bitta bo'ladi.", 'Абзац начинается открывающим p и кончается закрывающим p. Сколько бы строк ни было между ними, абзац один.', 'A paragraph starts at the opening p and ends at the closing p. However many lines are in between, it’s one paragraph.'),
+      many: L3("Har bir p alohida abzas bo'ladi, hatto ular bitta qatorda tursa ham. Koddagi p teglarini tepadan sanab chiqing.", 'Каждый p — отдельный абзац, даже если они стоят в одной строке. Посчитай теги p в коде сверху.', 'Each p is a separate paragraph, even if they sit on one line. Count the p tags in the code from the top.')
+    },
+    pickP: L3("Bu so'z sahifadagi {n} abzasda turibdi. Yonib turgan abzasni bosing.", 'Нужен {n} абзац страницы. Нажми горящий абзац.', 'This word is in the {n} paragraph of the page. Tap the glowing paragraph.'),
+    nth: [L3('birinchi', 'первый', 'first'), L3('ikkinchi', 'второй', 'second'), L3('uchinchi', 'третий', 'third')],
     done: L3("Demak, koddagi qatorlar emas, p teglari hal qiladi. Endi muhim so'zlarni ajratishni o'rganamiz.", 'Значит, важны не строки в коде, а теги p. Теперь научимся выделять важные слова.', 'So what matters is the p tags, not the lines in the code. Next, let’s learn to make words stand out.')
   },
   s9: {
@@ -279,6 +287,12 @@ const C = {
     miss: {
       b: L3("Qarang: keyin so'z qalin bo'ldi. Qalin qiladigan teg esa b bo'ladi.", 'Смотри: после слово стало жирным. Жирным делает тег b.', 'Look: after, the word is bold. The b tag makes it bold.'),
       i: L3("Qarang: keyin so'z qiya bo'ldi. Qiya qiladigan teg esa i bo'ladi.", 'Смотри: после слово стало наклонным. Наклоняет тег i.', 'Look: after, the word is slanted. The i tag slants it.')
+    },
+    // Ступени подсказки (лампочка): 1 — куда смотреть, 2 — что случилось со словом, 3 — причина и какой тег выбрать.
+    hint1: L3("Oldin va keyin bitta so'zga qarang: u qanday o'zgardi?", 'Сравни одно слово «до» и «после»: как оно изменилось?', 'Compare the one word before and after: how did it change?'),
+    hint2: {
+      b: L3("Qarang: harflar yo'g'onlashdi, lekin tik turibdi. So'zni qaysi teg qalin qilardi, esingizdami?", 'Смотри: буквы стали толще, но стоят прямо. Вспомни, какой тег делает слово жирным.', 'Look: the letters got thicker but stand straight. Remember which tag makes a word bold.'),
+      i: L3("Qarang: harflar yonga og'ib qoldi. So'zni qaysi teg qiya qilardi, esingizdami?", 'Смотри: буквы наклонились вбок. Вспомни, какой тег делает слово наклонным.', 'Look: the letters leaned to the side. Remember which tag slants a word.')
     },
     done: L3("Endi b va i ni adashtirmaysiz. Keyin butun sahifani birga o'qiymiz.", 'Теперь b и i не перепутать. Дальше прочитаем всю страницу целиком.', 'Now you won’t mix up b and i. Next, let’s read the whole page.'),
     before: L3("Oldin", 'До', 'Before'),
@@ -334,6 +348,12 @@ const C = {
     ok: L3("Ana endi joyida! Faqat bitta so'z qalin qoldi.", 'Вот теперь порядок! Жирным осталось только одно слово.', 'That’s it! Only one word is bold now.'),
     ask: L3("Yetishmayotgan tegni bo'sh joyga olib boring", 'Перетащи недостающий тег в пустое место', 'Drag the missing tag into the empty spot'),
     opts: ['</i>', '</b>', '<b>'],
+    // Ступени подсказки (лампочка; со второй ошибки — сами): на третьей нужный тег загорается.
+    hints: [
+      L3("Brauzerga qarang: qalin matn qayerda tugashi kerak edi?", 'Посмотри на браузер: где жирный текст должен был закончиться?', 'Look at the browser: where should the bold text have ended?'),
+      L3("Ochilgan tegni yopish uchun xuddi shu teg kerak, faqat qiya chiziq bilan.", 'Чтобы закрыть тег, нужен такой же тег, только с косой чертой.', 'To close a tag, you need the same tag, only with a slash.'),
+      L3("Bu yerda b tegi ochilgan, demak yopuvchi b kerak. Yonib turgan bo'lakni bo'sh joyga olib boring.", 'Здесь открыт тег b — значит, нужен закрывающий b. Перетащи горящий кусок в пустое место.', 'The b tag is opened here, so you need the closing b. Drag the glowing piece into the empty spot.')
+    ],
     bword: L3("Diqqat!", 'Внимание!', 'Note!'),
     tail: L3("Sahifam tayyor.", 'Моя страница готова.', 'My page is ready.')
   },
@@ -375,6 +395,10 @@ const C = {
     say: L3("Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.", 'Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.', 'The last test. I’ll say something, and you choose: true or false.'),
     ask: L3("To'g'ri yoki noto'g'ri?", 'Верно или нет?', 'True or false?'),
     card: L3("Kodi aytadi", 'Коди говорит', 'Kodi says'),
+    hint1: L3("Gapni diqqat bilan o'qing: u qaysi teg haqida gapiryapti?", 'Прочитай фразу внимательно: о каком теге она?', 'Read the sentence carefully: which tag is it about?'),
+    hint2: L3("Esingizdami: h1 eng katta sarlavha, h6 esa eng kichigi. Yangi abzasni faqat p tegi yasay oladi. Gap shunga mos keladimi?",
+      'Вспомни: h1 — самый крупный заголовок, а h6 — самый мелкий. Новый абзац делает только тег p. Фраза с этим совпадает?',
+      'Remember: h1 is the biggest heading and h6 the smallest. Only the p tag makes a new paragraph. Does the sentence match that?'),
     yes: L3("To'g'ri", 'Верно', 'True'),
     no: L3("Noto'g'ri", 'Неверно', 'False'),
     right: L3("Barakalla!", 'Точно!', 'Exactly!'),
@@ -415,7 +439,7 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { opts: 1, why: 1, magic: 1, magicP: 1, magicB: 1, big: 1, small: 1, msgs: 1, sayP: 1, askQ: 1, miss: 1,
+Object.assign(SPOKEN, { hint1: 1, hint2: 1, opts: 1, why: 1, magic: 1, magicP: 1, magicB: 1, big: 1, small: 1, msgs: 1, sayP: 1, askQ: 1, miss: 1,
   b: 1, i: 1, order1: 1, order2: 1, order3: 1, cards: 1, say2: 1, fine: 1, items: 1, right: 1 });
 Object.assign(NOT_SPOKEN_IN, { cards: { title: 1 }, opts: { t: 1, id: 1, right: 1 }, items: { code: 1 } });
 

@@ -6957,6 +6957,13 @@ const C = {
       li: L3("Qarang: keyin ro'yxatda bitta band ko'paydi. Yangi bandni li qo'shadi.", 'Смотри: после в списке стало на один пункт больше. Новый пункт добавляет li.', 'Look: after, the list has one more item. li adds a new item.'),
       ul: L3("Qarang: keyin raqamlar nuqtalarga aylandi. Nuqta qo'yadigan teg esa ul bo'ladi.", 'Смотри: после номера стали точками. Точки ставит тег ul.', 'Look: after, the numbers became dots. The ul tag adds dots.')
     },
+    // Ступени подсказки (лампочка): 1 — куда смотреть, 2 — что изменилось и какой тег за это отвечает, 3 — причина и какой тег выбрать.
+    hint1: L3("Oldin va keyin ro'yxatni solishtiring: nuqtalar, raqamlar yoki bandlar soni o'zgardimi?", 'Сравни список «до» и «после»: изменились точки, номера или число пунктов?', 'Compare the list before and after: did the dots, the numbers or the number of items change?'),
+    hint2: {
+      ol: L3("Qarang: bandlar soni o'sha-o'sha, faqat belgisi o'zgardi. Raqam qo'yadigan ro'yxat tegi qaysi edi, esingizdami?", 'Смотри: пунктов столько же, поменялись только значки. Помнишь, какой тег списка ставит номера?', 'Look: the number of items is the same, only the markers changed. Remember which list tag adds numbers?'),
+      li: L3("Qarang: belgilar o'sha-o'sha, lekin bandlar ko'paydi. Ro'yxatning bitta bandini qaysi teg yasaydi?", 'Смотри: значки те же, а пунктов стало больше. Какой тег делает один пункт списка?', 'Look: the markers are the same, but there are more items. Which tag makes one list item?'),
+      ul: L3("Qarang: bandlar soni o'sha-o'sha, faqat raqamlar o'rniga boshqa belgi chiqdi. Nuqta qo'yadigan ro'yxat tegi qaysi edi, esingizdami?", 'Смотри: пунктов столько же, только вместо номеров другие значки. Помнишь, какой тег списка ставит точки?', 'Look: the number of items is the same, only the numbers turned into other markers. Remember which list tag adds dots?')
+    },
     done: L3('Endi uchala tegni ham adashtirmaysiz. Keyin butun sahifani birga o\'qiymiz.', 'Теперь эти три тега не перепутать. Дальше прочитаем всю страницу целиком.', 'Now you won’t mix up these three tags. Next, let’s read the whole page.'),
     before: L3('Oldin', 'До', 'Before'),
     after: L3('Keyin', 'После', 'After')
@@ -7010,7 +7017,13 @@ const C = {
     },
     ok: L3("Ana endi joyida! Ikkinchi bandning oldida ham nuqta paydo bo'ldi.", 'Вот теперь порядок! У второго пункта тоже появилась точка.', 'That’s it! The second item has its dot again.'),
     ask: L3("Yetishmayotgan tegni bo'sh joyga olib boring", 'Перетащи недостающий тег в пустое место', 'Drag the missing tag into the empty spot'),
-    opts: ['</li>', '<li>', '<ol>']
+    opts: ['</li>', '<li>', '<ol>'],
+    // Ступени подсказки (лампочка; со второй ошибки — сами): на третьей нужный тег загорается.
+    hints: [
+      L3("Brauzerga qarang: ikkinchi bandga nima yetishmayapti?", 'Посмотри на браузер: чего не хватает второму пункту?', 'Look at the browser: what is the second item missing?'),
+      L3("Nuqtani li tegi qo'yadi. Band boshida esa ochuvchi teg turadi, unda qiya chiziq bo'lmaydi.", 'Точку ставит тег li. А в начале пункта стоит открывающий тег, без косой черты.', 'The li tag adds the dot. And an item starts with the opening tag, without a slash.'),
+      L3("Demak, band boshiga ochuvchi li kerak. Yonib turgan bo'lakni bo'sh joyga olib boring.", 'Значит, в начало пункта нужен открывающий li. Перетащи горящий кусок в пустое место.', 'So the item needs the opening li at the start. Drag the glowing piece into the empty spot.')
+    ]
   },
   // ИТОГОВАЯ ПРОВЕРКА (q1, q2): новые списки без образца; до первой попытки ответ не подсвечен.
   q1: {
@@ -7046,6 +7059,10 @@ const C = {
     say: L3("Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.", 'Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.', 'The last test. I’ll say something, and you choose: true or false.'),
     ask: L3("To'g'ri yoki noto'g'ri?", 'Верно или нет?', 'True or false?'),
     card: L3('Kodi aytadi', 'Коди говорит', 'Kodi says'),
+    hint1: L3("Gapni diqqat bilan o'qing: u qaysi teg haqida gapiryapti?", 'Прочитай фразу внимательно: о каком теге она?', 'Read the sentence carefully: which tag is it about?'),
+    hint2: L3("Esingizdami: tartib muhim bo'lsa ol, muhim bo'lmasa ul olinadi. Raqamlarni brauzer o'zi qo'yadi, har bir band esa o'z li tegida turadi. Gap shunga mos keladimi?",
+      'Вспомни: если порядок важен — ol, если нет — ul. Номера браузер ставит сам, а каждый пункт стоит в своём li. Фраза с этим совпадает?',
+      'Remember: if order matters, use ol; if not, ul. The browser adds the numbers itself, and each item sits in its own li. Does the sentence match that?'),
     yes: L3("To'g'ri", 'Верно', 'True'),
     no: L3("Noto'g'ri", 'Неверно', 'False'),
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
@@ -7787,7 +7804,7 @@ function GoalCard({ goal, n, total, done, doneText }) {
 }
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { why: 1, magic: 1, magicP: 1, msgs: 1, sayUl: 1, sayLi: 1, sayOl: 1, sayAuto: 1, sayA: 1, sayB: 1, askQ: 1, miss: 1,
+Object.assign(SPOKEN, { hint1: 1, hint2: 1, hints: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayUl: 1, sayLi: 1, sayOl: 1, sayAuto: 1, sayA: 1, sayB: 1, askQ: 1, miss: 1,
   order1: 1, order2: 1, order3: 1, say2: 1, fine: 1, items: 1, right: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1 } });
 
@@ -8299,6 +8316,42 @@ function kzFly(el, to, ms) {
     { translate: T(dx, dy), scale: String(k.toFixed(3)), opacity: 0 }
   ], { duration: d, easing: 'cubic-bezier(.4, 0, .2, 1)', fill: 'forwards' });
   return true;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// СТУПЕНИ ПОДСКАЗКИ В ЗАДАНИЯХ НА ВЫБОР (заказчик, 05.11.2026: «добавь три ступени и в задания на выбор»).
+// Как в заданиях с набором кода: лампочка открывает ступени 1–3; первая ошибка — причина; вторая подряд и
+// дальше — причина и сразу следующая ступень. key — номер вопроса или раунда: на новом всё с нуля.
+// Экран: const ch = useChoiceHints(!done, ii); hints = choiceHints(h1, h2, why, ответ);
+//   промах: sayNow(ch.miss(why, hints), 'think');  KzAsk hint={ok ? null : ch.now(hints)} err={ch.err};
+//   StageB hint={ch.next(hints) || c.ask}; в журнал: hints: ch.lad.asked.current, depth: ch.lad.lv.
+// ─────────────────────────────────────────────────────────────────────────────
+const CH_PICK = L3("Demak, «{a}» javobini tanlang.", 'Значит, выбери «{a}».', 'So choose “{a}”.');
+// Третья ступень — конкретная опора: правило к этому вопросу и какой ответ выбрать (последнее действие — за учеником).
+const choiceHints = (h1, h2, why, a) => [h1, h2, why ? joinL(why, fillL(CH_PICK, { a })) : fillL(CH_PICK, { a })];
+function useChoiceHints(active, key) {
+  const lad = useKzLadder(active);
+  const [msg, setMsg] = useState(null);
+  const misses = useRef(0);
+  const keep = useRef(false);
+  // Новый вопрос: ступени и промахи — с нуля, а счёт нажатий лампочки за экран копится (для журнала).
+  useEffect(() => { const n = lad.asked.current; misses.current = 0; lad.reset(); lad.asked.current = n; setMsg(null); }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Лампочка открыла ступень — показываем её (причина прошлой ошибки уходит); после второй ошибки — не трогаем.
+  useEffect(() => { if (keep.current) { keep.current = false; return; } setMsg(null); }, [lad.lv]);
+  const miss = (why, hints) => {
+    misses.current += 1;
+    let lv = lad.lv;
+    if (misses.current >= 2 && lv < 3) { lv += 1; keep.current = true; lad.bump(); }
+    const t = misses.current >= 2 && lv > 0 && hints && hints[lv - 1] ? joinL(why, hints[lv - 1]) : why;
+    setMsg(t);
+    return t;
+  };
+  return {
+    lad, msg, miss, err: !!msg,
+    clear: () => setMsg(null),
+    now: (hints) => msg || hintAt(lad.lv, hints),
+    next: (hints) => hintAt(Math.min(3, lad.lv + 1), hints)
+  };
 }
 
 // Сгенерировано tools/kollazh/paper-data.mjs из assets/paper.mp3 — не править руками.
@@ -9979,6 +10032,9 @@ function S10({ p }) {
   const shownRd = round || (ans ? lastRef.current : null);
   const R = shownRd ? (shownRd.extra ? S10_EXTRA : S10_ROUNDS)[shownRd.i] : null;
   const led = useIdleLed(canTap && !!round && !ans, doneN);
+  // Ступени подсказки — на каждый раунд свои; ответ в раунде один (после него виден верный тег).
+  const ch = useChoiceHints(!!round && !ans, doneN);
+  const hints = R ? choiceHints(c.hint1, c.hint2[R.want], c.miss[R.want], R.want) : null;
   const answer = (k) => {
     if (!canTap || !round || ans) return;
     const right = k === R.want;
@@ -9992,7 +10048,7 @@ function S10({ p }) {
       [0, 1, 2].forEach((ii) => {
         const f = stats.current.find((x) => x.i === ii && !x.extra);
         const e = stats.current.find((x) => x.i === ii && x.extra);
-        log({ screenId: 's10.r' + (ii + 1), type: 'before-after', correct: true, firstTry: !!(f && f.right), attempts: e ? 2 : 1, helped: !!(f && !f.right), followUp: e ? e.right : null });
+        log({ screenId: 's10.r' + (ii + 1), type: 'before-after', correct: true, firstTry: !!(f && f.right), attempts: e ? 2 : 1, helped: !!(f && !f.right), followUp: e ? e.right : null, hints: ch.lad.asked.current });
       });
       put({ done: true }); setQueue([]);
       sayNow(joinL(line, c.done), 'smile');
@@ -10009,9 +10065,9 @@ function S10({ p }) {
   const list = R ? pick(C.s8[R.list]) : [];
   const doc = (v) => <PageDoc blocks={[{ t: v.t, k: 'l', items: list.slice(0, v.n).map((w) => ({ parts: [w] })) }]} />;
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={round ? c.askQ : c.done} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={round ? (ch.next(hints) || c.askQ) : c.done} nav={navOf(p, canGo)}>
       <Sheet cls="z3-sheet">
-        <KzAsk text={round ? c.askQ : c.done} hint={round && ans && ans !== R.want ? c.miss[R.want] : null} err={!!(round && ans && ans !== R.want)} n={round ? (doneN + 1) + '/' + (doneN + queue.length) : null} />
+        <KzAsk text={round ? c.askQ : c.done} hint={round && ans && ans !== R.want ? c.miss[R.want] : round && !ans ? ch.now(hints) : null} err={!!(round && ans && ans !== R.want)} n={round ? (doneN + 1) + '/' + (doneN + queue.length) : null} />
         {R ? (
           <div className="kz-scene kz-scene-col" key={'r' + doneN}>
             <div className="kz-col">
@@ -10207,25 +10263,26 @@ function S14({ p }) {
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || okNow, spoken);
   const led = useIdleLed(canTap && !okNow, off.length);
+  const ch = useChoiceHints(!okNow, 0);
   const choose = (o) => {
     if (!canTap || okNow || off.indexOf(o) >= 0) return false;
     if (o === '<li>') {
-      sfx('win', true); setOkNow(true); setMsg(null); put({ done: true });
-      log({ screenId: 's14', type: 'fix-li', correct: true, firstTry: off.length === 0, attempts: off.length + 1 });
+      sfx('win', true); setOkNow(true); setMsg(null); ch.clear(); put({ done: true });
+      log({ screenId: 's14', type: 'fix-li', correct: true, firstTry: off.length === 0, attempts: off.length + 1, hints: ch.lad.asked.current, depth: ch.lad.lv });
       sayNow(c.ok, 'cheer');
       return true;
     }
-    sfx('soft', true); setOff(off.concat(o)); setMsg(c.why[o]); sayNow(c.why[o], 'think');
+    sfx('soft', true); setOff(off.concat(o)); sayNow(ch.miss(c.why[o], c.hints), 'think');
     return false;
   };
   const dnd = useKzDrag((o, where) => (where === 'gap' ? choose(o) : false));
   const its = mine.items;
   const items = its.map((w, j) => (j === 1 && !okNow ? { bare: true, parts: [w], hl: true } : { parts: [w], cls: j === 1 ? 'z3-a-in' : '' }));
-  const glow = off.length >= 2 ? '<li>' : null;
+  const glow = off.length >= 2 || ch.lad.lv >= 3 ? '<li>' : null;
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="z3-sheet">
-        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : msg} err={!!msg} />
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : ch.now(c.hints)} err={ch.err} />
         <div className="kz-scene z3-s5">
           <div className="kz-col">
             <PaperBrowser title={pick(UI.mySite)} cls={'z3-br' + (okNow ? '' : ' z3-broken')}><PageDoc blocks={[{ t: 'h2', parts: [mine.title], k: 'h' }, { t: 'ul', k: 'l', items }]} /></PaperBrowser>
@@ -10358,19 +10415,22 @@ function Q2({ p }) {
   const st = useRef({ tries: 0, misses: 0 });
   const led = useIdleLed(canTap && !ok, ii * 10 + (off === null ? 0 : 1));
   const it = c.items[ii];
+  // Ступени подсказки (лампочка; со второй ошибки — сами): 1 — как читать фразу, 2 — правило урока, 3 — причина и ответ.
+  const ch = useChoiceHints(!ok, ii);
+  const hints = choiceHints(c.hint1, c.hint2, it.why, it.right ? c.yes : c.no);
   const choose = (v) => {
     if (!canTap || ok || off === v) return;
     st.current.tries += 1;
     if (v !== it.right) {
       st.current.misses += 1;
-      sfx('soft', true); setOff(v); setMsg(it.why); sayNow(it.why, 'think');
+      sfx('soft', true); setOff(v); sayNow(ch.miss(it.why, hints), 'think');
       return;
     }
-    sfx('ok', true); setOk(true); setMsg(null);
+    sfx('ok', true); setOk(true); setMsg(null); ch.clear();
     const line = joinL(c.right, it.why);
     if (ii === c.items.length - 1) {
       put({ done: true });
-      log({ screenId: 'q2', type: 'true-false', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: 0, depth: 0 });
+      log({ screenId: 'q2', type: 'true-false', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: ch.lad.asked.current, depth: ch.lad.lv });
       sayNow(joinL(line, c.ok), 'cheer');
     } else { sayNow(line, 'smile'); setNext(true); }
   };
@@ -10386,9 +10446,9 @@ function Q2({ p }) {
     </button>
   );
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="z3-sheet">
-        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : msg} err={!!msg} n={(ii + 1) + '/' + c.items.length} />
+        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : ch.now(hints)} err={ch.err} n={(ii + 1) + '/' + c.items.length} />
         <div className="kz-scene kz-scene-col kz-q2" key={'i' + ii}>
           <div className="kz-col">
             <div className="z3-card z3-tf-card kz-a-drop">

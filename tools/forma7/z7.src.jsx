@@ -173,6 +173,10 @@ const C = {
       L3("To'g'ri! Oxirgi option ro'yxatning oxirida chiqadi.", 'Верно! Последний option — в конце списка.', 'Right! The last option is at the end of the list.')
     ],
     miss: L3("Bu boshqa variant. Ro'yxatda variantlar kod qatorlari tartibida turadi: yongan qator nechanchi o'rinda turibdi?", 'Это другой вариант. В списке варианты идут в порядке строк кода: какая по счёту горящая строка?', 'That’s a different choice. The choices in the list follow the order of the code lines: which position is the lit line in?'),
+    // Ступени подсказки (05.11.2026): 1 — куда смотреть, 2 — правило, 3 — что написано в горящей строке и какой вариант выбрать.
+    hint1: L3("Oldin kodda yongan qatorni toping, keyin ochiq ro'yxatga qarang.", 'Сначала найди горящую строку в коде, потом посмотри на раскрытый список.', 'First find the lit line in the code, then look at the open list.'),
+    hint2: L3("Har bir option qatori ro'yxatda bitta variant bo'ladi. option ichida qaysi so'z yozilgan bo'lsa, ro'yxatda ham o'sha so'z chiqadi.", 'Каждая строка option — один вариант в списке. Какое слово написано внутри option, такое и появится в списке.', 'Each option line is one choice in the list. Whatever word is inside option, that word shows up in the list.'),
+    why3: L3("Yongan qatorda option ichida {a} yozilgan.", 'В горящей строке внутри option написано {a}.', 'The lit line has {a} inside option.'),
     done: L3("Barakalla! Endi har bir option qatori qaysi variantni chiqarishini bilasiz.", 'Молодец! Теперь ты знаешь, какой вариант выводит каждая строка option.', 'Well done! Now you know which choice each option line shows.')
   },
   s5: {
@@ -295,6 +299,18 @@ const C = {
       close: L3("Qarang: oldin tugma kodi maydon ichida matn bo'lib turgan edi, keyin tugma chiqdi. Buni yopuvchi textarea qiladi.", 'Смотри: сначала код кнопки был текстом внутри поля, потом появилась кнопка. Это делает закрывающий textarea.', 'Look: first the button’s code was text inside the field, then the button appeared. The closing textarea does that.'),
       btn: L3("Qarang: oldin anketada tugma yo'q edi, keyin paydo bo'ldi. Tugmani button yasaydi.", 'Смотри: сначала кнопки не было, потом она появилась. Кнопку делает button.', 'Look: first there was no button, then it appeared. button makes a button.')
     },
+    // Ступени подсказки (05.11.2026): 1 — сравнить карточки, 2 — что изменилось и какой тег это делает, 3 — причина и какую кнопку выбрать.
+    hint1: L3("Oldin va keyin kartochkalarini solishtiring: anketada nima o'zgardi?", 'Сравни карточки «До» и «После»: что изменилось в анкете?', 'Compare the “Before” and “After” cards: what changed in the form?'),
+    hint2: {
+      opt: L3("Ro'yxatda nechta variant bor edi va nechta bo'ldi? Ro'yxatga variantni qaysi teg qo'shadi, esingizdami?", 'Сколько вариантов было в списке и сколько стало? Вспомни, какой тег добавляет вариант в список.', 'How many choices were in the list, and how many are there now? Remember which tag adds a choice to the list.'),
+      close: L3("Oldin tugma kodi maydon ichida matn edi, keyin tugma chiqdi. Maydonni qaysi teg tugatadi, esingizdami?", 'Сначала код кнопки был текстом в поле, потом появилась кнопка. Вспомни, какой тег заканчивает поле.', 'First the button’s code was text in the field, then the button appeared. Remember which tag ends the field.'),
+      btn: L3("Oldin anketa ostida hech narsa yo'q edi, keyin tugma chiqdi. Tugmani qaysi teg yasaydi, esingizdami?", 'Сначала под анкетой ничего не было, потом появилась кнопка. Вспомни, какой тег делает кнопку.', 'First there was nothing under the form, then a button appeared. Remember which tag makes a button.')
+    },
+    pick3: {
+      opt: L3("Demak, option tegi yozilgan tugmani tanlang.", 'Значит, выбери кнопку с тегом option.', 'So choose the button with the option tag.'),
+      close: L3("Demak, yopuvchi textarea tegi yozilgan tugmani tanlang.", 'Значит, выбери кнопку с закрывающим тегом textarea.', 'So choose the button with the closing textarea tag.'),
+      btn: L3("Demak, button tegi yozilgan tugmani tanlang.", 'Значит, выбери кнопку с тегом button.', 'So choose the button with the button tag.')
+    },
     done: L3("Endi anketa nimaga boshqacha ko'rinishini kodga qarab bilasiz. Keyin butun anketani birga o'qib chiqamiz.", 'Теперь ты по коду понимаешь, почему анкета выглядит так. Дальше прочитаем всю анкету вместе.', 'Now you can tell from the code why the form looks the way it does. Next, let’s read the whole form together.'),
     before: L3('Oldin', 'До', 'Before'),
     after: L3('Keyin', 'После', 'After')
@@ -348,6 +364,12 @@ const C = {
       li: L3("li oddiy ro'yxat uchun bo'ladi: u ul va ol ichida turadi. select ichida u ishlamaydi.", 'li — для обычных списков ul и ol. Внутри select он не работает.', 'li is for ordinary ul and ol lists. It doesn’t work inside select.'),
       p: L3("p abzas yasaydi. Ochiladigan ro'yxatga u variant qo'shmaydi.", 'p делает абзац. В выпадающий список он вариант не добавит.', 'p makes a paragraph. It won’t add a choice to a drop-down list.')
     },
+    // Ступени подсказки (05.11.2026): 1 — посмотреть на список, 2 — правило (как строки выше), 3 — какой кусок тащить (он загорается).
+    hints: [
+      L3("Brauzerga qarang: Basketbol ro'yxatga chiqdimi? Kodda unga nima yetishmayapti?", 'Посмотри на браузер: Баскетбол попал в список? Чего ему не хватает в коде?', 'Look at the browser: did Basketball make it into the list? What is it missing in the code?'),
+      L3("Ochiladigan ro'yxatga variantni faqat bitta teg qo'sha oladi. Tepadagi qatorlarga qarang: o'yinlar qaysi teg ichida turibdi?", 'Вариант в выпадающий список может добавить только один тег. Посмотри на строки выше: в каком теге стоят игры?', 'Only one tag can add a choice to a drop-down list. Look at the lines above: which tag are the games in?'),
+      L3("Tepadagi qatorlar kabi option tegi bilan yozilgan bo'lakni bo'sh joyga olib boring.", 'Перетащи в пустое место кусок с тегом option — как в строках выше.', 'Drag the piece with the option tag into the empty spot, just like the lines above.')
+    ],
     ok: L3("Ana endi joyida! Basketbol ro'yxatga qo'shildi.", 'Вот теперь порядок! Баскетбол в списке.', 'That’s it! Basketball is in the list.'),
     ask: L3("To'g'ri qatorni bo'sh joyga olib boring", 'Перетащи правильную строку в пустое место', 'Drag the right line into the empty spot')
   },
@@ -383,6 +405,11 @@ const C = {
     say: L3("Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.", 'Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.', 'The last test. I’ll say something, and you choose: true or false.'),
     ask: L3("To'g'ri yoki noto'g'ri?", 'Верно или нет?', 'True or false?'),
     card: L3('Kodi aytadi', 'Коди говорит', 'Kodi says'),
+    // Ступени подсказки (05.11.2026): 1 — как читать фразу, 2 — правила урока, 3 — причина и ответ (choiceHints).
+    hint1: L3("Gapni bo'laklab o'qing: u qaysi teg haqida? Pastdagi kodga ham qarang.", 'Прочитай фразу по частям: о каком она теге? Посмотри и на код ниже.', 'Read the sentence piece by piece: which tag is it about? Look at the code below too.'),
+    hint2: L3("select ichida har bir variant option tegida turadi, esingizdami? textarea va button esa yopuvchi teg bilan yoziladi. Gap shunga mos keladimi?",
+      'Вспомни: в select каждый вариант стоит в теге option. А textarea и button пишут с закрывающим тегом. Фраза с этим совпадает?',
+      'Remember: inside select, every choice sits in an option tag. And textarea and button are written with a closing tag. Does the sentence match that?'),
     yes: L3("To'g'ri", 'Верно', 'True'),
     no: L3("Noto'g'ri", 'Неверно', 'False'),
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
@@ -422,7 +449,7 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { why: 1, magic: 1, magicP: 1, msgs: 1, saySel: 1, sayOpt: 1, sayPick: 1, sayInput: 1, sayTa: 1, sayClose: 1,
+Object.assign(SPOKEN, { hint1: 1, hint2: 1, why3: 1, pick3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, saySel: 1, sayOpt: 1, sayPick: 1, sayInput: 1, sayTa: 1, sayClose: 1,
   sayBtn: 1, saySent: 1, askQ: 1, rounds: 1, miss: 1, order1: 1, order2: 1, order3: 1, say2: 1, fine: 1, items: 1, right: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1 } });
 

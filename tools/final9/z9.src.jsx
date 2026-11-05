@@ -180,7 +180,11 @@ const C = {
       li: L3("li ro'yxatdagi bitta band bo'ladi. Butun ro'yxat uchun boshqa teg kerak.", 'li — один пункт списка. Для всего списка нужен другой тег.', 'li is one item in a list. The whole list needs a different tag.')
     },
     ok: L3("Ajoyib! Qadamlar raqamlandi. Uchinchi bekat yondi!", 'Отлично! Шаги пронумерованы. Третья станция горит!', 'Great! The steps are numbered. The third station is lit!'),
-    ask: L3("Raqamli ro'yxat tegini tanlang", 'Выбери тег нумерованного списка', 'Choose the numbered list tag')
+    ask: L3("Raqamli ro'yxat tegini tanlang", 'Выбери тег нумерованного списка', 'Choose the numbered list tag'),
+    // Ступени подсказки (лампочка; со второй ошибки — сами): 1 — куда смотреть, 2 — правило, 3 — причина и какой тег выбрать.
+    hint1: L3("Brauzerga qarang: qadamlar oldida nima turibdi, nuqtami yoki raqam?", 'Посмотри на браузер: что стоит перед шагами — точки или номера?', 'Look at the browser: what is in front of the steps, dots or numbers?'),
+    hint2: L3("Butun ro'yxatni tashqi teg belgilaydi: biri nuqta qo'yadi, boshqasi raqam. li esa faqat bitta band bo'ladi.", 'Весь список задаёт внешний тег: один ставит точки, другой — номера. А li — только один пункт.', 'The outer tag sets the whole list: one adds dots, the other numbers. And li is just one item.'),
+    why3: L3("Qadamlar ketma-ket bajariladi, shuning uchun ularga raqam kerak. Raqamni ol tegi qo'yadi.", 'Шаги идут по порядку, значит, им нужны номера. Номера ставит тег ol.', 'The steps go in order, so they need numbers. The ol tag adds numbers.')
   },
   s5: {
     eyebrow: L3('4-bekat · Havola', 'Станция 4 · Ссылка', 'Station 4 · Link'),
@@ -201,7 +205,13 @@ const C = {
       alt: L3("alt kodda bor, u rasmni so'z bilan tasvirlaydi. Faylni boshqa atribut aytadi.", 'alt в коде уже есть, он описывает картинку словами. Файл задаёт другой атрибут.', 'alt is already in the code; it describes the picture in words. Another attribute gives the file.')
     },
     ok: L3("Qoyil! Mushuk rasmi qaytdi. Beshinchi bekat yondi!", 'Класс! Кот вернулся. Пятая станция горит!', 'Brilliant! The cat is back. The fifth station is lit!'),
-    ask: L3("Fayl atributini bo'sh joyga olib boring", 'Перетащи атрибут файла в пустое место', 'Drag the file attribute into the empty spot')
+    ask: L3("Fayl atributini bo'sh joyga olib boring", 'Перетащи атрибут файла в пустое место', 'Drag the file attribute into the empty spot'),
+    // Ступени подсказки (лампочка; со второй ошибки — сами): на третьей нужный кусок загорается.
+    hints: [
+      L3("Brauzerga qarang: rasm o'rnida faqat so'z turibdi. Kodda qaysi atributning nomi yo'q?", 'Посмотри на браузер: вместо картинки только слово. Имени какого атрибута не хватает в коде?', 'Look at the browser: there’s only a word instead of the picture. Which attribute’s name is missing in the code?'),
+      L3("Bo'sh joydan keyin fayl nomi turibdi: mushuk.jpg. Rasm faylini qaysi atribut aytardi, esingizdami?", 'После пустого места стоит имя файла mushuk.jpg. Помнишь, какой атрибут задаёт файл картинки?', 'Right after the empty spot is the file name mushuk.jpg. Remember which attribute gives the picture file?'),
+      L3("Rasm faylini src atributi aytadi. Yonib turgan src bo'lagini bo'sh joyga olib boring.", 'Файл картинки задаёт атрибут src. Перетащи горящий src в пустое место.', 'The src attribute gives the picture file. Drag the glowing src into the empty spot.')
+    ]
   },
   s7: {
     eyebrow: L3('6-bekat · Parol', 'Станция 6 · Пароль', 'Station 6 · Password'),
@@ -265,7 +275,11 @@ const C = {
       h1: L3("h1 bu sarlavha, u ichkarida allaqachon bor. Butun sayt tepasi uchun boshqa teg kerak.", 'h1 — это заголовок, он уже внутри. Для всего верха сайта нужен другой тег.', 'h1 is a heading, and it’s already inside. The whole top of the site needs a different tag.')
     },
     ok: L3("Ajoyib! Inspektor sayt tepasini yana ko'rdi. Sakkizinchi bekat ham yondi!", 'Отлично! Инспектор снова видит верх сайта. Горит и восьмая станция!', 'Great! The Inspector sees the top of the site again. The eighth station is lit too!'),
-    ask: L3('Sayt tepasi tegini tanlang', 'Выбери тег верха сайта', 'Choose the tag for the top of the site')
+    ask: L3('Sayt tepasi tegini tanlang', 'Выбери тег верха сайта', 'Choose the tag for the top of the site'),
+    // Ступени подсказки (лампочка; со второй ошибки — сами): 1 — куда смотреть, 2 — правило, 3 — причина и какой тег выбрать.
+    hint1: L3("Inspektorga qarang: qaysi qismda ramka yo'q?", 'Посмотри на Инспектор: у какой части нет рамки?', 'Look at the Inspector: which part has no frame?'),
+    hint2: L3("head ko'rinmas ma'lumot uchun, h1 esa bitta sarlavha. Bizga sayt tepasini butunligicha o'raydigan qism tegi kerak.", 'head — для невидимых сведений, а h1 — один заголовок. Нужен тег части, который обнимает весь верх сайта.', 'head is for invisible information, and h1 is one heading. We need the part tag that wraps the whole top of the site.'),
+    why3: L3("Sayt tepasi header tegi bo'ladi: unda sarlavha va menyu turadi.", 'Верх сайта — это тег header: в нём заголовок и меню.', 'The top of the site is the header tag: it holds the heading and the menu.')
   },
   s10: {
     eyebrow: L3('Aralash vazifa', 'Смешанное задание', 'Mixed task'),
@@ -314,20 +328,27 @@ const C = {
     say: L3("Oxirgi sinov: tezkor savollar. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.", 'Последнее испытание — быстрый раунд. Я скажу фразу, а ты выбери: верно это или нет.', 'The last test: a quick round. I’ll say something, and you choose: true or false.'),
     ask: L3("To'g'ri yoki noto'g'ri?", 'Верно или нет?', 'True or false?'),
     card: L3('Kodi aytadi', 'Коди говорит', 'Kodi says'),
+    // Ступени подсказки (лампочка; со второй ошибки — сами): 1 — общая, 2 — своя у каждой фразы (h), 3 — причина и ответ.
+    hint1: L3("Kartochkadagi bekat nomiga qarang: gap kursning qaysi mavzusi haqida?", 'Посмотри на название станции на карточке: о какой теме курса эта фраза?', 'Look at the station name on the card: which topic of the course is the sentence about?'),
     yes: L3("To'g'ri", 'Верно', 'True'),
     no: L3("Noto'g'ri", 'Неверно', 'False'),
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
     items: [
       { st: 0, t: L3("title ichidagi yozuv sahifaning o'zida katta sarlavha bo'lib chiqadi.", 'Текст в title появляется на самой странице большим заголовком.', 'The text in title shows on the page itself as a big heading.'), right: false,
-        why: L3("title yozuvi brauzer yorlig'ida ko'rinadi. Sahifadagi sarlavhani h1 yasaydi.", 'Текст title виден на вкладке браузера. Заголовок на странице делает h1.', 'The title text shows on the browser tab. h1 makes the heading on the page.') },
+        why: L3("title yozuvi brauzer yorlig'ida ko'rinadi. Sahifadagi sarlavhani h1 yasaydi.", 'Текст title виден на вкладке браузера. Заголовок на странице делает h1.', 'The title text shows on the browser tab. h1 makes the heading on the page.'),
+          h: L3("title yozuvi qayerda ko'rinardi, esingizdami: sahifaning o'zidami yoki brauzer yorlig'idami?", 'Помнишь, где виден текст title: на самой странице или на вкладке браузера?', 'Remember where the title text shows: on the page itself or on the browser tab?') },
       { st: 2, t: L3("ol tegi ro'yxatni raqamlaydi.", 'Тег ol нумерует список.', 'The ol tag numbers a list.'), right: true,
-        why: L3("ol tartibli ro'yxat bo'ladi: har bir bandga raqam qo'yiladi.", 'ol — нумерованный список: у каждого пункта номер.', 'ol is an ordered list: each item gets a number.') },
+        why: L3("ol tartibli ro'yxat bo'ladi: har bir bandga raqam qo'yiladi.", 'ol — нумерованный список: у каждого пункта номер.', 'ol is an ordered list: each item gets a number.'),
+          h: L3("Ro'yxatning ikki turi bor edi: biri nuqta qo'yadi, boshqasi raqam. ol qaysi biri edi?", 'Списков было два вида: один ставит точки, другой — номера. Какой из них ol?', 'There were two kinds of lists: one adds dots, the other numbers. Which one is ol?') },
       { st: 4, t: L3('img yopuvchi teg bilan yoziladi.', 'img пишут с закрывающим тегом.', 'img is written with a closing tag.'), right: false,
-        why: L3("img tegining yopuvchi tegi bo'lmaydi.", 'У img нет закрывающего тега.', 'img has no closing tag.') },
+        why: L3("img tegining yopuvchi tegi bo'lmaydi.", 'У img нет закрывающего тега.', 'img has no closing tag.'),
+          h: L3("Ba'zi teglar ichiga matn yozilmaydi, ular faqat ochuvchi bo'ladi. img ichiga biror narsa yoziladimi?", 'Внутрь некоторых тегов ничего не пишут — они бывают только открывающими. В img что-то пишут внутри?', 'Some tags hold no text inside, so they are opening tags only. Do you write anything inside img?') },
       { st: 5, t: L3("label yozuvini bossangiz, maydon yozishga tayyor bo'ladi.", 'Если нажать на подпись в label, поле готово к вводу.', 'If you tap the caption in label, the field is ready for typing.'), right: true,
-        why: L3("label yozuvni maydonga bog'laydi.", 'label связывает подпись с полем.', 'label ties the caption to the field.') },
+        why: L3("label yozuvni maydonga bog'laydi.", 'label связывает подпись с полем.', 'label ties the caption to the field.'),
+          h: L3("label maydonning yozuvi bo'ladi. Yozuv maydonga bog'langan bo'lsa, uni bossangiz nima bo'lardi?", 'label — подпись поля. Что будет, если нажать на подпись, связанную с полем?', 'label is a field’s caption. What happens if you tap a caption tied to the field?') },
       { st: 7, t: L3('footer sayt oxirini bildiradi.', 'footer — это низ сайта.', 'footer marks the bottom of the site.'), right: true,
-        why: L3("footer sayt oxiri bo'ladi: unda odatda mualliflik va aloqa turadi.", 'footer — низ сайта: там обычно авторство и контакты.', 'footer is the bottom of the site: it usually holds the copyright and contacts.') }
+        why: L3("footer sayt oxiri bo'ladi: unda odatda mualliflik va aloqa turadi.", 'footer — низ сайта: там обычно авторство и контакты.', 'footer is the bottom of the site: it usually holds the copyright and contacts.'),
+          h: L3("Saytning uch qismi bor edi: tepasi, asosiy qismi va oxiri. footer qaysi biri edi?", 'У сайта три части: верх, главная часть и низ. Какая из них footer?', 'A site has three parts: the top, the main part and the bottom. Which one is footer?') }
     ],
     ok: L3("Hammasi to'g'ri! Siz butun kursni yaxshi bilasiz.", 'Всё верно! Ты отлично знаешь весь курс.', 'All correct! You know the whole course really well.')
   },
@@ -350,7 +371,7 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { why: 1, magic: 1, msgs: 1, fine: 1, found: 1, items: 1, right: 1, pairOk: 1 });
+Object.assign(SPOKEN, { hint1: 1, hint2: 1, why3: 1, why: 1, magic: 1, msgs: 1, fine: 1, found: 1, items: 1, right: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { st: 1 } });
 
 /*@FILE:gen/b16-chrome.jsx@*/

@@ -175,6 +175,10 @@ const C = {
       L3("To'g'ri! Asosiy qism main ichida, o'yinlar va retseptlar ham shu yerda.", 'Верно! Главная часть — внутри main, игры и рецепты тоже там.', 'Right! The main part is inside main, with the games and recipes.')
     ],
     miss: L3("Bu qator boshqa qismniki. Yongan ramkaning nomiga qarang va kodda xuddi shu nomli tegni toping.", 'Эта строка от другой части. Посмотри на имя горящей рамки и найди в коде тег с таким именем.', 'This line belongs to another part. Look at the lit frame’s name and find the tag with that name in the code.'),
+    // Ступени подсказки (05.11.2026): 1 — куда смотреть, 2 — правило, 3 — какую строку нажать (верные строки загораются).
+    hint1: L3("Inspektorda qaysi ramka yonyapti? Uning burchagidagi yorliqni o'qing.", 'Какая рамка горит в Инспекторе? Прочитай ярлычок в её углу.', 'Which frame is lit in the Inspector? Read the label in its corner.'),
+    hint2: L3("Yorliqda teg nomi yozilgan. Qism shu teg ochilgan joyda boshlanadi va yopilgan joyda tugaydi.", 'На ярлычке написано имя тега. Часть начинается там, где этот тег открыт, и кончается там, где он закрыт.', 'The label shows the tag name. The part starts where that tag opens and ends where it closes.'),
+    hint3: L3("Kodda {t} tegi yozilgan qatorni bosing. Ochuvchi tegi ham, yopuvchi tegi ham bo'ladi.", 'Нажми в коде строку с тегом {t}. Подойдёт и открывающий, и закрывающий тег.', 'Tap the code line with the {t} tag. Both the opening and the closing tag will do.'),
     done: L3("Barakalla! Endi sahifaning har bir qismi kodning qayerida ekanini bilasiz.", 'Молодец! Теперь ты знаешь, где в коде каждая часть страницы.', 'Well done! Now you know where each part of the page is in the code.')
   },
   s5: {
@@ -298,6 +302,14 @@ const C = {
       section: L3("Qarang: asosiy qism ichida ikkita yangi ramka chiqdi. Bo'limlarni section yasaydi.", 'Смотри: внутри главной части появились две новые рамки. Разделы делает section.', 'Look: two new frames appeared inside the main part. section makes sections.'),
       footer: L3("Qarang: yangi ramka eng pastda chiqdi. Sayt oxirini footer bildiradi.", 'Смотри: новая рамка появилась в самом низу. Низ сайта — это footer.', 'Look: the new frame appeared at the very bottom. footer marks the bottom of the site.')
     },
+    // Ступени подсказки (05.11.2026): 1 — сравнить Инспектор, 2 — где новая рамка и какой тег так делает, 3 — причина и какую кнопку выбрать.
+    hint1: L3("Oldin va keyin Inspektorini solishtiring: qayerda yangi ramka chiqdi?", 'Сравни Инспектор «До» и «После»: где появилась новая рамка?', 'Compare the Inspector “Before” and “After”: where did a new frame appear?'),
+    hint2: {
+      nav: L3("Yangi ramka menyu havolalarini o'rab turibdi. Menyuni qaysi teg o'raydi, esingizdami?", 'Новая рамка обводит ссылки меню. Вспомни, какой тег оборачивает меню.', 'The new frame goes around the menu links. Remember which tag wraps the menu.'),
+      section: L3("Asosiy qism ichida ikkita yangi ramka chiqdi. Bo'limlarni qaysi teg yasaydi, esingizdami?", 'Внутри главной части появились две новые рамки. Вспомни, какой тег делает разделы.', 'Two new frames appeared inside the main part. Remember which tag makes sections.'),
+      footer: L3("Yangi ramka sahifaning eng pastida chiqdi. Sayt oxirini qaysi teg bildiradi, esingizdami?", 'Новая рамка появилась в самом низу страницы. Вспомни, какой тег обозначает низ сайта.', 'The new frame appeared at the very bottom of the page. Remember which tag marks the bottom of the site.')
+    },
+    pick3: L3("Demak, {t} tegi yozilgan tugmani tanlang.", 'Значит, выбери кнопку с тегом {t}.', 'So choose the button with the {t} tag.'),
     done: L3("Endi Inspektorga qarab, kodga qaysi qism qo'shilganini bilasiz. Keyin bu qismlar nimaga kerakligini ko'ramiz.", 'Теперь по Инспектору ты понимаешь, какую часть добавили в код. Дальше посмотрим, зачем вообще нужны эти части.', 'Now you can tell from the Inspector which part was added to the code. Next, let’s see why these parts are needed at all.'),
     before: L3('Oldin', 'До', 'Before'),
     after: L3('Keyin', 'После', 'After')
@@ -368,6 +380,12 @@ const C = {
       head: L3("head sahifa haqidagi ko'rinmas ma'lumot uchun bo'ladi va body ichiga qo'yilmaydi.", 'head — для невидимых сведений о странице, внутрь body его не ставят.', 'head is for invisible information about the page and doesn’t go inside body.'),
       h1: L3("h1 bu sarlavha, u ichkarida allaqachon bor. Butun sayt boshi uchun boshqa teg kerak.", 'h1 — это заголовок, он уже внутри. Для всего верха сайта нужен другой тег.', 'h1 is a heading, and it’s already inside. The whole top of the site needs a different tag.')
     },
+    // Ступени подсказки (05.11.2026): 1 — посмотреть на Инспектор, 2 — правило, 3 — какой кусок тащить (он загорается).
+    hints: [
+      L3("Inspektorga qarang: sayt tepasida ramka bormi? Sarlavha va menyuni qaysi teg o'rashi kerak?", 'Посмотри на Инспектор: есть ли рамка у верха сайта? Какой тег должен обернуть заголовок и меню?', 'Look at the Inspector: is there a frame around the top of the site? Which tag should wrap the heading and the menu?'),
+      L3("Bizga sahifaning ko'rinadigan tepasi kerak: sarlavha va menyu. head esa sahifa haqidagi ko'rinmas ma'lumot uchun bo'ladi.", 'Нам нужен видимый верх страницы, то есть заголовок и меню. А head — для невидимых сведений о странице.', 'We need the visible top of the page, that is, the heading and the menu. head is for invisible information about the page.'),
+      L3("header tegini bo'sh joyga olib boring: u sayt boshini bildiradi.", 'Перетащи тег header в пустое место: он обозначает верх сайта.', 'Drag the header tag into the empty spot: it marks the top of the site.')
+    ],
     ok: L3("Ana endi joyida! Inspektor sayt boshini yana ko'rdi.", 'Вот теперь порядок! Инспектор снова видит верх сайта.', 'That’s it! The Inspector sees the top of the site again.'),
     ask: L3("To'g'ri tegni bo'sh joyga olib boring", 'Перетащи правильный тег в пустое место', 'Drag the right tag into the empty spot')
   },
@@ -403,6 +421,11 @@ const C = {
     say: L3("Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.", 'Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.', 'The last test. I’ll say something, and you choose: true or false.'),
     ask: L3("To'g'ri yoki noto'g'ri?", 'Верно или нет?', 'True or false?'),
     card: L3('Kodi aytadi', 'Коди говорит', 'Kodi says'),
+    // Ступени подсказки (05.11.2026): 1 — как читать фразу, 2 — правила урока, 3 — причина и ответ (choiceHints).
+    hint1: L3("Gapni bo'laklab o'qing: u qaysi teg haqida? Pastdagi kodga ham qarang.", 'Прочитай фразу по частям: о каком она теге? Посмотри и на код ниже.', 'Read the sentence piece by piece: which tag is it about? Look at the code below too.'),
+    hint2: L3("Saytning qismlari sahifa ko'rinishini o'zgartirmaydi, esingizdami? Ular faqat qaysi qism qayerda ekanini aytadi. head esa ko'rinmas ma'lumot uchun bo'ladi. main sahifada faqat bitta bo'ladi. Gap shunga mos keladimi?",
+      'Вспомни: части сайта не меняют вид страницы, они только говорят, где какая часть. А head — для невидимых сведений, и main на странице один. Фраза с этим совпадает?',
+      'Remember: the parts of a site don’t change how the page looks; they only say which part is where. head is for invisible information, and a page has only one main. Does the sentence match that?'),
     yes: L3("To'g'ri", 'Верно', 'True'),
     no: L3("Noto'g'ri", 'Неверно', 'False'),
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
@@ -444,7 +467,7 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { why: 1, magic: 1, magicP: 1, msgs: 1, sayHeader: 1, sayMain: 1, sayFooter: 1, sayNav: 1, sayHead: 1, saySec: 1, sayTwo: 1,
+Object.assign(SPOKEN, { hint1: 1, hint2: 1, hint3: 1, pick3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayHeader: 1, sayMain: 1, sayFooter: 1, sayNav: 1, sayHead: 1, saySec: 1, sayTwo: 1,
   sayList: 1, sayJump: 1, sayWhy: 1, askQ: 1, rounds: 1, miss: 1, say2: 1, fine: 1, items: 1, right: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1 } });
 

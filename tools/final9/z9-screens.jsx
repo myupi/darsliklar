@@ -369,24 +369,27 @@ function S4({ p }) {
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || okNow, spoken);
   const led = useIdleLed(canTap && !okNow, off.length);
+  // Ступени подсказки (лампочка; со второй ошибки — сами): 1 — куда смотреть, 2 — правило, 3 — причина и ответ.
+  const ch = useChoiceHints(!okNow, 0);
+  const hints = choiceHints(c.hint1, c.hint2, c.why3, 'ol');
   const choose = (o) => {
     if (!canTap || okNow || off.indexOf(o) >= 0) return;
     if (o === 'ol') {
       const ft = off.length === 0;
-      sfx('win', true); setOkNow(true); setMsg(null); put({ done: true }); mark(ft);
-      log({ screenId: 's4', type: 'review-ol', correct: true, firstTry: ft, attempts: off.length + 1 });
+      sfx('win', true); setOkNow(true); setMsg(null); ch.clear(); put({ done: true }); mark(ft);
+      log({ screenId: 's4', type: 'review-ol', correct: true, firstTry: ft, attempts: off.length + 1, hints: ch.lad.asked.current, depth: ch.lad.lv });
       sayNow(c.ok, 'cheer');
       return;
     }
-    sfx('soft', true); setOff(off.concat(o)); setMsg(c.why[o]); sayNow(c.why[o], 'think');
+    sfx('soft', true); setOff(off.concat(o)); sayNow(ch.miss(c.why[o], hints), 'think');
   };
   const steps = pick(s.steps);
   const tag = okNow ? 'ol' : 'ul';
   const lines = [codeLine('lo', [T_(tag)], { cls: okNow ? 'is-new' : 'is-hl' })].concat(steps.map((x, j) => textLine('i' + j, 'li', x, { d: 1, cls: 'z9-ctx' })), [codeLine('lc', [T_(tag, true)], { cls: okNow ? 'is-new' : 'is-hl' })]);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="z9-sheet">
-        <StationHead st={2} solved={okNow} ask={okNow ? c.ok : c.ask} hint={okNow ? null : msg} err={!!msg} />
+        <StationHead st={2} solved={okNow} ask={okNow ? c.ok : c.ask} hint={okNow ? null : ch.now(hints)} err={ch.err} />
         <div className="kz-scene z9-s5">
           <div className="kz-col"><KzCode lines={lines} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(s.recipe)} url="osh.html" short><PageDoc blocks={[{ t: 'h', lvl: 2, text: pick(s.stepsH), k: 'h' }, { t: 'list', ordered: okNow, items: steps.map((x) => ({ text: x, li: true })), hl: !okNow, k: 'l' }]} /></Br></div>
@@ -476,16 +479,18 @@ function S6({ p }) {
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || okNow, spoken);
   const led = useIdleLed(canTap && !okNow, off.length);
+  // Ступени подсказки (лампочка; со второй ошибки — сами): на третьей src загорается.
+  const ch = useChoiceHints(!okNow, 0);
   const choose = (o) => {
     if (!canTap || okNow || off.indexOf(o) >= 0) return false;
     if (o === 'src') {
       const ft = off.length === 0;
-      sfx('win', true); setOkNow(true); setMsg(null); put({ done: true }); mark(ft);
-      log({ screenId: 's6', type: 'review-src', correct: true, firstTry: ft, attempts: off.length + 1 });
+      sfx('win', true); setOkNow(true); setMsg(null); ch.clear(); put({ done: true }); mark(ft);
+      log({ screenId: 's6', type: 'review-src', correct: true, firstTry: ft, attempts: off.length + 1, hints: ch.lad.asked.current, depth: ch.lad.lv });
       sayNow(c.ok, 'cheer');
       return true;
     }
-    sfx('soft', true); setOff(off.concat(o)); setMsg(c.why[o]); sayNow(c.why[o], 'think');
+    sfx('soft', true); setOff(off.concat(o)); sayNow(ch.miss(c.why[o], c.hints), 'think');
     return false;
   };
   const dnd = useKzDrag((o, where) => (where === 'gap' ? choose(o) : false));
@@ -494,9 +499,9 @@ function S6({ p }) {
     : codeLine('i', [openTag('img'), <span key="g" data-place="gap" className={'kz-dash kz-dash-sm kz-drop z9-miss z9-att' + (dnd.hover === 'gap' ? ' is-hover' : '') + (dnd.active ? ' is-call' : '')} />,
       <span key="v" className="kz-tag" translate="no"><span className="kz-tk-b">=</span><span className="z9-val">"mushuk.jpg"</span></span>, attrSpan('alt', alt, 'al', true)], { cls: 'is-hl' });
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="z9-sheet">
-        <StationHead st={4} solved={okNow} ask={okNow ? c.ok : c.ask} hint={okNow ? null : msg} err={!!msg} />
+        <StationHead st={4} solved={okNow} ask={okNow ? c.ok : c.ask} hint={okNow ? null : ch.now(c.hints)} err={ch.err} />
         <div className="kz-scene z9-s5">
           <div className="kz-col"><Br title={pick(s.gallery)} url="galereya.html" short><PageDoc blocks={[{ t: 'h', lvl: 1, text: pick(s.gallery), k: 'h' }, { t: 'img', src: okNow ? 'mushuk.jpg' : null, alt, hl: !okNow, cls: okNow ? 'z9-a-in' : '', k: 'i' }]} /></Br></div>
           <div className="kz-col"><KzCode lines={[textLine('h', 'h1', pick(s.gallery), { cls: 'z9-ctx' }), line]} cls="kz-code-sm" /></div>
@@ -506,7 +511,7 @@ function S6({ p }) {
             {S6_OPTS.map((o) => (
               <button key={o} type="button" data-o={o} disabled={!canTap || off.indexOf(o) >= 0} onClick={() => choose(o)}
                 onPointerDown={(e) => { if (canTap && !okNow && off.indexOf(o) < 0) dnd.start(e, o, o); }}
-                className={'kz-scrap kz-scrap-code' + (off.indexOf(o) >= 0 ? ' is-used' : '') + (off.length >= 2 && o === 'src' ? ' is-led' : '')}>
+                className={'kz-scrap kz-scrap-code' + (off.indexOf(o) >= 0 ? ' is-used' : '') + ((off.length >= 2 || ch.lad.lv >= 3) && o === 'src' ? ' is-led' : '')}>
                 <span translate="no">{o}</span><Led on={led && off.indexOf(o) < 0} />
               </button>
             ))}
@@ -689,16 +694,19 @@ function S9({ p }) {
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || okNow, spoken);
   const led = useIdleLed(canTap && !okNow, off.length);
+  // Ступени подсказки (лампочка; со второй ошибки — сами): 1 — куда смотреть, 2 — правило, 3 — причина и ответ.
+  const ch = useChoiceHints(!okNow, 0);
+  const hints = choiceHints(c.hint1, c.hint2, c.why3, 'header');
   const choose = (o) => {
     if (!canTap || okNow || off.indexOf(o) >= 0) return;
     if (o === 'header') {
       const ft = off.length === 0;
-      sfx('win', true); setOkNow(true); setMsg(null); put({ done: true }); mark(ft);
-      log({ screenId: 's9', type: 'review-header', correct: true, firstTry: ft, attempts: off.length + 1 });
+      sfx('win', true); setOkNow(true); setMsg(null); ch.clear(); put({ done: true }); mark(ft);
+      log({ screenId: 's9', type: 'review-header', correct: true, firstTry: ft, attempts: off.length + 1, hints: ch.lad.asked.current, depth: ch.lad.lv });
       sayNow(c.ok, 'cheer');
       return;
     }
-    sfx('soft', true); setOff(off.concat(o)); setMsg(c.why[o]); sayNow(c.why[o], 'think');
+    sfx('soft', true); setOff(off.concat(o)); sayNow(ch.miss(c.why[o], hints), 'think');
   };
   const top = okNow ? 'header' : 'head';
   const menu = pick(s.menu);
@@ -708,9 +716,9 @@ function S9({ p }) {
   const lines = [codeLine('ho', [T_(top)], { cls: okNow ? 'is-new' : 'is-hl' }), textLine('h1', 'h1', pick(s.title), { d: 1, cls: 'z9-ctx' }), codeLine('nv', [T_('nav'), W_('…'), T_('nav', true)], { d: 1, cls: 'z9-ctx' }),
     codeLine('hc', [T_(top, true)], { cls: okNow ? 'is-new' : 'is-hl' }), codeLine('mn', [T_('main'), W_('…'), T_('main', true)], { cls: 'z9-ctx' }), codeLine('ft', [T_('footer'), W_('…'), T_('footer', true)], { cls: 'z9-ctx' })];
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="z9-sheet">
-        <StationHead st={7} solved={okNow} ask={okNow ? c.ok : c.ask} hint={okNow ? null : msg} err={!!msg} />
+        <StationHead st={7} solved={okNow} ask={okNow ? c.ok : c.ask} hint={okNow ? null : ch.now(hints)} err={ch.err} />
         <div className="kz-scene z9-s5">
           <div className="kz-col"><KzCode lines={lines} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(s.title)} url="index.html" short><PageDoc blocks={blocks} insp /></Br></div>
@@ -927,19 +935,22 @@ function Q1({ p }) {
   const st = useRef({ tries: 0, misses: 0 });
   const led = useIdleLed(canTap && !ok, ii * 10 + (off === null ? 0 : 1));
   const it = c.items[ii];
+  // Ступени подсказки (лампочка; со второй ошибки — сами): 1 — по станции на карточке, 2 — правило этой темы, 3 — причина и ответ.
+  const ch = useChoiceHints(!ok, ii);
+  const hints = choiceHints(c.hint1, it.h, it.why, it.right ? c.yes : c.no);
   const choose = (v) => {
     if (!canTap || ok || off === v) return;
     st.current.tries += 1;
     if (v !== it.right) {
       st.current.misses += 1;
-      sfx('soft', true); setOff(v); setMsg(it.why); sayNow(it.why, 'think');
+      sfx('soft', true); setOff(v); sayNow(ch.miss(it.why, hints), 'think');
       return;
     }
-    sfx('ok', true); setOk(true); setMsg(null);
+    sfx('ok', true); setOk(true); setMsg(null); ch.clear();
     const line = joinL(c.right, it.why);
     if (ii === c.items.length - 1) {
       put({ done: true });
-      log({ screenId: 'q1', type: 'true-false', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: 0, depth: 0 });
+      log({ screenId: 'q1', type: 'true-false', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: ch.lad.asked.current, depth: ch.lad.lv });
       sayNow(joinL(line, c.ok), 'cheer');
     } else { sayNow(line, 'smile'); setNext(true); }
   };
@@ -955,9 +966,9 @@ function Q1({ p }) {
     </button>
   );
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="z9-sheet">
-        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : msg} err={!!msg} n={(ii + 1) + '/' + c.items.length} />
+        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : ch.now(hints)} err={ch.err} n={(ii + 1) + '/' + c.items.length} />
         <div className="kz-scene kz-scene-col kz-q2" key={'i' + ii}>
           <div className="kz-col">
             <div className="z9-card z9-tf-card kz-a-drop">

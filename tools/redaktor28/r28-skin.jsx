@@ -262,3 +262,39 @@ function kzFly(el, to, ms) {
   ], { duration: d, easing: 'cubic-bezier(.4, 0, .2, 1)', fill: 'forwards' });
   return true;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// СТУПЕНИ ПОДСКАЗКИ В ЗАДАНИЯХ НА ВЫБОР (заказчик, 05.11.2026: «добавь три ступени и в задания на выбор»).
+// Как в заданиях с набором кода: лампочка открывает ступени 1–3; первая ошибка — причина; вторая подряд и
+// дальше — причина и сразу следующая ступень. key — номер вопроса или раунда: на новом всё с нуля.
+// Экран: const ch = useChoiceHints(!done, ii); hints = choiceHints(h1, h2, why, ответ);
+//   промах: sayNow(ch.miss(why, hints), 'think');  KzAsk hint={ok ? null : ch.now(hints)} err={ch.err};
+//   StageB hint={ch.next(hints) || c.ask}; в журнал: hints: ch.lad.asked.current, depth: ch.lad.lv.
+// ─────────────────────────────────────────────────────────────────────────────
+const CH_PICK = L3("Demak, «{a}» javobini tanlang.", 'Значит, выбери «{a}».', 'So choose “{a}”.');
+// Третья ступень — конкретная опора: правило к этому вопросу и какой ответ выбрать (последнее действие — за учеником).
+const choiceHints = (h1, h2, why, a) => [h1, h2, why ? joinL(why, fillL(CH_PICK, { a })) : fillL(CH_PICK, { a })];
+function useChoiceHints(active, key) {
+  const lad = useKzLadder(active);
+  const [msg, setMsg] = useState(null);
+  const misses = useRef(0);
+  const keep = useRef(false);
+  // Новый вопрос: ступени и промахи — с нуля, а счёт нажатий лампочки за экран копится (для журнала).
+  useEffect(() => { const n = lad.asked.current; misses.current = 0; lad.reset(); lad.asked.current = n; setMsg(null); }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Лампочка открыла ступень — показываем её (причина прошлой ошибки уходит); после второй ошибки — не трогаем.
+  useEffect(() => { if (keep.current) { keep.current = false; return; } setMsg(null); }, [lad.lv]);
+  const miss = (why, hints) => {
+    misses.current += 1;
+    let lv = lad.lv;
+    if (misses.current >= 2 && lv < 3) { lv += 1; keep.current = true; lad.bump(); }
+    const t = misses.current >= 2 && lv > 0 && hints && hints[lv - 1] ? joinL(why, hints[lv - 1]) : why;
+    setMsg(t);
+    return t;
+  };
+  return {
+    lad, msg, miss, err: !!msg,
+    clear: () => setMsg(null),
+    now: (hints) => msg || hintAt(lad.lv, hints),
+    next: (hints) => hintAt(Math.min(3, lad.lv + 1), hints)
+  };
+}

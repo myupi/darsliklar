@@ -176,7 +176,18 @@ const C = {
       fld: L3("Bu qator boshqa narsani chiqaradi. Maydonni input qatori chiqaradi. Tartibga qarang: brauzer kodni tepadan pastga o'qiydi.", 'Эта строка выводит другое. Поле выводит строка input. Смотри на порядок: браузер читает код сверху вниз.', 'This line shows something else. A field comes from an input line. Watch the order: the browser reads the code top to bottom.'),
       cap: L3("Bu qator boshqa narsani chiqaradi. Yozuvni p tegi chiqaradi. Qaysi p qatorida aynan shu so'zlar bor?", 'Эта строка выводит другое. Подпись выводит тег p. В какой строке p именно эти слова?', 'This line shows something else. A caption comes from a p tag. Which p line has exactly these words?')
     },
-    done: L3("Barakalla! Endi qaysi qator maydon, qaysi qator yozuv chiqarishini bilasiz.", 'Молодец! Теперь ты знаешь, какая строка делает поле, а какая — подпись.', 'Well done! Now you know which line makes a field and which makes a caption.')
+    done: L3("Barakalla! Endi qaysi qator maydon, qaysi qator yozuv chiqarishini bilasiz.", 'Молодец! Теперь ты знаешь, какая строка делает поле, а какая — подпись.', 'Well done! Now you know which line makes a field and which makes a caption.'),
+    // Ступени подсказки (лампочка; со второй ошибки — сами): 1 — куда смотреть, 2 — правило раунда, 3 — какую строку нажать (она загорается).
+    hint1: L3("Sahifada nima yonayotganiga qarang: yozuvmi yoki maydonmi?", 'Посмотри, что горит на странице: подпись или поле?', 'Look at what’s lit on the page: a caption or a field?'),
+    hint2: {
+      fld: L3("Maydonni input qatori chiqaradi. Kodda ikkita input bor: birinchisi tepadagi maydon, ikkinchisi pastdagi maydon bo'ladi.", 'Поле выводит строка input. В коде их две: первая — верхнее поле, вторая — нижнее.', 'A field comes from an input line. The code has two: the first is the top field, the second is the bottom one.'),
+      cap: L3("Yozuvni p tegi chiqaradi. Sahifadagi so'zlarni p qatorlaridagi so'zlar bilan solishtiring.", 'Подпись выводит тег p. Сравни слова на странице со словами в строках p.', 'A caption comes from a p tag. Compare the words on the page with the words in the p lines.')
+    },
+    hint3: [
+      L3("Yongan maydon pastda turibdi. Kodda eng oxirgi input qatorini bosing.", 'Горящее поле — нижнее. Нажми в коде самую последнюю строку input.', 'The lit field is the bottom one. Tap the very last input line in the code.'),
+      L3("Yongan yozuv tepada turibdi. Kodda shu so'zlar yozilgan birinchi p qatorini bosing.", 'Горящая подпись — верхняя. Нажми в коде первую строку p с этими словами.', 'The lit caption is the top one. Tap the first p line with these words in the code.'),
+      L3("Yongan maydon tepada turibdi. Kodda birinchi input qatorini bosing, u ikkinchi p qatoridan oldin keladi.", 'Горящее поле — верхнее. Нажми в коде первую строку input, она стоит перед второй строкой p.', 'The lit field is the top one. Tap the first input line in the code; it comes before the second p line.')
+    ]
   },
   s5: {
     eyebrow: L3('Maydon turlari', 'Виды полей', 'Kinds of fields'),
@@ -306,7 +317,16 @@ const C = {
     },
     done: L3("Endi maydon nimaga boshqacha ko'rinishini kodga qarab bilasiz. Keyin yozuvni maydonga bog'laymiz.", 'Теперь ты по коду понимаешь, почему поле выглядит так. Дальше свяжем подпись с полем.', 'Now you can tell from the code why a field looks the way it does. Next, let’s connect a caption to a field.'),
     before: L3('Oldin', 'До', 'Before'),
-    after: L3('Keyin', 'После', 'After')
+    after: L3('Keyin', 'После', 'After'),
+    // Ступени подсказки (лампочка): 1 — куда смотреть, 2 — по виду раунда, 3 — причина и какой ответ выбрать.
+    hint1: L3("Oldingi va keyingi maydonni solishtiring: maydonda nima o'zgardi?", 'Сравни поле «до» и «после»: что в нём изменилось?', 'Compare the field before and after: what changed in it?'),
+    hint2: {
+      pass: L3("Yozilgan harflarga qarang: ular ko'rinib turibdimi yoki yashirindimi? Harflarni qaysi type yashiradi, esingizdami?", 'Посмотри на буквы: они видны или спрятались? Вспомни, какой type прячет буквы.', 'Look at the letters: can you see them, or are they hidden? Remember which type hides letters.'),
+      ph: L3("Bo'sh maydonda kulrang so'zlar paydo bo'ldimi? Bo'sh maydonga ishorani qaysi atribut beradi, esingizdami?", 'В пустом поле появились серые слова? Вспомни, какой атрибут даёт подсказку в пустом поле.', 'Did grey words appear in the empty field? Remember which attribute gives a hint in an empty field.'),
+      num: L3("Son o'zgarmadi. Maydonning o'ng tomoniga qarang: u yerda nima paydo bo'ldi? Strelkalar qaysi type bilan chiqadi, esingizdami?", 'Число не изменилось. Посмотри на правый край поля: что там появилось? Вспомни, с каким type бывают стрелки.', 'The number didn’t change. Look at the right edge of the field: what appeared there? Remember which type comes with arrows.')
+    },
+    // Как назвать кнопку в третьей ступени — словами, без кавычек и знаков (подсказка звучит).
+    pick: { pass: L3('password', 'password', 'password'), ph: L3('placeholder', 'placeholder', 'placeholder'), num: L3('number', 'number', 'number') }
   },
   s11: {
     eyebrow: L3('label va form', 'label и form', 'label and form'),
@@ -376,7 +396,13 @@ const C = {
       number: L3("number faqat son uchun bo'ladi. U parolni yashirmaydi.", 'number — только для числа. Пароль он не прячет.', 'number is only for numbers. It doesn’t hide the password.')
     },
     ok: L3("Ana endi joyida! Parol nuqtalar ortiga yashirindi.", 'Вот теперь порядок! Пароль спрятался за точками.', 'That’s it! The password is hidden behind dots.'),
-    ask: L3("Kerakli qiymatni bo'sh joyga olib boring", 'Перетащи нужное значение в пустое место', 'Drag the right value into the empty spot')
+    ask: L3("Kerakli qiymatni bo'sh joyga olib boring", 'Перетащи нужное значение в пустое место', 'Drag the right value into the empty spot'),
+    // Ступени подсказки: 1 — куда смотреть, 2 — правило, 3 — какой кусок взять (он загорается).
+    hints: [
+      L3("Brauzerga qarang: parol harflari hammaga ko'rinib turibdi. Maydonga qanday qiymat kerak?", 'Посмотри на браузер: буквы пароля видны всем. Какое значение нужно полю?', 'Look at the browser: the password letters are visible to everyone. What value does the field need?'),
+      L3("type qiymati maydon turini aytadi: text oddiy maydon, number son uchun. Harflarni nuqtalarga qaysi qiymat aylantiradi?", 'Значение type задаёт вид поля: text — обычное поле, number — для числа. Какое значение превращает буквы в точки?', 'The type value sets the kind of field: text is an ordinary field, number is for numbers. Which value turns letters into dots?'),
+      L3("Bo'laklardan password so'zini oling va bo'sh joyga olib boring.", 'Возьми кусок password и перетащи его в пустое место.', 'Take the password piece and drag it into the empty spot.')
+    ]
   },
   // ИТОГОВАЯ ПРОВЕРКА (q1, q2): новые случаи без образца; до первой попытки ответ не подсвечен.
   q1: {
@@ -410,6 +436,11 @@ const C = {
     say: L3("Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.", 'Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.', 'The last test. I’ll say something, and you choose: true or false.'),
     ask: L3("To'g'ri yoki noto'g'ri?", 'Верно или нет?', 'True or false?'),
     card: L3('Kodi aytadi', 'Коди говорит', 'Kodi says'),
+    // Ступени подсказки: 1 — как читать фразу, 2 — правило урока, 3 — причина и ответ (choiceHints).
+    hint1: L3("Gapni bo'laklab o'qing: u qaysi teg yoki atribut haqida?", 'Прочитай фразу по частям: о каком теге или атрибуте она?', 'Read the sentence piece by piece: which tag or attribute is it about?'),
+    hint2: L3("Esingizdami? type password harflarni nuqtalar bilan yashiradi. placeholder bo'sh maydondagi kulrang ishora bo'ladi. label esa yozuvni maydonga bog'laydi. Gap shunga mos keladimi?",
+      'Вспомни: type password прячет буквы за точками. placeholder — серая подсказка в пустом поле. А label связывает подпись с полем. Фраза с этим совпадает?',
+      'Remember: type password hides letters behind dots. placeholder is a grey hint in an empty field. And label ties the caption to the field. Does the sentence match that?'),
     yes: L3("To'g'ri", 'Верно', 'True'),
     no: L3("Noto'g'ri", 'Неверно', 'False'),
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
@@ -449,7 +480,7 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { why: 1, magic: 1, magicP: 1, msgs: 1, sayInput: 1, sayTyped: 1, sayType: 1, sayText: 1, sayPass: 1, sayNum: 1,
+Object.assign(SPOKEN, { hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayInput: 1, sayTyped: 1, sayType: 1, sayText: 1, sayPass: 1, sayNum: 1,
   sayPh: 1, sayBack: 1, sayNoLabel: 1, sayLabel: 1, sayFocus: 1, sayForm: 1, askQ: 1, rounds: 1, miss: 1, say2: 1, fine: 1, items: 1, right: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1 } });
 

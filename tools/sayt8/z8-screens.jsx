@@ -279,17 +279,22 @@ function S4({ p }) {
   const want = S4_ROUNDS[ri];
   const cfg = { header: true, nav: false, main: true, sec: 0, footer: true };
   const lines = code(cfg);
+  // Ступени подсказки — на каждый раунд свои; ошибаться можно несколько раз (со второй ошибки ступень открывается сама).
+  // Ответ — строка кода: 3-я ступень называет тег словами, и верные строки загораются.
+  const ch = useChoiceHints(!found, ri);
+  const hints = [c.hint1, c.hint2, fillL(c.hint3, { t: want })];
+  const lit = !found && ch.lad.lv >= 3;
   const tap = (j) => {
     if (!canTap || found || off.indexOf(j) >= 0) return;
     if (lineTag(lines[j]) !== want) {
       misses.current += 1;
-      sfx('soft', true); setOff(off.concat(j)); setMsg(c.miss); sayNow(c.miss, 'rule');
+      sfx('soft', true); setOff(off.concat(j)); sayNow(ch.miss(c.miss, hints), 'rule');
       return;
     }
-    sfx('ok', true); setFound(true); setMsg(null);
+    sfx('ok', true); setFound(true); setMsg(null); ch.clear();
     if (ri === 2) {
       put({ done: true });
-      log({ screenId: 's4', type: 'map-part', correct: true, firstTry: misses.current === 0, attempts: misses.current + 3 });
+      log({ screenId: 's4', type: 'map-part', correct: true, firstTry: misses.current === 0, attempts: misses.current + 3, hints: ch.lad.asked.current, depth: ch.lad.lv });
       sayNow(joinL(c.ok[ri], c.done), 'smile');
     } else { sayNow(c.ok[ri], 'smile'); setNext(true); }
   };
@@ -299,15 +304,15 @@ function S4({ p }) {
     return () => clearTimeout(t);
   }, [next, spoken]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={done ? c.done : c.askQ} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={done ? c.done : (ch.next(hints) || c.askQ)} nav={navOf(p, canGo)}>
       <Sheet cls="z8-sheet">
-        <KzAsk text={done ? c.done : c.askQ} hint={done ? null : msg} err={!!msg} n={done ? null : (ri + 1) + '/3'} />
+        <KzAsk text={done ? c.done : c.askQ} hint={done || found ? null : ch.now(hints)} err={ch.err} n={done ? null : (ri + 1) + '/3'} />
         <div className="kz-scene z8-s5" key={'r' + ri}>
           <div className="kz-col">
             <KzCode lines={lines.map((l, j) => Object.assign(l, {
               cls: 'z8-hline' + (found && lineTag(l) === want ? ' is-new' : '') + (off.indexOf(j) >= 0 ? ' is-off' : ''),
               onTap: found ? null : () => tap(j), disabled: !canTap || found || off.indexOf(j) >= 0,
-              led: !found && led && off.length === 0 && j === 0
+              led: !found && (lit ? lineTag(l) === want && off.indexOf(j) < 0 : led && off.length === 0 && j === 0)
             }))} cls="kz-code-sm" />
           </div>
           <div className="kz-col"><Br title={pick(s.title)} url="index.html"><SitePage cfg={cfg} insp hl={want} /></Br></div>
@@ -654,6 +659,11 @@ function S10({ p }) {
   const shownRd = round || (ans ? lastRef.current : null);
   const R = shownRd ? S10_ROUNDS[shownRd.i] : null;
   const led = useIdleLed(canTap && !!round && !ans, doneN);
+  // Ступени подсказки — на каждый раунд свои; ответ в раунде один (после него виден верный).
+  // Ответ — тег на кнопке: 3-я ступень говорит его словами, и верная кнопка загорается.
+  const ch = useChoiceHints(!!round && !ans, doneN);
+  const hints = R ? [c.hint1, c.hint2[R.want], joinL(c.miss[R.want], fillL(c.pick3, { t: R.want }))] : null;
+  const glow = !!round && !ans && ch.lad.lv >= 3 ? R.want : null;
   const answer = (k) => {
     if (!canTap || !round || ans) return;
     const right = k === R.want;
@@ -667,7 +677,7 @@ function S10({ p }) {
       [0, 1, 2].forEach((ii) => {
         const f = stats.current.find((x) => x.i === ii && !x.extra);
         const e = stats.current.find((x) => x.i === ii && x.extra);
-        log({ screenId: 's10.r' + (ii + 1), type: 'before-after', correct: true, firstTry: !!(f && f.right), attempts: e ? 2 : 1, helped: !!(f && !f.right), followUp: e ? e.right : null });
+        log({ screenId: 's10.r' + (ii + 1), type: 'before-after', correct: true, firstTry: !!(f && f.right), attempts: e ? 2 : 1, helped: !!(f && !f.right), followUp: e ? e.right : null, hints: ch.lad.asked.current });
       });
       put({ done: true }); setQueue([]);
       sayNow(joinL(line, c.done), 'smile');
@@ -689,9 +699,9 @@ function S10({ p }) {
     return <SitePage cfg={cfg} insp />;
   };
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={round ? c.askQ : c.done} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={round ? (ch.next(hints) || c.askQ) : c.done} nav={navOf(p, canGo)}>
       <Sheet cls="z8-sheet">
-        <KzAsk text={round ? c.askQ : c.done} hint={round && ans && ans !== R.want ? c.miss[R.want] : null} err={!!(round && ans && ans !== R.want)} n={round ? (doneN + 1) + '/' + (doneN + queue.length) : null} />
+        <KzAsk text={round ? c.askQ : c.done} hint={round && ans && ans !== R.want ? c.miss[R.want] : round && !ans ? ch.now(hints) : null} err={!!(round && ans && ans !== R.want)} n={round ? (doneN + 1) + '/' + (doneN + queue.length) : null} />
         {R ? (
           <div className="kz-scene kz-scene-col" key={'r' + doneN}>
             <div className="kz-col">
@@ -707,7 +717,7 @@ function S10({ p }) {
           <div className="kz-pick z8-pick3">
             {['nav', 'section', 'footer'].map((k) => (
               <button key={k} type="button" disabled={!canTap || !!ans}
-                className={'kz-btn z8-tagbtn ' + (ans === k ? (k === R.want ? 'is-ok' : 'is-off') : ans && k === R.want ? 'is-ok' : 'is-ghost')}
+                className={'kz-btn z8-tagbtn ' + (ans === k ? (k === R.want ? 'is-ok' : 'is-off') : ans && k === R.want ? 'is-ok' : 'is-ghost') + (glow === k ? ' is-led' : '')}
                 onClick={() => answer(k)}><span translate="no">{S10_BTN[k]}</span><Led on={led && !ans} /></button>
             ))}
           </div>
@@ -864,15 +874,17 @@ function S14({ p }) {
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || okNow, spoken);
   const led = useIdleLed(canTap && !okNow, off.length);
+  // Ступени подсказки (лампочка; со второй ошибки — сами); на 3-й верный кусок загорается.
+  const ch = useChoiceHints(!okNow, 0);
   const choose = (o) => {
     if (!canTap || okNow || off.indexOf(o) >= 0) return false;
     if (o === 'header') {
-      sfx('win', true); setOkNow(true); setMsg(null); put({ done: true });
-      log({ screenId: 's14', type: 'fix-header', correct: true, firstTry: off.length === 0, attempts: off.length + 1 });
+      sfx('win', true); setOkNow(true); setMsg(null); ch.clear(); put({ done: true });
+      log({ screenId: 's14', type: 'fix-header', correct: true, firstTry: off.length === 0, attempts: off.length + 1, hints: ch.lad.asked.current, depth: ch.lad.lv });
       sayNow(c.ok, 'cheer');
       return true;
     }
-    sfx('soft', true); setOff(off.concat(o)); setMsg(c.why[o]); sayNow(c.why[o], 'think');
+    sfx('soft', true); setOff(off.concat(o)); sayNow(ch.miss(c.why[o], c.hints), 'think');
     return false;
   };
   const dnd = useKzDrag((o, where) => (where === 'gap' ? choose(o) : false));
@@ -882,9 +894,9 @@ function S14({ p }) {
     : all.map((l) => (l.k === 'hdo' ? codeLine('hdo', [<span key="g" data-place="gap" className={'kz-dash kz-dash-sm kz-drop z8-miss' + (dnd.hover === 'gap' ? ' is-hover' : '') + (dnd.active ? ' is-call' : '')} />,
       <span key="w" className="z8-wrong" translate="no">{'<head>'}</span>], { cls: 'is-hl' }) : Object.assign(l, { cls: l.k === 'hdc' ? 'is-hl' : 'z8-ctx' })));
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={okNow ? c.ok : (ch.next(c.hints) || c.ask)} nav={navOf(p, canGo)}>
       <Sheet cls="z8-sheet">
-        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : msg} err={!!msg} />
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : ch.now(c.hints)} err={ch.err} />
         <div className="kz-scene z8-s5">
           <div className="kz-col"><Br title={pick(s.myTitle)} url="mening.html" cls={okNow ? '' : 'z8-broken-br'}><SitePage cfg={cfg} own={mine} insp hl={okNow ? 'header' : null} /></Br></div>
           <div className="kz-col"><KzCode lines={lines} cls="kz-code-sm" /></div>
@@ -894,7 +906,7 @@ function S14({ p }) {
             {S14_OPTS.map((o) => (
               <button key={o} type="button" data-o={o} disabled={!canTap || off.indexOf(o) >= 0} onClick={() => choose(o)}
                 onPointerDown={(e) => { if (canTap && !okNow && off.indexOf(o) < 0) dnd.start(e, o, '<' + o + '>'); }}
-                className={'kz-scrap kz-scrap-code' + (off.indexOf(o) >= 0 ? ' is-used' : '') + (off.length >= 2 && o === 'header' ? ' is-led' : '')}>
+                className={'kz-scrap kz-scrap-code' + (off.indexOf(o) >= 0 ? ' is-used' : '') + ((off.length >= 2 || ch.lad.lv >= 3) && o === 'header' ? ' is-led' : '')}>
                 <span translate="no">{'<' + o + '>'}</span><Led on={led && off.indexOf(o) < 0} />
               </button>
             ))}
@@ -999,19 +1011,22 @@ function Q2({ p }) {
   const st = useRef({ tries: 0, misses: 0 });
   const led = useIdleLed(canTap && !ok, ii * 10 + (off === null ? 0 : 1));
   const it = c.items[ii];
+  // Ступени подсказки (лампочка; со второй ошибки — сами): 1 — как читать фразу, 2 — правило урока, 3 — причина и ответ.
+  const ch = useChoiceHints(!ok, ii);
+  const hints = choiceHints(c.hint1, c.hint2, it.why, it.right ? c.yes : c.no);
   const choose = (v) => {
     if (!canTap || ok || off === v) return;
     st.current.tries += 1;
     if (v !== it.right) {
       st.current.misses += 1;
-      sfx('soft', true); setOff(v); setMsg(it.why); sayNow(it.why, 'think');
+      sfx('soft', true); setOff(v); sayNow(ch.miss(it.why, hints), 'think');
       return;
     }
-    sfx('ok', true); setOk(true); setMsg(null);
+    sfx('ok', true); setOk(true); setMsg(null); ch.clear();
     const line = joinL(c.right, it.why);
     if (ii === c.items.length - 1) {
       put({ done: true });
-      log({ screenId: 'q2', type: 'true-false', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: 0, depth: 0 });
+      log({ screenId: 'q2', type: 'true-false', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: ch.lad.asked.current, depth: ch.lad.lv });
       sayNow(joinL(line, c.ok), 'cheer');
     } else { sayNow(line, 'smile'); setNext(true); }
   };
@@ -1032,9 +1047,9 @@ function Q2({ p }) {
     main: [openL('main', 0, 'm'), collL('section', [<span key="d" className="kz-txt z8-dots">…</span>], 1, 's1'), collL('section', [<span key="d" className="kz-txt z8-dots">…</span>], 1, 's2'), closeL('main', 0, 'mc')]
   };
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="z8-sheet">
-        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : msg} err={!!msg} n={(ii + 1) + '/' + c.items.length} />
+        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : ch.now(hints)} err={ch.err} n={(ii + 1) + '/' + c.items.length} />
         <div className="kz-scene kz-scene-col kz-q2" key={'i' + ii}>
           <div className="kz-col">
             <div className="z8-card z8-tf-card kz-a-drop">

@@ -301,6 +301,13 @@ const C = {
       li: L3("Qarang: keyin ro'yxatda bitta band ko'paydi. Yangi bandni li qo'shadi.", 'Смотри: после в списке стало на один пункт больше. Новый пункт добавляет li.', 'Look: after, the list has one more item. li adds a new item.'),
       ul: L3("Qarang: keyin raqamlar nuqtalarga aylandi. Nuqta qo'yadigan teg esa ul bo'ladi.", 'Смотри: после номера стали точками. Точки ставит тег ul.', 'Look: after, the numbers became dots. The ul tag adds dots.')
     },
+    // Ступени подсказки (лампочка): 1 — куда смотреть, 2 — что изменилось и какой тег за это отвечает, 3 — причина и какой тег выбрать.
+    hint1: L3("Oldin va keyin ro'yxatni solishtiring: nuqtalar, raqamlar yoki bandlar soni o'zgardimi?", 'Сравни список «до» и «после»: изменились точки, номера или число пунктов?', 'Compare the list before and after: did the dots, the numbers or the number of items change?'),
+    hint2: {
+      ol: L3("Qarang: bandlar soni o'sha-o'sha, faqat belgisi o'zgardi. Raqam qo'yadigan ro'yxat tegi qaysi edi, esingizdami?", 'Смотри: пунктов столько же, поменялись только значки. Помнишь, какой тег списка ставит номера?', 'Look: the number of items is the same, only the markers changed. Remember which list tag adds numbers?'),
+      li: L3("Qarang: belgilar o'sha-o'sha, lekin bandlar ko'paydi. Ro'yxatning bitta bandini qaysi teg yasaydi?", 'Смотри: значки те же, а пунктов стало больше. Какой тег делает один пункт списка?', 'Look: the markers are the same, but there are more items. Which tag makes one list item?'),
+      ul: L3("Qarang: bandlar soni o'sha-o'sha, faqat raqamlar o'rniga boshqa belgi chiqdi. Nuqta qo'yadigan ro'yxat tegi qaysi edi, esingizdami?", 'Смотри: пунктов столько же, только вместо номеров другие значки. Помнишь, какой тег списка ставит точки?', 'Look: the number of items is the same, only the numbers turned into other markers. Remember which list tag adds dots?')
+    },
     done: L3('Endi uchala tegni ham adashtirmaysiz. Keyin butun sahifani birga o\'qiymiz.', 'Теперь эти три тега не перепутать. Дальше прочитаем всю страницу целиком.', 'Now you won’t mix up these three tags. Next, let’s read the whole page.'),
     before: L3('Oldin', 'До', 'Before'),
     after: L3('Keyin', 'После', 'After')
@@ -354,7 +361,13 @@ const C = {
     },
     ok: L3("Ana endi joyida! Ikkinchi bandning oldida ham nuqta paydo bo'ldi.", 'Вот теперь порядок! У второго пункта тоже появилась точка.', 'That’s it! The second item has its dot again.'),
     ask: L3("Yetishmayotgan tegni bo'sh joyga olib boring", 'Перетащи недостающий тег в пустое место', 'Drag the missing tag into the empty spot'),
-    opts: ['</li>', '<li>', '<ol>']
+    opts: ['</li>', '<li>', '<ol>'],
+    // Ступени подсказки (лампочка; со второй ошибки — сами): на третьей нужный тег загорается.
+    hints: [
+      L3("Brauzerga qarang: ikkinchi bandga nima yetishmayapti?", 'Посмотри на браузер: чего не хватает второму пункту?', 'Look at the browser: what is the second item missing?'),
+      L3("Nuqtani li tegi qo'yadi. Band boshida esa ochuvchi teg turadi, unda qiya chiziq bo'lmaydi.", 'Точку ставит тег li. А в начале пункта стоит открывающий тег, без косой черты.', 'The li tag adds the dot. And an item starts with the opening tag, without a slash.'),
+      L3("Demak, band boshiga ochuvchi li kerak. Yonib turgan bo'lakni bo'sh joyga olib boring.", 'Значит, в начало пункта нужен открывающий li. Перетащи горящий кусок в пустое место.', 'So the item needs the opening li at the start. Drag the glowing piece into the empty spot.')
+    ]
   },
   // ИТОГОВАЯ ПРОВЕРКА (q1, q2): новые списки без образца; до первой попытки ответ не подсвечен.
   q1: {
@@ -390,6 +403,10 @@ const C = {
     say: L3("Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.", 'Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.', 'The last test. I’ll say something, and you choose: true or false.'),
     ask: L3("To'g'ri yoki noto'g'ri?", 'Верно или нет?', 'True or false?'),
     card: L3('Kodi aytadi', 'Коди говорит', 'Kodi says'),
+    hint1: L3("Gapni diqqat bilan o'qing: u qaysi teg haqida gapiryapti?", 'Прочитай фразу внимательно: о каком теге она?', 'Read the sentence carefully: which tag is it about?'),
+    hint2: L3("Esingizdami: tartib muhim bo'lsa ol, muhim bo'lmasa ul olinadi. Raqamlarni brauzer o'zi qo'yadi, har bir band esa o'z li tegida turadi. Gap shunga mos keladimi?",
+      'Вспомни: если порядок важен — ol, если нет — ul. Номера браузер ставит сам, а каждый пункт стоит в своём li. Фраза с этим совпадает?',
+      'Remember: if order matters, use ol; if not, ul. The browser adds the numbers itself, and each item sits in its own li. Does the sentence match that?'),
     yes: L3("To'g'ri", 'Верно', 'True'),
     no: L3("Noto'g'ri", 'Неверно', 'False'),
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
@@ -428,7 +445,7 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { why: 1, magic: 1, magicP: 1, msgs: 1, sayUl: 1, sayLi: 1, sayOl: 1, sayAuto: 1, sayA: 1, sayB: 1, askQ: 1, miss: 1,
+Object.assign(SPOKEN, { hint1: 1, hint2: 1, hints: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayUl: 1, sayLi: 1, sayOl: 1, sayAuto: 1, sayA: 1, sayB: 1, askQ: 1, miss: 1,
   order1: 1, order2: 1, order3: 1, say2: 1, fine: 1, items: 1, right: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1 } });
 
