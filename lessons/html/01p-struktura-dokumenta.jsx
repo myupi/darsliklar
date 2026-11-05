@@ -13161,4 +13161,8 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .r28 .a1-glitch, .r28 .a1-pop, .r28 .a1-in, .r28 .a1-shake, .r28 .a1-edit.is-led, .r28 .a1-tap.is-led { animation: none !important; }
 }
 .r28 .a1-roles .kz-role i { background: var(--c) !important; }
+/* Планшет стоя: вывод — окно браузера ниже, чтобы «Следующий урок» не уходил под низ. */
+@media (min-width: 760px) and (orientation: portrait) and (max-width: 999px) {
+  .r28 .a1-fin .a1-br { aspect-ratio: 16 / 7.5; }
+}
 `;

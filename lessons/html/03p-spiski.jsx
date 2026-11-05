@@ -9398,21 +9398,27 @@ function a3Page(src, fixedTitle) {
 // уменьшается, не меньше 56 %.
 function useA3Fit(dep) {
   const ref = useRef(null);
+  const seen = useRef({ el: null, dep: undefined, ro: null });
+  // Страница пересоздаётся (например, после «Проверить») — подгонка запускается заново: следит за самим узлом.
   useLayoutEffect(() => {
     const el = ref.current;
+    const s = seen.current;
+    if (el === s.el && dep === s.dep) return;
+    if (s.ro) { s.ro.disconnect(); s.ro = null; }
+    s.el = el; s.dep = dep;
     const page = el && el.closest('.kz-br-page');
-    if (!el || !page) return undefined;
+    if (!el || !page) return;
     const fit = () => {
       let k = 1;
       el.style.fontSize = '';
       while (page.scrollHeight > page.clientHeight + 1 && k > 0.56) { k -= 0.06; el.style.fontSize = k.toFixed(2) + 'em'; }
     };
     fit();
-    if (typeof ResizeObserver === 'undefined') return undefined;
-    const ro = new ResizeObserver(() => fit());
-    ro.observe(page);
-    return () => ro.disconnect();
-  }, [dep]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (typeof ResizeObserver === 'undefined') return;
+    s.ro = new ResizeObserver(() => fit());
+    s.ro.observe(page);
+  });
+  useEffect(() => () => { if (seen.current.ro) seen.current.ro.disconnect(); }, []);
   return ref;
 }
 function A3Doc({ blocks, flash }) {
@@ -13430,6 +13436,10 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 }
 @media (max-width: 759px) and (min-height: 700px) {
   .r28 .a3-sheet:not(.is-big) .a3-br.is-short { aspect-ratio: 16 / 9.5; }   /* высокий телефон (кроме своей статьи): место есть — окно выше, страница крупнее */
+}
+/* Телефон 700–799 по высоте (375 × 740): окно чуть ниже, чтобы кнопки не уходили под низ. */
+@media (max-width: 759px) and (min-height: 700px) and (max-height: 799px) {
+  .r28 .a3-sheet:not(.is-big) .a3-br.is-short { aspect-ratio: 16 / 8.6; }
 }
 @media (max-width: 759px) and (max-height: 699px) {
   .r28 .a3-br.is-short { aspect-ratio: 16 / 7.5; }

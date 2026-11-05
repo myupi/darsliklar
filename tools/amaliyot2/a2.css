@@ -152,6 +152,10 @@
 @media (max-width: 759px) and (min-height: 700px) {
   .r28 .a2-sheet:not(.is-big) .a2-br.is-short { aspect-ratio: 16 / 9.5; }   /* высокий телефон (кроме своей статьи): место есть — окно выше, страница крупнее */
 }
+/* Телефон 700–799 по высоте (375 × 740): окно чуть ниже, чтобы кнопки не уходили под низ. */
+@media (max-width: 759px) and (min-height: 700px) and (max-height: 799px) {
+  .r28 .a2-sheet:not(.is-big) .a2-br.is-short { aspect-ratio: 16 / 8.6; }
+}
 @media (max-width: 759px) and (max-height: 699px) {
   .r28 .a2-br.is-short { aspect-ratio: 16 / 7.5; }
   .r28 .a2-s1 .a2-br, .r28 .a2-fin .a2-br { aspect-ratio: 16 / 7.5; }
