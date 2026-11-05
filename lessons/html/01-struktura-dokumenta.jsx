@@ -9335,7 +9335,7 @@ function useKzDrag(onDrop) {
     const placeAt1 = (x, y) => { const el = document.elementFromPoint(x, y); const z = el && el.closest && el.closest('[data-place]'); return z ? z.getAttribute('data-place') : null; };
     // Копия летит выше пальца (на телефоне — заметно выше), и ученик целится ею:
     // место ищется сначала под центром копии, потом под пальцем.
-    const placeAt = (x, y, touch) => placeAt1(x, y - (touch ? 40 : 14)) || placeAt1(x, y);
+    const placeAt = (x, y, touch) => (touch ? placeAt1(x, y - 40) || placeAt1(x, y) : placeAt1(x, y) || placeAt1(x, y - 14));
     const lift = (d, on) => { if (d && d.el && d.el.classList) d.el.classList.toggle('is-lifted', on); };
     const move = (e) => {
       const d = drag.current;
@@ -10930,7 +10930,7 @@ function S13({ p }) {
       return {
         // Новый ключ на каждый сдвиг — анимация перестановки перезапускается и при быстрых нажатиях.
         k: 's' + k + (moved && (moved.to === k || moved.from === k) ? ':' + moved.n : ''), d: id ? DEPTH13(slots, k) : 0,
-        cls: (!id && cur === k && !solved ? 'is-cur' : '') + (held === k ? ' is-sel' : '') + (marked ? ' is-mark' : '') + (moved && moved.to === k ? ' kz-slide-up' : moved && moved.from === k && slots[k] ? ' kz-slide-under' : ''),
+        cls: (!id && cur === k && !solved ? 'is-cur' : '') + (held === k ? ' is-sel' : '') + (marked ? ' is-mark' : '') + (dnd.active && dnd.hover === String(k) ? ' is-drop' : '') + (moved && moved.to === k ? ' kz-slide-up' : moved && moved.from === k && slots[k] ? ' kz-slide-under' : ''),
         style: moved && (moved.to === k || moved.from === k) ? { '--dy': (moved.to === k ? moved.dy : -moved.dy).toFixed(1) + 'px' } : null,
         move: solved || !id ? { hide: true } : { up: k > 0 ? () => move(k, -1) : null, down: k < 7 ? () => move(k, 1) : null, hl: moveHl || marked },
         onTap: solved ? null : () => tapSlot(k), disabled: !canTap, led: (led && !id && cur === k) || (lad.lv >= 3 && marked),
@@ -14040,6 +14040,8 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .r28 .kz-dash { border-color: rgba(255, 255, 255, .25); }
 .r28 .kz-move-b { border-radius: 4px; background: #333; border: 1px solid #444; box-shadow: none; color: #CCC; }
 .r28 .kz-move-tip-k { background: #fff; border: 1px solid var(--r-edge); box-shadow: none; }
+/* «Верно или нет» (заказчик, 05.11.2026): код — во всю ширину колонки, как карточка Коди и кнопки, а не узким блоком посередине. */
+.r28 .kz-q2 .kz-col > .kz-code { align-self: center; width: min(100%, 520px); }
 .r28 .kz-q2-close .kz-tag { background: #264F78; border-radius: 3px; }
 .r28 .kz-q2-close .kz-tk-n { color: #fff; }
 .r28 .kz-q2-close .kz-tk-b { color: #CCC; }
@@ -14394,6 +14396,9 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 /* 6. Мера --brh задаёт только высоту окна: ширину браузера в столбце она больше не сужает — и там, где урок
       ставил своё max-width (урок 1, экраны 6 и 8 на невысоком телефоне: окно уже кода под ним). */
 .r28 .kz-col > .kz-br { max-width: none !important; }
+
+/* Перетаскивание строки (урок 1, s13): строка, куда встанет полоска, подсвечена, пока её несут. */
+.r28 .kz-line.is-drop { background: rgba(250, 79, 40, .18) !important; box-shadow: inset 3px 0 0 var(--r-pri); }
 /* Урок 1 (заказчик, 27.10.2026: «окно браузера маленькое»): на ноутбуке браузер на
    экранах 6–10, 14 и 15 крупнее — место вокруг было пустым; текст в окне крупнее вместе
    с ним. Только в уроке 1 — общий kollazh.css (уроки 2–5, практики) не трогается. */

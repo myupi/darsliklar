@@ -25,6 +25,16 @@ export function naborRedaktor(gen) {
   naborPlayground(gen);
 
   writeFileSync(join(gen, 'p17-skin.jsx'), readFileSync(join(here, 'r28-skin.jsx'), 'utf8'));
+  // Перетаскивание мышью (заказчик, 05.11.2026, урок 1: «вставляется на 1 строчку выше»): строки кода в
+  // «Редакторе» низкие (~23 px), а место искалось на 14 px выше курсора — под копией — и попадало на строку
+  // выше. С мышью место — под курсором (копия — запасной вариант); с пальцем — как было: палец закрывает
+  // строку, ученик целится копией, она летит выше пальца.
+  {
+    const kit = join(gen, 'kollazh-kit.jsx');
+    writeFileSync(kit, must(readFileSync(kit, 'utf8'),
+      'const placeAt = (x, y, touch) => placeAt1(x, y - (touch ? 40 : 14)) || placeAt1(x, y);',
+      'const placeAt = (x, y, touch) => (touch ? placeAt1(x, y - 40) || placeAt1(x, y) : placeAt1(x, y) || placeAt1(x, y - 14));', 'drop under cursor'));
+  }
   // Переход-глитч со звуком заказчика (sounds/glitch.mp3 встраивается в base64).
   writeFileSync(join(gen, 'kollazh-trans.jsx'), must(readFileSync(join(here, 'r28-trans.jsx'), 'utf8'), '/*@R28_GLITCH@*/',
     readFileSync(join(here, 'sounds/glitch.mp3')).toString('base64'), 'glitch sound'));
