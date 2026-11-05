@@ -25,7 +25,7 @@ naborRedaktor(gen);
 {
   const f = join(gen, 'b16-chrome.jsx');
   writeFileSync(f, must(readFileSync(f, 'utf8'), 'doctype|DOCTYPE|H (?:one|',
-    'doctype|DOCTYPE|href|https|image|source|alternative text|alt|I M G|S R C|H (?:one|', 'en words'));
+    'doctype|DOCTYPE|href|https|Copy image address|Paste|image|source|alternative text|alt|I M G|S R C|H (?:one|', 'en words'));
   const k = join(gen, 'kollazh-kit.jsx');
   writeFileSync(k, must(readFileSync(k, 'utf8'), '  const out = spokenHtmlL2(s, lang);',
     "  const out = spokenHtmlL2(s, lang).replace(/(^|[^A-Za-z'‘’-])(img|src)(?![A-Za-z'‘’])/g, (all, pre, t) => pre + t.toUpperCase().split('').join(' '));", 'img src speech'));

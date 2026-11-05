@@ -180,7 +180,18 @@ const C = {
       order: L3("Bu boshqa rasm. Rasmlar kod qatorlari tartibida turadi: birinchi qator birinchi rasmni, keyingisi keyingi rasmni chiqaradi.", 'Это другая картинка. Картинки идут в порядке строк кода: первая строка — первая картинка, следующая — следующая.', 'That’s a different picture. The pictures go in the order of the code lines: the first line gives the first picture, the next one the next.'),
       broken: L3("Bu rasm joyida chiqdi. Yongan qatordagi fayl nomiga qarang: unda bitta harf yetishmaydi.", 'Эта картинка на месте. Посмотри на имя файла в горящей строке: в нём не хватает буквы.', 'This picture showed up fine. Look at the file name in the lit line: it’s missing a letter.')
     },
-    done: L3("Barakalla! Endi har bir img qatori qaysi rasmni chiqarishini bilasiz.", 'Молодец! Теперь ты знаешь, какую картинку выводит каждая строка img.', 'Well done! Now you know which picture each img line shows.')
+    done: L3("Barakalla! Endi har bir img qatori qaysi rasmni chiqarishini bilasiz.", 'Молодец! Теперь ты знаешь, какую картинку выводит каждая строка img.', 'Well done! Now you know which picture each img line shows.'),
+    // Ступени подсказки (лампочка; со второй ошибки — сами): 1 — куда смотреть, 2 — правило раунда, 3 — какую картинку нажать (она загорается).
+    hint1: L3("Yonib turgan qatorga qarang: unda qaysi fayl nomi yozilgan?", 'Посмотри на горящую строку: какое имя файла в ней написано?', 'Look at the lit line: which file name is written in it?'),
+    hint2: {
+      order: L3("Rasmlar kod qatorlari tartibida turadi. Yongan qator kodda nechanchi bo'lsa, rasm ham sahifada o'sha joyda bo'ladi.", 'Картинки стоят в порядке строк кода. Какая по счёту горящая строка, на том же месте и картинка.', 'The pictures go in the order of the code lines. Whatever place the lit line has, the picture has the same place on the page.'),
+      broken: L3("Fayl nomida xato bo'lsa, brauzer faylni topa olmaydi. Unda rasm o'rnida nima chiqadi?", 'Если в имени файла ошибка, браузер не найдёт файл. Что тогда выходит на месте картинки?', 'If the file name has a typo, the browser can’t find the file. What shows up in the picture’s place then?')
+    },
+    hint3: [
+      L3("Yongan qator kodda ikkinchi turibdi, unda top.jpg. Sahifadagi ikkinchi rasmni bosing, u to'p rasmi.", 'Горящая строка в коде вторая, в ней top.jpg. Нажми вторую картинку на странице, это мяч.', 'The lit line is second in the code, with top.jpg. Tap the second picture on the page: the ball.'),
+      L3("Endi yongan qator uchinchi turibdi. Sahifadagi uchinchi rasmni bosing, u yana to'p rasmi.", 'Теперь горящая строка третья. Нажми третью картинку на странице, это снова мяч.', 'Now the lit line is third. Tap the third picture on the page: the ball again.'),
+      L3("Yongan qator birinchi, uning fayl nomida bitta harf yetishmaydi. Sahifadagi birinchi rasmni bosing, u buzilgan rasm belgisi.", 'Горящая строка первая, в её имени файла не хватает буквы. Нажми первую картинку на странице, то есть значок сломанной картинки.', 'The lit line is first, and its file name is missing a letter. Tap the first picture on the page, the broken picture icon.')
+    ]
   },
   s5: {
     eyebrow: L3('alt atributi', 'Атрибут alt', 'The alt attribute'),
@@ -308,7 +319,16 @@ const C = {
     },
     done: L3("Endi rasm nimaga chiqmasligini bilasiz. Keyin butun sahifani birga o'qib chiqamiz.", 'Теперь ты знаешь, почему картинка не появляется. Дальше прочитаем всю страницу вместе.', 'Now you know why a picture doesn’t show up. Next, let’s read the whole page together.'),
     before: L3('Oldin', 'До', 'Before'),
-    after: L3('Keyin', 'После', 'After')
+    after: L3('Keyin', 'После', 'After'),
+    // Ступени подсказки (лампочка): 1 — куда смотреть, 2 — по виду раунда, 3 — причина и какой ответ выбрать.
+    hint1: L3("Oldingi va keyingi rasmni solishtiring: sahifada nima o'zgardi?", 'Сравни картинку «до» и «после»: что изменилось на странице?', 'Compare the picture before and after: what changed on the page?'),
+    hint2: {
+      src: L3("Oldin sahifada umuman hech narsa yo'q edimi, hatto belgi ham? Brauzerga qaysi faylni ko'rsatishni qaysi atribut aytadi, esingizdami?", 'Сначала на странице не было вообще ничего, даже значка? Вспомни, какой атрибут говорит браузеру, какой файл показать.', 'Was there nothing on the page at first, not even an icon? Remember which attribute tells the browser which file to show.'),
+      val: L3("Oldin buzilgan rasm belgisi bormidi? Demak, src bor edi, lekin brauzer faylni topa olmadi. Kodda nima tuzatilgan bo'lishi mumkin?", 'Сначала был значок сломанной картинки? Значит, src был, но браузер не нашёл файл. Что могли исправить в коде?', 'Was there a broken picture icon at first? Then src was there, but the browser couldn’t find the file. What could have been fixed in the code?'),
+      alt: L3("Rasm ikkalasida ham ochilmadimi? Unda belgi yonidagi so'zlarga qarang: ularni qaysi atribut beradi?", 'Фото не открылось ни там, ни там? Тогда посмотри на слова рядом со значком: какой атрибут их даёт?', 'Did the photo fail to open in both? Then look at the words next to the icon: which attribute gives them?')
+    },
+    // Как назвать кнопку в третьей ступени — словами, без кавычек и знаков (подсказка звучит).
+    pick: { src: L3('src', 'src', 'src'), val: L3('jpg', 'jpg', 'jpg'), alt: L3('alt', 'alt', 'alt') }
   },
   s11: {
     eyebrow: L3('Butun sahifa', 'Страница целиком', 'The whole page'),
@@ -325,16 +345,45 @@ const C = {
     say: L3("O'tgan darsda havola https bilan internetdagi saytga olib borganini ko'rdik. Rasm ham xuddi shunday ishlaydi. Qarang, men sahifaga quyosh rasmini qo'ymoqchiman. Lekin fayllarimizda quyosh.jpg yo'q. Shuning uchun brauzer buzilgan rasm belgisini ko'rsatyapti.",
       'На прошлом уроке мы видели: ссылка с https ведёт на сайт в интернете. С картинками так же. Смотри, я хочу поставить на страницу картинку с солнцем. Но среди наших файлов нет quyosh.jpg. Поэтому браузер показывает значок сломанной картинки.',
       'Last lesson we saw a link with https take us to a site on the internet. Pictures work the same way. Look, I want to put a sun picture on the page. But there’s no quyosh.jpg among our files. That’s why the browser shows the broken picture icon.'),
-    sayWeb: L3("Bu rasm mening internetdagi saytimda turibdi. Uni olish uchun src ichiga rasmning to'liq manzilini yozamiz.",
-      'Эта картинка лежит на моём сайте в интернете. Чтобы её взять, пишем в src полный адрес картинки.',
-      'This picture is on my site on the internet. To get it, we write the picture’s full address in src.'),
+    // Показ «как взять адрес картинки» (заказчик, 05.11.2026): курсор мыши сам проходит все шаги — вкладка сайта,
+    // правая кнопка по картинке, «Скопировать адрес картинки», назад к коду, правая кнопка, «Вставить».
+    sayWeb: L3("Bu rasm mening internetdagi saytimda turibdi. Uni olish uchun rasmning to'liq manzili kerak. Keling, manzilni qanday olishni ko'rsataman. Saytim brauzerning boshqa yorlig'ida ochiq.",
+      'Эта картинка лежит на моём сайте в интернете. Чтобы её взять, нужен полный адрес картинки. Давай покажу, как его достать. Мой сайт открыт в другой вкладке браузера.',
+      'This picture is on my site on the internet. To get it, we need the picture’s full address. Let me show you how to get it. My site is open in another browser tab.'),
+    sayMenu: L3("Rasm ustiga sichqonchani olib boramiz va o'ng tugmasini bosamiz. Qarang, ro'yxat chiqdi.",
+      'Наводим мышку на картинку и нажимаем правую кнопку. Смотри, появился список.',
+      'We move the mouse over the picture and press the right button. Look, a menu appeared.'),
+    sayCopy: L3("Ro'yxatdan «Copy image address»ni tanlaymiz. Endi rasmning to'liq manzili xotirada turibdi.",
+      'В списке выбираем «Копировать URL картинки». Теперь полный адрес картинки в памяти.',
+      'In the menu we choose “Copy image address”. Now the picture’s full address is in memory.'),
+    sayBack: L3("Endi o'z sahifamiz yorlig'iga qaytamiz va kodga boramiz. Eski fayl nomini belgilaymiz.",
+      'Теперь возвращаемся во вкладку своей страницы и идём к коду. Выделяем старое имя файла.',
+      'Now we go back to our page’s tab and over to the code. We select the old file name.'),
+    sayPaste: L3("Yana o'ng tugmani bosamiz. Bu safar ro'yxatdan «Paste»ni tanlaymiz.",
+      'Снова нажимаем правую кнопку. В этот раз выбираем в списке «Вставить».',
+      'We press the right button again. This time we choose “Paste” in the menu.'),
+    sayPasted: L3("Mana! Manzil kodga tushdi, rasm esa sahifada paydo bo'ldi. Endi manzil qanday tuzilganini ko'raylik.",
+      'Готово! Адрес попал в код, а картинка появилась на странице. Теперь посмотрим, из чего состоит адрес.',
+      'There! The address went into the code, and the picture appeared on the page. Now let’s see what the address is made of.'),
+    // На узбекском меню правой кнопки — английское, как в браузере у учеников (заказчик, 05.11.2026).
+    menuImg: L3(['Open image in new tab', 'Save image as…', 'Copy image', 'Copy image address'],
+      ['Открыть картинку в новой вкладке', 'Сохранить картинку как…', 'Копировать картинку', 'Копировать URL картинки'],
+      ['Open image in new tab', 'Save image as…', 'Copy image', 'Copy image address']),
+    menuEd: L3(['Cut', 'Copy', 'Paste'], ['Вырезать', 'Копировать', 'Вставить'], ['Cut', 'Copy', 'Paste']),
+    webTitle: L3('Kodining rasmlari', 'Картинки Коди', 'Kodi’s pictures'),
+    copied: L3('Nusxa olindi', 'Скопировано', 'Copied'),
+    askTab: L3("Qarang: sayt boshqa yorliqda", 'Смотри: сайт в другой вкладке', 'Watch: the site is in another tab'),
+    askMenu: L3("Qarang: o'ng tugma, ro'yxat", 'Смотри: правая кнопка — список', 'Watch: right button, a menu'),
+    askCopy: L3("Qarang: manzildan nusxa olamiz", 'Смотри: копируем адрес', 'Watch: we copy the address'),
+    askPaste: L3("Qarang: kodga qo'yamiz", 'Смотри: вставляем в код', 'Watch: we paste it into the code'),
+    askPasted: L3("Qarang: rasm paydo bo'ldi", 'Смотри: картинка появилась', 'Watch: the picture appeared'),
     sayProto: L3("Manzil https bilan boshlanadi, keyin ikki nuqta va ikkita qiya chiziq keladi. Bu brauzerga internetga chiqishni aytadi.",
       'Адрес начинается с https, потом идут двоеточие и две косые черты. Это говорит браузеру: иди в интернет.',
       'The address starts with https, then a colon and two slashes. That tells the browser to go out to the internet.'),
     sayHost: L3("Keyin rasm turgan sayt nomi keladi: kodi.uz.", 'Дальше — имя сайта, где лежит картинка: kodi.uz.', 'Next comes the name of the site where the picture is: kodi.uz.'),
-    sayFile: L3("Oxirida esa qiya chiziq va rasm fayli nomi turadi. Qarang, brauzer rasmni internetdan olib keldi!",
-      'А в конце — косая черта и имя файла картинки. Смотри, браузер принёс картинку из интернета!',
-      'And at the end, a slash and the picture’s file name. Look, the browser brought the picture from the internet!'),
+    sayFile: L3("Oxirida esa qiya chiziq va rasm fayli nomi turadi. Shuning uchun brauzer rasmni internetdan olib keldi.",
+      'А в конце — косая черта и имя файла картинки. Поэтому браузер и принёс картинку из интернета.',
+      'And at the end, a slash and the picture’s file name. That’s why the browser brought the picture from the internet.'),
     sayNoProto: L3("Endi boshidagi https qismini o'chirib ko'ramiz. Xo'sh, nima bo'larkin?", 'А теперь сотрём начало, https. Ну, что будет?', 'Now let’s erase the https part at the start. So what happens?'),
     sayNf: L3("Rasm yana buzildi! https bo'lmasa, brauzer kodi.uz degan papkani o'z saytimizdan qidiradi va uni topa olmaydi.",
       'Картинка снова сломалась! Без https браузер ищет папку kodi.uz на нашем сайте и не находит её.',
@@ -378,6 +427,11 @@ const C = {
       'Теперь проверь себя. Я пишу адрес в атрибут src, а ты выбери, откуда браузер возьмёт картинку: из файлов нашего сайта или из интернета?',
       'Now check yourself. I write an address in the src attribute, and you choose where the browser gets the picture: from our site’s files or from the internet?'),
     ask: L3('Brauzer rasmni qayerdan oladi?', 'Откуда браузер возьмёт картинку?', 'Where will the browser get the picture?'),
+    // Ступени подсказки (лампочка; со второй ошибки — сами): 1 — куда смотреть, 2 — правило, 3 — причина и ответ.
+    hint1: L3("src atributidagi manzilning eng boshiga qarang.", 'Посмотри на самое начало адреса в атрибуте src.', 'Look at the very start of the address in the src attribute.'),
+    hint2: L3("Manzil https bilan boshlansa, brauzer rasmni internetdan oladi. Faqat fayl yoki sayt nomi bo'lsa, saytimiz fayllaridan qidiradi.",
+      'Если адрес начинается с https, браузер берёт картинку из интернета. Если там только имя файла или сайта, он ищет среди файлов нашего сайта.',
+      'If the address starts with https, the browser gets the picture from the internet. If it’s just a file or site name, it looks among our site’s files.'),
     site: L3('Saytimiz fayllaridan', 'Из файлов сайта', 'From our site’s files'),
     web: L3('Internetdan', 'Из интернета', 'From the internet'),
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
@@ -438,7 +492,13 @@ const C = {
       alt: L3("alt kodda bor, u keyinroq turibdi. Bu yerda rasm faylini aytadigan atribut kerak.", 'alt в коде уже есть, он дальше. Здесь нужен атрибут, который задаёт файл картинки.', 'alt is already in the code, further along. Here you need the attribute that gives the picture file.')
     },
     ok: L3("Ana endi joyida! src qaytdi va rasmingiz yana chiqdi.", 'Вот теперь порядок! src вернулся, и твоя картинка снова на месте.', 'That’s it! src is back, and your picture shows up again.'),
-    ask: L3("Yetishmayotgan so'zni bo'sh joyga olib boring", 'Перетащи недостающее слово в пустое место', 'Drag the missing word into the empty spot')
+    ask: L3("Yetishmayotgan so'zni bo'sh joyga olib boring", 'Перетащи недостающее слово в пустое место', 'Drag the missing word into the empty spot'),
+    // Ступени подсказки: 1 — куда смотреть, 2 — правило, 3 — какой кусок взять (он загорается).
+    hints: [
+      L3("Brauzerga qarang: rasm o'rnida faqat alt matni qoldi. Brauzerga nima yetishmayapti?", 'Посмотри на браузер: вместо картинки остался только текст alt. Чего не хватает браузеру?', 'Look at the browser: only the alt text is left where the picture was. What is the browser missing?'),
+      L3("Bo'sh joydan keyin fayl nomi turibdi. Brauzerga rasm faylini qaysi atribut aytadi, esingizdami?", 'После пустого места стоит имя файла. Вспомни, какой атрибут сообщает браузеру файл картинки.', 'The file name comes after the empty spot. Remember which attribute tells the browser the picture file.'),
+      L3("Bo'laklardan src so'zini oling va bo'sh joyga olib boring.", 'Возьми кусок src и перетащи его в пустое место.', 'Take the src piece and drag it into the empty spot.')
+    ]
   },
   // ИТОГОВАЯ ПРОВЕРКА (q1, q2): новые случаи без образца; до первой попытки ответ не подсвечен.
   q1: {
@@ -473,6 +533,11 @@ const C = {
     say: L3("Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.", 'Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.', 'The last test. I’ll say something, and you choose: true or false.'),
     ask: L3("To'g'ri yoki noto'g'ri?", 'Верно или нет?', 'True or false?'),
     card: L3('Kodi aytadi', 'Коди говорит', 'Kodi says'),
+    // Ступени подсказки: 1 — как читать фразу, 2 — правило урока, 3 — причина и ответ (choiceHints).
+    hint1: L3("Gapni bo'laklab o'qing: u qaysi teg yoki atribut haqida?", 'Прочитай фразу по частям: о каком теге или атрибуте она?', 'Read the sentence piece by piece: which tag or attribute is it about?'),
+    hint2: L3("img tegi esingizdami? src rasm faylini aytadi, alt esa rasm ochilmasa chiqadigan so'zlarni beradi. Yopuvchi tegi yo'q. Boshqa saytdagi rasmga https bilan boshlangan manzil kerak. Gap shunga mos keladimi?",
+      'Вспомни тег img: src задаёт файл картинки, а alt даёт слова, если фото не открылось. Закрывающего тега у него нет. Картинке с другого сайта нужен адрес с https. Фраза с этим совпадает?',
+      'Remember the img tag: src gives the picture file, and alt gives words if the photo doesn’t open. It has no closing tag. A picture from another site needs an address starting with https. Does the sentence match that?'),
     yes: L3("To'g'ri", 'Верно', 'True'),
     no: L3("Noto'g'ri", 'Неверно', 'False'),
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
@@ -514,8 +579,8 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { why: 1, magic: 1, magicP: 1, msgs: 1, sayImg: 1, sayRest: 1, sayBroken: 1, sayNoAlt: 1, sayVoid: 1,
-  sayNoSrc: 1, sayTypo: 1, sayWeb: 1, sayProto: 1, sayHost: 1, sayFile: 1, sayNoProto: 1, sayNf: 1, okHttp: 1, askQ: 1, rounds: 1, miss: 1, order1: 1, order2: 1, order3: 1, say2: 1, fine: 1, items: 1, right: 1, pairOk: 1 });
+Object.assign(SPOKEN, { hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayImg: 1, sayRest: 1, sayBroken: 1, sayNoAlt: 1, sayVoid: 1,
+  sayNoSrc: 1, sayTypo: 1, sayWeb: 1, sayMenu: 1, sayCopy: 1, sayBack: 1, sayPaste: 1, sayPasted: 1, sayProto: 1, sayHost: 1, sayFile: 1, sayNoProto: 1, sayNf: 1, okHttp: 1, askQ: 1, rounds: 1, miss: 1, order1: 1, order2: 1, order3: 1, say2: 1, fine: 1, items: 1, right: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1 } });
 
 /*@FILE:gen/b16-chrome.jsx@*/

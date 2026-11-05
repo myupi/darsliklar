@@ -241,3 +241,35 @@
 .r28 .z5-file-web i { display: inline-block; border-radius: 50%; width: 10px; height: 10px; background: #0FA38E; }
 .r28 .kz-line .z5-slot-url .tk-input { min-width: 9em; }
 .r28 .z5-wait { color: var(--r-muted); }
+
+/* w1 — показ «как взять адрес картинки»: курсор мыши, меню правой кнопки, две вкладки окна. */
+.r28 .kz-scene.z5-w1 { position: relative; }
+.r28 .z5-cur { position: absolute; z-index: 30; width: 24px; height: 24px; margin: -3px 0 0 -5px; pointer-events: none;
+  transition: left .7s cubic-bezier(.4, 0, .2, 1), top .7s cubic-bezier(.4, 0, .2, 1); filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .25)); }
+.r28 .z5-cur svg { display: block; }
+.r28 .z5-cur-ring { position: absolute; left: -7px; top: -6px; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--r-pri); opacity: 0; transform: scale(.4); }
+.r28 .z5-cur.is-press svg { transform: scale(.88); transform-origin: 5px 3px; }
+.r28 .z5-cur.is-press .z5-cur-ring { animation: z5Ring .3s ease-out; }
+.r28 .z5-cur.is-r .z5-cur-ring { border-color: #7C5CFA; }
+@keyframes z5Ring { from { opacity: .9; transform: scale(.4); } to { opacity: 0; transform: scale(1.4); } }
+.r28 .z5-cmenu { position: absolute; z-index: 25; display: flex; flex-direction: column; min-width: 200px; max-width: 232px; padding: 6px 0; border-radius: 8px;
+  background: #fff; box-shadow: 0 10px 28px rgba(15, 23, 42, .22), 0 0 0 1px rgba(15, 23, 42, .08); font: 500 13px/1.25 var(--r-font); color: #202124; pointer-events: none;
+  animation: z5MenuIn .14s ease-out; }
+@keyframes z5MenuIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.r28 .z5-cmenu-i { padding: 6px 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.r28 .z5-cmenu-i.is-hl { background: #E8EAED; }
+.r28 .z5-w1-src { border-radius: 2px; }
+.r28 .z5-w1-src.is-sel { background: #264F78; color: #fff; }
+.r28 .z5-tbar { gap: 2px; padding-right: 4px; }
+.r28 .z5-tbr .kz-br-tab.z5-ttab.is-cur { flex: 0 1 auto; min-width: 0; max-width: 52%; gap: 6px; }
+.r28 .z5-ttab.is-side { display: flex; align-items: center; gap: 6px; flex: 0 1 auto; min-width: 0; max-width: 40%; height: 76%; padding: 0 10px;
+  font: 500 12px var(--r-font); color: #5F6368; border-radius: 8px 8px 0 0; }
+.r28 .z5-ttab-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.r28 .z5-fav-web { flex: none; display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #0FA38E; box-shadow: inset 0 0 0 2px #fff, 0 0 0 1px #0FA38E; }
+.r28 .z5-clip { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 7px 10px; border-radius: 10px; background: #ECFDF3; border: 1px solid #BBF7D0;
+  color: #15803D; font: 600 13px var(--r-font); }
+.r28 .z5-clip code { font: 500 13px var(--r-mono); color: var(--r-ink); overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) { .r28 .z5-cur { transition: none; } .r28 .z5-cmenu { animation: none; } }
+/* Полный адрес в src — длинный: в узком редакторе (планшет стоя, телефон) переносится внутри адреса, а не обрезается. */
+.r28 .kz-line .kz-tag.z5-att:has(.z5-u) { white-space: normal; overflow-wrap: anywhere; }
+.r28 .kz-line .z5-u { word-break: break-all; }

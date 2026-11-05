@@ -307,18 +307,21 @@ function S4({ p }) {
   const led = useIdleLed(canTap && ans === null, ri);
   const R = S4_ROUNDS[ri];
   const [msg, setMsg] = useState(null);
+  // Ступени подсказки — на каждый раунд свои; можно ошибаться несколько раз. На 3-й ступени верная картинка загорается.
+  const ch = useChoiceHints(!done && ans !== R.hl, ri);
+  const hints = [c.hint1, c.hint2[ri === 2 ? 'broken' : 'order'], c.hint3[ri]];
   const tap = (j) => {
     if (!canTap || ans === R.hl) return;
     if (j !== R.hl) {
       sfx('soft', true); setMisses((m) => m + 1); setAns(j);
       const m = ri === 2 ? c.miss.broken : c.miss.order;
-      setMsg(m); sayNow(m, 'rule');
+      sayNow(ch.miss(m, hints), 'rule');
       return;
     }
-    sfx('ok', true); setAns(j); setMsg(null);
+    sfx('ok', true); setAns(j); setMsg(null); ch.clear();
     if (ri === 2) {
       put({ done: true });
-      log({ screenId: 's4', type: 'map-img', correct: true, firstTry: misses === 0, attempts: misses + 3 });
+      log({ screenId: 's4', type: 'map-img', correct: true, firstTry: misses === 0, attempts: misses + 3, hints: ch.lad.asked.current, depth: ch.lad.lv });
       sayNow(joinL(c.ok[ri], c.done), 'smile');
     } else { sayNow(c.ok[ri], 'smile'); setNext(true); }
   };
@@ -328,11 +331,12 @@ function S4({ p }) {
     return () => clearTimeout(t);
   }, [next, spoken]); // eslint-disable-line react-hooks/exhaustive-deps
   const live = ans !== R.hl;
-  const items = R.files.map((f, j) => ({ src: f, alt: '', hl: ans !== null && j === R.hl, cls: ans === j && j !== R.hl ? 'is-off' : '', tap: live && canTap ? () => tap(j) : null, led: live && led }));
+  const lit = live && ch.lad.lv >= 3;
+  const items = R.files.map((f, j) => ({ src: f, alt: '', hl: j === R.hl && (ans === R.hl || lit), cls: ans === j && j !== R.hl ? 'is-off' : '', tap: live && canTap ? () => tap(j) : null, led: live && (lit ? j === R.hl : led) }));
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={done ? c.done : c.askQ} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={done ? c.done : (ch.next(hints) || c.askQ)} nav={navOf(p, canGo)}>
       <Sheet cls="z5-sheet">
-        <KzAsk text={done ? c.done : c.askQ} hint={done ? null : msg} err={!!msg} n={done ? null : (ri + 1) + '/3'} />
+        <KzAsk text={done ? c.done : c.askQ} hint={done || !live ? null : ch.now(hints)} err={ch.err} n={done ? null : (ri + 1) + '/3'} />
         <div className="kz-scene kz-scene-col" key={'r' + ri}>
           <div className="kz-col">
             <KzCode lines={R.files.map((f, j) => codeLine('l' + j, imgCode([{ n: 'src', v: f }]), { cls: j === R.hl ? 'is-read' : '' }))} cls="kz-code-sm" />
@@ -676,6 +680,9 @@ function S10({ p }) {
   const shownRd = round || (ans ? lastRef.current : null);
   const R = shownRd ? (shownRd.extra ? S10_EXTRA : S10_ROUNDS)[shownRd.i] : null;
   const led = useIdleLed(canTap && !!round && !ans, doneN);
+  // Ступени подсказки — на каждый раунд свои; ответ в раунде один (после него виден верный).
+  const ch = useChoiceHints(!!round && !ans, doneN);
+  const hints = R ? choiceHints(c.hint1, c.hint2[R.want], c.miss[R.want], c.pick[R.want]) : null;
   const answer = (k) => {
     if (!canTap || !round || ans) return;
     const right = k === R.want;
@@ -689,7 +696,7 @@ function S10({ p }) {
       [0, 1, 2].forEach((ii) => {
         const f = stats.current.find((x) => x.i === ii && !x.extra);
         const e = stats.current.find((x) => x.i === ii && x.extra);
-        log({ screenId: 's10.r' + (ii + 1), type: 'before-after', correct: true, firstTry: !!(f && f.right), attempts: e ? 2 : 1, helped: !!(f && !f.right), followUp: e ? e.right : null });
+        log({ screenId: 's10.r' + (ii + 1), type: 'before-after', correct: true, firstTry: !!(f && f.right), attempts: e ? 2 : 1, helped: !!(f && !f.right), followUp: e ? e.right : null, hints: ch.lad.asked.current });
       });
       put({ done: true }); setQueue([]);
       sayNow(joinL(line, c.done), 'smile');
@@ -714,9 +721,9 @@ function S10({ p }) {
     return <PageDoc blocks={[{ t: 'img', ...img, k: 'x' }]} />;
   };
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={round ? c.askQ : c.done} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={round ? (ch.next(hints) || c.askQ) : c.done} nav={navOf(p, canGo)}>
       <Sheet cls="z5-sheet">
-        <KzAsk text={round ? c.askQ : c.done} hint={round && ans && ans !== R.want ? c.miss[R.want] : null} err={!!(round && ans && ans !== R.want)} n={round ? (doneN + 1) + '/' + (doneN + queue.length) : null} />
+        <KzAsk text={round ? c.askQ : c.done} hint={round && ans && ans !== R.want ? c.miss[R.want] : round && !ans ? ch.now(hints) : null} err={!!(round && ans && ans !== R.want)} n={round ? (doneN + 1) + '/' + (doneN + queue.length) : null} />
         {R ? (
           <div className="kz-scene kz-scene-col" key={'r' + doneN}>
             <div className="kz-col">
@@ -790,51 +797,163 @@ function S11({ p }) {
 
 // =============================================================================
 // W1. КАРТИНКА ИЗ ИНТЕРНЕТА (показ; заказчик, 05.11.2026) — img с quyosh.jpg: среди наших файлов его нет —
-// значок сломанной картинки. src становится полным адресом: загораются https://, имя сайта, /файл — картинка
-// приходит с сайта. Потом https:// стирается — браузер ищет папку на нашем сайте: снова сломанная картинка.
+// значок сломанной картинки. Курсор мыши сам показывает, как взять адрес картинки (заказчик: «от и до, что
+// нажимать»): вкладка сайта kodi.uz → правая кнопка по картинке → «Копировать URL картинки» → назад во вкладку
+// своей страницы → выделить старое имя файла в src → правая кнопка → «Вставить» — картинка появилась.
+// Потом загораются части адреса: https://, имя сайта, /файл; без https:// картинка снова ломается.
+// Курсор и меню — показ, нажимать их не нужно (pointer-events: none).
 // =============================================================================
+// Окно с двумя вкладками: своя страница и сайт Коди (облик — как у браузера курса).
+function Z5TabBr({ tabs, cur, url, children, cls }) {
+  return (
+    <div className={'kz-br z5-br z5-tbr' + (cls ? ' ' + cls : '')}>
+      <Cut c={KZ.ink} seed={31} n={16} amp={1.4} asp={1.6} cls="kz-br-frame" />
+      <div className="kz-br-bar z5-tbar">
+        {tabs.map((tb, i) => (i === cur ? (
+          <span key={i} data-tab={i} className="kz-br-tab z5-ttab is-cur"><i className={tb.web ? 'z5-fav-web' : 'kz-br-fav'} aria-hidden="true" /><span className="kz-br-tab-t">{tb.t}</span><i className="kz-br-x" aria-hidden="true" /></span>
+        ) : (
+          <span key={i} data-tab={i} className="z5-ttab is-side"><i className={tb.web ? 'z5-fav-web' : 'kz-br-fav'} aria-hidden="true" /><span className="z5-ttab-t">{tb.t}</span></span>
+        )))}
+        <span className="kz-br-win" aria-hidden="true"><i className="kz-w-min" /><i className="kz-w-max" /><i className="kz-w-close" /></span>
+      </div>
+      <div className="kz-br-tool">
+        <Cut c="#E6DCC6" seed={33} n={12} amp={6} asp={12} cls="kz-br-tool-bg" />
+        <span className="kz-br-arrows"><i className="kz-ar-l" aria-hidden="true" /><i className="kz-ar-r" aria-hidden="true" /></span>
+        <span className="kz-br-url"><i className="kz-br-lock" aria-hidden="true" /><span className="kz-br-url-t">{url}</span></span>
+      </div>
+      <div className="kz-br-body">
+        <Cut c={KZ.cream} seed={32} n={16} amp={1.1} asp={1.6} cls="kz-br-paper" />
+        <div className="kz-br-page">{children}</div>
+      </div>
+    </div>
+  );
+}
+// Курсор мыши (стрелка, как в системе); press — щелчок (кольцо у кончика).
+const Z5Cursor = ({ at, press }) => (at ? (
+  <span className={'z5-cur' + (press ? ' is-press is-' + press : '')} style={{ left: at.x + 'px', top: at.y + 'px' }} aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="24" height="24"><path d="M5 2.5 L5 19.5 L9.4 15.4 L12.3 21.6 L15.2 20.3 L12.4 14.3 L18.4 14.1 Z" fill="#fff" stroke="#111" strokeWidth="1.5" strokeLinejoin="round" /></svg>
+    <i className="z5-cur-ring" />
+  </span>
+) : null);
+// Контекстное меню, как в Chrome: hl — пункт под курсором.
+const Z5Menu = ({ menu }) => (menu ? (
+  <span className="z5-cmenu" style={{ left: menu.x + 'px', top: menu.y + 'px' }} aria-hidden="true">
+    {menu.items.map((t, i) => <span key={i} data-mi={i} className={'z5-cmenu-i' + (menu.hl === i ? ' is-hl' : '')}>{t}</span>)}
+  </span>
+) : null);
 function W1({ p }) {
   const pick = usePick();
   const c = C.w1;
   const [rec, put] = useRec('w1');
   const solved = !!(rec && rec.done);
-  const [n, setN] = useState(solved ? 3 : 0);   // 0 — только имя файла; 1 — полный адрес; 2 — без https://; 3 — снова полный
+  const full = 'https://' + WEB_HOST + '/quyosh.jpg';
+  // n: 0 — своё имя файла; 1 — полный адрес; 2 — без https://; 3 — снова полный
+  const [n, setN] = useState(solved ? 3 : 0);
+  const [tab, setTab] = useState(0);            // 0 — своя страница, 1 — сайт Коди
+  const [sel, setSel] = useState(false);        // старое имя файла в src выделено
+  const [clip, setClip] = useState(false);      // адрес скопирован
+  const [cur, setCur] = useState(null);         // курсор { x, y }
+  const [press, setPress] = useState(null);     // 'l' | 'r' — щелчок
+  const [menu, setMenu] = useState(null);       // { x, y, items, hl }
   const [lit, setLit] = useState(null);
   const [seen, setSeen] = useState(solved ? 3 : 0);
+  const root = useRef(null);
   const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
+  const slow = reduceMotion() ? 200 : 750;
+  // Точка внутри элемента в координатах сцены (fx, fy — доли ширины и высоты).
+  const pt = (q, fx, fy) => {
+    const r = root.current; const el = r && r.querySelector(q);
+    if (!r || !el) return null;
+    const a = r.getBoundingClientRect(), b = el.getBoundingClientRect();
+    return { x: b.left - a.left + b.width * (fx == null ? 0.5 : fx), y: b.top - a.top + b.height * (fy == null ? 0.5 : fy) };
+  };
+  const go = (q, fx, fy) => { const t = pt(q, fx, fy); if (t) setCur(t); };
+  const click = (kind) => { setPress(kind); sfx('tap', true); setTimeout(() => setPress(null), 260); };
+  const openMenu = (items) => {
+    const r = root.current; const at = cur || { x: 0, y: 0 };
+    const W = r ? r.clientWidth : 400, H = r ? r.clientHeight : 400, mw = 232, mh = items.length * 30 + 14;
+    // Меню не уходит за край сцены: не помещается снизу — открывается над курсором.
+    const y = at.y + 6 + mh > H ? Math.max(4, at.y - mh - 4) : at.y + 6;
+    setMenu({ x: Math.max(4, Math.min(at.x + 4, W - mw - 4)), y, items, hl: null });
+  };
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
     { say: [{ text: c.sayWeb, pose: 'point' }] },
-    { act: () => { sfx('pop', true); setN(1); setLit('proto'); setSeen(1); } }, { say: [{ text: c.sayProto, pose: 'point' }] },
+    // 1. Вкладка сайта Коди
+    { act: () => go('.z5-ttab.is-side', 0.5, 0.55) }, { wait: slow },
+    { act: () => { click('l'); setTab(1); } }, { wait: 500 },
+    // 2. Правая кнопка по картинке → меню
+    { act: () => go('.z5-w1-web .z5-imgbox', 0.55, 0.45) }, { wait: slow },
+    { act: () => { click('r'); openMenu(pick(c.menuImg)); } },
+    { say: [{ text: c.sayMenu, pose: 'point' }] },
+    // 3. «Копировать URL картинки»
+    { act: () => go('.z5-cmenu-i[data-mi="3"]', 0.35, 0.5) }, { wait: 300 },
+    { act: () => setMenu((m) => (m ? { ...m, hl: 3 } : m)) }, { wait: 500 },
+    { act: () => { click('l'); setMenu(null); setClip(true); } },
+    { say: [{ text: c.sayCopy, pose: 'smile' }] },
+    // 4. Назад во вкладку своей страницы, к коду: выделить старое имя файла
+    { act: () => go('.z5-ttab.is-side', 0.5, 0.55) }, { wait: slow },
+    { act: () => { click('l'); setTab(0); } }, { wait: 400 },
+    { act: () => go('.z5-w1-src', 0.5, 0.6) }, { wait: slow },
+    { act: () => { click('l'); setSel(true); } },
+    { say: [{ text: c.sayBack, pose: 'point' }] },
+    // 5. Правая кнопка → «Вставить»
+    { act: () => { click('r'); openMenu(pick(c.menuEd)); } }, { wait: 500 },
+    { say: [{ text: c.sayPaste, pose: 'point' }] },
+    { act: () => go('.z5-cmenu-i[data-mi="2"]', 0.3, 0.5) }, { wait: 300 },
+    { act: () => setMenu((m) => (m ? { ...m, hl: 2 } : m)) }, { wait: 450 },
+    { act: () => { click('l'); setMenu(null); setSel(false); sfx('pop', true); setN(1); } }, { wait: 500 },
+    { act: () => setCur(null) },
+    { say: [{ text: c.sayPasted, pose: 'wonder' }] },
+    // 6. Из чего состоит адрес
+    { act: () => { sfx('tap', true); setLit('proto'); setSeen(1); } }, { say: [{ text: c.sayProto, pose: 'point' }] },
     { act: () => { sfx('tap', true); setLit('host'); setSeen(2); } }, { say: [{ text: c.sayHost, pose: 'point' }] },
-    { act: () => { sfx('ok', true); setLit('file'); setSeen(3); } }, { say: [{ text: c.sayFile, pose: 'wonder' }] },
+    { act: () => { sfx('tap', true); setLit('file'); setSeen(3); } }, { say: [{ text: c.sayFile, pose: 'smile' }] },
+    // 7. Без https:// — снова сломанная
     { act: () => { setLit(null); sfx('soft', true); setN(2); } }, { say: [{ text: c.sayNoProto, pose: 'curious' }] },
     { wait: 300 }, { say: [{ text: c.sayNf, pose: 'think' }] },
     { act: () => { sfx('ok', true); setN(3); } }, { say: [{ text: c.done, pose: 'smile' }] },
     { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
-  const full = 'https://' + WEB_HOST + '/quyosh.jpg';
   const src = n === 0 ? 'quyosh.jpg' : n === 2 ? WEB_HOST + '/quyosh.jpg' : full;
-  const alt = pick(C.site.webAlts)['quyosh.jpg'];
-  const blocks = [{ t: 'h1', parts: pick(C.site.sun), k: 'h' }, { t: 'img', src, alt, k: 'i', hl: !solved && !demo.done }];
-  const askText = solved || demo.done ? c.askDone : n === 2 ? c.askNf : lit ? c['ask' + lit[0].toUpperCase() + lit.slice(1)] : c.askStart;
+  const alts = pick(C.site.webAlts);
+  const alt = alts['quyosh.jpg'];
+  const own = [{ t: 'h1', parts: pick(C.site.sun), k: 'h' }, { t: 'img', src, alt, k: 'i', hl: !solved && !demo.done && n !== 1 }];
+  const web = [{ t: 'h1', parts: pick(c.webTitle), k: 'h' }, { t: 'imgs', k: 'g', items: [{ src: full, alt }, { src: 'https://' + WEB_HOST + '/olma.jpg', alt: alts['olma.jpg'] }] }];
+  const tabs = [{ t: pick(C.site.sun) }, { t: pick(c.webTitle), web: true }];
+  const showing = solved || demo.done;
+  const step = tab === 1 ? (clip || (menu && menu.hl != null) ? 'askCopy' : 'askMenu')
+    : clip && n === 0 ? 'askPaste' : n === 1 ? 'askPasted' : cur ? 'askTab' : 'askStart';
+  const askText = showing ? c.askDone : n === 2 ? c.askNf : lit ? c['ask' + lit[0].toUpperCase() + lit.slice(1)] : c[step];
+  // Строка img: пока адрес не вставлен — значение src отдельным куском (его выделяет курсор).
+  const imgLine = n === 0
+    ? [tagOpen(), <span key="s" className="kz-tag z5-att" translate="no"><span className="z5-attr">src</span><span className="kz-tk-b">=</span><span className="z5-val">"<span className={'z5-w1-src' + (sel ? ' is-sel' : '')}>quyosh.jpg</span>"</span></span>, attrSpan('alt', alt, 'al', true)]
+    : imgCode([{ n: 'src', v: src, lit }, { n: 'alt', v: alt }]);
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Sheet cls="z5-sheet">
         <KzAsk text={askText} />
-        <div className="kz-scene z5-s5 z5-w1">
+        <div ref={root} className="kz-scene z5-s5 z5-w1">
           <div className="kz-col">
             <KzCode lines={[textLine('h', 'h1', pick(C.site.sun), { cls: 'z5-ctx' }),
-              codeLine('i', imgCode([{ n: 'src', v: src, lit }, { n: 'alt', v: alt }]), { cls: n >= 1 ? 'is-new' + (lit || n === 2 ? ' is-read' : '') : 'is-read' })]} cls="kz-code-sm" />
+              codeLine('i', imgLine, { cls: n >= 1 ? 'is-new' + (lit || n === 2 ? ' is-read' : '') : 'is-read' })]} cls="kz-code-sm" />
             {seen ? (
               <div className="z5-url-lbls">
                 <TagChip t={'https:// — ' + pick(C.site.proto)} cls="z5-a-in" on={lit === 'proto'} />
                 {seen >= 2 ? <TagChip t={WEB_HOST + ' — ' + pick(C.site.hostL)} cls="z5-a-in" on={lit === 'host'} /> : null}
                 {seen >= 3 ? <TagChip t={'/quyosh.jpg — ' + pick(C.site.fileL)} cls="z5-a-in" on={lit === 'file'} /> : null}
               </div>
+            ) : clip ? (
+              <div className="z5-clip z5-a-in"><Icon name="check" size={14} /><b>{pick(c.copied)}:</b><code translate="no">{full}</code></div>
             ) : <FilesPanel files={IMG_FILES} />}
           </div>
-          <div className="kz-col"><Br title={pick(C.site.sun)} url="quyosh.html" short><PageDoc blocks={blocks} /></Br></div>
+          <div className="kz-col">
+            <Z5TabBr tabs={tabs} cur={tab} url={tab === 1 ? 'https://' + WEB_HOST : 'quyosh.html'} cls={tab === 1 ? 'z5-w1-web' : ''}>
+              <PageDoc key={'t' + tab} blocks={tab === 1 ? web : own} />
+            </Z5TabBr>
+          </div>
+          <Z5Menu menu={menu} />
+          <Z5Cursor at={cur} press={press} />
         </div>
       </Sheet>
     </StageB>
@@ -949,19 +1068,21 @@ function W3({ p }) {
   const it = c.items[ii];
   const file = it.src.split('/').pop();
   const alt = (pick(C.site.alts)[file] || pick(C.site.webAlts)[file]);
+  const ch = useChoiceHints(!ok, ii);
+  const hints = choiceHints(c.hint1, c.hint2, it.why, c[it.right]);
   const choose = (v) => {
     if (!canTap || ok || off === v) return;
     st.current.tries += 1;
     if (v !== it.right) {
       st.current.misses += 1;
-      sfx('soft', true); setOff(v); setMsg(it.why); sayNow(it.why, 'think');
+      sfx('soft', true); setOff(v); sayNow(ch.miss(it.why, hints), 'think');
       return;
     }
-    sfx('ok', true); setOk(true); setMsg(null);
+    sfx('ok', true); setOk(true); setMsg(null); ch.clear();
     const line = joinL(c.right, it.why);
     if (ii === c.items.length - 1) {
       put({ done: true });
-      log({ screenId: 'w3', type: 'sort-src', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: 0, depth: 0 });
+      log({ screenId: 'w3', type: 'sort-src', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: ch.lad.asked.current, depth: ch.lad.lv });
       sayNow(joinL(line, c.ok), 'cheer');
     } else { sayNow(line, 'smile'); setNext(true); }
   };
@@ -979,9 +1100,9 @@ function W3({ p }) {
     </button>
   );
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="z5-sheet">
-        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : msg} err={!!msg} n={(ii + 1) + '/' + c.items.length} />
+        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : ch.now(hints)} err={ch.err} n={(ii + 1) + '/' + c.items.length} />
         <div className="kz-scene z5-s5 z5-w3" key={'i' + ii}>
           <div className="kz-col">
             <KzCode lines={[codeLine('i', imgCode([{ n: 'src', v: it.src }, { n: 'alt', v: alt }]), { cls: 'is-hl' })]} cls="kz-code-sm" />
@@ -1114,24 +1235,25 @@ function S14({ p }) {
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || okNow, spoken);
   const led = useIdleLed(canTap && !okNow, off.length);
+  const ch = useChoiceHints(!okNow, 0);
   const choose = (o) => {
     if (!canTap || okNow || off.indexOf(o) >= 0) return false;
     if (o === 'src') {
-      sfx('win', true); setOkNow(true); setMsg(null); put({ done: true });
-      log({ screenId: 's14', type: 'fix-src', correct: true, firstTry: off.length === 0, attempts: off.length + 1 });
+      sfx('win', true); setOkNow(true); setMsg(null); ch.clear(); put({ done: true });
+      log({ screenId: 's14', type: 'fix-src', correct: true, firstTry: off.length === 0, attempts: off.length + 1, hints: ch.lad.asked.current, depth: ch.lad.lv });
       sayNow(c.ok, 'cheer');
       return true;
     }
-    sfx('soft', true); setOff(off.concat(o)); setMsg(c.why[o]); sayNow(c.why[o], 'think');
+    sfx('soft', true); setOff(off.concat(o)); sayNow(ch.miss(c.why[o], c.hints), 'think');
     return false;
   };
   const dnd = useKzDrag((o, where) => (where === 'gap' ? choose(o) : false));
   const blocks = [{ t: 'h1', parts: pick(UI.mySite), k: 'h' }, { t: 'img', src: okNow ? mine.pic : null, alt: mine.alt, k: 'i', hl: !okNow, cls: okNow ? 'z5-a-in' : '' }];
-  const glow = off.length >= 2 ? 'src' : null;
+  const glow = off.length >= 2 || ch.lad.lv >= 3 ? 'src' : null;
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="z5-sheet">
-        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : msg} err={!!msg} />
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : ch.now(c.hints)} err={ch.err} />
         <div className="kz-scene z5-s5">
           <div className="kz-col"><Br title={pick(UI.mySite)} url="mening.html" cls={okNow ? '' : 'z5-broken-br'}><PageDoc blocks={blocks} /></Br></div>
           <div className="kz-col">
@@ -1255,19 +1377,22 @@ function Q2({ p }) {
   const st = useRef({ tries: 0, misses: 0 });
   const led = useIdleLed(canTap && !ok, ii * 10 + (off === null ? 0 : 1));
   const it = c.items[ii];
+  // Ступени подсказки (лампочка; со второй ошибки — сами): 1 — как читать фразу, 2 — правило урока, 3 — причина и ответ.
+  const ch = useChoiceHints(!ok, ii);
+  const hints = choiceHints(c.hint1, c.hint2, it.why, it.right ? c.yes : c.no);
   const choose = (v) => {
     if (!canTap || ok || off === v) return;
     st.current.tries += 1;
     if (v !== it.right) {
       st.current.misses += 1;
-      sfx('soft', true); setOff(v); setMsg(it.why); sayNow(it.why, 'think');
+      sfx('soft', true); setOff(v); sayNow(ch.miss(it.why, hints), 'think');
       return;
     }
-    sfx('ok', true); setOk(true); setMsg(null);
+    sfx('ok', true); setOk(true); setMsg(null); ch.clear();
     const line = joinL(c.right, it.why);
     if (ii === c.items.length - 1) {
       put({ done: true });
-      log({ screenId: 'q2', type: 'true-false', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: 0, depth: 0 });
+      log({ screenId: 'q2', type: 'true-false', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: ch.lad.asked.current, depth: ch.lad.lv });
       sayNow(joinL(line, c.ok), 'cheer');
     } else { sayNow(line, 'smile'); setNext(true); }
   };
@@ -1284,9 +1409,9 @@ function Q2({ p }) {
   );
   const codes = { host: imgCode([{ n: 'src', v: WEB_HOST + '/olma.jpg' }]), void: imgCode([{ n: 'src', v: 'osh.jpg' }]), alt: imgCode([{ n: 'src', v: 'osh.jgp' }, { n: 'alt', v: pick(C.s5.alt) }]), href: imgCode([{ n: 'href', v: 'osh.jpg' }]) };
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="z5-sheet">
-        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : msg} err={!!msg} n={(ii + 1) + '/' + c.items.length} />
+        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : ch.now(hints)} err={ch.err} n={(ii + 1) + '/' + c.items.length} />
         <div className="kz-scene kz-scene-col kz-q2" key={'i' + ii}>
           <div className="kz-col">
             <div className="z5-card z5-tf-card kz-a-drop">

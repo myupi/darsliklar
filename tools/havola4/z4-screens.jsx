@@ -16,8 +16,8 @@ const inl = (parts, onNav, key) => (parts || []).map((x, j) => {
   const k = (key || '') + j;
   if (typeof x === 'string') return <React.Fragment key={k}>{x}</React.Fragment>;
   if (x.a !== undefined) {
-    return onNav ? <a key={k} href={'#' + x.href} className={'z4-a' + (x.hl ? ' is-hl' : '')} onClick={(e) => { e.preventDefault(); onNav(x.href); }}>{x.a}</a>
-      : <span key={k} className={'z4-a' + (x.hl ? ' is-hl' : '')}>{x.a}</span>;
+    return onNav ? <a key={k} href={'#' + x.href} data-w={x.w ? '1' : undefined} className={'z4-a' + (x.hl ? ' is-hl' : '')} onClick={(e) => { e.preventDefault(); onNav(x.href); }}>{x.a}</a>
+      : <span key={k} data-w={x.w ? '1' : undefined} className={'z4-a' + (x.hl ? ' is-hl' : '')}>{x.a}</span>;
   }
   if (x.an !== undefined) return <span key={k} className={'z4-an' + (x.hl ? ' is-hl' : '')}>{x.an}</span>;
   return <b key={k}>{x.b}</b>;
@@ -722,6 +722,9 @@ function S10({ p }) {
   const shownRd = round || (ans ? lastRef.current : null);
   const R = shownRd ? (shownRd.extra ? S10_EXTRA : S10_ROUNDS)[shownRd.i] : null;
   const led = useIdleLed(canTap && !!round && !ans, doneN);
+  // Ступени подсказки — на каждый раунд свои; ответ в раунде один (после него виден верный).
+  const ch = useChoiceHints(!!round && !ans, doneN);
+  const hints = R ? choiceHints(c.hint1, c.hint2[R.want], c.miss[R.want], c.pick[R.want]) : null;
   const answer = (k) => {
     if (!canTap || !round || ans) return;
     const right = k === R.want;
@@ -735,7 +738,7 @@ function S10({ p }) {
       [0, 1, 2].forEach((ii) => {
         const f = stats.current.find((x) => x.i === ii && !x.extra);
         const e = stats.current.find((x) => x.i === ii && x.extra);
-        log({ screenId: 's10.r' + (ii + 1), type: 'before-after', correct: true, firstTry: !!(f && f.right), attempts: e ? 2 : 1, helped: !!(f && !f.right), followUp: e ? e.right : null });
+        log({ screenId: 's10.r' + (ii + 1), type: 'before-after', correct: true, firstTry: !!(f && f.right), attempts: e ? 2 : 1, helped: !!(f && !f.right), followUp: e ? e.right : null, hints: ch.lad.asked.current });
       });
       put({ done: true }); setQueue([]);
       sayNow(joinL(line, c.done), 'smile');
@@ -763,9 +766,9 @@ function S10({ p }) {
     );
   };
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={round ? c.askQ : c.done} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={round ? (ch.next(hints) || c.askQ) : c.done} nav={navOf(p, canGo)}>
       <Sheet cls="z4-sheet">
-        <KzAsk text={round ? c.askQ : c.done} hint={round && ans && ans !== R.want ? c.miss[R.want] : null} err={!!(round && ans && ans !== R.want)} n={round ? (doneN + 1) + '/' + (doneN + queue.length) : null} />
+        <KzAsk text={round ? c.askQ : c.done} hint={round && ans && ans !== R.want ? c.miss[R.want] : round && !ans ? ch.now(hints) : null} err={!!(round && ans && ans !== R.want)} n={round ? (doneN + 1) + '/' + (doneN + queue.length) : null} />
         {R ? (
           <div className="kz-scene kz-scene-col" key={'r' + doneN}>
             <div className="kz-col">
@@ -834,55 +837,174 @@ function S11({ p }) {
 }
 
 // =============================================================================
-// W1. САЙТ В ИНТЕРНЕТЕ (показ; заказчик, 05.11.2026) — к главной добавляется ссылка на Википедию с полным
-// адресом; под речь Коди загораются https:// и имя сайта; браузер сам нажимает — открывается Википедия, адрес
-// в строке полный. Потом https:// стирается — браузер ищет файл на нашем сайте: «Файл не найден».
+// W1. САЙТ В ИНТЕРНЕТЕ (показ; заказчик, 05.11.2026) — у ссылки «Vikipediya» пустой href. Курсор мыши сам
+// показывает, как взять адрес сайта (как в уроке 5): вкладка Википедии → щелчок по адресной строке (адрес
+// выделяется) → правая кнопка → «Копировать» → назад во вкладку своей страницы → щелчок в кавычки href → правая
+// кнопка → «Вставить». Загораются https:// и имя сайта; курсор нажимает ссылку — открывается Википедия. Потом
+// https:// стирается, курсор снова нажимает — «Файл не найден»: браузер ищет файл на нашем сайте.
+// Курсор и меню — показ, нажимать их не нужно (pointer-events: none).
 // =============================================================================
+function Z4TabBr({ tabs, cur, url, urlSel, onBack, children, cls }) {
+  return (
+    <div className={'kz-br z4-br z4-tbr' + (cls ? ' ' + cls : '')}>
+      <Cut c={KZ.ink} seed={31} n={16} amp={1.4} asp={1.6} cls="kz-br-frame" />
+      <div className="kz-br-bar z4-tbar">
+        {tabs.map((tb, i) => (i === cur ? (
+          <span key={i} className="kz-br-tab z4-ttab is-cur"><i className={tb.web ? 'z4-fav-web' : 'kz-br-fav'} aria-hidden="true" /><span className="kz-br-tab-t">{tb.t}</span><i className="kz-br-x" aria-hidden="true" /></span>
+        ) : (
+          <span key={i} className="z4-ttab is-side"><i className={tb.web ? 'z4-fav-web' : 'kz-br-fav'} aria-hidden="true" /><span className="z4-ttab-t">{tb.t}</span></span>
+        )))}
+        <span className="kz-br-win" aria-hidden="true"><i className="kz-w-min" /><i className="kz-w-max" /><i className="kz-w-close" /></span>
+      </div>
+      <div className="kz-br-tool">
+        <Cut c="#E6DCC6" seed={33} n={12} amp={6} asp={12} cls="kz-br-tool-bg" />
+        <span className="kz-br-arrows">{onBack ? <button type="button" className="kz-ar-l kz-ar-btn" onClick={onBack} aria-label="Back" /> : <i className="kz-ar-l" aria-hidden="true" />}<i className="kz-ar-r" aria-hidden="true" /></span>
+        <span className="kz-br-url"><i className="kz-br-lock" aria-hidden="true" /><span className={'kz-br-url-t' + (urlSel ? ' z4-url-sel' : '')}>{url}</span></span>
+      </div>
+      <div className="kz-br-body">
+        <Cut c={KZ.cream} seed={32} n={16} amp={1.1} asp={1.6} cls="kz-br-paper" />
+        <div className="kz-br-page">{children}</div>
+      </div>
+    </div>
+  );
+}
+// Курсор мыши; press — щелчок ('l' — левая, 'r' — правая кнопка).
+const Z4Cursor = ({ at, press }) => (at ? (
+  <span className={'z4-cur' + (press ? ' is-press is-' + press : '')} style={{ left: at.x + 'px', top: at.y + 'px' }} aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="24" height="24"><path d="M5 2.5 L5 19.5 L9.4 15.4 L12.3 21.6 L15.2 20.3 L12.4 14.3 L18.4 14.1 Z" fill="#fff" stroke="#111" strokeWidth="1.5" strokeLinejoin="round" /></svg>
+    <i className="z4-cur-ring" />
+  </span>
+) : null);
+const Z4Menu = ({ menu }) => (menu ? (
+  <span className="z4-cmenu" style={{ left: menu.x + 'px', top: menu.y + 'px' }} aria-hidden="true">
+    {menu.items.map((t, i) => <span key={i} data-mi={i} className={'z4-cmenu-i' + (menu.hl === i ? ' is-hl' : '') + (menu.sep && menu.sep.indexOf(i) >= 0 ? ' is-sep' : '')}>{t}</span>)}
+  </span>
+) : null);
 function W1({ p }) {
   const pick = usePick();
   const c = C.w1;
   const [rec, put] = useRec('w1');
   const solved = !!(rec && rec.done);
-  const [n, setN] = useState(solved ? 3 : 0);   // 0 — ссылки нет; 1 — полный адрес; 2 — без https://; 3 — снова полный
+  // n: 0 — href пустой; 1 — полный адрес; 2 — без https://; 3 — снова полный
+  const [n, setN] = useState(solved ? 3 : 0);
+  const [tab, setTab] = useState(0);
+  const [urlSel, setUrlSel] = useState(false);
+  const [caret, setCaret] = useState(false);
+  const [clip, setClip] = useState(false);
+  const [cur, setCur] = useState(null);
+  const [press, setPress] = useState(null);
+  const [menu, setMenu] = useState(null);
   const [lit, setLit] = useState(null);
   const [seen, setSeen] = useState(solved ? 2 : 0);
   const nav = useNav('index.html', FILES);
   const url = pick(C.web.url), host = pick(C.web.host), link = pick(C.web.link);
+  const root = useRef(null);
   const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
-  const W = reduceMotion() ? 300 : 1300;
+  const slow = reduceMotion() ? 200 : 750;
+  const pt = (q, fx, fy) => {
+    const r = root.current; const el = r && r.querySelector(q);
+    if (!r || !el) return null;
+    const a2 = r.getBoundingClientRect(), b2 = el.getBoundingClientRect();
+    return { x: b2.left - a2.left + b2.width * (fx == null ? 0.5 : fx), y: b2.top - a2.top + b2.height * (fy == null ? 0.5 : fy) };
+  };
+  const go = (q, fx, fy) => { const t = pt(q, fx, fy); if (t) setCur(t); };
+  const click = (kind) => { setPress(kind); sfx('tap', true); setTimeout(() => setPress(null), 260); };
+  const openMenu = (items, sep) => {
+    const r = root.current;
+    setCur((at0) => {
+      const at = at0 || { x: 0, y: 0 };
+      const W = r ? r.clientWidth : 400, H = r ? r.clientHeight : 400, mw = 210, mh = items.length * 30 + 14;
+      const y = at.y + 6 + mh > H ? Math.max(4, at.y - mh - 4) : at.y + 6;
+      setMenu({ x: Math.max(4, Math.min(at.x + 4, W - mw - 4)), y, items, hl: null, sep });
+      return at0;
+    });
+  };
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
-    { act: () => { sfx('pop', true); setN(1); } }, { wait: 500 },
+    { say: [{ text: c.sayWeb, pose: 'point' }] },
+    // 1. Вкладка Википедии
+    { act: () => go('.z4-ttab.is-side', 0.5, 0.55) }, { wait: slow },
+    { act: () => { click('l'); setTab(1); } }, { wait: 500 },
+    // 2. Адресная строка — адрес выделяется
+    { act: () => go('.z4-w1 .kz-br-url-t', 0.6, 0.6) }, { wait: slow },
+    { act: () => { click('l'); setUrlSel(true); } },
+    { say: [{ text: c.sayBar, pose: 'point' }] },
+    // 3. Правая кнопка → «Копировать»
+    { act: () => { click('r'); openMenu(pick(c.menuBar), [1, 5]); } }, { wait: 500 },
+    { act: () => go('.z4-cmenu-i[data-mi="2"]', 0.3, 0.5) }, { wait: 300 },
+    { act: () => setMenu((m) => (m ? { ...m, hl: 2 } : m)) }, { wait: 450 },
+    { act: () => { click('l'); setMenu(null); setClip(true); } },
+    { say: [{ text: c.sayCopy, pose: 'smile' }] },
+    // 4. Назад во вкладку своей страницы, в кавычки href
+    { act: () => { setUrlSel(false); go('.z4-ttab.is-side', 0.5, 0.55); } }, { wait: slow },
+    { act: () => { click('l'); setTab(0); } }, { wait: 400 },
+    { act: () => go('.z4-w1-href', 0.5, 0.6) }, { wait: slow },
+    { act: () => { click('l'); setCaret(true); } },
+    { say: [{ text: c.sayBack, pose: 'point' }] },
+    // 5. Правая кнопка → «Вставить»
+    { act: () => { click('r'); openMenu(pick(c.menuEd)); } }, { wait: 500 },
+    { act: () => go('.z4-cmenu-i[data-mi="2"]', 0.3, 0.5) }, { wait: 300 },
+    { act: () => setMenu((m) => (m ? { ...m, hl: 2 } : m)) }, { wait: 450 },
+    { act: () => { click('l'); setMenu(null); setCaret(false); sfx('pop', true); setN(1); } }, { wait: 300 },
+    { act: () => setCur(null) },
+    { say: [{ text: c.sayPaste, pose: 'wonder' }] },
+    // 6. Части адреса
     { act: () => { sfx('tap', true); setLit('proto'); setSeen(1); } }, { say: [{ text: c.sayProto, pose: 'point' }] },
     { act: () => { sfx('tap', true); setLit('host'); setSeen(2); } }, { say: [{ text: c.sayHost, pose: 'point' }] },
-    { act: () => { setLit(null); nav.go(url); } }, { wait: 500 }, { say: [{ text: c.sayOpen, pose: 'smile' }] },
-    { act: () => nav.back && nav.back() }, { wait: W },
+    // 7. Курсор нажимает ссылку — открывается Википедия
+    { act: () => { setLit(null); go('.z4-w1 .kz-br-page .z4-a[data-w]', 0.4, 0.6); } }, { wait: slow },
+    { act: () => { click('l'); nav.go(url); } }, { wait: 500 },
+    { say: [{ text: c.sayOpen, pose: 'smile' }] },
+    { act: () => { if (nav.back) nav.back(); } }, { wait: 600 },
+    // 8. Без https:// — «Файл не найден»
     { act: () => { sfx('soft', true); setN(2); } }, { say: [{ text: c.sayNoProto, pose: 'curious' }] },
-    { act: () => nav.go(host) }, { wait: 500 }, { say: [{ text: c.sayNf, pose: 'wonder' }] },
-    { act: () => { if (nav.back) nav.back(); sfx('ok', true); setN(3); } }, { say: [{ text: c.done, pose: 'smile' }] },
+    { act: () => go('.z4-w1 .kz-br-page .z4-a[data-w]', 0.4, 0.6) }, { wait: slow },
+    { act: () => { click('l'); nav.go(host); } }, { wait: 500 },
+    { say: [{ text: c.sayNf, pose: 'wonder' }] },
+    { act: () => { setCur(null); if (nav.back) nav.back(); sfx('ok', true); setN(3); } }, { say: [{ text: c.done, pose: 'smile' }] },
     { act: () => put({ done: true }) }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
-  const href = n === 2 ? host : url;
-  const page = nav.url === 'index.html' ? { title: pick(C.site.title), blocks: [
+  const showing = solved || demo.done;
+  const href = n === 2 ? host : n === 0 ? '' : url;
+  // Своя вкладка: главная со ссылкой «Vikipediya» (data-w — её ищет курсор); переходы — честно по адресу.
+  const ownPage = nav.url === 'index.html' ? { title: pick(C.site.title), blocks: [
     { t: 'h1', parts: [pick(C.site.title)], k: 'h' },
-    { t: 'p', parts: [{ a: pick(C.site.osh), href: 'osh.html' }], k: 'l1' }].concat(n >= 1 ? [{ t: 'p', parts: [{ a: link, href }], k: 'w', hl: !demo.done && !solved }] : []) } : null;
-  const askText = solved || demo.done ? c.askDone : n === 2 ? c.askNf : lit === 'host' ? c.askHost : lit === 'proto' ? c.askProto : c.askStart;
+    { t: 'p', parts: [{ a: pick(C.site.osh), href: 'osh.html' }], k: 'l1' },
+    { t: 'p', parts: [{ a: link, href: href || 'index.html', w: true }], k: 'w', hl: !showing }] } : sitePage(pick, nav.url);
+  const wikiPage = sitePage(pick, url);
+  const pg = tab === 1 ? wikiPage : ownPage;
+  const tabs = [{ t: tab === 0 ? pg.title : pick(C.site.title) }, { t: wikiPage.title, web: true }];
+  const step = tab === 1 ? (clip || (menu && menu.hl != null) ? 'askCopy' : urlSel || menu ? 'askBar' : 'askTab')
+    : clip && n === 0 ? 'askPaste' : n === 1 && nav.url !== 'index.html' ? 'askOpen' : cur && n === 0 ? 'askTab' : null;
+  const askText = showing ? c.askDone : n === 2 ? c.askNf : lit === 'host' ? c.askHost : lit === 'proto' ? c.askProto : step ? c[step] : c.askStart;
+  const hrefLine = n === 0
+    ? [T_('p'), <span key="o" className="kz-tag" translate="no"><span className="kz-tk-b">{'<'}</span><span className="kz-tk-n">a</span> <span className="z4-attr">href</span><span className="kz-tk-b">=</span><span className="z4-val">"<span className={'z4-w1-href' + (caret ? ' is-caret' : '')} />"</span><span className="kz-tk-b">{'>'}</span></span>, W_(link), T_('a', true), T_('p', true)]
+    : aCode(href, link, { lit });
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Sheet cls="z4-sheet">
         <KzAsk text={askText} />
-        <div className="kz-scene z4-s5">
+        <div ref={root} className="kz-scene z4-s5 z4-w1">
           <div className="kz-col">
             <KzCode lines={[codeLine('h', [T_('h1'), W_(pick(C.site.title)), T_('h1', true)], { cls: 'z4-edge' }),
-              codeLine('l1', aCode('osh.html', pick(C.site.osh)), { cls: 'z4-ctx' })].concat(n >= 1 ? [codeLine('w', aCode(href, link, { lit }), { cls: 'is-new' + (lit || n === 2 ? ' is-read' : '') })] : [])} cls="kz-code-sm" />
+              codeLine('l1', aCode('osh.html', pick(C.site.osh)), { cls: 'z4-ctx' }),
+              codeLine('w', hrefLine, { cls: (n >= 1 ? 'is-new' : 'is-hl') + (lit || n === 2 ? ' is-read' : '') })]} cls="kz-code-sm" />
             {seen ? (
               <div className="z4-anat-labels z4-url-lbls">
                 <TagChip t={'https:// — ' + pick(C.web.proto)} cls="z4-a-in" on={lit === 'proto'} />
                 {seen >= 2 ? <TagChip t={pick(fillL(C.web.hostL, { h: C.web.host }))} cls="z4-a-in" on={lit === 'host'} /> : null}
               </div>
+            ) : clip ? (
+              <div className="z4-clip z4-a-in"><Icon name="check" size={14} /><b>{pick(c.copied)}:</b><code translate="no">{url}</code></div>
             ) : null}
           </div>
-          <div className="kz-col"><SiteBrowser nav={nav} short override={page} live={false} /></div>
+          <div className="kz-col">
+            <Z4TabBr tabs={tabs} cur={tab} url={tab === 1 ? url : nav.url} urlSel={urlSel} cls={(tab === 1 ? 'is-web' : '') + (pg.nf ? ' is-nf' : '')}>
+              <PageDoc key={'t' + tab + ':' + nav.url + ':' + nav.at} blocks={pg.blocks} cls="z4-a-in" />
+            </Z4TabBr>
+          </div>
+          <Z4Menu menu={menu} />
+          <Z4Cursor at={cur} press={press} />
         </div>
       </Sheet>
     </StageB>
@@ -993,6 +1115,8 @@ function W3({ p }) {
   const st = useRef({ tries: 0, misses: 0 });
   const led = useIdleLed(canTap && !ok, ii * 10 + (off === null ? 0 : 1));
   const it = c.items[ii];
+  const ch = useChoiceHints(!ok, ii);
+  const hints = choiceHints(c.hint1, c.hint2, it.why, c[it.right]);
   const href = it.k === 'osh' ? 'osh.html' : it.k === 'url' ? pick(C.web.url) : it.k === 'host' ? pick(C.web.host) : C.web.portal;
   const text = it.k === 'osh' ? pick(C.site.osh) : pick(C.web.link);
   const choose = (v) => {
@@ -1000,14 +1124,14 @@ function W3({ p }) {
     st.current.tries += 1;
     if (v !== it.right) {
       st.current.misses += 1;
-      sfx('soft', true); setOff(v); setMsg(it.why); sayNow(it.why, 'think');
+      sfx('soft', true); setOff(v); sayNow(ch.miss(it.why, hints), 'think');
       return;
     }
-    sfx('ok', true); setOk(true); setMsg(null); nav.go(href);
+    sfx('ok', true); setOk(true); setMsg(null); ch.clear(); nav.go(href);
     const line = joinL(c.right, it.why);
     if (ii === c.items.length - 1) {
       put({ done: true });
-      log({ screenId: 'w3', type: 'sort-address', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: 0, depth: 0 });
+      log({ screenId: 'w3', type: 'sort-address', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: ch.lad.asked.current, depth: ch.lad.lv });
       sayNow(joinL(line, c.ok), 'cheer');
     } else { sayNow(line, 'smile'); setNext(true); }
   };
@@ -1025,9 +1149,9 @@ function W3({ p }) {
     </button>
   );
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="z4-sheet">
-        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : msg} err={!!msg} n={(ii + 1) + '/' + c.items.length} />
+        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : ch.now(hints)} err={ch.err} n={(ii + 1) + '/' + c.items.length} />
         <div className="kz-scene z4-s5" key={'i' + ii}>
           <div className="kz-col">
             <KzCode lines={[codeLine('w', aCode(href, text), { cls: 'is-hl' })]} cls="kz-code-sm" />
@@ -1159,26 +1283,27 @@ function S14({ p }) {
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || okNow, spoken);
   const led = useIdleLed(canTap && !okNow, off.length);
+  const ch = useChoiceHints(!okNow, 0);
   const choose = (o) => {
     if (!canTap || okNow || off.indexOf(o) >= 0) return false;
     if (o === 'href="mening.html"') {
-      sfx('win', true); setOkNow(true); setMsg(null); put({ done: true });
-      log({ screenId: 's14', type: 'fix-href', correct: true, firstTry: off.length === 0, attempts: off.length + 1 });
+      sfx('win', true); setOkNow(true); setMsg(null); ch.clear(); put({ done: true });
+      log({ screenId: 's14', type: 'fix-href', correct: true, firstTry: off.length === 0, attempts: off.length + 1, hints: ch.lad.asked.current, depth: ch.lad.lv });
       sayNow(c.ok, 'cheer');
       return true;
     }
     const m = o === 'href' ? c.why.name : c.why.val;
-    sfx('soft', true); setOff(off.concat(o)); setMsg(m); sayNow(m, 'think');
+    sfx('soft', true); setOff(off.concat(o)); sayNow(ch.miss(m, c.hints), 'think');
     return false;
   };
   const dnd = useKzDrag((o, where) => (where === 'gap' ? choose(o) : false));
   const page = nav.url === 'index.html' ? { title: pick(C.site.title), blocks: [{ t: 'h1', parts: [pick(C.site.title)], k: 'h' },
     { t: 'p', parts: [okNow ? { a: mine, href: 'mening.html' } : { an: mine }], k: 'l3', hl: !okNow }] } : null;
-  const glow = off.length >= 2 ? 'href="mening.html"' : null;
+  const glow = off.length >= 2 || ch.lad.lv >= 3 ? 'href="mening.html"' : null;
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="z4-sheet">
-        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : msg} err={!!msg} />
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : ch.now(c.hints)} err={ch.err} />
         <div className="kz-scene z4-s5">
           <div className="kz-col"><SiteBrowser nav={nav} override={page} mine={mine} cls={okNow ? '' : 'z4-broken'} live={okNow} /></div>
           <div className="kz-col">
@@ -1307,19 +1432,22 @@ function Q2({ p }) {
   const st = useRef({ tries: 0, misses: 0 });
   const led = useIdleLed(canTap && !ok, ii * 10 + (off === null ? 0 : 1));
   const it = c.items[ii];
+  // Ступени подсказки (лампочка; со второй ошибки — сами): 1 — как читать фразу, 2 — правило урока, 3 — причина и ответ.
+  const ch = useChoiceHints(!ok, ii);
+  const hints = choiceHints(c.hint1, c.hint2, it.why, it.right ? c.yes : c.no);
   const choose = (v) => {
     if (!canTap || ok || off === v) return;
     st.current.tries += 1;
     if (v !== it.right) {
       st.current.misses += 1;
-      sfx('soft', true); setOff(v); setMsg(it.why); sayNow(it.why, 'think');
+      sfx('soft', true); setOff(v); sayNow(ch.miss(it.why, hints), 'think');
       return;
     }
-    sfx('ok', true); setOk(true); setMsg(null);
+    sfx('ok', true); setOk(true); setMsg(null); ch.clear();
     const line = joinL(c.right, it.why);
     if (ii === c.items.length - 1) {
       put({ done: true });
-      log({ screenId: 'q2', type: 'true-false', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: 0, depth: 0 });
+      log({ screenId: 'q2', type: 'true-false', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: ch.lad.asked.current, depth: ch.lad.lv });
       sayNow(joinL(line, c.ok), 'cheer');
     } else { sayNow(line, 'smile'); setNext(true); }
   };
@@ -1335,9 +1463,9 @@ function Q2({ p }) {
     </button>
   );
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="z4-sheet">
-        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : msg} err={!!msg} n={(ii + 1) + '/' + c.items.length} />
+        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : ch.now(hints)} err={ch.err} n={(ii + 1) + '/' + c.items.length} />
         <div className="kz-scene kz-scene-col kz-q2" key={'i' + ii}>
           <div className="kz-col">
             <div className="z4-card z4-tf-card kz-a-drop">

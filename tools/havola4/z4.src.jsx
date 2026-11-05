@@ -319,6 +319,15 @@ const C = {
     },
     done: L3("Endi havola nimaga buzilishini bilasiz. Keyin butun saytni birga aylanib chiqamiz.", 'Теперь ты знаешь, почему ссылки ломаются. Дальше пройдёмся по всему сайту.', 'Now you know why links break. Next, let’s walk around the whole site.'),
     before: L3('Oldin', 'До', 'Before'),
+    // Ступени подсказки (лампочка): 1 — куда смотреть, 2 — по виду раунда, 3 — причина и какой ответ выбрать.
+    // Как назвать верную кнопку в 3-й ступени — словами (подсказка звучит, знаков в речи нет).
+    pick: { href: L3('href', 'href', 'href'), close: L3('yopuvchi a tegi', 'закрывающий тег a', 'the closing a tag'), val: L3('fayl nomi', 'имя файла', 'the file name') },
+    hint1: L3("Oldin va keyin brauzerdagi farqqa qarang: sahifada nima o'zgardi?", 'Сравни «до» и «после» в браузере: что изменилось на странице?', 'Compare “before” and “after” in the browser: what changed on the page?'),
+    hint2: {
+      href: L3("Oddiy matn havolaga aylandimi? Havolani qaysi atribut yasashini eslang.", 'Обычный текст стал ссылкой? Вспомни, какой атрибут делает ссылку.', 'Did plain text become a link? Remember which attribute makes a link.'),
+      close: L3("Havola qayerda tugashi o'zgardimi? Havolani qaysi teg to'xtatishini eslang.", 'Изменилось, где кончается ссылка? Вспомни, какой тег её останавливает.', 'Did the place where the link ends change? Remember which tag stops it.'),
+      val: L3("«Fayl topilmadi» yo'qoldimi? Unda kodda nima tuzatilganini o'ylang.", 'Пропало «Файл не найден»? Подумай, что тогда исправили в коде.', 'Did “File not found” go away? Think what was fixed in the code then.')
+    },
     after: L3('Keyin', 'После', 'After')
   },
   s11: {
@@ -339,9 +348,36 @@ const C = {
     sayProto: L3("To'liq manzil https so'zi bilan boshlanadi, keyin ikki nuqta va ikkita qiya chiziq keladi. Bu brauzerga internetga chiqishni aytadi. Oxiridagi s harfi inglizcha secure so'zidan olingan, ya'ni xavfsiz degani.",
       'Полный адрес начинается со слова https, потом идут двоеточие и две косые черты. Это говорит браузеру: иди в интернет. Буква s на конце — от английского secure, то есть «защищённый».',
       'A full address starts with the word https, then a colon and two slashes. That tells the browser to go out to the internet. The s at the end stands for secure.'),
-    sayHost: L3("Undan keyin sayt nomi keladi. Bu yerda u Vikipediya sayti. Qarang, brauzer havolani o'zi bosib ko'radi.",
-      'Дальше идёт имя сайта. Здесь это сайт Википедии. Смотри, браузер сам нажмёт ссылку.',
-      'Then comes the site name. Here it’s the Wikipedia site. Watch, the browser taps the link.'),
+    // Показ «как взять адрес сайта» (заказчик, 05.11.2026, как в уроке 5): курсор мыши — вкладка Википедии →
+    // адресная строка → правая кнопка → «Копировать» → назад к коду → в кавычки href → правая кнопка → «Вставить».
+    sayWeb: L3("Bu manzilni qayerdan olamiz? Vikipediya brauzerning boshqa yorlig'ida ochiq. Keling, ko'rsataman.",
+      'Где взять этот адрес? Википедия открыта в другой вкладке браузера. Давай покажу.',
+      'Where do we get this address? Wikipedia is open in another browser tab. Let me show you.'),
+    sayBar: L3("Tepadagi manzil satrini bosamiz. Qarang, saytning to'liq manzili belgilandi.",
+      'Нажимаем на адресную строку вверху. Смотри, полный адрес сайта выделился.',
+      'We click the address bar at the top. Look, the site’s full address is selected.'),
+    sayCopy: L3("Endi o'ng tugmani bosamiz va ro'yxatdan «Copy»ni tanlaymiz. Manzil xotiraga olindi.",
+      'Теперь нажимаем правую кнопку и выбираем в списке «Копировать». Адрес в памяти.',
+      'Now we press the right button and choose “Copy” in the menu. The address is in memory.'),
+    sayBack: L3("O'z sahifamiz yorlig'iga qaytamiz va kodda href qo'shtirnog'i ichini bosamiz.",
+      'Возвращаемся во вкладку своей страницы и щёлкаем в коде внутри кавычек href.',
+      'We go back to our page’s tab and click inside the href quotes in the code.'),
+    sayPaste: L3("Yana o'ng tugmani bosamiz va «Paste»ni tanlaymiz. Mana, manzil kodga tushdi!",
+      'Снова нажимаем правую кнопку и выбираем «Вставить». Готово, адрес попал в код!',
+      'We press the right button again and choose “Paste”. There, the address went into the code!'),
+    sayHost: L3("Undan keyin sayt nomi keladi. Bu yerda u Vikipediya sayti. Endi havolani bosib ko'ramiz.",
+      'Дальше идёт имя сайта. Здесь это сайт Википедии. А теперь нажмём ссылку.',
+      'Then comes the site name. Here it’s the Wikipedia site. Now let’s click the link.'),
+    menuBar: L3(['Undo', 'Cut', 'Copy', 'Paste', 'Paste and go', 'Delete', 'Select all'],
+      ['Отменить', 'Вырезать', 'Копировать', 'Вставить', 'Вставить и перейти', 'Удалить', 'Выбрать все'],
+      ['Undo', 'Cut', 'Copy', 'Paste', 'Paste and go', 'Delete', 'Select all']),
+    menuEd: L3(['Cut', 'Copy', 'Paste'], ['Вырезать', 'Копировать', 'Вставить'], ['Cut', 'Copy', 'Paste']),
+    copied: L3('Nusxa olindi', 'Скопировано', 'Copied'),
+    askTab: L3('Qarang: sayt boshqa yorliqda', 'Смотри: сайт в другой вкладке', 'Watch: the site is in another tab'),
+    askBar: L3('Qarang: manzil satri', 'Смотри: адресная строка', 'Watch: the address bar'),
+    askCopy: L3('Qarang: manzildan nusxa olamiz', 'Смотри: копируем адрес', 'Watch: we copy the address'),
+    askPaste: L3("Qarang: kodga qo'yamiz", 'Смотри: вставляем в код', 'Watch: we paste it into the code'),
+    askOpen: L3('Qarang: havolani bosamiz', 'Смотри: нажимаем ссылку', 'Watch: we click the link'),
     sayOpen: L3("Brauzer internetga chiqdi va boshqa saytni ochdi. Manzil satriga qarang: u yerda endi to'liq manzil turibdi.",
       'Браузер вышел в интернет и открыл другой сайт. Посмотри в адресную строку: там теперь полный адрес.',
       'The browser went out to the internet and opened another site. Look at the address bar: the full address is there now.'),
@@ -386,6 +422,10 @@ const C = {
       'Теперь проверь себя. Я пишу адрес ссылки, а ты выбери, где браузер будет его искать: среди файлов нашего сайта или в интернете?',
       'Now check yourself. I write a link address, and you choose where the browser will look for it: among our site’s files or on the internet?'),
     ask: L3('Brauzer qayerdan qidiradi?', 'Где браузер будет искать?', 'Where will the browser look?'),
+    hint1: L3('Manzilning eng boshiga qarang.', 'Посмотри на самое начало адреса.', 'Look at the very start of the address.'),
+    hint2: L3("Manzil https bilan boshlansa, brauzer internetga chiqadi. Faqat fayl yoki sayt nomi bo'lsa, saytimizdan qidiradi.",
+      'Если адрес начинается с https, браузер идёт в интернет. Если там только имя файла или сайта, он ищет на нашем сайте.',
+      'If the address starts with https, the browser goes to the internet. If it’s just a file or site name, it looks on our site.'),
     site: L3('Saytimiz fayllaridan', 'Среди файлов сайта', 'In our site’s files'),
     web: L3('Internetdan', 'В интернете', 'On the internet'),
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
@@ -445,7 +485,12 @@ const C = {
       val: L3("Bu faqat qiymat. Oldida atribut nomi va teng belgisi bo'lishi kerak.", 'Это только значение. Перед ним нужны имя атрибута и знак «равно».', 'That’s only the value. It needs the attribute name and the equals sign before it.')
     },
     ok: L3("Ana endi joyida! Havolangiz yana ishlaydi, bosib ko'ring.", 'Вот теперь порядок! Ссылка снова работает — нажми.', 'That’s it! Your link works again; tap it.'),
-    ask: L3("Yetishmayotgan bo'lakni bo'sh joyga olib boring", 'Перетащи недостающий кусок в пустое место', 'Drag the missing piece into the empty spot')
+    ask: L3("Yetishmayotgan bo'lakni bo'sh joyga olib boring", 'Перетащи недостающий кусок в пустое место', 'Drag the missing piece into the empty spot'),
+    hints: [
+      L3("Brauzerga qarang: havola oddiy matn bo'lib qoldi. Unga nima yetishmayapti?", 'Посмотри на браузер: ссылка стала обычным текстом. Чего ей не хватает?', 'Look at the browser: the link became plain text. What is it missing?'),
+      L3("Havolaga atributning hammasi kerak: nomi, teng belgisi va qo'shtirnoqdagi fayl nomi.", 'Ссылке нужен атрибут целиком: имя, знак «равно» и имя файла в кавычках.', 'The link needs the whole attribute: the name, the equals sign and the file name in quotes.'),
+      L3("Bo'laklardan href, teng belgisi va mening.html birga turganini tanlang.", 'Выбери кусок, где вместе стоят href, знак «равно» и mening.html.', 'Pick the piece that has href, the equals sign and mening.html together.')
+    ]
   },
   // ИТОГОВАЯ ПРОВЕРКА (q1, q2): новые случаи без образца; до первой попытки ответ не подсвечен.
   q1: {
@@ -479,6 +524,10 @@ const C = {
     say: L3("Oxirgi sinov. Men bitta gap aytaman, siz esa u to'g'ri yoki noto'g'ri ekanini tanlaysiz.", 'Последнее испытание. Я скажу фразу, а ты выбери: верно это или нет.', 'The last test. I’ll say something, and you choose: true or false.'),
     ask: L3("To'g'ri yoki noto'g'ri?", 'Верно или нет?', 'True or false?'),
     card: L3('Kodi aytadi', 'Коди говорит', 'Kodi says'),
+    hint1: L3("Gapni bo'laklab o'qing: u qaysi teg yoki atribut haqida?", 'Прочитай фразу по частям: о каком теге или атрибуте она?', 'Read the sentence piece by piece: which tag or attribute is it about?'),
+    hint2: L3("To'g'ri havolani eslang: ochuvchi a tegi, uning ichida href va qo'shtirnoqdagi manzil. Gap shunga mos keladimi?",
+      'Вспомни правильную ссылку: открывающий тег a, в нём href и адрес в кавычках. Фраза с этим совпадает?',
+      'Remember a correct link: the opening a tag, href inside it and the address in quotes. Does the sentence match that?'),
     yes: L3("To'g'ri", 'Верно', 'True'),
     no: L3("Noto'g'ri", 'Неверно', 'False'),
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
@@ -520,8 +569,8 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { why: 1, magic: 1, magicP: 1, msgs: 1, sayA: 1, sayHref: 1, sayTag: 1, sayAttr: 1, sayVal: 1, sayClose: 1,
-  sayTypo: 1, sayNf: 1, sayProto: 1, sayHost: 1, sayOpen: 1, sayNoProto: 1, okHttp: 1, askQ: 1, miss: 1, order1: 1, order2: 1, order3: 1, say2: 1, fine: 1, items: 1, right: 1, pairOk: 1 });
+Object.assign(SPOKEN, { hint1: 1, hint2: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayA: 1, sayHref: 1, sayTag: 1, sayAttr: 1, sayVal: 1, sayClose: 1,
+  sayTypo: 1, sayNf: 1, sayProto: 1, sayHost: 1, sayOpen: 1, sayNoProto: 1, sayWeb: 1, sayBar: 1, sayCopy: 1, sayBack: 1, sayPaste: 1, okHttp: 1, askQ: 1, miss: 1, order1: 1, order2: 1, order3: 1, say2: 1, fine: 1, items: 1, right: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1 } });
 
 /*@FILE:gen/b16-chrome.jsx@*/
