@@ -6671,12 +6671,14 @@ const CANON_SCREEN_CSS = CANON_SCREEN_CSS_BASE + CANON_MECH_CSS + CANON_DZ_CSS +
 // сломанные ссылки и делает ссылку на свою страницу. Загадка (без имён): Коди обернул «Mening
 // o'yinlarim» в a без href и уверен, что ссылка заработает; в выводе признаёт ошибку.
 //
-// ДУГА (17 экранов; экрана плана нет). Типы заданий — по разделу 3а навыка:
+// ДУГА (20 экранов; экрана плана нет; w1–w3 стоят после s11). Типы заданий — по разделу 3а навыка:
 //   s1 крючок (текст → ссылки, переходы, загадка)
 //   a и href:     s2 показ · s3 вписать имя файла (Fill in the Blanks) · s4 файлы к ссылкам меню (Drag & Drop)
 //   атрибут:      s5 показ «из чего состоит» · s6 собрать href="…" (Code Builder) · s7 часть ↔ название (Matching Pairs)
 //   поломки:      s8 показ «Файл не найден», нет </a> · s9 вписать </a> (Fill in the Blanks) · s10 до и после (Before / After)
 //   своя ссылка:  s11 показ «по сайту» · s12 текст, s13 адрес mening.html (Live Code Preview) · s14 вернуть href (Debug & Fix)
+//   сайт в интернете (заказчик, 05.11.2026): w1 показ https:// и имя сайта; без https:// — «Файл не найден» ·
+//                 w2 вписать полный адрес (Fill in the Blanks) · w3 «где браузер будет искать» (Sort, по одному)
 //   итоговая проверка: q1 найти строку с ошибкой (Error Detective) · q2 верно или нет (True / False)
 //   s15 вывод с разгадкой.
 //
@@ -6759,7 +6761,21 @@ const C = {
     mineHello: L3('Salom! Bu mening sahifam.', 'Привет! Это моя страница.', 'Hi! This is my page.'),
     nf: L3('Fayl topilmadi', 'Файл не найден', 'File not found'),
     nfText: L3('{f} fayli topilmadi. Manzilni tekshiring.', 'Файл {f} не найден. Проверь адрес.', 'The file {f} wasn’t found. Check the address.'),
+    nr: L3("Saytni ochib bo'lmadi", 'Не удаётся открыть сайт', 'This site can’t be reached'),
+    nrText: L3('{f} manzili topilmadi. Sayt nomini tekshiring.', 'Адрес {f} не найден. Проверь имя сайта.', 'The address {f} wasn’t found. Check the site name.'),
     filesH: L3('Fayllar', 'Файлы', 'Files')
+  },
+  // Сайт в интернете (w1–w3): Википедия на языке урока; страница в браузере — коротко, как заглушка.
+  web: {
+    link: L3('Vikipediya', 'Википедия', 'Wikipedia'),
+    url: { [LANGS[0]]: 'https://uz.wikipedia.org', [LANGS[1]]: 'https://ru.wikipedia.org', [LANGS[2]]: 'https://en.wikipedia.org' },
+    host: L3('uz.wikipedia.org', 'ru.wikipedia.org', 'en.wikipedia.org'),
+    portal: 'https://www.wikipedia.org',
+    title: L3('Vikipediya', 'Википедия', 'Wikipedia'),
+    sub: L3('Erkin ensiklopediya', 'Свободная энциклопедия', 'The free encyclopedia'),
+    hostH: L3('Sayt nomi', 'Имя сайта', 'Site name'),
+    proto: L3("internetga yo'l", 'путь в интернет', 'the way to the internet'),   // перед ним в подписи — https://
+    hostL: L3('{h} — sayt nomi', '{h} — имя сайта', '{h} — the site name')
   },
   s1: {
     eyebrow: L3("Bosilmaydigan so'zlar", 'Слова не нажимаются', 'Words that don’t click'),
@@ -6768,9 +6784,9 @@ const C = {
       'Hi! Last time we made lists. Now I have a whole site: a home page, a plov recipe and a page with my games. But look: tap the names on the home page and nothing happens. They’re just text. Let’s bring them to life. Tap “Transform”.'),
     magic: L3("Voy, qarang! Nomlar ko'k rangga kirdi, tagiga chiziq tushdi. Endi ular havola bo'ldi.", 'Ого, смотри! Названия стали синими и подчёркнутыми. Теперь это ссылки.', 'Whoa, look! The names turned blue and underlined. Now they’re links.'),
     magicP: L3("Havolani bosib ko'ring: boshqa sahifa ochiladi. Tepadagi strelka bilan esa orqaga qaytasiz.", 'Нажми ссылку — откроется другая страница. А стрелкой вверху вернёшься назад.', 'Tap a link and another page opens. The arrow at the top takes you back.'),
-    done: L3("Bugun shunday havolalar yasashni o'rganasiz va o'z sahifangizga havola qilasiz. Lekin oldin kichik topishmoq. Men o'yinlarim sahifasiga havola yasamoqchi bo'ldim va Mening o'yinlarim so'zlarini a tegiga o'rab qo'ydim, xolos. Menimcha, endi uni bossangiz, o'yinlar sahifasi ochiladi. Xo'sh, siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.",
-      'Сегодня ты научишься делать такие ссылки и сделаешь ссылку на свою страницу. Но сначала маленькая загадка. Я хотел сделать ссылку на страницу с играми и просто обернул слова «Мои игры» в тег a. По-моему, теперь нажмёшь — и откроются игры. Ну как думаешь, я прав? Ответ найдём вместе в конце урока.',
-      'Today you’ll learn to make links like these and link to your own page. But first, a little riddle. I wanted a link to my games page, so I just wrapped the words “My games” in the a tag. I think if you tap it now, the games page opens. So what do you think, am I right? We’ll find the answer together at the end of the lesson.'),
+    done: L3("Bugun shunday havolalar yasashni o'rganasiz: o'z sahifangizga ham, internetdagi saytga ham. Lekin oldin kichik topishmoq. Men o'yinlarim sahifasiga havola yasamoqchi bo'ldim va Mening o'yinlarim so'zlarini a tegiga o'rab qo'ydim, xolos. Menimcha, endi uni bossangiz, o'yinlar sahifasi ochiladi. Xo'sh, siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.",
+      'Сегодня ты научишься делать такие ссылки — и на свою страницу, и на сайт в интернете. Но сначала маленькая загадка. Я хотел сделать ссылку на страницу с играми и просто обернул слова «Мои игры» в тег a. По-моему, теперь нажмёшь — и откроются игры. Ну как думаешь, я прав? Ответ найдём вместе в конце урока.',
+      'Today you’ll learn to make links like these: to your own page and to a site on the internet. But first, a little riddle. I wanted a link to my games page, so I just wrapped the words “My games” in the a tag. I think if you tap it now, the games page opens. So what do you think, am I right? We’ll find the answer together at the end of the lesson.'),
     ask: L3('«Aylantirish» tugmasini bosing', 'Нажми «Превратить»', 'Tap “Transform”'),
     askDone: L3("Havolani bosib ko'ring", 'Нажми ссылку', 'Tap a link')
   },
@@ -6970,6 +6986,77 @@ const C = {
     ask: L3('Brauzer qanday yurishini kuzating', 'Смотри, как ходит браузер', 'Watch how the browser walks'),
     askDone: L3("Har bir havola o'z faylini ochadi", 'Каждая ссылка открывает свой файл', 'Each link opens its own file')
   },
+  // ССЫЛКА НА САЙТ В ИНТЕРНЕТЕ (w1 показ · w2 вписать полный адрес · w3 «где браузер будет искать»).
+  w1: {
+    eyebrow: L3('Internetdagi sayt', 'Сайт в интернете', 'A site on the internet'),
+    say: L3("Hozirgacha havolalarimiz faqat o'z saytimizdagi fayllarni ochdi. Lekin havola internetdagi istalgan saytga ham olib bora oladi. Masalan, Vikipediyaga. Buning uchun href ichiga fayl nomi emas, saytning to'liq manzili yoziladi. Qarang.",
+      'До сих пор наши ссылки открывали только файлы нашего сайта. Но ссылка может вести на любой сайт в интернете. Например, на Википедию. Для этого в href пишут не имя файла, а полный адрес сайта. Смотри.',
+      'So far our links only opened files on our own site. But a link can take you to any site on the internet. Wikipedia, for example. For that, href holds not a file name but the site’s full address. Watch.'),
+    sayProto: L3("To'liq manzil https so'zi bilan boshlanadi, keyin ikki nuqta va ikkita qiya chiziq keladi. Bu brauzerga internetga chiqishni aytadi. Oxiridagi s harfi inglizcha secure so'zidan olingan, ya'ni xavfsiz degani.",
+      'Полный адрес начинается со слова https, потом идут двоеточие и две косые черты. Это говорит браузеру: иди в интернет. Буква s на конце — от английского secure, то есть «защищённый».',
+      'A full address starts with the word https, then a colon and two slashes. That tells the browser to go out to the internet. The s at the end stands for secure.'),
+    sayHost: L3("Undan keyin sayt nomi keladi. Bu yerda u Vikipediya sayti. Qarang, brauzer havolani o'zi bosib ko'radi.",
+      'Дальше идёт имя сайта. Здесь это сайт Википедии. Смотри, браузер сам нажмёт ссылку.',
+      'Then comes the site name. Here it’s the Wikipedia site. Watch, the browser taps the link.'),
+    sayOpen: L3("Brauzer internetga chiqdi va boshqa saytni ochdi. Manzil satriga qarang: u yerda endi to'liq manzil turibdi.",
+      'Браузер вышел в интернет и открыл другой сайт. Посмотри в адресную строку: там теперь полный адрес.',
+      'The browser went out to the internet and opened another site. Look at the address bar: the full address is there now.'),
+    sayNoProto: L3("Endi boshidagi https qismini o'chirib ko'ramiz. Xo'sh, nima bo'larkin?", 'А теперь сотрём начало, https. Ну, что будет?', 'Now let’s erase the https part at the start. So what happens?'),
+    sayNf: L3("Fayl topilmadi! https bo'lmasa, brauzer buni o'z saytimizdagi fayl deb o'ylaydi va uni index.html yonidan qidiradi. Bunday fayl esa yo'q.",
+      'Файл не найден! Без https браузер думает, что это файл нашего сайта, и ищет его рядом с index.html. А такого файла нет.',
+      'File not found! Without https the browser thinks it’s a file on our site and looks for it next to index.html. And there’s no such file.'),
+    done: L3("Demak, o'z saytimizdagi sahifa uchun fayl nomi yetadi. Boshqa saytga esa to'liq manzil kerak: https, ikki nuqta, ikkita qiya chiziq va sayt nomi.",
+      'Значит, для страницы нашего сайта хватит имени файла. А для другого сайта нужен полный адрес: https, двоеточие, две косые черты и имя сайта.',
+      'So for a page on our site, the file name is enough. Another site needs the full address: https, a colon, two slashes and the site name.'),
+    askStart: L3('Qarang: havola internetga', 'Смотри: ссылка в интернет', 'Watch: a link to the internet'),
+    askProto: L3("Qarang: boshida https, ya'ni internetga yo'l", 'Смотри: в начале https — путь в интернет', 'Watch: https at the start is the way to the internet'),
+    askHost: L3('Qarang: sayt nomi', 'Смотри: имя сайта', 'Watch: the site name'),
+    askNf: L3("Qarang: boshida https bo'lmasa", 'Смотри: без https в начале', 'Watch: without https at the start'),
+    askDone: L3("Boshqa saytga — to'liq manzil", 'Другой сайт — полный адрес', 'Another site needs the full address')
+  },
+  w2: {
+    eyebrow: L3("To'liq manzil", 'Полный адрес', 'The full address'),
+    say: L3("Endi navbat sizga. Vikipediya havolasida manzil yo'q. Sayt nomi pastda yozilgan. Qo'shtirnoq ichiga saytning to'liq manzilini yozing. Boshini unutmang: https, ikki nuqta va ikkita qiya chiziq.",
+      'Теперь твоя очередь. У ссылки «Википедия» нет адреса. Имя сайта написано внизу. Впиши в кавычки полный адрес сайта. Не забудь начало: https, двоеточие и две косые черты.',
+      'Now it’s your turn. The “Wikipedia” link has no address. The site name is written below. Type the site’s full address in the quotes. Don’t forget the start: https, a colon and two slashes.'),
+    msgs: {
+      empty: L3("Qo'shtirnoq ichiga saytning to'liq manzilini yozing.", 'Впиши в кавычки полный адрес сайта.', 'Type the site’s full address in the quotes.'),
+      noProto: L3("Boshida https yo'q. Usiz brauzer o'z saytimizdan fayl qidiradi. Manzilni https, ikki nuqta va ikkita qiya chiziq bilan boshlang.",
+        'В начале нет https. Без него браузер ищет файл на нашем сайте. Начни адрес с https, двоеточия и двух косых черт.',
+        'There’s no https at the start. Without it the browser looks for a file on our site. Start the address with https, a colon and two slashes.'),
+      colon: L3("https so'zidan keyin ikki nuqta, keyin ikkita qiya chiziq turadi. Ularni tekshiring.", 'После https идут двоеточие и две косые черты. Проверь их.', 'After https come a colon and two slashes. Check them.'),
+      typo: L3("Sayt nomini pastdagidek, harfma-harf yozing.", 'Напиши имя сайта буква в букву, как внизу.', 'Type the site name letter by letter, as shown below.')
+    },
+    hints: [
+      L3('Bu havola boshqa saytga olib boradi. Unga qanday manzil kerak?', 'Эта ссылка ведёт на другой сайт. Какой адрес ей нужен?', 'This link goes to another site. What kind of address does it need?'),
+      L3("To'liq manzil https bilan boshlanadi, keyin ikki nuqta va ikkita qiya chiziq, keyin sayt nomi keladi.", 'Полный адрес начинается с https, потом двоеточие и две косые черты, потом имя сайта.', 'A full address starts with https, then a colon and two slashes, then the site name.'),
+      L3("Pastdagi https tugmasini bosing, keyin sayt nomini yozing: {h}.", 'Нажми кнопку https внизу, потом напиши имя сайта: {h}.', 'Tap the https button below, then type the site name: {h}.')
+    ],
+    ok: L3("Zo'r! Havola internetga chiqdi. Bosib ko'ring: Vikipediya ochiladi.", 'Огонь! Ссылка ведёт в интернет. Нажми — откроется Википедия.', 'Awesome! The link goes to the internet. Tap it and Wikipedia opens.'),
+    okHttp: L3("Ishladi! Lekin bugun saytlar ko'pincha https bilan yoziladi. Oxiridagi s harfi xavfsiz degani. Bosib ko'ring.", 'Работает! Но сегодня сайты обычно пишут с https: буква s значит «защищённый». Нажми ссылку.', 'It works! But today sites usually use https: the s means secure. Tap the link.'),
+    ask: L3("Qo'shtirnoq ichiga to'liq manzilni yozing", 'Впиши в кавычки полный адрес', 'Type the full address in the quotes')
+  },
+  w3: {
+    eyebrow: L3('Qayerdan qidiradi?', 'Где искать?', 'Where to look?'),
+    say: L3("Endi o'zingizni sinab ko'ring. Men havolaga manzil yozaman. Siz esa brauzer uni qayerdan qidirishini tanlang: saytimiz fayllaridanmi yoki internetdanmi?",
+      'Теперь проверь себя. Я пишу адрес ссылки, а ты выбери, где браузер будет его искать: среди файлов нашего сайта или в интернете?',
+      'Now check yourself. I write a link address, and you choose where the browser will look for it: among our site’s files or on the internet?'),
+    ask: L3('Brauzer qayerdan qidiradi?', 'Где браузер будет искать?', 'Where will the browser look?'),
+    site: L3('Saytimiz fayllaridan', 'Среди файлов сайта', 'In our site’s files'),
+    web: L3('Internetdan', 'В интернете', 'On the internet'),
+    right: L3('Barakalla!', 'Точно!', 'Exactly!'),
+    items: [
+      { k: 'osh', right: 'site',
+        why: L3("Bu oddiy fayl nomi. Brauzer uni saytimizdan topadi va retseptni ochadi.", 'Это просто имя файла. Браузер найдёт его на нашем сайте и откроет рецепт.', 'That’s just a file name. The browser finds it on our site and opens the recipe.') },
+      { k: 'url', right: 'web',
+        why: L3("Manzil https bilan boshlanadi. Demak, brauzer internetga chiqadi va Vikipediyani ochadi.", 'Адрес начинается с https. Значит, браузер выйдет в интернет и откроет Википедию.', 'The address starts with https. So the browser goes out to the internet and opens Wikipedia.') },
+      { k: 'host', right: 'site',
+        why: L3("Aldanmang! Boshida https yo'q, shuning uchun brauzer buni oddiy fayl deb o'ylaydi va saytimizdan qidiradi. Fayl esa topilmaydi.", 'Не попадись! В начале нет https, поэтому браузер считает это обычным файлом и ищет на нашем сайте. А файла нет.', 'Don’t be fooled! There’s no https at the start, so the browser treats it as a plain file and looks on our site. And there’s no such file.') },
+      { k: 'portal', right: 'web',
+        why: L3("https bilan boshlangan manzil internetdagi saytga olib boradi. Bu Vikipediyaning bosh sahifasi.", 'Адрес с https ведёт на сайт в интернете. Это главная страница Википедии.', 'An address starting with https leads to a site on the internet. This is Wikipedia’s main page.') }
+    ],
+    ok: L3("Hammasi to'g'ri! Endi qaysi manzil qayerga olib borishini bilasiz.", 'Всё верно! Теперь ты знаешь, куда ведёт какой адрес.', 'All correct! Now you know where each address leads.')
+  },
   // Своя ссылка — два экрана: текст ссылки (по «Готово»), потом адрес своей страницы (по «Проверить»).
   s12: {
     eyebrow: L3('Havolangiz matni', 'Текст своей ссылки', 'Your link text'),
@@ -7057,7 +7144,9 @@ const C = {
       { t: L3("href qiymati qo'shtirnoq ichida yoziladi.", 'Значение href пишут в кавычках.', 'The href value goes in quotes.'), right: true, code: 'ok',
         why: L3("Fayl nomi qo'shtirnoq ichida yoziladi, shunda brauzer uni aniq o'qiydi.", 'Имя файла пишут в кавычках — так браузер читает его точно.', 'The file name goes in quotes so the browser reads it exactly.') },
       { t: L3("a tegi href atributisiz ham havola bo'ladi.", 'Тег a и без href — ссылка.', 'The a tag is a link even without href.'), right: false, code: 'noHref',
-        why: L3("href bo'lmasa, brauzer qayerga borishni bilmaydi va so'z oddiy matn bo'lib qoladi.", 'Без href браузер не знает, куда вести, и слово остаётся обычным текстом.', 'Without href the browser doesn’t know where to go, and the word stays plain text.') }
+        why: L3("href bo'lmasa, brauzer qayerga borishni bilmaydi va so'z oddiy matn bo'lib qoladi.", 'Без href браузер не знает, куда вести, и слово остаётся обычным текстом.', 'Without href the browser doesn’t know where to go, and the word stays plain text.') },
+      { t: L3("Boshqa saytga havola uchun sayt nomining o'zi yetadi, https shart emas.", 'Для ссылки на другой сайт хватит одного имени сайта, https не нужен.', 'To link to another site, the site name alone is enough; https isn’t needed.'), right: false, code: 'host',
+        why: L3("Aslida https kerak. Usiz brauzer sayt nomini o'z saytimizdagi fayl deb o'ylaydi va fayl topilmaydi.", 'На самом деле https нужен. Без него браузер считает имя сайта файлом нашего сайта — и файла нет.', 'Actually https is needed. Without it the browser treats the site name as a file on our site, and there’s no such file.') }
     ],
     ok: L3("Hammasi to'g'ri! Siz a tegi va href atributini yaxshi bilasiz.", 'Всё верно! Ты отлично знаешь тег a и атрибут href.', 'All correct! You know the a tag and the href attribute really well.')
   },
@@ -7071,12 +7160,14 @@ const C = {
       { text: L3('a tegi havola yasaydi.', 'Тег a делает ссылку.', 'The a tag makes a link.'), k: 'a' },
       { text: L3('href atributi qayerga borishni aytadi.', 'Атрибут href говорит, куда вести.', 'The href attribute says where to go.'), k: 'href' },
       { text: L3("Qo'shtirnoq ichidagi qiymat esa fayl nomi bo'ladi.", 'А значение в кавычках — это имя файла.', 'And the value in quotes is the file name.'), k: 'val' },
-      { text: L3("Tabriklayman! Endi sahifalaringiz bir-biriga ulandi. Keyingi darsda sahifaga rasm qo'yamiz. Ko'rishguncha!", 'Ура! Теперь твои страницы связаны друг с другом. На следующем уроке добавим на страницу картинку. До встречи!', 'Hooray! Now your pages are connected. Next time we’ll add a picture to the page. See you!'), k: null }
+      { text: L3("Boshqa saytga havola qilsangiz, qiymat https bilan boshlanadigan to'liq manzil bo'ladi.", 'А если ссылка ведёт на другой сайт, значение — полный адрес, который начинается с https.', 'And if the link goes to another site, the value is a full address starting with https.'), k: 'web' },
+      { text: L3("Tabriklayman! Endi sahifalaringiz bir-biriga va internetga ulandi. Keyingi darsda sahifaga rasm qo'yamiz. Ko'rishguncha!", 'Ура! Теперь твои страницы связаны друг с другом и с интернетом. На следующем уроке добавим на страницу картинку. До встречи!', 'Hooray! Now your pages are connected to each other and to the internet. Next time we’ll add a picture to the page. See you!'), k: null }
     ],
     roles: {
       a: L3('a — havola', 'a — ссылка', 'a — link'),
       href: L3('href — manzil', 'href — адрес', 'href — address'),
-      val: L3('qiymat — fayl nomi', 'значение — имя файла', 'value — file name')
+      val: L3('qiymat — fayl nomi', 'значение — имя файла', 'value — file name'),
+      web: L3("https bilan — boshqa sayt", 'с https — другой сайт', 'with https — another site')
     },
     ask: L3('Havolangizga qarang', 'Посмотри на свою ссылку', 'Look at your link')
   }
@@ -7789,7 +7880,7 @@ function GoalCard({ goal, n, total, done, doneText }) {
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
 Object.assign(SPOKEN, { why: 1, magic: 1, magicP: 1, msgs: 1, sayA: 1, sayHref: 1, sayTag: 1, sayAttr: 1, sayVal: 1, sayClose: 1,
-  sayTypo: 1, sayNf: 1, askQ: 1, miss: 1, order1: 1, order2: 1, order3: 1, say2: 1, fine: 1, items: 1, right: 1, pairOk: 1 });
+  sayTypo: 1, sayNf: 1, sayProto: 1, sayHost: 1, sayOpen: 1, sayNoProto: 1, okHttp: 1, askQ: 1, miss: 1, order1: 1, order2: 1, order3: 1, say2: 1, fine: 1, items: 1, right: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1 } });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -8020,7 +8111,7 @@ function useB16Demo({ steps, run: run0, spoken, sayNow, say }) {
 // перед английскими словами ставим [English pronunciation], сразу после — пометку
 // языка урока. Узбекское окончание («tag-i») идёт уже после неё.
 const B16_BACK = { uz: "[O'zbekcha tallaffuz]", ru: '[Русское произношение]' };
-const B16_EN = '(?:tag|HTML|html|head|title|body|doctype|DOCTYPE|href|hypertext reference|A|H (?:one|two|three|four|five|six))';
+const B16_EN = '(?:tag|HTML|html|head|title|body|doctype|DOCTYPE|href|hypertext reference|https|secure|A|H (?:one|two|three|four|five|six))';
 const B16_EN_RE = new RegExp("(^|[^A-Za-z'‘’ʻʼ-])(" + B16_EN + '(?:\\s+' + B16_EN + ')*)(-[A-Za-z]+)?(?![A-Za-z])', 'g');
 function b16EnWords(s, lang) {
   const back = B16_BACK[lang];
@@ -8834,7 +8925,7 @@ function useKzDrag(onDrop) {
     const placeAt1 = (x, y) => { const el = document.elementFromPoint(x, y); const z = el && el.closest && el.closest('[data-place]'); return z ? z.getAttribute('data-place') : null; };
     // Копия летит выше пальца (на телефоне — заметно выше), и ученик целится ею:
     // место ищется сначала под центром копии, потом под пальцем.
-    const placeAt = (x, y, touch) => placeAt1(x, y - (touch ? 40 : 14)) || placeAt1(x, y);
+    const placeAt = (x, y, touch) => (touch ? placeAt1(x, y - 40) || placeAt1(x, y) : placeAt1(x, y) || placeAt1(x, y - 14));
     const lift = (d, on) => { if (d && d.el && d.el.classList) d.el.classList.toggle('is-lifted', on); };
     const move = (e) => {
       const d = drag.current;
@@ -9294,6 +9385,8 @@ function PageDoc({ blocks, onNav, cls }) {
   );
 }
 
+// Адрес сайта в интернете: без пробелов и «/» в конце; http:// браузер сам переводит на https://.
+const webKey = (f) => String(f || '').trim().replace(/\/+$/, '').toLowerCase().replace(/^http:\/\//, 'https://');
 // САЙТ КОДИ — страницы по имени файла. mine — своя страница ученика (s12–s15).
 const sitePage = (pick, file, mine) => {
   const home = { t: 'p', parts: [{ a: pick(C.site.home), href: 'index.html' }], k: 'home' };
@@ -9306,6 +9399,13 @@ const sitePage = (pick, file, mine) => {
     { t: 'h1', parts: [pick(C.site.games)], k: 'h' }, { t: 'ul', items: pick(C.site.gamesList).map((w) => [w]), k: 'u' }, home] };
   if (file === 'mening.html' && mine) return { title: mine, blocks: [
     { t: 'h1', parts: [mine], k: 'h' }, { t: 'p', parts: [pick(C.site.mineHello)], k: 'p' }, home] };
+  // Сайт в интернете (w1–w3): адрес с https:// (или http://) — Википедия; другое имя сайта — «Не удаётся открыть сайт».
+  const wk = webKey(file);
+  if (/^https:\/\//.test(wk)) {
+    if (LANGS.some((l) => C.web.url[l] === wk) || wk === C.web.portal) return { title: pick(C.web.title), web: true, blocks: [
+      { t: 'h1', parts: [pick(C.web.title)], k: 'h' }, { t: 'p', parts: [pick(C.web.sub)], k: 'p' }] };
+    return { title: file, nf: true, blocks: [{ t: 'nf', parts: [pick(C.site.nr)], k: 'nf' }, { t: 'p', parts: [pick(fillL(C.site.nrText, { f: file }))], k: 'nfp', cls: 'z4-nf-p' }] };
+  }
   // Честно: такого файла нет — браузер показывает свою страницу ошибки.
   return { title: file, nf: true, blocks: [{ t: 'nf', parts: [pick(C.site.nf)], k: 'nf' }, { t: 'p', parts: [pick(fillL(C.site.nfText, { f: file }))], k: 'nfp', cls: 'z4-nf-p' }] };
 };
@@ -9329,10 +9429,16 @@ function SiteBrowser({ nav, mine, short, cls, pageHl, override, live = true }) {
     </PaperBrowser>
   );
 }
+// Значение href: у полного адреса части отдельно — https:// и имя сайта (lit — какая горит).
+const urlVal = (href, lit) => {
+  const m = /^(https?:\/\/)(.*)$/.exec(href);
+  if (!m) return <span className="z4-val">{'"' + href + '"'}</span>;
+  return <span className="z4-val">"<span className={'z4-u' + (lit === 'proto' ? ' is-cur' : '')}>{m[1]}</span><span className={'z4-u' + (lit === 'host' ? ' is-cur' : '')}>{m[2]}</span>"</span>;
+};
 // Строка кода: <p><a href="…">текст</a></p> и варианты.
 const aCode = (href, text, opts) => {
   const o = opts || {};
-  const open = o.noHref ? [T_('a')] : [<span key="o" className="kz-tag" translate="no"><span className="kz-tk-b">{'<'}</span><span className="kz-tk-n">a</span> <span className="z4-attr">href</span><span className="kz-tk-b">=</span><span className="z4-val">{'"' + href + '"'}</span><span className="kz-tk-b">{'>'}</span></span>];
+  const open = o.noHref ? [T_('a')] : [<span key="o" className="kz-tag" translate="no"><span className="kz-tk-b">{'<'}</span><span className="kz-tk-n">a</span> <span className="z4-attr">href</span><span className="kz-tk-b">=</span>{urlVal(href, o.lit)}<span className="kz-tk-b">{'>'}</span></span>];
   return [T_('p')].concat(open, [W_(text)], o.noClose ? [] : [T_('a', true)], o.tail ? [W_(o.tail)] : [], [T_('p', true)]);
 };
 const codeLine = (k, parts, extra) => Object.assign({ k, d: 0, place: k, parts }, extra || {});
@@ -10057,6 +10163,213 @@ function S11({ p }) {
 }
 
 // =============================================================================
+// W1. САЙТ В ИНТЕРНЕТЕ (показ; заказчик, 05.11.2026) — к главной добавляется ссылка на Википедию с полным
+// адресом; под речь Коди загораются https:// и имя сайта; браузер сам нажимает — открывается Википедия, адрес
+// в строке полный. Потом https:// стирается — браузер ищет файл на нашем сайте: «Файл не найден».
+// =============================================================================
+function W1({ p }) {
+  const pick = usePick();
+  const c = C.w1;
+  const [rec, put] = useRec('w1');
+  const solved = !!(rec && rec.done);
+  const [n, setN] = useState(solved ? 3 : 0);   // 0 — ссылки нет; 1 — полный адрес; 2 — без https://; 3 — снова полный
+  const [lit, setLit] = useState(null);
+  const [seen, setSeen] = useState(solved ? 2 : 0);
+  const nav = useNav('index.html', FILES);
+  const url = pick(C.web.url), host = pick(C.web.host), link = pick(C.web.link);
+  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
+  const W = reduceMotion() ? 300 : 1300;
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { act: () => { sfx('pop', true); setN(1); } }, { wait: 500 },
+    { act: () => { sfx('tap', true); setLit('proto'); setSeen(1); } }, { say: [{ text: c.sayProto, pose: 'point' }] },
+    { act: () => { sfx('tap', true); setLit('host'); setSeen(2); } }, { say: [{ text: c.sayHost, pose: 'point' }] },
+    { act: () => { setLit(null); nav.go(url); } }, { wait: 500 }, { say: [{ text: c.sayOpen, pose: 'smile' }] },
+    { act: () => nav.back && nav.back() }, { wait: W },
+    { act: () => { sfx('soft', true); setN(2); } }, { say: [{ text: c.sayNoProto, pose: 'curious' }] },
+    { act: () => nav.go(host) }, { wait: 500 }, { say: [{ text: c.sayNf, pose: 'wonder' }] },
+    { act: () => { if (nav.back) nav.back(); sfx('ok', true); setN(3); } }, { say: [{ text: c.done, pose: 'smile' }] },
+    { act: () => put({ done: true }) }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
+  const href = n === 2 ? host : url;
+  const page = nav.url === 'index.html' ? { title: pick(C.site.title), blocks: [
+    { t: 'h1', parts: [pick(C.site.title)], k: 'h' },
+    { t: 'p', parts: [{ a: pick(C.site.osh), href: 'osh.html' }], k: 'l1' }].concat(n >= 1 ? [{ t: 'p', parts: [{ a: link, href }], k: 'w', hl: !demo.done && !solved }] : []) } : null;
+  const askText = solved || demo.done ? c.askDone : n === 2 ? c.askNf : lit === 'host' ? c.askHost : lit === 'proto' ? c.askProto : c.askStart;
+  return (
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+      <Sheet cls="z4-sheet">
+        <KzAsk text={askText} />
+        <div className="kz-scene z4-s5">
+          <div className="kz-col">
+            <KzCode lines={[codeLine('h', [T_('h1'), W_(pick(C.site.title)), T_('h1', true)], { cls: 'z4-edge' }),
+              codeLine('l1', aCode('osh.html', pick(C.site.osh)), { cls: 'z4-ctx' })].concat(n >= 1 ? [codeLine('w', aCode(href, link, { lit }), { cls: 'is-new' + (lit || n === 2 ? ' is-read' : '') })] : [])} cls="kz-code-sm" />
+            {seen ? (
+              <div className="z4-anat-labels z4-url-lbls">
+                <TagChip t={'https:// — ' + pick(C.web.proto)} cls="z4-a-in" on={lit === 'proto'} />
+                {seen >= 2 ? <TagChip t={pick(fillL(C.web.hostL, { h: C.web.host }))} cls="z4-a-in" on={lit === 'host'} /> : null}
+              </div>
+            ) : null}
+          </div>
+          <div className="kz-col"><SiteBrowser nav={nav} short override={page} live={false} /></div>
+        </div>
+      </Sheet>
+    </StageB>
+  );
+}
+
+// Проверка полного адреса (w2): null — верно; 'http' — работает, но без s; иначе — причина.
+function urlIssue(v, host, msgs) {
+  const n = normT(v).replace(/^["'«“]+|["'»”]+$/g, '').replace(/\/+$/, '');
+  if (n === 'https://' + host) return null;
+  if (n === 'http://' + host) return 'http';
+  if (!n) return msgs.empty;
+  if (/^https?:\/\//.test(n)) return msgs.typo;
+  if (/^h?t?t?ps?(?=[:/]|$)/.test(n) || /^https?/.test(n)) return msgs.colon;
+  return msgs.noProto;
+}
+
+// =============================================================================
+// W2. ПОЛНЫЙ АДРЕС (Fill in the Blanks) — у ссылки «Википедия» пустой href; внизу — имя сайта. Ученик пишет
+// полный адрес (кнопка https:// вставляет начало). Ссылку можно нажать: честно откроется то, что написано —
+// без https:// «Файл не найден», с ошибкой в имени — «Не удаётся открыть сайт».
+// =============================================================================
+function W2({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.w2;
+  const [rec, put] = useRec('w2');
+  const solved = !!(rec && rec.done);
+  const ty = useTagTyping({ max: 40 });
+  const [msg, setMsg] = useState(null);
+  const [okNow, setOkNow] = useState(solved);
+  const [okVal, setOkVal] = useState(null);
+  const nav = useNav('index.html', FILES);
+  const url = pick(C.web.url), host = pick(C.web.host), link = pick(C.web.link);
+  const hints = c.hints.map((h) => fillL(h, { h: C.web.host }));
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'explain' }]);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(solved || okNow, spoken);
+  const lad = useKzLadder(!okNow);
+  const st = useRef({ tries: 0, misses: 0 });
+  const led = useIdleLed(canTap && !okNow && !ty.val, 0);
+  const typed = ty.val.trim().replace(/^["']+|["']+$/g, '');
+  const val = okNow ? (okVal || url) : typed;
+  const check = () => {
+    if (!canTap || okNow) return;
+    st.current.tries += 1;
+    const issue = urlIssue(ty.val, host, c.msgs);
+    if (!issue || issue === 'http') {
+      sfx('win', true); setMsg(null); setOkNow(true); setOkVal(typed); put({ done: true });
+      log({ screenId: 'w2', type: 'write-url', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
+      sayNow(issue === 'http' ? c.okHttp : c.ok, 'cheer');
+      return;
+    }
+    st.current.misses += 1;
+    sfx('soft', true); setMsg(issue); sayNow(issue, 'think');
+    if (st.current.misses >= 2) lad.bump();
+  };
+  const page = nav.url === 'index.html' ? { title: pick(C.site.title), blocks: [
+    { t: 'h1', parts: [pick(C.site.title)], k: 'h' },
+    { t: 'p', parts: [{ a: link, href: val || 'index.html' }], k: 'w', hl: !okNow }] } : null;
+  return (
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), hints) || c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="z4-sheet">
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hintAt(lad.lv, hints))} err={!!msg} />
+        <div className="kz-scene kz-scene-col">
+          <div className="kz-col">
+            <SiteBrowser nav={nav} short override={page} />
+            <KzCode lines={[codeLine('h', [T_('h1'), W_(pick(C.site.title)), T_('h1', true)], { cls: 'z4-edge' }),
+              okNow ? codeLine('w', aCode(val, link), { cls: 'is-new' }) : codeLine('w', [T_('p'),
+                <span key="o" className="kz-tag" translate="no"><span className="kz-tk-b">{'<'}</span><span className="kz-tk-n">a</span> <span className="z4-attr">href</span><span className="kz-tk-b">=</span><span className="z4-val">"</span></span>,
+                <span key="g" className={'kz-gap z4-slot z4-slot-url' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(v) => { ty.setVal(v); setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={40} /></span>,
+                <span key="c" className="kz-tag" translate="no"><span className="z4-val">"</span><span className="kz-tk-b">{'>'}</span></span>,
+                W_(link), T_('a', true), T_('p', true)], { cls: 'is-hl' })
+            ]} cls="kz-code-sm" />
+            <div className="z4-files z4-host" aria-label={pick(C.web.hostH)}>
+              <span className="z4-files-h">{pick(C.web.hostH)}</span>
+              <span className={'z4-file z4-file-web' + (lad.lv >= 3 ? ' is-hl' : '')} translate="no"><i aria-hidden="true" />{host}</span>
+            </div>
+          </div>
+        </div>
+        {!okNow ? <KeyRow keys={['https://']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 8} /> : null}
+      </Sheet>
+    </StageB>
+  );
+}
+
+// =============================================================================
+// W3. ГДЕ БРАУЗЕР БУДЕТ ИСКАТЬ (сортировка по одному) — адрес ссылки: «среди файлов сайта» или «в интернете».
+// Ловушка — имя сайта без https://: браузер ищет файл на нашем сайте. После верного ответа браузер честно
+// открывает адрес (рецепт, Википедию или «Файл не найден»). Промах — причина, можно выбрать снова.
+// =============================================================================
+function W3({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.w3;
+  const [rec, put] = useRec('w3');
+  const solved = !!(rec && rec.done);
+  const [ii, setIi] = useState(solved ? c.items.length - 1 : 0);
+  const [ok, setOk] = useState(solved);
+  const [off, setOff] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [next, setNext] = useState(false);
+  const nav = useNav('index.html', FILES);
+  const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.ok, pose: 'smile' }] : [{ text: c.say, pose: 'curious' }]);
+  const canTap = useCanAnswer(spoken);
+  const done = ok && ii === c.items.length - 1;
+  const canGo = useAdvanceGate(solved || done, spoken);
+  const st = useRef({ tries: 0, misses: 0 });
+  const led = useIdleLed(canTap && !ok, ii * 10 + (off === null ? 0 : 1));
+  const it = c.items[ii];
+  const href = it.k === 'osh' ? 'osh.html' : it.k === 'url' ? pick(C.web.url) : it.k === 'host' ? pick(C.web.host) : C.web.portal;
+  const text = it.k === 'osh' ? pick(C.site.osh) : pick(C.web.link);
+  const choose = (v) => {
+    if (!canTap || ok || off === v) return;
+    st.current.tries += 1;
+    if (v !== it.right) {
+      st.current.misses += 1;
+      sfx('soft', true); setOff(v); setMsg(it.why); sayNow(it.why, 'think');
+      return;
+    }
+    sfx('ok', true); setOk(true); setMsg(null); nav.go(href);
+    const line = joinL(c.right, it.why);
+    if (ii === c.items.length - 1) {
+      put({ done: true });
+      log({ screenId: 'w3', type: 'sort-address', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: 0, depth: 0 });
+      sayNow(joinL(line, c.ok), 'cheer');
+    } else { sayNow(line, 'smile'); setNext(true); }
+  };
+  useEffect(() => {
+    if (!next || !spoken) return undefined;
+    const t = setTimeout(() => { setNext(false); nav.reset('index.html'); setIi((x) => x + 1); setOk(false); setOff(null); setMsg(null); }, reduceMotion() ? 300 : 1400);
+    return () => clearTimeout(t);
+  }, [next, spoken]); // eslint-disable-line react-hooks/exhaustive-deps
+  const page = nav.url === 'index.html' ? { title: pick(C.site.title), blocks: [
+    { t: 'h1', parts: [pick(C.site.title)], k: 'h' }, { t: 'p', parts: [{ a: text, href }], k: 'w', hl: !ok }] } : null;
+  const btn = (v) => (
+    <button key={v} type="button" disabled={!canTap || ok || off === v} onClick={() => choose(v)} data-v={v}
+      className={'kz-btn z4-tf z4-where ' + (ok && v === it.right ? 'is-ok' : off === v ? 'is-off' : 'is-ghost')}>
+      {pick(c[v])}<Led on={led && !ok && off === null} />
+    </button>
+  );
+  return (
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="z4-sheet">
+        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : msg} err={!!msg} n={(ii + 1) + '/' + c.items.length} />
+        <div className="kz-scene z4-s5" key={'i' + ii}>
+          <div className="kz-col">
+            <KzCode lines={[codeLine('w', aCode(href, text), { cls: 'is-hl' })]} cls="kz-code-sm" />
+            <div className="kz-pick z4-tf-pick">{btn('site')}{btn('web')}</div>
+          </div>
+          <div className="kz-col"><SiteBrowser nav={nav} short override={page} live={false} /></div>
+        </div>
+      </Sheet>
+    </StageB>
+  );
+}
+
+// =============================================================================
 // S12. ТЕКСТ СВОЕЙ ССЫЛКИ и S13. АДРЕС СВОЕЙ СТРАНИЦЫ (Live Code Preview) — своя ссылка двумя экранами:
 // текст ссылки (засчёт по «Готово»), потом имя файла своей страницы mening.html (по «Проверить»);
 // после этого ссылку можно нажать — откроется своя страница.
@@ -10360,7 +10673,7 @@ function Q2({ p }) {
               <span className="z4-card-h">{pick(c.card)}</span>
               <p className="z4-tf-t">{pick(it.t)}</p>
             </div>
-            {it.code ? <KzCode lines={[codeLine('c', it.code === 'ok' ? aCode('osh.html', pick(C.site.osh)) : aCode('osh.html', pick(C.site.osh), { noHref: true }))]} cls="kz-code-sm" /> : null}
+            {it.code ? <KzCode lines={[codeLine('c', it.code === 'ok' ? aCode('osh.html', pick(C.site.osh)) : it.code === 'host' ? aCode(pick(C.web.host), pick(C.web.link)) : aCode('osh.html', pick(C.site.osh), { noHref: true }))]} cls="kz-code-sm" /> : null}
             <div className="kz-pick z4-tf-pick">{btn(true)}{btn(false)}</div>
           </div>
         </div>
@@ -10396,8 +10709,8 @@ function S15({ p }) {
           </div>
           <div className="kz-col kz-s15-side">
             <div className="kz-roles">
-              {['a', 'href', 'val'].map((k) => (
-                <span key={k} className={'kz-role' + (curK === k || (riddle && k === 'href') ? ' is-on' : '')} style={{ '--c': k === 'a' ? '#FA4F28' : k === 'href' ? '#7C5CFA' : '#0FA38E' }}>
+              {['a', 'href', 'val', 'web'].map((k) => (
+                <span key={k} className={'kz-role' + (curK === k || (riddle && k === 'href') ? ' is-on' : '')} style={{ '--c': k === 'a' ? '#FA4F28' : k === 'href' ? '#7C5CFA' : k === 'val' ? '#0FA38E' : '#D97706' }}>
                   <i aria-hidden="true" />{pick(c.roles[k])}
                 </span>
               ))}
@@ -10418,14 +10731,16 @@ const SCREENS = [
   { id: 's2', code: 'SHOW', Comp: S2 }, { id: 's3', code: 'LEVEL-1', Comp: S3 }, { id: 's4', code: 'CHECK-1', Comp: S4 },
   { id: 's5', code: 'SHOW', Comp: S5 }, { id: 's6', code: 'LEVEL-2', Comp: S6 }, { id: 's7', code: 'CHECK-2', Comp: S7 },
   { id: 's8', code: 'SHOW', Comp: S8 }, { id: 's9', code: 'LEVEL-3', Comp: S9 }, { id: 's10', code: 'CHECK-3', Comp: S10 },
-  { id: 's11', code: 'SHOW', Comp: S11 }, { id: 's12', code: 'LEVEL-4', Comp: S12 }, { id: 's13', code: 'LEVEL-4B', Comp: S13 },
+  { id: 's11', code: 'SHOW', Comp: S11 },
+  { id: 'w1', code: 'SHOW', Comp: W1 }, { id: 'w2', code: 'LEVEL-W', Comp: W2 }, { id: 'w3', code: 'CHECK-W', Comp: W3 },
+  { id: 's12', code: 'LEVEL-4', Comp: S12 }, { id: 's13', code: 'LEVEL-4B', Comp: S13 },
   { id: 's14', code: 'CHECK-4', Comp: S14 },
   { id: 'q1', code: 'CHECK-5', Comp: Q1 }, { id: 'q2', code: 'QUIZ', Comp: Q2 },
   { id: 's15', code: 'ACHIEVEMENT', Comp: S15 }
 ];
 // «Повторить» стирает только экран; своя ссылка ученика (myLink) остаётся.
 const SCREEN_RESET = { s1: ['s1'], s2: ['s2'], s3: ['s3'], s4: ['s4'], s5: ['s5'], s6: ['s6'], s7: ['s7'], s8: ['s8'], s9: ['s9'],
-  s10: ['s10'], s11: ['s11'], s12: ['s12'], s13: ['s13'], s14: ['s14'], q1: ['q1'], q2: ['q2'] };
+  s10: ['s10'], s11: ['s11'], w1: ['w1'], w2: ['w2'], w3: ['w3'], s12: ['s12'], s13: ['s13'], s14: ['s14'], q1: ['q1'], q2: ['q2'] };
 
 // Артефакт урока — своя ссылка ученика на свою страницу.
 function lesson4Artifact(store) {
@@ -13196,6 +13511,8 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .r28 .kz-dash { border-color: rgba(255, 255, 255, .25); }
 .r28 .kz-move-b { border-radius: 4px; background: #333; border: 1px solid #444; box-shadow: none; color: #CCC; }
 .r28 .kz-move-tip-k { background: #fff; border: 1px solid var(--r-edge); box-shadow: none; }
+/* «Верно или нет» (заказчик, 05.11.2026): код — во всю ширину колонки, как карточка Коди и кнопки, а не узким блоком посередине. */
+.r28 .kz-q2 .kz-col > .kz-code { align-self: center; width: min(100%, 520px); }
 .r28 .kz-q2-close .kz-tag { background: #264F78; border-radius: 3px; }
 .r28 .kz-q2-close .kz-tk-n { color: #fff; }
 .r28 .kz-q2-close .kz-tk-b { color: #CCC; }
@@ -13550,6 +13867,9 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 /* 6. Мера --brh задаёт только высоту окна: ширину браузера в столбце она больше не сужает — и там, где урок
       ставил своё max-width (урок 1, экраны 6 и 8 на невысоком телефоне: окно уже кода под ним). */
 .r28 .kz-col > .kz-br { max-width: none !important; }
+
+/* Перетаскивание строки (урок 1, s13): строка, куда встанет полоска, подсвечена, пока её несут. */
+.r28 .kz-line.is-drop { background: rgba(250, 79, 40, .18) !important; box-shadow: inset 3px 0 0 var(--r-pri); }
 /* ── УРОК 4 «Ссылки и атрибуты» — свои части в облике «Редактор» (классы z4-*) ─────────────
    Весь CSS урока — здесь (основа — CSS уроков 2–3), поверх r28.css эталона. Бумаги нет нигде.
    Страница в Chrome — как браузер по умолчанию: шрифт с засечками, ссылка — синяя с подчёркиванием
@@ -13725,6 +14045,9 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .z4-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) { flex-direction: row; align-items: center; gap: clamp(14px, 2vw, 26px); width: 100%; max-width: 1000px; }
   .z4-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .kz-br { flex: 1 1 0; min-width: 0; --brh: 40dvh; aspect-ratio: 16 / 11; }
   .z4-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .kz-code { flex: 1.15 1 0; min-width: 0; }
+  /* Панель «Файлы» (экраны 3 и 13) — своей строкой под браузером и кодом, а не третьим столбцом: иначе браузер и код сжимались. */
+  .z4-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code):has(> .z4-files) { display: grid; grid-template-columns: 1fr 1.15fr; row-gap: 14px; }
+  .z4-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .z4-files { grid-column: 1 / -1; justify-self: center; }
   .z4-sheet .kz-code { font-size: clamp(15px, 2.3dvh, 20px); gap: 6px; }
   .z4-sheet .kz-line { min-height: 34px; }
   .z4-sheet .kz-code.kz-code-sm { font-size: clamp(14px, 2.05dvh, 18px); }
@@ -13930,4 +14253,12 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 @media (min-width: 760px) and (orientation: portrait) { .r28 .kz-sheet .kz-scene.z4-s1 > .z4-s1-man { display: none; } }
 /* Клавиатура телефона открыта: окно — полоска; правила невысокого телефона выше (с !important) здесь не действуют. */
 .is-kbd .r28 .kz-sheet .kz-scene-col .kz-br.z4-br.is-short, .is-kbd .r28 .kz-sheet .kz-scene.z4-s5 .kz-br.z4-br { aspect-ratio: auto !important; }
+
+/* w1–w3 — сайт в интернете: части полного адреса загораются, подписи под кодом; имя сайта — в панели. */
+.r28 .kz-line .z4-u { border-radius: 3px; transition: background .25s, box-shadow .25s; }
+.r28 .kz-line .z4-u.is-cur { background: rgba(250, 79, 40, .3); box-shadow: 0 0 0 2px rgba(250, 79, 40, .3); }
+.r28 .z4-url-lbls { justify-content: flex-start; }
+.r28 .z4-file-web i { border-radius: 50%; width: 10px; height: 10px; background: #0FA38E; }
+.r28 .kz-line .z4-slot-url .tk-input { min-width: 9em; }
+.r28 .z4-where { min-width: 0; }
 `;

@@ -56,6 +56,8 @@ function PageDoc({ blocks, onNav, cls }) {
   );
 }
 
+// Адрес сайта в интернете: без пробелов и «/» в конце; http:// браузер сам переводит на https://.
+const webKey = (f) => String(f || '').trim().replace(/\/+$/, '').toLowerCase().replace(/^http:\/\//, 'https://');
 // САЙТ КОДИ — страницы по имени файла. mine — своя страница ученика (s12–s15).
 const sitePage = (pick, file, mine) => {
   const home = { t: 'p', parts: [{ a: pick(C.site.home), href: 'index.html' }], k: 'home' };
@@ -68,6 +70,13 @@ const sitePage = (pick, file, mine) => {
     { t: 'h1', parts: [pick(C.site.games)], k: 'h' }, { t: 'ul', items: pick(C.site.gamesList).map((w) => [w]), k: 'u' }, home] };
   if (file === 'mening.html' && mine) return { title: mine, blocks: [
     { t: 'h1', parts: [mine], k: 'h' }, { t: 'p', parts: [pick(C.site.mineHello)], k: 'p' }, home] };
+  // Сайт в интернете (w1–w3): адрес с https:// (или http://) — Википедия; другое имя сайта — «Не удаётся открыть сайт».
+  const wk = webKey(file);
+  if (/^https:\/\//.test(wk)) {
+    if (LANGS.some((l) => C.web.url[l] === wk) || wk === C.web.portal) return { title: pick(C.web.title), web: true, blocks: [
+      { t: 'h1', parts: [pick(C.web.title)], k: 'h' }, { t: 'p', parts: [pick(C.web.sub)], k: 'p' }] };
+    return { title: file, nf: true, blocks: [{ t: 'nf', parts: [pick(C.site.nr)], k: 'nf' }, { t: 'p', parts: [pick(fillL(C.site.nrText, { f: file }))], k: 'nfp', cls: 'z4-nf-p' }] };
+  }
   // Честно: такого файла нет — браузер показывает свою страницу ошибки.
   return { title: file, nf: true, blocks: [{ t: 'nf', parts: [pick(C.site.nf)], k: 'nf' }, { t: 'p', parts: [pick(fillL(C.site.nfText, { f: file }))], k: 'nfp', cls: 'z4-nf-p' }] };
 };
@@ -91,10 +100,16 @@ function SiteBrowser({ nav, mine, short, cls, pageHl, override, live = true }) {
     </PaperBrowser>
   );
 }
+// Значение href: у полного адреса части отдельно — https:// и имя сайта (lit — какая горит).
+const urlVal = (href, lit) => {
+  const m = /^(https?:\/\/)(.*)$/.exec(href);
+  if (!m) return <span className="z4-val">{'"' + href + '"'}</span>;
+  return <span className="z4-val">"<span className={'z4-u' + (lit === 'proto' ? ' is-cur' : '')}>{m[1]}</span><span className={'z4-u' + (lit === 'host' ? ' is-cur' : '')}>{m[2]}</span>"</span>;
+};
 // Строка кода: <p><a href="…">текст</a></p> и варианты.
 const aCode = (href, text, opts) => {
   const o = opts || {};
-  const open = o.noHref ? [T_('a')] : [<span key="o" className="kz-tag" translate="no"><span className="kz-tk-b">{'<'}</span><span className="kz-tk-n">a</span> <span className="z4-attr">href</span><span className="kz-tk-b">=</span><span className="z4-val">{'"' + href + '"'}</span><span className="kz-tk-b">{'>'}</span></span>];
+  const open = o.noHref ? [T_('a')] : [<span key="o" className="kz-tag" translate="no"><span className="kz-tk-b">{'<'}</span><span className="kz-tk-n">a</span> <span className="z4-attr">href</span><span className="kz-tk-b">=</span>{urlVal(href, o.lit)}<span className="kz-tk-b">{'>'}</span></span>];
   return [T_('p')].concat(open, [W_(text)], o.noClose ? [] : [T_('a', true)], o.tail ? [W_(o.tail)] : [], [T_('p', true)]);
 };
 const codeLine = (k, parts, extra) => Object.assign({ k, d: 0, place: k, parts }, extra || {});
@@ -819,6 +834,213 @@ function S11({ p }) {
 }
 
 // =============================================================================
+// W1. САЙТ В ИНТЕРНЕТЕ (показ; заказчик, 05.11.2026) — к главной добавляется ссылка на Википедию с полным
+// адресом; под речь Коди загораются https:// и имя сайта; браузер сам нажимает — открывается Википедия, адрес
+// в строке полный. Потом https:// стирается — браузер ищет файл на нашем сайте: «Файл не найден».
+// =============================================================================
+function W1({ p }) {
+  const pick = usePick();
+  const c = C.w1;
+  const [rec, put] = useRec('w1');
+  const solved = !!(rec && rec.done);
+  const [n, setN] = useState(solved ? 3 : 0);   // 0 — ссылки нет; 1 — полный адрес; 2 — без https://; 3 — снова полный
+  const [lit, setLit] = useState(null);
+  const [seen, setSeen] = useState(solved ? 2 : 0);
+  const nav = useNav('index.html', FILES);
+  const url = pick(C.web.url), host = pick(C.web.host), link = pick(C.web.link);
+  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
+  const W = reduceMotion() ? 300 : 1300;
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { act: () => { sfx('pop', true); setN(1); } }, { wait: 500 },
+    { act: () => { sfx('tap', true); setLit('proto'); setSeen(1); } }, { say: [{ text: c.sayProto, pose: 'point' }] },
+    { act: () => { sfx('tap', true); setLit('host'); setSeen(2); } }, { say: [{ text: c.sayHost, pose: 'point' }] },
+    { act: () => { setLit(null); nav.go(url); } }, { wait: 500 }, { say: [{ text: c.sayOpen, pose: 'smile' }] },
+    { act: () => nav.back && nav.back() }, { wait: W },
+    { act: () => { sfx('soft', true); setN(2); } }, { say: [{ text: c.sayNoProto, pose: 'curious' }] },
+    { act: () => nav.go(host) }, { wait: 500 }, { say: [{ text: c.sayNf, pose: 'wonder' }] },
+    { act: () => { if (nav.back) nav.back(); sfx('ok', true); setN(3); } }, { say: [{ text: c.done, pose: 'smile' }] },
+    { act: () => put({ done: true }) }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
+  const href = n === 2 ? host : url;
+  const page = nav.url === 'index.html' ? { title: pick(C.site.title), blocks: [
+    { t: 'h1', parts: [pick(C.site.title)], k: 'h' },
+    { t: 'p', parts: [{ a: pick(C.site.osh), href: 'osh.html' }], k: 'l1' }].concat(n >= 1 ? [{ t: 'p', parts: [{ a: link, href }], k: 'w', hl: !demo.done && !solved }] : []) } : null;
+  const askText = solved || demo.done ? c.askDone : n === 2 ? c.askNf : lit === 'host' ? c.askHost : lit === 'proto' ? c.askProto : c.askStart;
+  return (
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+      <Sheet cls="z4-sheet">
+        <KzAsk text={askText} />
+        <div className="kz-scene z4-s5">
+          <div className="kz-col">
+            <KzCode lines={[codeLine('h', [T_('h1'), W_(pick(C.site.title)), T_('h1', true)], { cls: 'z4-edge' }),
+              codeLine('l1', aCode('osh.html', pick(C.site.osh)), { cls: 'z4-ctx' })].concat(n >= 1 ? [codeLine('w', aCode(href, link, { lit }), { cls: 'is-new' + (lit || n === 2 ? ' is-read' : '') })] : [])} cls="kz-code-sm" />
+            {seen ? (
+              <div className="z4-anat-labels z4-url-lbls">
+                <TagChip t={'https:// — ' + pick(C.web.proto)} cls="z4-a-in" on={lit === 'proto'} />
+                {seen >= 2 ? <TagChip t={pick(fillL(C.web.hostL, { h: C.web.host }))} cls="z4-a-in" on={lit === 'host'} /> : null}
+              </div>
+            ) : null}
+          </div>
+          <div className="kz-col"><SiteBrowser nav={nav} short override={page} live={false} /></div>
+        </div>
+      </Sheet>
+    </StageB>
+  );
+}
+
+// Проверка полного адреса (w2): null — верно; 'http' — работает, но без s; иначе — причина.
+function urlIssue(v, host, msgs) {
+  const n = normT(v).replace(/^["'«“]+|["'»”]+$/g, '').replace(/\/+$/, '');
+  if (n === 'https://' + host) return null;
+  if (n === 'http://' + host) return 'http';
+  if (!n) return msgs.empty;
+  if (/^https?:\/\//.test(n)) return msgs.typo;
+  if (/^h?t?t?ps?(?=[:/]|$)/.test(n) || /^https?/.test(n)) return msgs.colon;
+  return msgs.noProto;
+}
+
+// =============================================================================
+// W2. ПОЛНЫЙ АДРЕС (Fill in the Blanks) — у ссылки «Википедия» пустой href; внизу — имя сайта. Ученик пишет
+// полный адрес (кнопка https:// вставляет начало). Ссылку можно нажать: честно откроется то, что написано —
+// без https:// «Файл не найден», с ошибкой в имени — «Не удаётся открыть сайт».
+// =============================================================================
+function W2({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.w2;
+  const [rec, put] = useRec('w2');
+  const solved = !!(rec && rec.done);
+  const ty = useTagTyping({ max: 40 });
+  const [msg, setMsg] = useState(null);
+  const [okNow, setOkNow] = useState(solved);
+  const [okVal, setOkVal] = useState(null);
+  const nav = useNav('index.html', FILES);
+  const url = pick(C.web.url), host = pick(C.web.host), link = pick(C.web.link);
+  const hints = c.hints.map((h) => fillL(h, { h: C.web.host }));
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'explain' }]);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(solved || okNow, spoken);
+  const lad = useKzLadder(!okNow);
+  const st = useRef({ tries: 0, misses: 0 });
+  const led = useIdleLed(canTap && !okNow && !ty.val, 0);
+  const typed = ty.val.trim().replace(/^["']+|["']+$/g, '');
+  const val = okNow ? (okVal || url) : typed;
+  const check = () => {
+    if (!canTap || okNow) return;
+    st.current.tries += 1;
+    const issue = urlIssue(ty.val, host, c.msgs);
+    if (!issue || issue === 'http') {
+      sfx('win', true); setMsg(null); setOkNow(true); setOkVal(typed); put({ done: true });
+      log({ screenId: 'w2', type: 'write-url', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
+      sayNow(issue === 'http' ? c.okHttp : c.ok, 'cheer');
+      return;
+    }
+    st.current.misses += 1;
+    sfx('soft', true); setMsg(issue); sayNow(issue, 'think');
+    if (st.current.misses >= 2) lad.bump();
+  };
+  const page = nav.url === 'index.html' ? { title: pick(C.site.title), blocks: [
+    { t: 'h1', parts: [pick(C.site.title)], k: 'h' },
+    { t: 'p', parts: [{ a: link, href: val || 'index.html' }], k: 'w', hl: !okNow }] } : null;
+  return (
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), hints) || c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="z4-sheet">
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hintAt(lad.lv, hints))} err={!!msg} />
+        <div className="kz-scene kz-scene-col">
+          <div className="kz-col">
+            <SiteBrowser nav={nav} short override={page} />
+            <KzCode lines={[codeLine('h', [T_('h1'), W_(pick(C.site.title)), T_('h1', true)], { cls: 'z4-edge' }),
+              okNow ? codeLine('w', aCode(val, link), { cls: 'is-new' }) : codeLine('w', [T_('p'),
+                <span key="o" className="kz-tag" translate="no"><span className="kz-tk-b">{'<'}</span><span className="kz-tk-n">a</span> <span className="z4-attr">href</span><span className="kz-tk-b">=</span><span className="z4-val">"</span></span>,
+                <span key="g" className={'kz-gap z4-slot z4-slot-url' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(v) => { ty.setVal(v); setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={40} /></span>,
+                <span key="c" className="kz-tag" translate="no"><span className="z4-val">"</span><span className="kz-tk-b">{'>'}</span></span>,
+                W_(link), T_('a', true), T_('p', true)], { cls: 'is-hl' })
+            ]} cls="kz-code-sm" />
+            <div className="z4-files z4-host" aria-label={pick(C.web.hostH)}>
+              <span className="z4-files-h">{pick(C.web.hostH)}</span>
+              <span className={'z4-file z4-file-web' + (lad.lv >= 3 ? ' is-hl' : '')} translate="no"><i aria-hidden="true" />{host}</span>
+            </div>
+          </div>
+        </div>
+        {!okNow ? <KeyRow keys={['https://']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 8} /> : null}
+      </Sheet>
+    </StageB>
+  );
+}
+
+// =============================================================================
+// W3. ГДЕ БРАУЗЕР БУДЕТ ИСКАТЬ (сортировка по одному) — адрес ссылки: «среди файлов сайта» или «в интернете».
+// Ловушка — имя сайта без https://: браузер ищет файл на нашем сайте. После верного ответа браузер честно
+// открывает адрес (рецепт, Википедию или «Файл не найден»). Промах — причина, можно выбрать снова.
+// =============================================================================
+function W3({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.w3;
+  const [rec, put] = useRec('w3');
+  const solved = !!(rec && rec.done);
+  const [ii, setIi] = useState(solved ? c.items.length - 1 : 0);
+  const [ok, setOk] = useState(solved);
+  const [off, setOff] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [next, setNext] = useState(false);
+  const nav = useNav('index.html', FILES);
+  const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.ok, pose: 'smile' }] : [{ text: c.say, pose: 'curious' }]);
+  const canTap = useCanAnswer(spoken);
+  const done = ok && ii === c.items.length - 1;
+  const canGo = useAdvanceGate(solved || done, spoken);
+  const st = useRef({ tries: 0, misses: 0 });
+  const led = useIdleLed(canTap && !ok, ii * 10 + (off === null ? 0 : 1));
+  const it = c.items[ii];
+  const href = it.k === 'osh' ? 'osh.html' : it.k === 'url' ? pick(C.web.url) : it.k === 'host' ? pick(C.web.host) : C.web.portal;
+  const text = it.k === 'osh' ? pick(C.site.osh) : pick(C.web.link);
+  const choose = (v) => {
+    if (!canTap || ok || off === v) return;
+    st.current.tries += 1;
+    if (v !== it.right) {
+      st.current.misses += 1;
+      sfx('soft', true); setOff(v); setMsg(it.why); sayNow(it.why, 'think');
+      return;
+    }
+    sfx('ok', true); setOk(true); setMsg(null); nav.go(href);
+    const line = joinL(c.right, it.why);
+    if (ii === c.items.length - 1) {
+      put({ done: true });
+      log({ screenId: 'w3', type: 'sort-address', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: 0, depth: 0 });
+      sayNow(joinL(line, c.ok), 'cheer');
+    } else { sayNow(line, 'smile'); setNext(true); }
+  };
+  useEffect(() => {
+    if (!next || !spoken) return undefined;
+    const t = setTimeout(() => { setNext(false); nav.reset('index.html'); setIi((x) => x + 1); setOk(false); setOff(null); setMsg(null); }, reduceMotion() ? 300 : 1400);
+    return () => clearTimeout(t);
+  }, [next, spoken]); // eslint-disable-line react-hooks/exhaustive-deps
+  const page = nav.url === 'index.html' ? { title: pick(C.site.title), blocks: [
+    { t: 'h1', parts: [pick(C.site.title)], k: 'h' }, { t: 'p', parts: [{ a: text, href }], k: 'w', hl: !ok }] } : null;
+  const btn = (v) => (
+    <button key={v} type="button" disabled={!canTap || ok || off === v} onClick={() => choose(v)} data-v={v}
+      className={'kz-btn z4-tf z4-where ' + (ok && v === it.right ? 'is-ok' : off === v ? 'is-off' : 'is-ghost')}>
+      {pick(c[v])}<Led on={led && !ok && off === null} />
+    </button>
+  );
+  return (
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="z4-sheet">
+        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : msg} err={!!msg} n={(ii + 1) + '/' + c.items.length} />
+        <div className="kz-scene z4-s5" key={'i' + ii}>
+          <div className="kz-col">
+            <KzCode lines={[codeLine('w', aCode(href, text), { cls: 'is-hl' })]} cls="kz-code-sm" />
+            <div className="kz-pick z4-tf-pick">{btn('site')}{btn('web')}</div>
+          </div>
+          <div className="kz-col"><SiteBrowser nav={nav} short override={page} live={false} /></div>
+        </div>
+      </Sheet>
+    </StageB>
+  );
+}
+
+// =============================================================================
 // S12. ТЕКСТ СВОЕЙ ССЫЛКИ и S13. АДРЕС СВОЕЙ СТРАНИЦЫ (Live Code Preview) — своя ссылка двумя экранами:
 // текст ссылки (засчёт по «Готово»), потом имя файла своей страницы mening.html (по «Проверить»);
 // после этого ссылку можно нажать — откроется своя страница.
@@ -1122,7 +1344,7 @@ function Q2({ p }) {
               <span className="z4-card-h">{pick(c.card)}</span>
               <p className="z4-tf-t">{pick(it.t)}</p>
             </div>
-            {it.code ? <KzCode lines={[codeLine('c', it.code === 'ok' ? aCode('osh.html', pick(C.site.osh)) : aCode('osh.html', pick(C.site.osh), { noHref: true }))]} cls="kz-code-sm" /> : null}
+            {it.code ? <KzCode lines={[codeLine('c', it.code === 'ok' ? aCode('osh.html', pick(C.site.osh)) : it.code === 'host' ? aCode(pick(C.web.host), pick(C.web.link)) : aCode('osh.html', pick(C.site.osh), { noHref: true }))]} cls="kz-code-sm" /> : null}
             <div className="kz-pick z4-tf-pick">{btn(true)}{btn(false)}</div>
           </div>
         </div>
@@ -1158,8 +1380,8 @@ function S15({ p }) {
           </div>
           <div className="kz-col kz-s15-side">
             <div className="kz-roles">
-              {['a', 'href', 'val'].map((k) => (
-                <span key={k} className={'kz-role' + (curK === k || (riddle && k === 'href') ? ' is-on' : '')} style={{ '--c': k === 'a' ? '#FA4F28' : k === 'href' ? '#7C5CFA' : '#0FA38E' }}>
+              {['a', 'href', 'val', 'web'].map((k) => (
+                <span key={k} className={'kz-role' + (curK === k || (riddle && k === 'href') ? ' is-on' : '')} style={{ '--c': k === 'a' ? '#FA4F28' : k === 'href' ? '#7C5CFA' : k === 'val' ? '#0FA38E' : '#D97706' }}>
                   <i aria-hidden="true" />{pick(c.roles[k])}
                 </span>
               ))}
@@ -1180,14 +1402,16 @@ const SCREENS = [
   { id: 's2', code: 'SHOW', Comp: S2 }, { id: 's3', code: 'LEVEL-1', Comp: S3 }, { id: 's4', code: 'CHECK-1', Comp: S4 },
   { id: 's5', code: 'SHOW', Comp: S5 }, { id: 's6', code: 'LEVEL-2', Comp: S6 }, { id: 's7', code: 'CHECK-2', Comp: S7 },
   { id: 's8', code: 'SHOW', Comp: S8 }, { id: 's9', code: 'LEVEL-3', Comp: S9 }, { id: 's10', code: 'CHECK-3', Comp: S10 },
-  { id: 's11', code: 'SHOW', Comp: S11 }, { id: 's12', code: 'LEVEL-4', Comp: S12 }, { id: 's13', code: 'LEVEL-4B', Comp: S13 },
+  { id: 's11', code: 'SHOW', Comp: S11 },
+  { id: 'w1', code: 'SHOW', Comp: W1 }, { id: 'w2', code: 'LEVEL-W', Comp: W2 }, { id: 'w3', code: 'CHECK-W', Comp: W3 },
+  { id: 's12', code: 'LEVEL-4', Comp: S12 }, { id: 's13', code: 'LEVEL-4B', Comp: S13 },
   { id: 's14', code: 'CHECK-4', Comp: S14 },
   { id: 'q1', code: 'CHECK-5', Comp: Q1 }, { id: 'q2', code: 'QUIZ', Comp: Q2 },
   { id: 's15', code: 'ACHIEVEMENT', Comp: S15 }
 ];
 // «Повторить» стирает только экран; своя ссылка ученика (myLink) остаётся.
 const SCREEN_RESET = { s1: ['s1'], s2: ['s2'], s3: ['s3'], s4: ['s4'], s5: ['s5'], s6: ['s6'], s7: ['s7'], s8: ['s8'], s9: ['s9'],
-  s10: ['s10'], s11: ['s11'], s12: ['s12'], s13: ['s13'], s14: ['s14'], q1: ['q1'], q2: ['q2'] };
+  s10: ['s10'], s11: ['s11'], w1: ['w1'], w2: ['w2'], w3: ['w3'], s12: ['s12'], s13: ['s13'], s14: ['s14'], q1: ['q1'], q2: ['q2'] };
 
 // Артефакт урока — своя ссылка ученика на свою страницу.
 function lesson4Artifact(store) {

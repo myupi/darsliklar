@@ -173,6 +173,9 @@
   .z4-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) { flex-direction: row; align-items: center; gap: clamp(14px, 2vw, 26px); width: 100%; max-width: 1000px; }
   .z4-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .kz-br { flex: 1 1 0; min-width: 0; --brh: 40dvh; aspect-ratio: 16 / 11; }
   .z4-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .kz-code { flex: 1.15 1 0; min-width: 0; }
+  /* Панель «Файлы» (экраны 3 и 13) — своей строкой под браузером и кодом, а не третьим столбцом: иначе браузер и код сжимались. */
+  .z4-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code):has(> .z4-files) { display: grid; grid-template-columns: 1fr 1.15fr; row-gap: 14px; }
+  .z4-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .z4-files { grid-column: 1 / -1; justify-self: center; }
   .z4-sheet .kz-code { font-size: clamp(15px, 2.3dvh, 20px); gap: 6px; }
   .z4-sheet .kz-line { min-height: 34px; }
   .z4-sheet .kz-code.kz-code-sm { font-size: clamp(14px, 2.05dvh, 18px); }
@@ -378,3 +381,11 @@
 @media (min-width: 760px) and (orientation: portrait) { .r28 .kz-sheet .kz-scene.z4-s1 > .z4-s1-man { display: none; } }
 /* Клавиатура телефона открыта: окно — полоска; правила невысокого телефона выше (с !important) здесь не действуют. */
 .is-kbd .r28 .kz-sheet .kz-scene-col .kz-br.z4-br.is-short, .is-kbd .r28 .kz-sheet .kz-scene.z4-s5 .kz-br.z4-br { aspect-ratio: auto !important; }
+
+/* w1–w3 — сайт в интернете: части полного адреса загораются, подписи под кодом; имя сайта — в панели. */
+.r28 .kz-line .z4-u { border-radius: 3px; transition: background .25s, box-shadow .25s; }
+.r28 .kz-line .z4-u.is-cur { background: rgba(250, 79, 40, .3); box-shadow: 0 0 0 2px rgba(250, 79, 40, .3); }
+.r28 .z4-url-lbls { justify-content: flex-start; }
+.r28 .z4-file-web i { border-radius: 50%; width: 10px; height: 10px; background: #0FA38E; }
+.r28 .kz-line .z4-slot-url .tk-input { min-width: 9em; }
+.r28 .z4-where { min-width: 0; }

@@ -15,12 +15,14 @@
 // сломанные ссылки и делает ссылку на свою страницу. Загадка (без имён): Коди обернул «Mening
 // o'yinlarim» в a без href и уверен, что ссылка заработает; в выводе признаёт ошибку.
 //
-// ДУГА (17 экранов; экрана плана нет). Типы заданий — по разделу 3а навыка:
+// ДУГА (20 экранов; экрана плана нет; w1–w3 стоят после s11). Типы заданий — по разделу 3а навыка:
 //   s1 крючок (текст → ссылки, переходы, загадка)
 //   a и href:     s2 показ · s3 вписать имя файла (Fill in the Blanks) · s4 файлы к ссылкам меню (Drag & Drop)
 //   атрибут:      s5 показ «из чего состоит» · s6 собрать href="…" (Code Builder) · s7 часть ↔ название (Matching Pairs)
 //   поломки:      s8 показ «Файл не найден», нет </a> · s9 вписать </a> (Fill in the Blanks) · s10 до и после (Before / After)
 //   своя ссылка:  s11 показ «по сайту» · s12 текст, s13 адрес mening.html (Live Code Preview) · s14 вернуть href (Debug & Fix)
+//   сайт в интернете (заказчик, 05.11.2026): w1 показ https:// и имя сайта; без https:// — «Файл не найден» ·
+//                 w2 вписать полный адрес (Fill in the Blanks) · w3 «где браузер будет искать» (Sort, по одному)
 //   итоговая проверка: q1 найти строку с ошибкой (Error Detective) · q2 верно или нет (True / False)
 //   s15 вывод с разгадкой.
 //
@@ -103,7 +105,21 @@ const C = {
     mineHello: L3('Salom! Bu mening sahifam.', 'Привет! Это моя страница.', 'Hi! This is my page.'),
     nf: L3('Fayl topilmadi', 'Файл не найден', 'File not found'),
     nfText: L3('{f} fayli topilmadi. Manzilni tekshiring.', 'Файл {f} не найден. Проверь адрес.', 'The file {f} wasn’t found. Check the address.'),
+    nr: L3("Saytni ochib bo'lmadi", 'Не удаётся открыть сайт', 'This site can’t be reached'),
+    nrText: L3('{f} manzili topilmadi. Sayt nomini tekshiring.', 'Адрес {f} не найден. Проверь имя сайта.', 'The address {f} wasn’t found. Check the site name.'),
     filesH: L3('Fayllar', 'Файлы', 'Files')
+  },
+  // Сайт в интернете (w1–w3): Википедия на языке урока; страница в браузере — коротко, как заглушка.
+  web: {
+    link: L3('Vikipediya', 'Википедия', 'Wikipedia'),
+    url: { [LANGS[0]]: 'https://uz.wikipedia.org', [LANGS[1]]: 'https://ru.wikipedia.org', [LANGS[2]]: 'https://en.wikipedia.org' },
+    host: L3('uz.wikipedia.org', 'ru.wikipedia.org', 'en.wikipedia.org'),
+    portal: 'https://www.wikipedia.org',
+    title: L3('Vikipediya', 'Википедия', 'Wikipedia'),
+    sub: L3('Erkin ensiklopediya', 'Свободная энциклопедия', 'The free encyclopedia'),
+    hostH: L3('Sayt nomi', 'Имя сайта', 'Site name'),
+    proto: L3("internetga yo'l", 'путь в интернет', 'the way to the internet'),   // перед ним в подписи — https://
+    hostL: L3('{h} — sayt nomi', '{h} — имя сайта', '{h} — the site name')
   },
   s1: {
     eyebrow: L3("Bosilmaydigan so'zlar", 'Слова не нажимаются', 'Words that don’t click'),
@@ -112,9 +128,9 @@ const C = {
       'Hi! Last time we made lists. Now I have a whole site: a home page, a plov recipe and a page with my games. But look: tap the names on the home page and nothing happens. They’re just text. Let’s bring them to life. Tap “Transform”.'),
     magic: L3("Voy, qarang! Nomlar ko'k rangga kirdi, tagiga chiziq tushdi. Endi ular havola bo'ldi.", 'Ого, смотри! Названия стали синими и подчёркнутыми. Теперь это ссылки.', 'Whoa, look! The names turned blue and underlined. Now they’re links.'),
     magicP: L3("Havolani bosib ko'ring: boshqa sahifa ochiladi. Tepadagi strelka bilan esa orqaga qaytasiz.", 'Нажми ссылку — откроется другая страница. А стрелкой вверху вернёшься назад.', 'Tap a link and another page opens. The arrow at the top takes you back.'),
-    done: L3("Bugun shunday havolalar yasashni o'rganasiz va o'z sahifangizga havola qilasiz. Lekin oldin kichik topishmoq. Men o'yinlarim sahifasiga havola yasamoqchi bo'ldim va Mening o'yinlarim so'zlarini a tegiga o'rab qo'ydim, xolos. Menimcha, endi uni bossangiz, o'yinlar sahifasi ochiladi. Xo'sh, siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.",
-      'Сегодня ты научишься делать такие ссылки и сделаешь ссылку на свою страницу. Но сначала маленькая загадка. Я хотел сделать ссылку на страницу с играми и просто обернул слова «Мои игры» в тег a. По-моему, теперь нажмёшь — и откроются игры. Ну как думаешь, я прав? Ответ найдём вместе в конце урока.',
-      'Today you’ll learn to make links like these and link to your own page. But first, a little riddle. I wanted a link to my games page, so I just wrapped the words “My games” in the a tag. I think if you tap it now, the games page opens. So what do you think, am I right? We’ll find the answer together at the end of the lesson.'),
+    done: L3("Bugun shunday havolalar yasashni o'rganasiz: o'z sahifangizga ham, internetdagi saytga ham. Lekin oldin kichik topishmoq. Men o'yinlarim sahifasiga havola yasamoqchi bo'ldim va Mening o'yinlarim so'zlarini a tegiga o'rab qo'ydim, xolos. Menimcha, endi uni bossangiz, o'yinlar sahifasi ochiladi. Xo'sh, siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.",
+      'Сегодня ты научишься делать такие ссылки — и на свою страницу, и на сайт в интернете. Но сначала маленькая загадка. Я хотел сделать ссылку на страницу с играми и просто обернул слова «Мои игры» в тег a. По-моему, теперь нажмёшь — и откроются игры. Ну как думаешь, я прав? Ответ найдём вместе в конце урока.',
+      'Today you’ll learn to make links like these: to your own page and to a site on the internet. But first, a little riddle. I wanted a link to my games page, so I just wrapped the words “My games” in the a tag. I think if you tap it now, the games page opens. So what do you think, am I right? We’ll find the answer together at the end of the lesson.'),
     ask: L3('«Aylantirish» tugmasini bosing', 'Нажми «Превратить»', 'Tap “Transform”'),
     askDone: L3("Havolani bosib ko'ring", 'Нажми ссылку', 'Tap a link')
   },
@@ -314,6 +330,77 @@ const C = {
     ask: L3('Brauzer qanday yurishini kuzating', 'Смотри, как ходит браузер', 'Watch how the browser walks'),
     askDone: L3("Har bir havola o'z faylini ochadi", 'Каждая ссылка открывает свой файл', 'Each link opens its own file')
   },
+  // ССЫЛКА НА САЙТ В ИНТЕРНЕТЕ (w1 показ · w2 вписать полный адрес · w3 «где браузер будет искать»).
+  w1: {
+    eyebrow: L3('Internetdagi sayt', 'Сайт в интернете', 'A site on the internet'),
+    say: L3("Hozirgacha havolalarimiz faqat o'z saytimizdagi fayllarni ochdi. Lekin havola internetdagi istalgan saytga ham olib bora oladi. Masalan, Vikipediyaga. Buning uchun href ichiga fayl nomi emas, saytning to'liq manzili yoziladi. Qarang.",
+      'До сих пор наши ссылки открывали только файлы нашего сайта. Но ссылка может вести на любой сайт в интернете. Например, на Википедию. Для этого в href пишут не имя файла, а полный адрес сайта. Смотри.',
+      'So far our links only opened files on our own site. But a link can take you to any site on the internet. Wikipedia, for example. For that, href holds not a file name but the site’s full address. Watch.'),
+    sayProto: L3("To'liq manzil https so'zi bilan boshlanadi, keyin ikki nuqta va ikkita qiya chiziq keladi. Bu brauzerga internetga chiqishni aytadi. Oxiridagi s harfi inglizcha secure so'zidan olingan, ya'ni xavfsiz degani.",
+      'Полный адрес начинается со слова https, потом идут двоеточие и две косые черты. Это говорит браузеру: иди в интернет. Буква s на конце — от английского secure, то есть «защищённый».',
+      'A full address starts with the word https, then a colon and two slashes. That tells the browser to go out to the internet. The s at the end stands for secure.'),
+    sayHost: L3("Undan keyin sayt nomi keladi. Bu yerda u Vikipediya sayti. Qarang, brauzer havolani o'zi bosib ko'radi.",
+      'Дальше идёт имя сайта. Здесь это сайт Википедии. Смотри, браузер сам нажмёт ссылку.',
+      'Then comes the site name. Here it’s the Wikipedia site. Watch, the browser taps the link.'),
+    sayOpen: L3("Brauzer internetga chiqdi va boshqa saytni ochdi. Manzil satriga qarang: u yerda endi to'liq manzil turibdi.",
+      'Браузер вышел в интернет и открыл другой сайт. Посмотри в адресную строку: там теперь полный адрес.',
+      'The browser went out to the internet and opened another site. Look at the address bar: the full address is there now.'),
+    sayNoProto: L3("Endi boshidagi https qismini o'chirib ko'ramiz. Xo'sh, nima bo'larkin?", 'А теперь сотрём начало, https. Ну, что будет?', 'Now let’s erase the https part at the start. So what happens?'),
+    sayNf: L3("Fayl topilmadi! https bo'lmasa, brauzer buni o'z saytimizdagi fayl deb o'ylaydi va uni index.html yonidan qidiradi. Bunday fayl esa yo'q.",
+      'Файл не найден! Без https браузер думает, что это файл нашего сайта, и ищет его рядом с index.html. А такого файла нет.',
+      'File not found! Without https the browser thinks it’s a file on our site and looks for it next to index.html. And there’s no such file.'),
+    done: L3("Demak, o'z saytimizdagi sahifa uchun fayl nomi yetadi. Boshqa saytga esa to'liq manzil kerak: https, ikki nuqta, ikkita qiya chiziq va sayt nomi.",
+      'Значит, для страницы нашего сайта хватит имени файла. А для другого сайта нужен полный адрес: https, двоеточие, две косые черты и имя сайта.',
+      'So for a page on our site, the file name is enough. Another site needs the full address: https, a colon, two slashes and the site name.'),
+    askStart: L3('Qarang: havola internetga', 'Смотри: ссылка в интернет', 'Watch: a link to the internet'),
+    askProto: L3("Qarang: boshida https, ya'ni internetga yo'l", 'Смотри: в начале https — путь в интернет', 'Watch: https at the start is the way to the internet'),
+    askHost: L3('Qarang: sayt nomi', 'Смотри: имя сайта', 'Watch: the site name'),
+    askNf: L3("Qarang: boshida https bo'lmasa", 'Смотри: без https в начале', 'Watch: without https at the start'),
+    askDone: L3("Boshqa saytga — to'liq manzil", 'Другой сайт — полный адрес', 'Another site needs the full address')
+  },
+  w2: {
+    eyebrow: L3("To'liq manzil", 'Полный адрес', 'The full address'),
+    say: L3("Endi navbat sizga. Vikipediya havolasida manzil yo'q. Sayt nomi pastda yozilgan. Qo'shtirnoq ichiga saytning to'liq manzilini yozing. Boshini unutmang: https, ikki nuqta va ikkita qiya chiziq.",
+      'Теперь твоя очередь. У ссылки «Википедия» нет адреса. Имя сайта написано внизу. Впиши в кавычки полный адрес сайта. Не забудь начало: https, двоеточие и две косые черты.',
+      'Now it’s your turn. The “Wikipedia” link has no address. The site name is written below. Type the site’s full address in the quotes. Don’t forget the start: https, a colon and two slashes.'),
+    msgs: {
+      empty: L3("Qo'shtirnoq ichiga saytning to'liq manzilini yozing.", 'Впиши в кавычки полный адрес сайта.', 'Type the site’s full address in the quotes.'),
+      noProto: L3("Boshida https yo'q. Usiz brauzer o'z saytimizdan fayl qidiradi. Manzilni https, ikki nuqta va ikkita qiya chiziq bilan boshlang.",
+        'В начале нет https. Без него браузер ищет файл на нашем сайте. Начни адрес с https, двоеточия и двух косых черт.',
+        'There’s no https at the start. Without it the browser looks for a file on our site. Start the address with https, a colon and two slashes.'),
+      colon: L3("https so'zidan keyin ikki nuqta, keyin ikkita qiya chiziq turadi. Ularni tekshiring.", 'После https идут двоеточие и две косые черты. Проверь их.', 'After https come a colon and two slashes. Check them.'),
+      typo: L3("Sayt nomini pastdagidek, harfma-harf yozing.", 'Напиши имя сайта буква в букву, как внизу.', 'Type the site name letter by letter, as shown below.')
+    },
+    hints: [
+      L3('Bu havola boshqa saytga olib boradi. Unga qanday manzil kerak?', 'Эта ссылка ведёт на другой сайт. Какой адрес ей нужен?', 'This link goes to another site. What kind of address does it need?'),
+      L3("To'liq manzil https bilan boshlanadi, keyin ikki nuqta va ikkita qiya chiziq, keyin sayt nomi keladi.", 'Полный адрес начинается с https, потом двоеточие и две косые черты, потом имя сайта.', 'A full address starts with https, then a colon and two slashes, then the site name.'),
+      L3("Pastdagi https tugmasini bosing, keyin sayt nomini yozing: {h}.", 'Нажми кнопку https внизу, потом напиши имя сайта: {h}.', 'Tap the https button below, then type the site name: {h}.')
+    ],
+    ok: L3("Zo'r! Havola internetga chiqdi. Bosib ko'ring: Vikipediya ochiladi.", 'Огонь! Ссылка ведёт в интернет. Нажми — откроется Википедия.', 'Awesome! The link goes to the internet. Tap it and Wikipedia opens.'),
+    okHttp: L3("Ishladi! Lekin bugun saytlar ko'pincha https bilan yoziladi. Oxiridagi s harfi xavfsiz degani. Bosib ko'ring.", 'Работает! Но сегодня сайты обычно пишут с https: буква s значит «защищённый». Нажми ссылку.', 'It works! But today sites usually use https: the s means secure. Tap the link.'),
+    ask: L3("Qo'shtirnoq ichiga to'liq manzilni yozing", 'Впиши в кавычки полный адрес', 'Type the full address in the quotes')
+  },
+  w3: {
+    eyebrow: L3('Qayerdan qidiradi?', 'Где искать?', 'Where to look?'),
+    say: L3("Endi o'zingizni sinab ko'ring. Men havolaga manzil yozaman. Siz esa brauzer uni qayerdan qidirishini tanlang: saytimiz fayllaridanmi yoki internetdanmi?",
+      'Теперь проверь себя. Я пишу адрес ссылки, а ты выбери, где браузер будет его искать: среди файлов нашего сайта или в интернете?',
+      'Now check yourself. I write a link address, and you choose where the browser will look for it: among our site’s files or on the internet?'),
+    ask: L3('Brauzer qayerdan qidiradi?', 'Где браузер будет искать?', 'Where will the browser look?'),
+    site: L3('Saytimiz fayllaridan', 'Среди файлов сайта', 'In our site’s files'),
+    web: L3('Internetdan', 'В интернете', 'On the internet'),
+    right: L3('Barakalla!', 'Точно!', 'Exactly!'),
+    items: [
+      { k: 'osh', right: 'site',
+        why: L3("Bu oddiy fayl nomi. Brauzer uni saytimizdan topadi va retseptni ochadi.", 'Это просто имя файла. Браузер найдёт его на нашем сайте и откроет рецепт.', 'That’s just a file name. The browser finds it on our site and opens the recipe.') },
+      { k: 'url', right: 'web',
+        why: L3("Manzil https bilan boshlanadi. Demak, brauzer internetga chiqadi va Vikipediyani ochadi.", 'Адрес начинается с https. Значит, браузер выйдет в интернет и откроет Википедию.', 'The address starts with https. So the browser goes out to the internet and opens Wikipedia.') },
+      { k: 'host', right: 'site',
+        why: L3("Aldanmang! Boshida https yo'q, shuning uchun brauzer buni oddiy fayl deb o'ylaydi va saytimizdan qidiradi. Fayl esa topilmaydi.", 'Не попадись! В начале нет https, поэтому браузер считает это обычным файлом и ищет на нашем сайте. А файла нет.', 'Don’t be fooled! There’s no https at the start, so the browser treats it as a plain file and looks on our site. And there’s no such file.') },
+      { k: 'portal', right: 'web',
+        why: L3("https bilan boshlangan manzil internetdagi saytga olib boradi. Bu Vikipediyaning bosh sahifasi.", 'Адрес с https ведёт на сайт в интернете. Это главная страница Википедии.', 'An address starting with https leads to a site on the internet. This is Wikipedia’s main page.') }
+    ],
+    ok: L3("Hammasi to'g'ri! Endi qaysi manzil qayerga olib borishini bilasiz.", 'Всё верно! Теперь ты знаешь, куда ведёт какой адрес.', 'All correct! Now you know where each address leads.')
+  },
   // Своя ссылка — два экрана: текст ссылки (по «Готово»), потом адрес своей страницы (по «Проверить»).
   s12: {
     eyebrow: L3('Havolangiz matni', 'Текст своей ссылки', 'Your link text'),
@@ -401,7 +488,9 @@ const C = {
       { t: L3("href qiymati qo'shtirnoq ichida yoziladi.", 'Значение href пишут в кавычках.', 'The href value goes in quotes.'), right: true, code: 'ok',
         why: L3("Fayl nomi qo'shtirnoq ichida yoziladi, shunda brauzer uni aniq o'qiydi.", 'Имя файла пишут в кавычках — так браузер читает его точно.', 'The file name goes in quotes so the browser reads it exactly.') },
       { t: L3("a tegi href atributisiz ham havola bo'ladi.", 'Тег a и без href — ссылка.', 'The a tag is a link even without href.'), right: false, code: 'noHref',
-        why: L3("href bo'lmasa, brauzer qayerga borishni bilmaydi va so'z oddiy matn bo'lib qoladi.", 'Без href браузер не знает, куда вести, и слово остаётся обычным текстом.', 'Without href the browser doesn’t know where to go, and the word stays plain text.') }
+        why: L3("href bo'lmasa, brauzer qayerga borishni bilmaydi va so'z oddiy matn bo'lib qoladi.", 'Без href браузер не знает, куда вести, и слово остаётся обычным текстом.', 'Without href the browser doesn’t know where to go, and the word stays plain text.') },
+      { t: L3("Boshqa saytga havola uchun sayt nomining o'zi yetadi, https shart emas.", 'Для ссылки на другой сайт хватит одного имени сайта, https не нужен.', 'To link to another site, the site name alone is enough; https isn’t needed.'), right: false, code: 'host',
+        why: L3("Aslida https kerak. Usiz brauzer sayt nomini o'z saytimizdagi fayl deb o'ylaydi va fayl topilmaydi.", 'На самом деле https нужен. Без него браузер считает имя сайта файлом нашего сайта — и файла нет.', 'Actually https is needed. Without it the browser treats the site name as a file on our site, and there’s no such file.') }
     ],
     ok: L3("Hammasi to'g'ri! Siz a tegi va href atributini yaxshi bilasiz.", 'Всё верно! Ты отлично знаешь тег a и атрибут href.', 'All correct! You know the a tag and the href attribute really well.')
   },
@@ -415,12 +504,14 @@ const C = {
       { text: L3('a tegi havola yasaydi.', 'Тег a делает ссылку.', 'The a tag makes a link.'), k: 'a' },
       { text: L3('href atributi qayerga borishni aytadi.', 'Атрибут href говорит, куда вести.', 'The href attribute says where to go.'), k: 'href' },
       { text: L3("Qo'shtirnoq ichidagi qiymat esa fayl nomi bo'ladi.", 'А значение в кавычках — это имя файла.', 'And the value in quotes is the file name.'), k: 'val' },
-      { text: L3("Tabriklayman! Endi sahifalaringiz bir-biriga ulandi. Keyingi darsda sahifaga rasm qo'yamiz. Ko'rishguncha!", 'Ура! Теперь твои страницы связаны друг с другом. На следующем уроке добавим на страницу картинку. До встречи!', 'Hooray! Now your pages are connected. Next time we’ll add a picture to the page. See you!'), k: null }
+      { text: L3("Boshqa saytga havola qilsangiz, qiymat https bilan boshlanadigan to'liq manzil bo'ladi.", 'А если ссылка ведёт на другой сайт, значение — полный адрес, который начинается с https.', 'And if the link goes to another site, the value is a full address starting with https.'), k: 'web' },
+      { text: L3("Tabriklayman! Endi sahifalaringiz bir-biriga va internetga ulandi. Keyingi darsda sahifaga rasm qo'yamiz. Ko'rishguncha!", 'Ура! Теперь твои страницы связаны друг с другом и с интернетом. На следующем уроке добавим на страницу картинку. До встречи!', 'Hooray! Now your pages are connected to each other and to the internet. Next time we’ll add a picture to the page. See you!'), k: null }
     ],
     roles: {
       a: L3('a — havola', 'a — ссылка', 'a — link'),
       href: L3('href — manzil', 'href — адрес', 'href — address'),
-      val: L3('qiymat — fayl nomi', 'значение — имя файла', 'value — file name')
+      val: L3('qiymat — fayl nomi', 'значение — имя файла', 'value — file name'),
+      web: L3("https bilan — boshqa sayt", 'с https — другой сайт', 'with https — another site')
     },
     ask: L3('Havolangizga qarang', 'Посмотри на свою ссылку', 'Look at your link')
   }
@@ -430,7 +521,7 @@ const C = {
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
 Object.assign(SPOKEN, { why: 1, magic: 1, magicP: 1, msgs: 1, sayA: 1, sayHref: 1, sayTag: 1, sayAttr: 1, sayVal: 1, sayClose: 1,
-  sayTypo: 1, sayNf: 1, askQ: 1, miss: 1, order1: 1, order2: 1, order3: 1, say2: 1, fine: 1, items: 1, right: 1, pairOk: 1 });
+  sayTypo: 1, sayNf: 1, sayProto: 1, sayHost: 1, sayOpen: 1, sayNoProto: 1, okHttp: 1, askQ: 1, miss: 1, order1: 1, order2: 1, order3: 1, say2: 1, fine: 1, items: 1, right: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1 } });
 
 /*@FILE:gen/b16-chrome.jsx@*/

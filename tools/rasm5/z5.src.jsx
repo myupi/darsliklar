@@ -14,11 +14,13 @@
 // Загадка (без имён): Коди написал картинке href="osh.jpg", как у ссылки, и уверен, что фото
 // появится; в выводе признаёт ошибку — картинке нужен src.
 //
-// ДУГА (17 экранов; экрана плана нет). Типы заданий — по разделу 3а навыка:
+// ДУГА (20 экранов; экрана плана нет; w1–w3 стоят после s11). Типы заданий — по разделу 3а навыка:
 //   s1 крючок (страница без фото → с фото, загадка)
 //   img и src:     s2 показ · s3 вписать имя файла (Fill in the Blanks) · s4 строка кода ↔ картинка (Visual Code Mapping)
 //   alt и без </img>: s5 показ · s6 собрать <img …> (Code Builder) · s7 img / src / alt ↔ что делает (Matching Pairs)
 //   поломки:       s8 показ «нет src», «нет файла» · s9 вписать alt (Fill in the Blanks) · s10 до и после (Before / After)
+//   картинка из интернета (заказчик, 05.11.2026): w1 показ https://, имя сайта, файл; без https:// — сломанная ·
+//                 w2 вписать полный адрес (Fill in the Blanks) · w3 «откуда браузер возьмёт» (Sort, по одному)
 //   своя картинка: s11 показ «страница целиком» · s12 свой src, s13 свой alt (Live Code Preview) · s14 вернуть src (Debug & Fix)
 //   итоговая проверка: q1 найти строку с ошибкой (Error Detective) · q2 верно или нет (True / False)
 //   s15 вывод с разгадкой.
@@ -97,6 +99,15 @@ const C = {
     gallery: L3('Galereya', 'Галерея', 'Gallery'),
     cat: L3('Mening mushugim', 'Мой кот', 'My cat'),
     filesH: L3('Fayllar', 'Файлы', 'Files'),
+    // Картинки в интернете (w1–w3): на «сайте Коди» kodi.uz (сайт урока, придуман для примера).
+    hostH: L3('Sayt nomi', 'Имя сайта', 'Site name'),
+    fileH: L3('Rasm fayli', 'Файл картинки', 'Picture file'),
+    proto: L3("internetga yo'l", 'путь в интернет', 'the way to the internet'),
+    hostL: L3('sayt nomi', 'имя сайта', 'the site name'),
+    fileL: L3('rasm fayli', 'файл картинки', 'the picture file'),
+    fruit: L3('Sevimli mevam', 'Мой любимый фрукт', 'My favourite fruit'),
+    sun: L3('Quyoshli kun', 'Солнечный день', 'A sunny day'),
+    webAlts: L3({ 'quyosh.jpg': 'Quyosh', 'olma.jpg': 'Olma' }, { 'quyosh.jpg': 'Солнце', 'olma.jpg': 'Яблоко' }, { 'quyosh.jpg': 'Sun', 'olma.jpg': 'Apple' }),
     alts: L3({ 'osh.jpg': 'Osh', 'mushuk.jpg': 'Mushuk', 'top.jpg': "To'p", 'gul.jpg': 'Gul' },
       { 'osh.jpg': 'Плов', 'mushuk.jpg': 'Кот', 'top.jpg': 'Мяч', 'gul.jpg': 'Цветок' },
       { 'osh.jpg': 'Plov', 'mushuk.jpg': 'Cat', 'top.jpg': 'Ball', 'gul.jpg': 'Flower' })
@@ -108,9 +119,9 @@ const C = {
       'Hi! Last time we connected pages with links. Here’s the plov recipe page. But look, it’s only text. Plov without a photo isn’t very tasty, right? Let’s put a photo of plov on the page. Tap “Transform”.'),
     magic: L3("Voy, qarang! Sarlavha ostida osh rasmi paydo bo'ldi. Endi sahifa ancha jonli ko'rinadi.", 'Ого, смотри! Под заголовком появилось фото плова. Теперь страница выглядит гораздо живее.', 'Whoa, look! A photo of plov appeared under the heading. Now the page looks much more alive.'),
     magicP: L3("Rasm kodda turgan joyida chiqdi: sarlavhadan keyin va yozuvdan oldin.", 'Фото встало там, где оно стоит в коде: после заголовка и перед текстом.', 'The photo appears where it is in the code: after the heading and before the text.'),
-    done: L3("Bugun sahifaga shunday rasm qo'yishni o'rganasiz va o'z sahifangizga rasm qo'yasiz. Lekin oldin kichik topishmoq. Men ham rasm qo'ymoqchi bo'ldim. O'tgan darsda havolaga manzilni href bilan bergan edik-ku. Shuning uchun men rasmga ham href bilan osh.jpg faylini yozdim. Menimcha, endi sahifada osh rasmi chiqadi. Xo'sh, siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.",
-      'Сегодня ты научишься ставить такие картинки и поставишь картинку на свою страницу. Но сначала маленькая загадка. Я тоже хотел поставить картинку. На прошлом уроке мы давали ссылке адрес через href. Вот и картинке я написал файл osh.jpg через href. По-моему, теперь на странице появится фото плова. Ну как думаешь, я прав? Ответ найдём вместе в конце урока.',
-      'Today you’ll learn to put pictures like this on a page, and you’ll put one on your own page. But first, a little riddle. I wanted to add a picture too. Last time we gave a link its address with href. So I gave the picture the file osh.jpg with href too. I think the plov photo will show up now. So what do you think, am I right? We’ll find the answer together at the end of the lesson.'),
+    done: L3("Bugun sahifaga shunday rasm qo'yishni o'rganasiz: o'z faylingizdan ham, internetdagi saytdan ham. Lekin oldin kichik topishmoq. Men ham rasm qo'ymoqchi bo'ldim. O'tgan darsda havolaga manzilni href bilan bergan edik-ku. Shuning uchun men rasmga ham href bilan osh.jpg faylini yozdim. Menimcha, endi sahifada osh rasmi chiqadi. Xo'sh, siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.",
+      'Сегодня ты научишься ставить такие картинки — и из своих файлов, и с сайта в интернете. Но сначала маленькая загадка. Я тоже хотел поставить картинку. На прошлом уроке мы давали ссылке адрес через href. Вот и картинке я написал файл osh.jpg через href. По-моему, теперь на странице появится фото плова. Ну как думаешь, я прав? Ответ найдём вместе в конце урока.',
+      'Today you’ll learn to put pictures like this on a page: from your own files and from a site on the internet. But first, a little riddle. I wanted to add a picture too. Last time we gave a link its address with href. So I gave the picture the file osh.jpg with href too. I think the plov photo will show up now. So what do you think, am I right? We’ll find the answer together at the end of the lesson.'),
     ask: L3('«Aylantirish» tugmasini bosing', 'Нажми «Превратить»', 'Tap “Transform”'),
     askDone: L3("Rasm sarlavha ostida chiqdi", 'Фото встало под заголовком', 'The photo is under the heading')
   },
@@ -308,6 +319,80 @@ const C = {
     ask: L3("Brauzer qanday o'qishini kuzating", 'Смотри, как читает браузер', 'Watch how the browser reads'),
     askDone: L3('Rasm kodda turgan joyida chiqadi', 'Картинка встаёт там, где стоит в коде', 'The picture shows up where it is in the code')
   },
+  // КАРТИНКА ИЗ ИНТЕРНЕТА (заказчик, 05.11.2026): w1 показ · w2 вписать полный адрес · w3 «откуда браузер возьмёт».
+  w1: {
+    eyebrow: L3('Internetdagi rasm', 'Картинка из интернета', 'A picture from the internet'),
+    say: L3("O'tgan darsda havola https bilan internetdagi saytga olib borganini ko'rdik. Rasm ham xuddi shunday ishlaydi. Qarang, men sahifaga quyosh rasmini qo'ymoqchiman. Lekin fayllarimizda quyosh.jpg yo'q. Shuning uchun brauzer buzilgan rasm belgisini ko'rsatyapti.",
+      'На прошлом уроке мы видели: ссылка с https ведёт на сайт в интернете. С картинками так же. Смотри, я хочу поставить на страницу картинку с солнцем. Но среди наших файлов нет quyosh.jpg. Поэтому браузер показывает значок сломанной картинки.',
+      'Last lesson we saw a link with https take us to a site on the internet. Pictures work the same way. Look, I want to put a sun picture on the page. But there’s no quyosh.jpg among our files. That’s why the browser shows the broken picture icon.'),
+    sayWeb: L3("Bu rasm mening internetdagi saytimda turibdi. Uni olish uchun src ichiga rasmning to'liq manzilini yozamiz.",
+      'Эта картинка лежит на моём сайте в интернете. Чтобы её взять, пишем в src полный адрес картинки.',
+      'This picture is on my site on the internet. To get it, we write the picture’s full address in src.'),
+    sayProto: L3("Manzil https bilan boshlanadi, keyin ikki nuqta va ikkita qiya chiziq keladi. Bu brauzerga internetga chiqishni aytadi.",
+      'Адрес начинается с https, потом идут двоеточие и две косые черты. Это говорит браузеру: иди в интернет.',
+      'The address starts with https, then a colon and two slashes. That tells the browser to go out to the internet.'),
+    sayHost: L3("Keyin rasm turgan sayt nomi keladi: kodi.uz.", 'Дальше — имя сайта, где лежит картинка: kodi.uz.', 'Next comes the name of the site where the picture is: kodi.uz.'),
+    sayFile: L3("Oxirida esa qiya chiziq va rasm fayli nomi turadi. Qarang, brauzer rasmni internetdan olib keldi!",
+      'А в конце — косая черта и имя файла картинки. Смотри, браузер принёс картинку из интернета!',
+      'And at the end, a slash and the picture’s file name. Look, the browser brought the picture from the internet!'),
+    sayNoProto: L3("Endi boshidagi https qismini o'chirib ko'ramiz. Xo'sh, nima bo'larkin?", 'А теперь сотрём начало, https. Ну, что будет?', 'Now let’s erase the https part at the start. So what happens?'),
+    sayNf: L3("Rasm yana buzildi! https bo'lmasa, brauzer kodi.uz degan papkani o'z saytimizdan qidiradi va uni topa olmaydi.",
+      'Картинка снова сломалась! Без https браузер ищет папку kodi.uz на нашем сайте и не находит её.',
+      'The picture broke again! Without https the browser looks for a folder called kodi.uz on our site and can’t find it.'),
+    done: L3("Demak, o'z faylimiz uchun fayl nomi yetadi. Internetdagi rasm uchun esa to'liq manzil kerak: https, sayt nomi va rasm fayli.",
+      'Значит, для своего файла хватит имени файла. А для картинки из интернета нужен полный адрес: https, имя сайта и файл картинки.',
+      'So for our own file, the file name is enough. A picture from the internet needs the full address: https, the site name and the picture file.'),
+    askStart: L3('Qarang: rasm buzildi', 'Смотри: картинка сломалась', 'Watch: the picture is broken'),
+    askProto: L3("Qarang: boshida https, ya'ni internetga yo'l", 'Смотри: в начале https — путь в интернет', 'Watch: https at the start is the way to the internet'),
+    askHost: L3('Qarang: sayt nomi', 'Смотри: имя сайта', 'Watch: the site name'),
+    askFile: L3('Qarang: rasm fayli', 'Смотри: файл картинки', 'Watch: the picture file'),
+    askNf: L3("Qarang: boshida https bo'lmasa", 'Смотри: без https в начале', 'Watch: without https at the start'),
+    askDone: L3("Internetdagi rasmga to'liq manzil kerak", 'Картинке из интернета — полный адрес', 'A picture from the internet needs the full address')
+  },
+  w2: {
+    eyebrow: L3('Rasm manzili', 'Адрес картинки', 'The picture’s address'),
+    say: L3("Endi navbat sizga. Mening sevimli mevam olma, uning rasmi ham saytimda turibdi. Pastda sayt nomi va rasm fayli yozilgan. src ichiga rasmning to'liq manzilini yozing: https, sayt nomi, qiya chiziq va fayl nomi.",
+      'Теперь твоя очередь. Мой любимый фрукт — яблоко, и его картинка тоже лежит на моём сайте. Внизу написаны имя сайта и файл картинки. Впиши в src полный адрес картинки: https, имя сайта, косая черта и имя файла.',
+      'Now it’s your turn. My favourite fruit is the apple, and its picture is on my site too. The site name and the picture file are written below. Type the picture’s full address in src: https, the site name, a slash and the file name.'),
+    msgs: {
+      empty: L3("src ichiga rasmning to'liq manzilini yozing.", 'Впиши в src полный адрес картинки.', 'Type the picture’s full address in src.'),
+      noProto: L3("Boshida https yo'q. Usiz brauzer rasmni o'z saytimizdan qidiradi va rasm buziladi. Manzilni https, ikki nuqta va ikkita qiya chiziq bilan boshlang.",
+        'В начале нет https. Без него браузер ищет картинку на нашем сайте, и она ломается. Начни адрес с https, двоеточия и двух косых черт.',
+        'There’s no https at the start. Without it the browser looks for the picture on our site, and it breaks. Start the address with https, a colon and two slashes.'),
+      colon: L3("https so'zidan keyin ikki nuqta, keyin ikkita qiya chiziq turadi. Ularni tekshiring.", 'После https идут двоеточие и две косые черты. Проверь их.', 'After https come a colon and two slashes. Check them.'),
+      slash: L3("Sayt nomi bilan fayl nomi o'rtasida qiya chiziq turadi.", 'Между именем сайта и именем файла стоит косая черта.', 'There’s a slash between the site name and the file name.'),
+      typo: L3("Sayt nomi va fayl nomini pastdagidek, harfma-harf yozing.", 'Напиши имя сайта и имя файла буква в букву, как внизу.', 'Type the site name and the file name letter by letter, as shown below.')
+    },
+    hints: [
+      L3('Bu rasm boshqa saytda turibdi. Unga qanday manzil kerak?', 'Эта картинка лежит на другом сайте. Какой адрес ей нужен?', 'This picture is on another site. What kind of address does it need?'),
+      L3("To'liq manzil https bilan boshlanadi, keyin ikki nuqta va ikkita qiya chiziq. Keyin sayt nomi, qiya chiziq va fayl nomi keladi.", 'Полный адрес начинается с https, потом двоеточие и две косые черты. Дальше — имя сайта, косая черта и имя файла.', 'A full address starts with https, then a colon and two slashes. Then the site name, a slash and the file name.'),
+      L3("https tugmasini bosing va kodi.uz deb yozing. Keyin qiya chiziq qo'ying va olma.jpg faylini yozing.", 'Нажми кнопку https и напиши kodi.uz. Потом поставь косую черту и напиши файл olma.jpg.', 'Tap the https button and type kodi.uz. Then add a slash and type the file olma.jpg.')
+    ],
+    ok: L3("Zo'r! Olma rasmi internetdan keldi.", 'Огонь! Картинка с яблоком пришла из интернета.', 'Awesome! The apple picture came from the internet.'),
+    okHttp: L3("Ishladi! Lekin bugun saytlar ko'pincha https bilan yoziladi. Oxiridagi s harfi xavfsiz degani.", 'Работает! Но сегодня сайты обычно пишут с https: буква s значит «защищённый».', 'It works! But today sites usually use https: the s means secure.'),
+    ask: L3("src ichiga rasmning to'liq manzilini yozing", 'Впиши в src полный адрес картинки', 'Type the picture’s full address in src')
+  },
+  w3: {
+    eyebrow: L3('Rasm qayerdan?', 'Откуда картинка?', 'Where’s the picture from?'),
+    say: L3("Endi o'zingizni sinab ko'ring. Men src atributiga manzil yozaman. Siz esa brauzer rasmni qayerdan olishini tanlang: saytimiz fayllaridanmi yoki internetdanmi?",
+      'Теперь проверь себя. Я пишу адрес в атрибут src, а ты выбери, откуда браузер возьмёт картинку: из файлов нашего сайта или из интернета?',
+      'Now check yourself. I write an address in the src attribute, and you choose where the browser gets the picture: from our site’s files or from the internet?'),
+    ask: L3('Brauzer rasmni qayerdan oladi?', 'Откуда браузер возьмёт картинку?', 'Where will the browser get the picture?'),
+    site: L3('Saytimiz fayllaridan', 'Из файлов сайта', 'From our site’s files'),
+    web: L3('Internetdan', 'Из интернета', 'From the internet'),
+    right: L3('Barakalla!', 'Точно!', 'Exactly!'),
+    items: [
+      { src: 'top.jpg', right: 'site',
+        why: L3("Bu oddiy fayl nomi. top.jpg fayllarimizda bor, brauzer uni o'sha yerdan oladi.", 'Это просто имя файла. top.jpg есть среди наших файлов, браузер возьмёт его оттуда.', 'That’s just a file name. top.jpg is among our files, so the browser takes it from there.') },
+      { src: 'https://kodi.uz/quyosh.jpg', right: 'web',
+        why: L3("Manzil https bilan boshlanadi. Brauzer rasmni internetdagi saytdan olib keladi.", 'Адрес начинается с https. Браузер принесёт картинку с сайта в интернете.', 'The address starts with https. The browser brings the picture from a site on the internet.') },
+      { src: 'kodi.uz/olma.jpg', right: 'site',
+        why: L3("Aldanmang! Boshida https yo'q. Brauzer buni saytimizdagi papka deb o'ylaydi, uni topa olmaydi va rasm buziladi.", 'Не попадись! В начале нет https. Браузер думает, что это папка на нашем сайте, не находит её — и картинка ломается.', 'Don’t be fooled! There’s no https at the start. The browser thinks it’s a folder on our site, can’t find it, and the picture breaks.') },
+      { src: 'https://kodi.uz/olma.jpg', right: 'web',
+        why: L3("https bilan boshlangan manzil internetdagi saytga olib boradi. Brauzer olma rasmini o'sha yerdan oladi.", 'Адрес с https ведёт на сайт в интернете. Браузер возьмёт картинку с яблоком оттуда.', 'An address starting with https leads to a site on the internet. The browser takes the apple picture from there.') }
+    ],
+    ok: L3("Hammasi to'g'ri! Endi rasm qayerdan kelishini bilasiz.", 'Всё верно! Теперь ты знаешь, откуда берётся картинка.', 'All correct! Now you know where a picture comes from.')
+  },
   // Своя картинка — два экрана: файл (по «Проверить»), потом текст alt (по «Готово»).
   s12: {
     eyebrow: L3('Rasmingizni tanlang', 'Выбери свою картинку', 'Pick your picture'),
@@ -397,7 +482,9 @@ const C = {
       { t: L3("Rasm ochilmasa, uning o'rnida alt matni ko'rinadi.", 'Если фото не открылось, на его месте виден текст alt.', 'If the photo doesn’t open, the alt text shows in its place.'), right: true, code: 'alt',
         why: L3("Shuning uchun alt kerak: rasm ochilmasa ham, unda nima borligi tushunarli bo'ladi.", 'Для этого и нужен alt: даже без фото понятно, что на нём.', 'That’s what alt is for: even without the photo, it’s clear what’s in it.') },
       { t: L3('Rasm faylini href atributi aytadi.', 'Файл картинки задаёт атрибут href.', 'The href attribute gives the picture file.'), right: false, code: 'href',
-        why: L3("href havola uchun bo'ladi. Rasm faylini src atributi aytadi.", 'href — для ссылок. Файл картинки задаёт атрибут src.', 'href is for links. The src attribute gives the picture file.') }
+        why: L3("href havola uchun bo'ladi. Rasm faylini src atributi aytadi.", 'href — для ссылок. Файл картинки задаёт атрибут src.', 'href is for links. The src attribute gives the picture file.') },
+      { t: L3("Boshqa saytdagi rasm uchun src atributiga sayt nomi va fayl nomini yozish yetadi, https shart emas.", 'Для картинки с другого сайта в src хватит имени сайта и файла, https не нужен.', 'For a picture from another site, the site name and file name in src are enough; https isn’t needed.'), right: false, code: 'host',
+        why: L3("Aslida https kerak. Usiz brauzer rasmni o'z saytimizdan qidiradi va rasm buziladi.", 'На самом деле https нужен. Без него браузер ищет картинку на нашем сайте, и она ломается.', 'Actually https is needed. Without it the browser looks for the picture on our site, and it breaks.') }
     ],
     ok: L3("Hammasi to'g'ri! Siz img tegini, src va alt atributlarini yaxshi bilasiz.", 'Всё верно! Ты отлично знаешь тег img и атрибуты src и alt.', 'All correct! You know the img tag and the src and alt attributes really well.')
   },
@@ -411,12 +498,14 @@ const C = {
       { text: L3("img tegi sahifaga rasm qo'yadi.", 'Тег img ставит картинку на страницу.', 'The img tag puts a picture on the page.'), k: 'img' },
       { text: L3("src atributi qaysi faylni ko'rsatishni aytadi.", 'Атрибут src говорит, какой файл показать.', 'The src attribute says which file to show.'), k: 'src' },
       { text: L3("alt atributi esa rasmni so'z bilan tasvirlaydi.", 'А атрибут alt описывает картинку словами.', 'And the alt attribute describes the picture in words.'), k: 'alt' },
+      { text: L3("Rasm boshqa saytda tursa, src ichiga https bilan boshlanadigan to'liq manzil yoziladi.", 'А если картинка на другом сайте, в src пишут полный адрес, который начинается с https.', 'And if the picture is on another site, src holds a full address starting with https.'), k: 'web' },
       { text: L3("Tabriklayman! Endi sahifalaringiz rasmlar bilan jonlandi. Keyingi darsda formalar bilan tanishamiz: sahifaga o'zingiz yozadigan maydonlar qo'yamiz. Ko'rishguncha!", 'Ура! Теперь твои страницы ожили с картинками. На следующем уроке познакомимся с формами: поставим на страницу поля, в которые можно писать. До встречи!', 'Hooray! Now your pages have come alive with pictures. Next time we’ll meet forms: we’ll put fields on the page that you can type into. See you!'), k: null }
     ],
     roles: {
       img: L3("img — rasm", 'img — картинка', 'img — picture'),
       src: L3('src — fayl', 'src — файл', 'src — file'),
-      alt: L3("alt — rasm haqida so'z", 'alt — слова о картинке', 'alt — words about it')
+      alt: L3("alt — rasm haqida so'z", 'alt — слова о картинке', 'alt — words about it'),
+      web: L3('https bilan — internetdan', 'с https — из интернета', 'with https — from the internet')
     },
     ask: L3('Rasmingizga qarang', 'Посмотри на свою картинку', 'Look at your picture')
   }
@@ -426,7 +515,7 @@ const C = {
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
 Object.assign(SPOKEN, { why: 1, magic: 1, magicP: 1, msgs: 1, sayImg: 1, sayRest: 1, sayBroken: 1, sayNoAlt: 1, sayVoid: 1,
-  sayNoSrc: 1, sayTypo: 1, askQ: 1, rounds: 1, miss: 1, order1: 1, order2: 1, order3: 1, say2: 1, fine: 1, items: 1, right: 1, pairOk: 1 });
+  sayNoSrc: 1, sayTypo: 1, sayWeb: 1, sayProto: 1, sayHost: 1, sayFile: 1, sayNoProto: 1, sayNf: 1, okHttp: 1, askQ: 1, rounds: 1, miss: 1, order1: 1, order2: 1, order3: 1, say2: 1, fine: 1, items: 1, right: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1 } });
 
 /*@FILE:gen/b16-chrome.jsx@*/

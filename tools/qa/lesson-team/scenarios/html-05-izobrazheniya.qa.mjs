@@ -1,5 +1,5 @@
 // Сценарий проверки урока 5 курса HTML lessons/html/05-izobrazheniya.jsx («Изображения», облик «Редактор», 03.11.2026).
-// Основной путь: все 17 экранов действиями ученика; честный браузер (нет src — ничего, нет файла — значок и alt,
+// Основной путь: все 20 экранов действиями ученика; честный браузер (нет src — ничего, нет файла — значок и alt,
 // картинки в порядке строк кода); своя картинка (s12, s13), починка src (s14), onFinished один раз, артефакт.
 // Ветки: не тот файл (s3); не та картинка (s4); лишний </img> (s6); не та пара (s7); имя файла вместо alt (s9);
 // промах «до и после» (s10); href вместо src (s14); верная строка (q1); неверный ответ (q2).
@@ -102,6 +102,36 @@ const STEPS = [
     qa.expect(qa.qa('.kz-br-page .z5-blk').length === 3 && !!qa.q('.kz-br-page .z5-pic'), 'заголовок, фото и текст');
     await qa.waitFor(() => qa.events('tts').some((e) => new RegExp(qa.data.endS11).test((e.data && e.data.text) || '')), 15000, 'последняя реплика показа прозвучала');
   } },
+  { name: 'w1: картинка из интернета (показ)', shot: 'w1-done', run: async (qa) => {
+    await qa.platform.next();
+    await qa.waitFor(() => qa.q('.kz-br-page .z5-broken'), 8000, 'своего файла нет — сломанная картинка');
+    await qa.platform.ready();
+    qa.expect(!qa.q('.kz-sheet .kz-btn') && !qa.q('.kz-hand'), 'показ: ни кнопок, ни руки');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 90000, 'показ закончен');
+    qa.expect(qa.text('.kz-code').indexOf('https://kodi.uz/quyosh.jpg') >= 0 && !!qa.q('.kz-br-page .z5-pic'), 'полный адрес — картинка с сайта');
+    await qa.waitFor(() => qa.events('tts').some((e) => new RegExp(qa.data.endW1).test((e.data && e.data.text) || '')), 15000, 'последняя реплика показа прозвучала');
+  } },
+  { name: 'w2: вписать полный адрес картинки', shot: 'w2-done', run: async (qa) => {
+    await qa.platform.next();
+    await qa.platform.ready();
+    qa.expect(!!qa.q('.z5-webinfo'), 'сайт и файл внизу');
+    qa.type('.z5-slot textarea', 'https://kodi.uz/olma.jpg', 'полный адрес');
+    await qa.click('.key-go', 'Проверить');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано');
+    qa.expect(!!qa.q('.kz-br-page .z5-pic'), 'картинка пришла с сайта');
+  } },
+  { name: 'w3: откуда браузер возьмёт картинку', shot: 'w3-done', run: async (qa) => {
+    await qa.platform.next();
+    for (const [v, broken] of [['site', false], ['web', false], ['site', true], ['web', false]]) {
+      await qa.platform.ready(30000);
+      await qa.waitFor(() => qa.q('.z5-where:not(:disabled)'), 30000, 'кнопки нажимаются');
+      await qa.click('.z5-where[data-v="' + v + '"]', v);
+      await qa.waitFor(() => qa.q('.z5-where.is-ok'), 5000, 'ответ принят');
+      await qa.waitFor(() => (broken ? !!qa.q('.kz-br-page .z5-broken') : !!qa.q('.kz-br-page .z5-pic')), 3000, broken ? 'честно: без https — сломанная картинка' : 'картинка на странице');
+      await qa.sleep(300);
+    }
+    await qa.waitFor(() => qa.platform.nextEnabled(), 30000, 'засчитано');
+  } },
   { name: 's12: своя картинка', shot: 's12-done', run: async (qa) => {
     await qa.platform.next();
     await qa.platform.ready();
@@ -141,7 +171,7 @@ const STEPS = [
   } },
   { name: 'q2: верно или нет', shot: 'q2-done', run: async (qa) => {
     await qa.platform.next();
-    for (const k of [1, 0, 1]) {
+    for (const k of [1, 0, 1, 1]) {
       await qa.platform.ready(30000);
       await qa.waitFor(() => qa.q('.z5-tf:not(:disabled)'), 30000, 'кнопки нажимаются');
       await qa.clickNth('.z5-tf', k, k ? 'Неверно' : 'Верно');
@@ -173,13 +203,13 @@ export default {
   langs: ['ru'],
   size: process.env.QA_SIZE || '1280x720',
   voice: 'fast',
-  screens: 17,
-  inputScreens: [3, 9, 12, 13],
+  screens: 20,
+  inputScreens: [3, 9, 13, 15, 16],
   expectFinish: true,
   data: {
-    ru: { ball: 'Футбольный мяч', myAlt: 'Мой цветок', endS2: 'какой файл показать', brokenS5: 'значок сломанной картинки и текст', endS5: 'Оба пишут внутри тега', typoS8: 'буква в букву', endS8: 'писать точно', endS11: 'там она и появится' },
-    uz: { ball: "Futbol to'pi", myAlt: 'Mening gulim', endS2: "qaysi faylni ko'rsatishni aytadi", brokenS5: 'buzilgan rasm belgisini va', endS5: 'ichida yoziladi', typoS8: 'harfma-harf', endS8: 'aniq yozish kerak', endS11: "o'sha joyda chiqadi" },
-    en: { ball: 'A football', myAlt: 'My flower', endS2: 'which file to show', brokenS5: 'broken picture icon and the', endS5: 'Both go inside the', typoS8: 'letter by letter', endS8: 'written exactly', endS11: 'shows up on the page' }
+    ru: { endW1: 'картинки из интернета нужен', ball: 'Футбольный мяч', myAlt: 'Мой цветок', endS2: 'какой файл показать', brokenS5: 'значок сломанной картинки и текст', endS5: 'Оба пишут внутри тега', typoS8: 'буква в букву', endS8: 'писать точно', endS11: 'там она и появится' },
+    uz: { endW1: "to'liq manzil kerak", ball: "Futbol to'pi", myAlt: 'Mening gulim', endS2: "qaysi faylni ko'rsatishni aytadi", brokenS5: 'buzilgan rasm belgisini va', endS5: 'ichida yoziladi', typoS8: 'harfma-harf', endS8: 'aniq yozish kerak', endS11: "o'sha joyda chiqadi" },
+    en: { endW1: 'needs the full address', ball: 'A football', myAlt: 'My flower', endS2: 'which file to show', brokenS5: 'broken picture icon and the', endS5: 'Both go inside the', typoS8: 'letter by letter', endS8: 'written exactly', endS11: 'shows up on the page' }
   },
   steps: STEPS,
   flows: [
@@ -224,19 +254,46 @@ export default {
       await qa.waitFor(() => qa.q('.b-sheet.is-hint'), 3000, 'причина в панели');
       await qa.waitFor(() => /\/4/.test(qa.text('.kz-ask-n')), 30000, 'раундов стало четыре');
     } }] },
-    { name: 's14: href вместо src → причина', start: 13, langs: ['ru'], steps: [{ name: 'href', run: async (qa) => {
+    { name: 'w2: без https:// → причина и сломанная картинка', start: 12, langs: ['ru'], steps: [{ name: 'сайт и файл без https', run: async (qa) => {
+      await qa.platform.ready();
+      qa.type('.z5-slot textarea', 'kodi.uz/olma.jpg', 'без https');
+      await qa.waitFor(() => qa.q('.kz-br-page .z5-broken'), 3000, 'честно: сломанная картинка сразу');
+      await qa.click('.key-go', 'Проверить');
+      await qa.waitFor(() => qa.q('.b-sheet.is-hint') && /https/.test(qa.text('.b-sheet.is-hint')), 3000, 'причина про https в панели');
+      qa.expect(!qa.platform.nextEnabled(), '«Дальше» закрыта');
+    } }] },
+    { name: 'w2: нет косой черты → причина', start: 12, langs: ['ru'], steps: [{ name: 'https://kodi.uzolma.jpg', run: async (qa) => {
+      await qa.platform.ready();
+      qa.type('.z5-slot textarea', 'https://kodi.uzolma.jpg', 'без косой черты');
+      await qa.click('.key-go', 'Проверить');
+      await qa.waitFor(() => qa.q('.b-sheet.is-hint') && /косая/.test(qa.text('.b-sheet.is-hint')), 3000, 'причина про косую черту');
+    } }] },
+    { name: 'w3: адрес без https — «из интернета» → причина', start: 13, langs: ['ru'], steps: [{ name: 'ловушка', run: async (qa) => {
+      await qa.platform.ready();
+      for (const v of ['site', 'web']) {
+        await qa.waitFor(() => qa.q('.z5-where:not(:disabled)'), 30000, 'кнопки нажимаются');
+        await qa.click('.z5-where[data-v="' + v + '"]', v);
+        await qa.waitFor(() => qa.q('.z5-where.is-ok'), 5000, 'ответ принят');
+        await qa.waitFor(() => !qa.q('.z5-where.is-ok'), 8000, 'следующий адрес');
+      }
+      await qa.waitFor(() => qa.q('.z5-where:not(:disabled)'), 30000, 'кнопки нажимаются');
+      await qa.click('.z5-where[data-v="web"]', 'из интернета');
+      await qa.waitFor(() => qa.q('.b-sheet.is-hint'), 3000, 'причина в панели');
+      qa.expect(qa.qa('.z5-where.is-off').length === 1 && !qa.platform.nextEnabled(), 'кнопка погасла, можно выбрать снова');
+    } }] },
+    { name: 's14: href вместо src → причина', start: 16, langs: ['ru'], steps: [{ name: 'href', run: async (qa) => {
       await qa.platform.ready();
       await qa.clickText('.kz-scrap', 'href');
       await qa.waitFor(() => qa.q('.b-sheet.is-hint'), 3000, 'причина в панели');
       qa.expect(!qa.q('.kz-br-page .z5-pic') && !qa.platform.nextEnabled(), 'картинки нет, «Дальше» закрыта');
     } }] },
-    { name: 'q1: верная строка → «в порядке»', start: 14, langs: ['ru'], steps: [{ name: 'первая строка', run: async (qa) => {
+    { name: 'q1: верная строка → «в порядке»', start: 17, langs: ['ru'], steps: [{ name: 'первая строка', run: async (qa) => {
       await qa.platform.ready();
       await qa.clickNth('.kz-code .kz-line.kz-tap', 0, 'верная строка');
       await qa.waitFor(() => qa.q('.b-sheet.is-hint'), 3000, 'причина в панели');
       qa.expect(qa.qa('.kz-code .kz-line.is-off').length === 1 && !qa.platform.nextEnabled(), 'строка погасла, «Дальше» закрыта');
     } }] },
-    { name: 'q2: неверный ответ → объяснение', start: 15, langs: ['ru'], steps: [{ name: '«Верно» про закрывающий тег', run: async (qa) => {
+    { name: 'q2: неверный ответ → объяснение', start: 18, langs: ['ru'], steps: [{ name: '«Верно» про закрывающий тег', run: async (qa) => {
       await qa.platform.ready();
       await qa.waitFor(() => qa.q('.z5-tf:not(:disabled)'), 30000, 'кнопки нажимаются');
       await qa.clickNth('.z5-tf', 0, 'Верно');

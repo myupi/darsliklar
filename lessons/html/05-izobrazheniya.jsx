@@ -6670,11 +6670,13 @@ const CANON_SCREEN_CSS = CANON_SCREEN_CSS_BASE + CANON_MECH_CSS + CANON_DZ_CSS +
 // Загадка (без имён): Коди написал картинке href="osh.jpg", как у ссылки, и уверен, что фото
 // появится; в выводе признаёт ошибку — картинке нужен src.
 //
-// ДУГА (17 экранов; экрана плана нет). Типы заданий — по разделу 3а навыка:
+// ДУГА (20 экранов; экрана плана нет; w1–w3 стоят после s11). Типы заданий — по разделу 3а навыка:
 //   s1 крючок (страница без фото → с фото, загадка)
 //   img и src:     s2 показ · s3 вписать имя файла (Fill in the Blanks) · s4 строка кода ↔ картинка (Visual Code Mapping)
 //   alt и без </img>: s5 показ · s6 собрать <img …> (Code Builder) · s7 img / src / alt ↔ что делает (Matching Pairs)
 //   поломки:       s8 показ «нет src», «нет файла» · s9 вписать alt (Fill in the Blanks) · s10 до и после (Before / After)
+//   картинка из интернета (заказчик, 05.11.2026): w1 показ https://, имя сайта, файл; без https:// — сломанная ·
+//                 w2 вписать полный адрес (Fill in the Blanks) · w3 «откуда браузер возьмёт» (Sort, по одному)
 //   своя картинка: s11 показ «страница целиком» · s12 свой src, s13 свой alt (Live Code Preview) · s14 вернуть src (Debug & Fix)
 //   итоговая проверка: q1 найти строку с ошибкой (Error Detective) · q2 верно или нет (True / False)
 //   s15 вывод с разгадкой.
@@ -6753,6 +6755,15 @@ const C = {
     gallery: L3('Galereya', 'Галерея', 'Gallery'),
     cat: L3('Mening mushugim', 'Мой кот', 'My cat'),
     filesH: L3('Fayllar', 'Файлы', 'Files'),
+    // Картинки в интернете (w1–w3): на «сайте Коди» kodi.uz (сайт урока, придуман для примера).
+    hostH: L3('Sayt nomi', 'Имя сайта', 'Site name'),
+    fileH: L3('Rasm fayli', 'Файл картинки', 'Picture file'),
+    proto: L3("internetga yo'l", 'путь в интернет', 'the way to the internet'),
+    hostL: L3('sayt nomi', 'имя сайта', 'the site name'),
+    fileL: L3('rasm fayli', 'файл картинки', 'the picture file'),
+    fruit: L3('Sevimli mevam', 'Мой любимый фрукт', 'My favourite fruit'),
+    sun: L3('Quyoshli kun', 'Солнечный день', 'A sunny day'),
+    webAlts: L3({ 'quyosh.jpg': 'Quyosh', 'olma.jpg': 'Olma' }, { 'quyosh.jpg': 'Солнце', 'olma.jpg': 'Яблоко' }, { 'quyosh.jpg': 'Sun', 'olma.jpg': 'Apple' }),
     alts: L3({ 'osh.jpg': 'Osh', 'mushuk.jpg': 'Mushuk', 'top.jpg': "To'p", 'gul.jpg': 'Gul' },
       { 'osh.jpg': 'Плов', 'mushuk.jpg': 'Кот', 'top.jpg': 'Мяч', 'gul.jpg': 'Цветок' },
       { 'osh.jpg': 'Plov', 'mushuk.jpg': 'Cat', 'top.jpg': 'Ball', 'gul.jpg': 'Flower' })
@@ -6764,9 +6775,9 @@ const C = {
       'Hi! Last time we connected pages with links. Here’s the plov recipe page. But look, it’s only text. Plov without a photo isn’t very tasty, right? Let’s put a photo of plov on the page. Tap “Transform”.'),
     magic: L3("Voy, qarang! Sarlavha ostida osh rasmi paydo bo'ldi. Endi sahifa ancha jonli ko'rinadi.", 'Ого, смотри! Под заголовком появилось фото плова. Теперь страница выглядит гораздо живее.', 'Whoa, look! A photo of plov appeared under the heading. Now the page looks much more alive.'),
     magicP: L3("Rasm kodda turgan joyida chiqdi: sarlavhadan keyin va yozuvdan oldin.", 'Фото встало там, где оно стоит в коде: после заголовка и перед текстом.', 'The photo appears where it is in the code: after the heading and before the text.'),
-    done: L3("Bugun sahifaga shunday rasm qo'yishni o'rganasiz va o'z sahifangizga rasm qo'yasiz. Lekin oldin kichik topishmoq. Men ham rasm qo'ymoqchi bo'ldim. O'tgan darsda havolaga manzilni href bilan bergan edik-ku. Shuning uchun men rasmga ham href bilan osh.jpg faylini yozdim. Menimcha, endi sahifada osh rasmi chiqadi. Xo'sh, siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.",
-      'Сегодня ты научишься ставить такие картинки и поставишь картинку на свою страницу. Но сначала маленькая загадка. Я тоже хотел поставить картинку. На прошлом уроке мы давали ссылке адрес через href. Вот и картинке я написал файл osh.jpg через href. По-моему, теперь на странице появится фото плова. Ну как думаешь, я прав? Ответ найдём вместе в конце урока.',
-      'Today you’ll learn to put pictures like this on a page, and you’ll put one on your own page. But first, a little riddle. I wanted to add a picture too. Last time we gave a link its address with href. So I gave the picture the file osh.jpg with href too. I think the plov photo will show up now. So what do you think, am I right? We’ll find the answer together at the end of the lesson.'),
+    done: L3("Bugun sahifaga shunday rasm qo'yishni o'rganasiz: o'z faylingizdan ham, internetdagi saytdan ham. Lekin oldin kichik topishmoq. Men ham rasm qo'ymoqchi bo'ldim. O'tgan darsda havolaga manzilni href bilan bergan edik-ku. Shuning uchun men rasmga ham href bilan osh.jpg faylini yozdim. Menimcha, endi sahifada osh rasmi chiqadi. Xo'sh, siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.",
+      'Сегодня ты научишься ставить такие картинки — и из своих файлов, и с сайта в интернете. Но сначала маленькая загадка. Я тоже хотел поставить картинку. На прошлом уроке мы давали ссылке адрес через href. Вот и картинке я написал файл osh.jpg через href. По-моему, теперь на странице появится фото плова. Ну как думаешь, я прав? Ответ найдём вместе в конце урока.',
+      'Today you’ll learn to put pictures like this on a page: from your own files and from a site on the internet. But first, a little riddle. I wanted to add a picture too. Last time we gave a link its address with href. So I gave the picture the file osh.jpg with href too. I think the plov photo will show up now. So what do you think, am I right? We’ll find the answer together at the end of the lesson.'),
     ask: L3('«Aylantirish» tugmasini bosing', 'Нажми «Превратить»', 'Tap “Transform”'),
     askDone: L3("Rasm sarlavha ostida chiqdi", 'Фото встало под заголовком', 'The photo is under the heading')
   },
@@ -6964,6 +6975,80 @@ const C = {
     ask: L3("Brauzer qanday o'qishini kuzating", 'Смотри, как читает браузер', 'Watch how the browser reads'),
     askDone: L3('Rasm kodda turgan joyida chiqadi', 'Картинка встаёт там, где стоит в коде', 'The picture shows up where it is in the code')
   },
+  // КАРТИНКА ИЗ ИНТЕРНЕТА (заказчик, 05.11.2026): w1 показ · w2 вписать полный адрес · w3 «откуда браузер возьмёт».
+  w1: {
+    eyebrow: L3('Internetdagi rasm', 'Картинка из интернета', 'A picture from the internet'),
+    say: L3("O'tgan darsda havola https bilan internetdagi saytga olib borganini ko'rdik. Rasm ham xuddi shunday ishlaydi. Qarang, men sahifaga quyosh rasmini qo'ymoqchiman. Lekin fayllarimizda quyosh.jpg yo'q. Shuning uchun brauzer buzilgan rasm belgisini ko'rsatyapti.",
+      'На прошлом уроке мы видели: ссылка с https ведёт на сайт в интернете. С картинками так же. Смотри, я хочу поставить на страницу картинку с солнцем. Но среди наших файлов нет quyosh.jpg. Поэтому браузер показывает значок сломанной картинки.',
+      'Last lesson we saw a link with https take us to a site on the internet. Pictures work the same way. Look, I want to put a sun picture on the page. But there’s no quyosh.jpg among our files. That’s why the browser shows the broken picture icon.'),
+    sayWeb: L3("Bu rasm mening internetdagi saytimda turibdi. Uni olish uchun src ichiga rasmning to'liq manzilini yozamiz.",
+      'Эта картинка лежит на моём сайте в интернете. Чтобы её взять, пишем в src полный адрес картинки.',
+      'This picture is on my site on the internet. To get it, we write the picture’s full address in src.'),
+    sayProto: L3("Manzil https bilan boshlanadi, keyin ikki nuqta va ikkita qiya chiziq keladi. Bu brauzerga internetga chiqishni aytadi.",
+      'Адрес начинается с https, потом идут двоеточие и две косые черты. Это говорит браузеру: иди в интернет.',
+      'The address starts with https, then a colon and two slashes. That tells the browser to go out to the internet.'),
+    sayHost: L3("Keyin rasm turgan sayt nomi keladi: kodi.uz.", 'Дальше — имя сайта, где лежит картинка: kodi.uz.', 'Next comes the name of the site where the picture is: kodi.uz.'),
+    sayFile: L3("Oxirida esa qiya chiziq va rasm fayli nomi turadi. Qarang, brauzer rasmni internetdan olib keldi!",
+      'А в конце — косая черта и имя файла картинки. Смотри, браузер принёс картинку из интернета!',
+      'And at the end, a slash and the picture’s file name. Look, the browser brought the picture from the internet!'),
+    sayNoProto: L3("Endi boshidagi https qismini o'chirib ko'ramiz. Xo'sh, nima bo'larkin?", 'А теперь сотрём начало, https. Ну, что будет?', 'Now let’s erase the https part at the start. So what happens?'),
+    sayNf: L3("Rasm yana buzildi! https bo'lmasa, brauzer kodi.uz degan papkani o'z saytimizdan qidiradi va uni topa olmaydi.",
+      'Картинка снова сломалась! Без https браузер ищет папку kodi.uz на нашем сайте и не находит её.',
+      'The picture broke again! Without https the browser looks for a folder called kodi.uz on our site and can’t find it.'),
+    done: L3("Demak, o'z faylimiz uchun fayl nomi yetadi. Internetdagi rasm uchun esa to'liq manzil kerak: https, sayt nomi va rasm fayli.",
+      'Значит, для своего файла хватит имени файла. А для картинки из интернета нужен полный адрес: https, имя сайта и файл картинки.',
+      'So for our own file, the file name is enough. A picture from the internet needs the full address: https, the site name and the picture file.'),
+    askStart: L3('Qarang: rasm buzildi', 'Смотри: картинка сломалась', 'Watch: the picture is broken'),
+    askProto: L3("Qarang: boshida https, ya'ni internetga yo'l", 'Смотри: в начале https — путь в интернет', 'Watch: https at the start is the way to the internet'),
+    askHost: L3('Qarang: sayt nomi', 'Смотри: имя сайта', 'Watch: the site name'),
+    askFile: L3('Qarang: rasm fayli', 'Смотри: файл картинки', 'Watch: the picture file'),
+    askNf: L3("Qarang: boshida https bo'lmasa", 'Смотри: без https в начале', 'Watch: without https at the start'),
+    askDone: L3("Internetdagi rasmga to'liq manzil kerak", 'Картинке из интернета — полный адрес', 'A picture from the internet needs the full address')
+  },
+  w2: {
+    eyebrow: L3('Rasm manzili', 'Адрес картинки', 'The picture’s address'),
+    say: L3("Endi navbat sizga. Mening sevimli mevam olma, uning rasmi ham saytimda turibdi. Pastda sayt nomi va rasm fayli yozilgan. src ichiga rasmning to'liq manzilini yozing: https, sayt nomi, qiya chiziq va fayl nomi.",
+      'Теперь твоя очередь. Мой любимый фрукт — яблоко, и его картинка тоже лежит на моём сайте. Внизу написаны имя сайта и файл картинки. Впиши в src полный адрес картинки: https, имя сайта, косая черта и имя файла.',
+      'Now it’s your turn. My favourite fruit is the apple, and its picture is on my site too. The site name and the picture file are written below. Type the picture’s full address in src: https, the site name, a slash and the file name.'),
+    msgs: {
+      empty: L3("src ichiga rasmning to'liq manzilini yozing.", 'Впиши в src полный адрес картинки.', 'Type the picture’s full address in src.'),
+      noProto: L3("Boshida https yo'q. Usiz brauzer rasmni o'z saytimizdan qidiradi va rasm buziladi. Manzilni https, ikki nuqta va ikkita qiya chiziq bilan boshlang.",
+        'В начале нет https. Без него браузер ищет картинку на нашем сайте, и она ломается. Начни адрес с https, двоеточия и двух косых черт.',
+        'There’s no https at the start. Without it the browser looks for the picture on our site, and it breaks. Start the address with https, a colon and two slashes.'),
+      colon: L3("https so'zidan keyin ikki nuqta, keyin ikkita qiya chiziq turadi. Ularni tekshiring.", 'После https идут двоеточие и две косые черты. Проверь их.', 'After https come a colon and two slashes. Check them.'),
+      slash: L3("Sayt nomi bilan fayl nomi o'rtasida qiya chiziq turadi.", 'Между именем сайта и именем файла стоит косая черта.', 'There’s a slash between the site name and the file name.'),
+      typo: L3("Sayt nomi va fayl nomini pastdagidek, harfma-harf yozing.", 'Напиши имя сайта и имя файла буква в букву, как внизу.', 'Type the site name and the file name letter by letter, as shown below.')
+    },
+    hints: [
+      L3('Bu rasm boshqa saytda turibdi. Unga qanday manzil kerak?', 'Эта картинка лежит на другом сайте. Какой адрес ей нужен?', 'This picture is on another site. What kind of address does it need?'),
+      L3("To'liq manzil https bilan boshlanadi, keyin ikki nuqta va ikkita qiya chiziq. Keyin sayt nomi, qiya chiziq va fayl nomi keladi.", 'Полный адрес начинается с https, потом двоеточие и две косые черты. Дальше — имя сайта, косая черта и имя файла.', 'A full address starts with https, then a colon and two slashes. Then the site name, a slash and the file name.'),
+      L3("https tugmasini bosing va kodi.uz deb yozing. Keyin qiya chiziq qo'ying va olma.jpg faylini yozing.", 'Нажми кнопку https и напиши kodi.uz. Потом поставь косую черту и напиши файл olma.jpg.', 'Tap the https button and type kodi.uz. Then add a slash and type the file olma.jpg.')
+    ],
+    ok: L3("Zo'r! Olma rasmi internetdan keldi.", 'Огонь! Картинка с яблоком пришла из интернета.', 'Awesome! The apple picture came from the internet.'),
+    okHttp: L3("Ishladi! Lekin bugun saytlar ko'pincha https bilan yoziladi. Oxiridagi s harfi xavfsiz degani.", 'Работает! Но сегодня сайты обычно пишут с https: буква s значит «защищённый».', 'It works! But today sites usually use https: the s means secure.'),
+    ask: L3("src ichiga rasmning to'liq manzilini yozing", 'Впиши в src полный адрес картинки', 'Type the picture’s full address in src')
+  },
+  w3: {
+    eyebrow: L3('Rasm qayerdan?', 'Откуда картинка?', 'Where’s the picture from?'),
+    say: L3("Endi o'zingizni sinab ko'ring. Men src atributiga manzil yozaman. Siz esa brauzer rasmni qayerdan olishini tanlang: saytimiz fayllaridanmi yoki internetdanmi?",
+      'Теперь проверь себя. Я пишу адрес в атрибут src, а ты выбери, откуда браузер возьмёт картинку: из файлов нашего сайта или из интернета?',
+      'Now check yourself. I write an address in the src attribute, and you choose where the browser gets the picture: from our site’s files or from the internet?'),
+    ask: L3('Brauzer rasmni qayerdan oladi?', 'Откуда браузер возьмёт картинку?', 'Where will the browser get the picture?'),
+    site: L3('Saytimiz fayllaridan', 'Из файлов сайта', 'From our site’s files'),
+    web: L3('Internetdan', 'Из интернета', 'From the internet'),
+    right: L3('Barakalla!', 'Точно!', 'Exactly!'),
+    items: [
+      { src: 'top.jpg', right: 'site',
+        why: L3("Bu oddiy fayl nomi. top.jpg fayllarimizda bor, brauzer uni o'sha yerdan oladi.", 'Это просто имя файла. top.jpg есть среди наших файлов, браузер возьмёт его оттуда.', 'That’s just a file name. top.jpg is among our files, so the browser takes it from there.') },
+      { src: 'https://kodi.uz/quyosh.jpg', right: 'web',
+        why: L3("Manzil https bilan boshlanadi. Brauzer rasmni internetdagi saytdan olib keladi.", 'Адрес начинается с https. Браузер принесёт картинку с сайта в интернете.', 'The address starts with https. The browser brings the picture from a site on the internet.') },
+      { src: 'kodi.uz/olma.jpg', right: 'site',
+        why: L3("Aldanmang! Boshida https yo'q. Brauzer buni saytimizdagi papka deb o'ylaydi, uni topa olmaydi va rasm buziladi.", 'Не попадись! В начале нет https. Браузер думает, что это папка на нашем сайте, не находит её — и картинка ломается.', 'Don’t be fooled! There’s no https at the start. The browser thinks it’s a folder on our site, can’t find it, and the picture breaks.') },
+      { src: 'https://kodi.uz/olma.jpg', right: 'web',
+        why: L3("https bilan boshlangan manzil internetdagi saytga olib boradi. Brauzer olma rasmini o'sha yerdan oladi.", 'Адрес с https ведёт на сайт в интернете. Браузер возьмёт картинку с яблоком оттуда.', 'An address starting with https leads to a site on the internet. The browser takes the apple picture from there.') }
+    ],
+    ok: L3("Hammasi to'g'ri! Endi rasm qayerdan kelishini bilasiz.", 'Всё верно! Теперь ты знаешь, откуда берётся картинка.', 'All correct! Now you know where a picture comes from.')
+  },
   // Своя картинка — два экрана: файл (по «Проверить»), потом текст alt (по «Готово»).
   s12: {
     eyebrow: L3('Rasmingizni tanlang', 'Выбери свою картинку', 'Pick your picture'),
@@ -7053,7 +7138,9 @@ const C = {
       { t: L3("Rasm ochilmasa, uning o'rnida alt matni ko'rinadi.", 'Если фото не открылось, на его месте виден текст alt.', 'If the photo doesn’t open, the alt text shows in its place.'), right: true, code: 'alt',
         why: L3("Shuning uchun alt kerak: rasm ochilmasa ham, unda nima borligi tushunarli bo'ladi.", 'Для этого и нужен alt: даже без фото понятно, что на нём.', 'That’s what alt is for: even without the photo, it’s clear what’s in it.') },
       { t: L3('Rasm faylini href atributi aytadi.', 'Файл картинки задаёт атрибут href.', 'The href attribute gives the picture file.'), right: false, code: 'href',
-        why: L3("href havola uchun bo'ladi. Rasm faylini src atributi aytadi.", 'href — для ссылок. Файл картинки задаёт атрибут src.', 'href is for links. The src attribute gives the picture file.') }
+        why: L3("href havola uchun bo'ladi. Rasm faylini src atributi aytadi.", 'href — для ссылок. Файл картинки задаёт атрибут src.', 'href is for links. The src attribute gives the picture file.') },
+      { t: L3("Boshqa saytdagi rasm uchun src atributiga sayt nomi va fayl nomini yozish yetadi, https shart emas.", 'Для картинки с другого сайта в src хватит имени сайта и файла, https не нужен.', 'For a picture from another site, the site name and file name in src are enough; https isn’t needed.'), right: false, code: 'host',
+        why: L3("Aslida https kerak. Usiz brauzer rasmni o'z saytimizdan qidiradi va rasm buziladi.", 'На самом деле https нужен. Без него браузер ищет картинку на нашем сайте, и она ломается.', 'Actually https is needed. Without it the browser looks for the picture on our site, and it breaks.') }
     ],
     ok: L3("Hammasi to'g'ri! Siz img tegini, src va alt atributlarini yaxshi bilasiz.", 'Всё верно! Ты отлично знаешь тег img и атрибуты src и alt.', 'All correct! You know the img tag and the src and alt attributes really well.')
   },
@@ -7067,12 +7154,14 @@ const C = {
       { text: L3("img tegi sahifaga rasm qo'yadi.", 'Тег img ставит картинку на страницу.', 'The img tag puts a picture on the page.'), k: 'img' },
       { text: L3("src atributi qaysi faylni ko'rsatishni aytadi.", 'Атрибут src говорит, какой файл показать.', 'The src attribute says which file to show.'), k: 'src' },
       { text: L3("alt atributi esa rasmni so'z bilan tasvirlaydi.", 'А атрибут alt описывает картинку словами.', 'And the alt attribute describes the picture in words.'), k: 'alt' },
+      { text: L3("Rasm boshqa saytda tursa, src ichiga https bilan boshlanadigan to'liq manzil yoziladi.", 'А если картинка на другом сайте, в src пишут полный адрес, который начинается с https.', 'And if the picture is on another site, src holds a full address starting with https.'), k: 'web' },
       { text: L3("Tabriklayman! Endi sahifalaringiz rasmlar bilan jonlandi. Keyingi darsda formalar bilan tanishamiz: sahifaga o'zingiz yozadigan maydonlar qo'yamiz. Ko'rishguncha!", 'Ура! Теперь твои страницы ожили с картинками. На следующем уроке познакомимся с формами: поставим на страницу поля, в которые можно писать. До встречи!', 'Hooray! Now your pages have come alive with pictures. Next time we’ll meet forms: we’ll put fields on the page that you can type into. See you!'), k: null }
     ],
     roles: {
       img: L3("img — rasm", 'img — картинка', 'img — picture'),
       src: L3('src — fayl', 'src — файл', 'src — file'),
-      alt: L3("alt — rasm haqida so'z", 'alt — слова о картинке', 'alt — words about it')
+      alt: L3("alt — rasm haqida so'z", 'alt — слова о картинке', 'alt — words about it'),
+      web: L3('https bilan — internetdan', 'с https — из интернета', 'with https — from the internet')
     },
     ask: L3('Rasmingizga qarang', 'Посмотри на свою картинку', 'Look at your picture')
   }
@@ -7785,7 +7874,7 @@ function GoalCard({ goal, n, total, done, doneText }) {
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
 Object.assign(SPOKEN, { why: 1, magic: 1, magicP: 1, msgs: 1, sayImg: 1, sayRest: 1, sayBroken: 1, sayNoAlt: 1, sayVoid: 1,
-  sayNoSrc: 1, sayTypo: 1, askQ: 1, rounds: 1, miss: 1, order1: 1, order2: 1, order3: 1, say2: 1, fine: 1, items: 1, right: 1, pairOk: 1 });
+  sayNoSrc: 1, sayTypo: 1, sayWeb: 1, sayProto: 1, sayHost: 1, sayFile: 1, sayNoProto: 1, sayNf: 1, okHttp: 1, askQ: 1, rounds: 1, miss: 1, order1: 1, order2: 1, order3: 1, say2: 1, fine: 1, items: 1, right: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1 } });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -8016,7 +8105,7 @@ function useB16Demo({ steps, run: run0, spoken, sayNow, say }) {
 // перед английскими словами ставим [English pronunciation], сразу после — пометку
 // языка урока. Узбекское окончание («tag-i») идёт уже после неё.
 const B16_BACK = { uz: "[O'zbekcha tallaffuz]", ru: '[Русское произношение]' };
-const B16_EN = '(?:tag|HTML|html|head|title|body|doctype|DOCTYPE|href|image|source|alternative text|alt|I M G|S R C|H (?:one|two|three|four|five|six))';
+const B16_EN = '(?:tag|HTML|html|head|title|body|doctype|DOCTYPE|href|https|image|source|alternative text|alt|I M G|S R C|H (?:one|two|three|four|five|six))';
 const B16_EN_RE = new RegExp("(^|[^A-Za-z'‘’ʻʼ-])(" + B16_EN + '(?:\\s+' + B16_EN + ')*)(-[A-Za-z]+)?(?![A-Za-z])', 'g');
 function b16EnWords(s, lang) {
   const back = B16_BACK[lang];
@@ -8830,7 +8919,7 @@ function useKzDrag(onDrop) {
     const placeAt1 = (x, y) => { const el = document.elementFromPoint(x, y); const z = el && el.closest && el.closest('[data-place]'); return z ? z.getAttribute('data-place') : null; };
     // Копия летит выше пальца (на телефоне — заметно выше), и ученик целится ею:
     // место ищется сначала под центром копии, потом под пальцем.
-    const placeAt = (x, y, touch) => placeAt1(x, y - (touch ? 40 : 14)) || placeAt1(x, y);
+    const placeAt = (x, y, touch) => (touch ? placeAt1(x, y - 40) || placeAt1(x, y) : placeAt1(x, y) || placeAt1(x, y - 14));
     const lift = (d, on) => { if (d && d.el && d.el.classList) d.el.classList.toggle('is-lifted', on); };
     const move = (e) => {
       const d = drag.current;
@@ -9272,13 +9361,37 @@ const PicGul = () => (
     <circle cx="80" cy="52" r="10" fill="#FDD835" />
   </svg>
 );
+// Картинки, которых нет среди наших файлов: лежат только на сайте в интернете (w1–w3).
+const PicQuyosh = () => (
+  <svg viewBox="0 0 160 110" aria-hidden="true"><rect width="160" height="110" rx="6" fill="#DCEFF5" />
+    {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => <rect key={a} x="78" y="12" width="4" height="12" rx="2" fill="#F5B400" transform={'rotate(' + a + ' 80 44)'} />)}
+    <circle cx="80" cy="44" r="16" fill="#FDD835" />
+    <path d="M0 92 Q40 70 80 88 Q120 104 160 82 V110 H0 Z" fill="#9ED7A6" /><path d="M0 100 Q50 86 100 98 Q130 104 160 96 V110 H0 Z" fill="#6CC27A" />
+  </svg>
+);
+const PicOlma = () => (
+  <svg viewBox="0 0 160 110" aria-hidden="true"><rect width="160" height="110" rx="6" fill="#FFF4D6" />
+    <path d="M80 36 C60 24 40 40 44 64 C48 88 66 98 80 92 C94 98 112 88 116 64 C120 40 100 24 80 36 Z" fill="#E53935" />
+    <path d="M80 36 V22" stroke="#7C4A1E" strokeWidth="3" strokeLinecap="round" /><path d="M82 26 Q96 16 104 24 Q92 32 82 26 Z" fill="#5BB46F" />
+    <ellipse cx="64" cy="54" rx="5" ry="9" fill="#fff" opacity=".35" />
+  </svg>
+);
 const PICS = { 'osh.jpg': PicOsh, 'mushuk.jpg': PicMushuk, 'top.jpg': PicTop, 'gul.jpg': PicGul };
+const WEB_HOST = 'kodi.uz';
+const WEB_PICS = { 'quyosh.jpg': PicQuyosh, 'olma.jpg': PicOlma };
+// Честно, как браузер: имя файла — ищем среди своих; https:// (и http://) с именем сайта — берём с сайта.
+const picOf = (src) => {
+  const k = String(src || '').trim().toLowerCase();
+  const m = /^https?:\/\/([^/]+)\/([^/]+)$/.exec(k);
+  if (m) return m[1] === WEB_HOST ? WEB_PICS[m[2]] || null : null;
+  return PICS[k] || null;
+};
 const IMG_FILES = ['osh.jpg', 'mushuk.jpg', 'top.jpg'];
 const OWN_FILES = ['mushuk.jpg', 'top.jpg', 'gul.jpg'];
 
 // Картинка честно, как в браузере. src: имя файла или null (атрибута нет).
 function ImgEl({ src, alt, hl, tap, led, cls }) {
-  const P = src ? PICS[src] : null;
+  const P = src ? picOf(src) : null;
   const body = P ? <span className="z5-pic"><P /></span>
     : src ? <span className="z5-broken"><i className="z5-broken-ic" aria-hidden="true" />{alt ? <span className="z5-alt">{alt}</span> : null}</span>
       : alt ? <span className="z5-alt z5-alt-only">{alt}</span> : <span className="z5-none" aria-hidden="true" />;
@@ -9325,9 +9438,16 @@ const Br = ({ title, short, cls, children, url }) => <PaperBrowser title={title}
 // Строка кода <img …>. attrs — [{ n: 'src' | 'alt' | 'href' | '', v }].
 // Каждый атрибут — свой кусок (класс z5-att даёт отступ-пробел): длинная строка переносится между
 // атрибутами, а не обрезается на телефоне.
-const attrSpan = (n, v, k, last) => <span key={k} className="kz-tag z5-att" translate="no"><span className="z5-attr">{n}</span><span className="kz-tk-b">=</span><span className="z5-val">{'"' + v + '"'}</span>{last ? <span className="kz-tk-b">{'>'}</span> : null}</span>;
+// Значение: у полного адреса части отдельно — https://, имя сайта, /файл (lit — какая горит).
+const srcVal = (v, lit) => {
+  const m = /^(https?:\/\/)([^/]*)(\/.*)?$/.exec(v);
+  if (!m) return <span className="z5-val">{'"' + v + '"'}</span>;
+  const u = (t, k) => <span className={'z5-u' + (lit === k ? ' is-cur' : '')}>{t}</span>;
+  return <span className="z5-val">"{u(m[1], 'proto')}{u(m[2], 'host')}{m[3] ? u(m[3], 'file') : null}"</span>;
+};
+const attrSpan = (n, v, k, last, lit) => <span key={k} className="kz-tag z5-att" translate="no"><span className="z5-attr">{n}</span><span className="kz-tk-b">=</span>{srcVal(v, lit)}{last ? <span className="kz-tk-b">{'>'}</span> : null}</span>;
 const imgCode = (attrs) => [<span key="o" className="kz-tag" translate="no"><span className="kz-tk-b">{'<'}</span><span className="kz-tk-n">img</span>{attrs.length ? null : <span className="kz-tk-b">{'>'}</span>}</span>]
-  .concat(attrs.map((a, j) => attrSpan(a.n, a.v, 'a' + j, j === attrs.length - 1)));
+  .concat(attrs.map((a, j) => attrSpan(a.n, a.v, 'a' + j, j === attrs.length - 1, a.lit)));
 const tagOpen = () => <span key="o" className="kz-tag" translate="no"><span className="kz-tk-b">{'<'}</span><span className="kz-tk-n">img</span></span>;
 const tagClose = (k) => <span key={k || 'c'} className="kz-tag" translate="no"><span className="kz-tk-b">{'>'}</span></span>;
 const attrOpen = (n, k) => <span key={k || 'ao'} className="kz-tag z5-att" translate="no"><span className="z5-attr">{n}</span><span className="kz-tk-b">=</span><span className="z5-val">"</span></span>;
@@ -9992,6 +10112,212 @@ function S11({ p }) {
 }
 
 // =============================================================================
+// W1. КАРТИНКА ИЗ ИНТЕРНЕТА (показ; заказчик, 05.11.2026) — img с quyosh.jpg: среди наших файлов его нет —
+// значок сломанной картинки. src становится полным адресом: загораются https://, имя сайта, /файл — картинка
+// приходит с сайта. Потом https:// стирается — браузер ищет папку на нашем сайте: снова сломанная картинка.
+// =============================================================================
+function W1({ p }) {
+  const pick = usePick();
+  const c = C.w1;
+  const [rec, put] = useRec('w1');
+  const solved = !!(rec && rec.done);
+  const [n, setN] = useState(solved ? 3 : 0);   // 0 — только имя файла; 1 — полный адрес; 2 — без https://; 3 — снова полный
+  const [lit, setLit] = useState(null);
+  const [seen, setSeen] = useState(solved ? 3 : 0);
+  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { say: [{ text: c.sayWeb, pose: 'point' }] },
+    { act: () => { sfx('pop', true); setN(1); setLit('proto'); setSeen(1); } }, { say: [{ text: c.sayProto, pose: 'point' }] },
+    { act: () => { sfx('tap', true); setLit('host'); setSeen(2); } }, { say: [{ text: c.sayHost, pose: 'point' }] },
+    { act: () => { sfx('ok', true); setLit('file'); setSeen(3); } }, { say: [{ text: c.sayFile, pose: 'wonder' }] },
+    { act: () => { setLit(null); sfx('soft', true); setN(2); } }, { say: [{ text: c.sayNoProto, pose: 'curious' }] },
+    { wait: 300 }, { say: [{ text: c.sayNf, pose: 'think' }] },
+    { act: () => { sfx('ok', true); setN(3); } }, { say: [{ text: c.done, pose: 'smile' }] },
+    { act: () => put({ done: true }) }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
+  const full = 'https://' + WEB_HOST + '/quyosh.jpg';
+  const src = n === 0 ? 'quyosh.jpg' : n === 2 ? WEB_HOST + '/quyosh.jpg' : full;
+  const alt = pick(C.site.webAlts)['quyosh.jpg'];
+  const blocks = [{ t: 'h1', parts: pick(C.site.sun), k: 'h' }, { t: 'img', src, alt, k: 'i', hl: !solved && !demo.done }];
+  const askText = solved || demo.done ? c.askDone : n === 2 ? c.askNf : lit ? c['ask' + lit[0].toUpperCase() + lit.slice(1)] : c.askStart;
+  return (
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+      <Sheet cls="z5-sheet">
+        <KzAsk text={askText} />
+        <div className="kz-scene z5-s5 z5-w1">
+          <div className="kz-col">
+            <KzCode lines={[textLine('h', 'h1', pick(C.site.sun), { cls: 'z5-ctx' }),
+              codeLine('i', imgCode([{ n: 'src', v: src, lit }, { n: 'alt', v: alt }]), { cls: n >= 1 ? 'is-new' + (lit || n === 2 ? ' is-read' : '') : 'is-read' })]} cls="kz-code-sm" />
+            {seen ? (
+              <div className="z5-url-lbls">
+                <TagChip t={'https:// — ' + pick(C.site.proto)} cls="z5-a-in" on={lit === 'proto'} />
+                {seen >= 2 ? <TagChip t={WEB_HOST + ' — ' + pick(C.site.hostL)} cls="z5-a-in" on={lit === 'host'} /> : null}
+                {seen >= 3 ? <TagChip t={'/quyosh.jpg — ' + pick(C.site.fileL)} cls="z5-a-in" on={lit === 'file'} /> : null}
+              </div>
+            ) : <FilesPanel files={IMG_FILES} />}
+          </div>
+          <div className="kz-col"><Br title={pick(C.site.sun)} url="quyosh.html" short><PageDoc blocks={blocks} /></Br></div>
+        </div>
+      </Sheet>
+    </StageB>
+  );
+}
+
+// Проверка полного адреса картинки (w2): null — верно; 'http' — работает, но без s; иначе — причина.
+function srcUrlIssue(v, want, msgs) {
+  const n = normT(v).replace(/^["'«“]+|["'»”]+$/g, '');
+  if (n === 'https://' + want) return null;
+  if (n === 'http://' + want) return 'http';
+  if (!n) return msgs.empty;
+  if (/^https?:\/\//.test(n)) {
+    const rest = n.replace(/^https?:\/\//, '');
+    if (rest.indexOf('/') < 0 && rest.replace(/\./g, '') === want.replace(/[./]/g, '')) return msgs.slash;
+    if (rest.indexOf('/') < 0 && /\.jpg$/.test(rest)) return msgs.slash;
+    return msgs.typo;
+  }
+  if (/^h?t?t?ps?(?=[:/]|$)/.test(n) || /^https?/.test(n)) return msgs.colon;
+  return msgs.noProto;
+}
+
+// =============================================================================
+// W2. АДРЕС КАРТИНКИ (Fill in the Blanks) — у img пустой src; внизу — имя сайта и файл картинки. Ученик
+// пишет полный адрес (кнопки https:// и /). Окно браузера честно сразу показывает результат: без https:// —
+// сломанная картинка и alt, с полным адресом — картинка с сайта.
+// =============================================================================
+function W2({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.w2;
+  const [rec, put] = useRec('w2');
+  const solved = !!(rec && rec.done);
+  const want = WEB_HOST + '/olma.jpg';
+  const ty = useTagTyping({ max: 40 });
+  const [msg, setMsg] = useState(null);
+  const [okNow, setOkNow] = useState(solved);
+  const [okVal, setOkVal] = useState(null);
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'explain' }]);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(solved || okNow, spoken);
+  const lad = useKzLadder(!okNow);
+  const st = useRef({ tries: 0, misses: 0 });
+  const led = useIdleLed(canTap && !okNow && !ty.val, 0);
+  const typed = cleanV(ty.val);
+  const val = okNow ? (okVal || 'https://' + want) : typed;
+  const alt = pick(C.site.webAlts)['olma.jpg'];
+  const check = () => {
+    if (!canTap || okNow) return;
+    st.current.tries += 1;
+    const issue = srcUrlIssue(ty.val, want, c.msgs);
+    if (!issue || issue === 'http') {
+      sfx('win', true); setMsg(null); setOkNow(true); setOkVal(typed); put({ done: true });
+      log({ screenId: 'w2', type: 'write-src-url', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
+      sayNow(issue === 'http' ? c.okHttp : c.ok, 'cheer');
+      return;
+    }
+    st.current.misses += 1;
+    sfx('soft', true); setMsg(issue); sayNow(issue, 'think');
+    if (st.current.misses >= 2) lad.bump();
+  };
+  const blocks = [{ t: 'h1', parts: pick(C.site.fruit), k: 'h' }, { t: 'img', src: val || null, alt, k: 'i', hl: !okNow }];
+  return (
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="z5-sheet">
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hintAt(lad.lv, c.hints))} err={!!msg} />
+        <div className="kz-scene kz-scene-col">
+          <div className="kz-col">
+            <Br title={pick(C.site.fruit)} url="meva.html" short><PageDoc blocks={blocks} /></Br>
+            <div className="z5-codecol">
+              <KzCode lines={[textLine('h', 'h1', pick(C.site.fruit), { cls: 'z5-ctx' }),
+                okNow ? codeLine('i', imgCode([{ n: 'src', v: val }, { n: 'alt', v: alt }]), { cls: 'is-new' }) : codeLine('i', [tagOpen(), attrOpen('src'),
+                  <span key="g" className={'kz-gap z5-slot z5-slot-url' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(v) => { ty.setVal(v); setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={40} /></span>,
+                  attrClose(), attrSpan('alt', alt, 'al', true)], { cls: 'is-hl' })]} cls="kz-code-sm" />
+              <div className="z5-files z5-webinfo" aria-label={pick(C.site.hostH)}>
+                <span className="z5-files-h">{pick(C.site.hostH)}</span>
+                <span className={'z5-file z5-file-web' + (lad.lv >= 3 ? ' is-hl' : '')} translate="no"><i aria-hidden="true" />{WEB_HOST}</span>
+                <span className="z5-files-h">{pick(C.site.fileH)}</span>
+                <span className={'z5-file' + (lad.lv >= 3 ? ' is-hl' : '')} translate="no">olma.jpg</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        {!okNow ? <KeyRow keys={['https://', '/']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 8} /> : null}
+      </Sheet>
+    </StageB>
+  );
+}
+
+// =============================================================================
+// W3. ОТКУДА БРАУЗЕР ВОЗЬМЁТ КАРТИНКУ (сортировка по одному) — src: «из файлов сайта» или «из интернета».
+// Ловушка — имя сайта без https://: браузер ищет папку на нашем сайте, картинка ломается. После верного
+// ответа окно честно показывает результат. Промах — причина, можно выбрать снова.
+// =============================================================================
+function W3({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.w3;
+  const [rec, put] = useRec('w3');
+  const solved = !!(rec && rec.done);
+  const [ii, setIi] = useState(solved ? c.items.length - 1 : 0);
+  const [ok, setOk] = useState(solved);
+  const [off, setOff] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [next, setNext] = useState(false);
+  const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.ok, pose: 'smile' }] : [{ text: c.say, pose: 'curious' }]);
+  const canTap = useCanAnswer(spoken);
+  const done = ok && ii === c.items.length - 1;
+  const canGo = useAdvanceGate(solved || done, spoken);
+  const st = useRef({ tries: 0, misses: 0 });
+  const led = useIdleLed(canTap && !ok, ii * 10 + (off === null ? 0 : 1));
+  const it = c.items[ii];
+  const file = it.src.split('/').pop();
+  const alt = (pick(C.site.alts)[file] || pick(C.site.webAlts)[file]);
+  const choose = (v) => {
+    if (!canTap || ok || off === v) return;
+    st.current.tries += 1;
+    if (v !== it.right) {
+      st.current.misses += 1;
+      sfx('soft', true); setOff(v); setMsg(it.why); sayNow(it.why, 'think');
+      return;
+    }
+    sfx('ok', true); setOk(true); setMsg(null);
+    const line = joinL(c.right, it.why);
+    if (ii === c.items.length - 1) {
+      put({ done: true });
+      log({ screenId: 'w3', type: 'sort-src', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: 0, depth: 0 });
+      sayNow(joinL(line, c.ok), 'cheer');
+    } else { sayNow(line, 'smile'); setNext(true); }
+  };
+  useEffect(() => {
+    if (!next || !spoken) return undefined;
+    const t = setTimeout(() => { setNext(false); setIi((x) => x + 1); setOk(false); setOff(null); setMsg(null); }, reduceMotion() ? 300 : 1400);
+    return () => clearTimeout(t);
+  }, [next, spoken]); // eslint-disable-line react-hooks/exhaustive-deps
+  // До ответа браузер «ещё не открыл» страницу: на месте картинки — пусто; после верного ответа — честный результат.
+  const blocks = [{ t: 'h1', parts: pick(C.site.gallery), k: 'h' }, ok ? { t: 'img', src: it.src, alt, k: 'i' + ii } : { t: 'p', parts: '…', k: 'w', cls: 'z5-wait' }];
+  const btn = (v) => (
+    <button key={v} type="button" disabled={!canTap || ok || off === v} onClick={() => choose(v)} data-v={v}
+      className={'kz-btn z5-tf z5-where ' + (ok && v === it.right ? 'is-ok' : off === v ? 'is-off' : 'is-ghost')}>
+      {pick(c[v])}<Led on={led && !ok && off === null} />
+    </button>
+  );
+  return (
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="z5-sheet">
+        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : msg} err={!!msg} n={(ii + 1) + '/' + c.items.length} />
+        <div className="kz-scene z5-s5 z5-w3" key={'i' + ii}>
+          <div className="kz-col">
+            <KzCode lines={[codeLine('i', imgCode([{ n: 'src', v: it.src }, { n: 'alt', v: alt }]), { cls: 'is-hl' })]} cls="kz-code-sm" />
+            <div className="kz-pick z5-tf-pick">{btn('site')}{btn('web')}</div>
+          </div>
+          <div className="kz-col"><Br title={pick(C.site.gallery)} url="galereya.html" short><PageDoc blocks={blocks} /></Br></div>
+        </div>
+      </Sheet>
+    </StageB>
+  );
+}
+
+// =============================================================================
 // S12. СВОЯ КАРТИНКА и S13. СВОЙ alt (Live Code Preview) — своя страница: картинка на выбор (имя любого файла
 // из панели, засчёт по «Проверить»), потом текст alt (засчёт по «Готово»).
 // =============================================================================
@@ -10279,7 +10605,7 @@ function Q2({ p }) {
       {pick(v ? c.yes : c.no)}<Led on={led && !ok && off === null} />
     </button>
   );
-  const codes = { void: imgCode([{ n: 'src', v: 'osh.jpg' }]), alt: imgCode([{ n: 'src', v: 'osh.jgp' }, { n: 'alt', v: pick(C.s5.alt) }]), href: imgCode([{ n: 'href', v: 'osh.jpg' }]) };
+  const codes = { host: imgCode([{ n: 'src', v: WEB_HOST + '/olma.jpg' }]), void: imgCode([{ n: 'src', v: 'osh.jpg' }]), alt: imgCode([{ n: 'src', v: 'osh.jgp' }, { n: 'alt', v: pick(C.s5.alt) }]), href: imgCode([{ n: 'href', v: 'osh.jpg' }]) };
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="z5-sheet">
@@ -10326,8 +10652,8 @@ function S15({ p }) {
           </div>
           <div className="kz-col kz-s15-side">
             <div className="kz-roles">
-              {['img', 'src', 'alt'].map((k) => (
-                <span key={k} className={'kz-role' + (curK === k || (riddle && k === 'src') ? ' is-on' : '')} style={{ '--c': k === 'img' ? '#FA4F28' : k === 'src' ? '#7C5CFA' : '#0FA38E' }}>
+              {['img', 'src', 'alt', 'web'].map((k) => (
+                <span key={k} className={'kz-role' + (curK === k || (riddle && k === 'src') ? ' is-on' : '')} style={{ '--c': k === 'img' ? '#FA4F28' : k === 'src' ? '#7C5CFA' : k === 'alt' ? '#0FA38E' : '#D97706' }}>
                   <i aria-hidden="true" />{pick(c.roles[k])}
                 </span>
               ))}
@@ -10348,14 +10674,16 @@ const SCREENS = [
   { id: 's2', code: 'SHOW', Comp: S2 }, { id: 's3', code: 'LEVEL-1', Comp: S3 }, { id: 's4', code: 'CHECK-1', Comp: S4 },
   { id: 's5', code: 'SHOW', Comp: S5 }, { id: 's6', code: 'LEVEL-2', Comp: S6 }, { id: 's7', code: 'CHECK-2', Comp: S7 },
   { id: 's8', code: 'SHOW', Comp: S8 }, { id: 's9', code: 'LEVEL-3', Comp: S9 }, { id: 's10', code: 'CHECK-3', Comp: S10 },
-  { id: 's11', code: 'SHOW', Comp: S11 }, { id: 's12', code: 'LEVEL-4', Comp: S12 }, { id: 's13', code: 'LEVEL-4B', Comp: S13 },
+  { id: 's11', code: 'SHOW', Comp: S11 },
+  { id: 'w1', code: 'SHOW', Comp: W1 }, { id: 'w2', code: 'LEVEL-W', Comp: W2 }, { id: 'w3', code: 'CHECK-W', Comp: W3 },
+  { id: 's12', code: 'LEVEL-4', Comp: S12 }, { id: 's13', code: 'LEVEL-4B', Comp: S13 },
   { id: 's14', code: 'CHECK-4', Comp: S14 },
   { id: 'q1', code: 'CHECK-5', Comp: Q1 }, { id: 'q2', code: 'QUIZ', Comp: Q2 },
   { id: 's15', code: 'ACHIEVEMENT', Comp: S15 }
 ];
 // «Повторить» стирает только экран; своя картинка ученика (myPic, myAlt) остаётся.
 const SCREEN_RESET = { s1: ['s1'], s2: ['s2'], s3: ['s3'], s4: ['s4'], s5: ['s5'], s6: ['s6'], s7: ['s7'], s8: ['s8'], s9: ['s9'],
-  s10: ['s10'], s11: ['s11'], s12: ['s12'], s13: ['s13'], s14: ['s14'], q1: ['q1'], q2: ['q2'] };
+  s10: ['s10'], s11: ['s11'], w1: ['w1'], w2: ['w2'], w3: ['w3'], s12: ['s12'], s13: ['s13'], s14: ['s14'], q1: ['q1'], q2: ['q2'] };
 
 // Артефакт урока — своя картинка ученика с alt.
 function lesson5Artifact(store) {
@@ -13126,6 +13454,8 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .r28 .kz-dash { border-color: rgba(255, 255, 255, .25); }
 .r28 .kz-move-b { border-radius: 4px; background: #333; border: 1px solid #444; box-shadow: none; color: #CCC; }
 .r28 .kz-move-tip-k { background: #fff; border: 1px solid var(--r-edge); box-shadow: none; }
+/* «Верно или нет» (заказчик, 05.11.2026): код — во всю ширину колонки, как карточка Коди и кнопки, а не узким блоком посередине. */
+.r28 .kz-q2 .kz-col > .kz-code { align-self: center; width: min(100%, 520px); }
 .r28 .kz-q2-close .kz-tag { background: #264F78; border-radius: 3px; }
 .r28 .kz-q2-close .kz-tk-n { color: #fff; }
 .r28 .kz-q2-close .kz-tk-b { color: #CCC; }
@@ -13480,6 +13810,9 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 /* 6. Мера --brh задаёт только высоту окна: ширину браузера в столбце она больше не сужает — и там, где урок
       ставил своё max-width (урок 1, экраны 6 и 8 на невысоком телефоне: окно уже кода под ним). */
 .r28 .kz-col > .kz-br { max-width: none !important; }
+
+/* Перетаскивание строки (урок 1, s13): строка, куда встанет полоска, подсвечена, пока её несут. */
+.r28 .kz-line.is-drop { background: rgba(250, 79, 40, .18) !important; box-shadow: inset 3px 0 0 var(--r-pri); }
 /* ── УРОК 5 «Изображения» — свои части в облике «Редактор» (классы z5-*) ───────────────────
    Весь CSS урока — здесь (основа — CSS уроков 2–4), поверх r28.css эталона. Бумаги нет нигде.
    Страница в Chrome — как браузер по умолчанию; картинка — рисунок-«фото»; нет файла — значок
@@ -13708,10 +14041,19 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 @media (max-width: 759px) and (max-height: 699px) {
   .r28 .kz-sheet .kz-scene-col .kz-br.z5-br.is-short { aspect-ratio: 16 / 6 !important; }
   .r28 .kz-sheet .kz-scene.z5-s5 .kz-br.z5-br { aspect-ratio: 16 / 6.5 !important; }
+  .r28 .kz-sheet .kz-scene.z5-s5.z5-w1 .kz-br.z5-br { aspect-ratio: 16 / 8.5 !important; --brh: 30dvh; }   /* w1: кнопок нет — окно выше, картинку видно */
   .r28 .z5-sheet .kz-code.kz-code-sm .kz-line { padding-top: 0; padding-bottom: 0; min-height: 0; }
 }
 /* Планшет стоя: на крючке человечек над окном не помещается и наезжает на кнопку — окно важнее (как на телефоне). */
 @media (min-width: 760px) and (orientation: portrait) { .r28 .kz-sheet .kz-scene.z5-s1 > .z5-s1-man { display: none; } }
 /* Клавиатура телефона открыта: окно — полоска; правила невысокого телефона выше (с !important) здесь не действуют. */
 .is-kbd .r28 .kz-sheet .kz-scene-col .kz-br.z5-br.is-short, .is-kbd .r28 .kz-sheet .kz-scene.z5-s5 .kz-br.z5-br { aspect-ratio: auto !important; }
+
+/* w1–w3 — картинка из интернета: части полного адреса загораются, подписи под кодом; сайт и файл — в панели. */
+.r28 .kz-line .z5-u { border-radius: 3px; transition: background .25s, box-shadow .25s; }
+.r28 .kz-line .z5-u.is-cur { background: rgba(250, 79, 40, .3); box-shadow: 0 0 0 2px rgba(250, 79, 40, .3); }
+.r28 .z5-url-lbls { display: flex; flex-wrap: wrap; gap: 6px 8px; }
+.r28 .z5-file-web i { display: inline-block; border-radius: 50%; width: 10px; height: 10px; background: #0FA38E; }
+.r28 .kz-line .z5-slot-url .tk-input { min-width: 9em; }
+.r28 .z5-wait { color: var(--r-muted); }
 `;

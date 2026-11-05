@@ -38,13 +38,37 @@ const PicGul = () => (
     <circle cx="80" cy="52" r="10" fill="#FDD835" />
   </svg>
 );
+// Картинки, которых нет среди наших файлов: лежат только на сайте в интернете (w1–w3).
+const PicQuyosh = () => (
+  <svg viewBox="0 0 160 110" aria-hidden="true"><rect width="160" height="110" rx="6" fill="#DCEFF5" />
+    {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => <rect key={a} x="78" y="12" width="4" height="12" rx="2" fill="#F5B400" transform={'rotate(' + a + ' 80 44)'} />)}
+    <circle cx="80" cy="44" r="16" fill="#FDD835" />
+    <path d="M0 92 Q40 70 80 88 Q120 104 160 82 V110 H0 Z" fill="#9ED7A6" /><path d="M0 100 Q50 86 100 98 Q130 104 160 96 V110 H0 Z" fill="#6CC27A" />
+  </svg>
+);
+const PicOlma = () => (
+  <svg viewBox="0 0 160 110" aria-hidden="true"><rect width="160" height="110" rx="6" fill="#FFF4D6" />
+    <path d="M80 36 C60 24 40 40 44 64 C48 88 66 98 80 92 C94 98 112 88 116 64 C120 40 100 24 80 36 Z" fill="#E53935" />
+    <path d="M80 36 V22" stroke="#7C4A1E" strokeWidth="3" strokeLinecap="round" /><path d="M82 26 Q96 16 104 24 Q92 32 82 26 Z" fill="#5BB46F" />
+    <ellipse cx="64" cy="54" rx="5" ry="9" fill="#fff" opacity=".35" />
+  </svg>
+);
 const PICS = { 'osh.jpg': PicOsh, 'mushuk.jpg': PicMushuk, 'top.jpg': PicTop, 'gul.jpg': PicGul };
+const WEB_HOST = 'kodi.uz';
+const WEB_PICS = { 'quyosh.jpg': PicQuyosh, 'olma.jpg': PicOlma };
+// Честно, как браузер: имя файла — ищем среди своих; https:// (и http://) с именем сайта — берём с сайта.
+const picOf = (src) => {
+  const k = String(src || '').trim().toLowerCase();
+  const m = /^https?:\/\/([^/]+)\/([^/]+)$/.exec(k);
+  if (m) return m[1] === WEB_HOST ? WEB_PICS[m[2]] || null : null;
+  return PICS[k] || null;
+};
 const IMG_FILES = ['osh.jpg', 'mushuk.jpg', 'top.jpg'];
 const OWN_FILES = ['mushuk.jpg', 'top.jpg', 'gul.jpg'];
 
 // Картинка честно, как в браузере. src: имя файла или null (атрибута нет).
 function ImgEl({ src, alt, hl, tap, led, cls }) {
-  const P = src ? PICS[src] : null;
+  const P = src ? picOf(src) : null;
   const body = P ? <span className="z5-pic"><P /></span>
     : src ? <span className="z5-broken"><i className="z5-broken-ic" aria-hidden="true" />{alt ? <span className="z5-alt">{alt}</span> : null}</span>
       : alt ? <span className="z5-alt z5-alt-only">{alt}</span> : <span className="z5-none" aria-hidden="true" />;
@@ -91,9 +115,16 @@ const Br = ({ title, short, cls, children, url }) => <PaperBrowser title={title}
 // Строка кода <img …>. attrs — [{ n: 'src' | 'alt' | 'href' | '', v }].
 // Каждый атрибут — свой кусок (класс z5-att даёт отступ-пробел): длинная строка переносится между
 // атрибутами, а не обрезается на телефоне.
-const attrSpan = (n, v, k, last) => <span key={k} className="kz-tag z5-att" translate="no"><span className="z5-attr">{n}</span><span className="kz-tk-b">=</span><span className="z5-val">{'"' + v + '"'}</span>{last ? <span className="kz-tk-b">{'>'}</span> : null}</span>;
+// Значение: у полного адреса части отдельно — https://, имя сайта, /файл (lit — какая горит).
+const srcVal = (v, lit) => {
+  const m = /^(https?:\/\/)([^/]*)(\/.*)?$/.exec(v);
+  if (!m) return <span className="z5-val">{'"' + v + '"'}</span>;
+  const u = (t, k) => <span className={'z5-u' + (lit === k ? ' is-cur' : '')}>{t}</span>;
+  return <span className="z5-val">"{u(m[1], 'proto')}{u(m[2], 'host')}{m[3] ? u(m[3], 'file') : null}"</span>;
+};
+const attrSpan = (n, v, k, last, lit) => <span key={k} className="kz-tag z5-att" translate="no"><span className="z5-attr">{n}</span><span className="kz-tk-b">=</span>{srcVal(v, lit)}{last ? <span className="kz-tk-b">{'>'}</span> : null}</span>;
 const imgCode = (attrs) => [<span key="o" className="kz-tag" translate="no"><span className="kz-tk-b">{'<'}</span><span className="kz-tk-n">img</span>{attrs.length ? null : <span className="kz-tk-b">{'>'}</span>}</span>]
-  .concat(attrs.map((a, j) => attrSpan(a.n, a.v, 'a' + j, j === attrs.length - 1)));
+  .concat(attrs.map((a, j) => attrSpan(a.n, a.v, 'a' + j, j === attrs.length - 1, a.lit)));
 const tagOpen = () => <span key="o" className="kz-tag" translate="no"><span className="kz-tk-b">{'<'}</span><span className="kz-tk-n">img</span></span>;
 const tagClose = (k) => <span key={k || 'c'} className="kz-tag" translate="no"><span className="kz-tk-b">{'>'}</span></span>;
 const attrOpen = (n, k) => <span key={k || 'ao'} className="kz-tag z5-att" translate="no"><span className="z5-attr">{n}</span><span className="kz-tk-b">=</span><span className="z5-val">"</span></span>;
@@ -758,6 +789,212 @@ function S11({ p }) {
 }
 
 // =============================================================================
+// W1. КАРТИНКА ИЗ ИНТЕРНЕТА (показ; заказчик, 05.11.2026) — img с quyosh.jpg: среди наших файлов его нет —
+// значок сломанной картинки. src становится полным адресом: загораются https://, имя сайта, /файл — картинка
+// приходит с сайта. Потом https:// стирается — браузер ищет папку на нашем сайте: снова сломанная картинка.
+// =============================================================================
+function W1({ p }) {
+  const pick = usePick();
+  const c = C.w1;
+  const [rec, put] = useRec('w1');
+  const solved = !!(rec && rec.done);
+  const [n, setN] = useState(solved ? 3 : 0);   // 0 — только имя файла; 1 — полный адрес; 2 — без https://; 3 — снова полный
+  const [lit, setLit] = useState(null);
+  const [seen, setSeen] = useState(solved ? 3 : 0);
+  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
+    { say: [{ text: c.sayWeb, pose: 'point' }] },
+    { act: () => { sfx('pop', true); setN(1); setLit('proto'); setSeen(1); } }, { say: [{ text: c.sayProto, pose: 'point' }] },
+    { act: () => { sfx('tap', true); setLit('host'); setSeen(2); } }, { say: [{ text: c.sayHost, pose: 'point' }] },
+    { act: () => { sfx('ok', true); setLit('file'); setSeen(3); } }, { say: [{ text: c.sayFile, pose: 'wonder' }] },
+    { act: () => { setLit(null); sfx('soft', true); setN(2); } }, { say: [{ text: c.sayNoProto, pose: 'curious' }] },
+    { wait: 300 }, { say: [{ text: c.sayNf, pose: 'think' }] },
+    { act: () => { sfx('ok', true); setN(3); } }, { say: [{ text: c.done, pose: 'smile' }] },
+    { act: () => put({ done: true }) }
+  ] });
+  const canGo = useAdvanceGate(solved || demo.done, spoken);
+  const full = 'https://' + WEB_HOST + '/quyosh.jpg';
+  const src = n === 0 ? 'quyosh.jpg' : n === 2 ? WEB_HOST + '/quyosh.jpg' : full;
+  const alt = pick(C.site.webAlts)['quyosh.jpg'];
+  const blocks = [{ t: 'h1', parts: pick(C.site.sun), k: 'h' }, { t: 'img', src, alt, k: 'i', hl: !solved && !demo.done }];
+  const askText = solved || demo.done ? c.askDone : n === 2 ? c.askNf : lit ? c['ask' + lit[0].toUpperCase() + lit.slice(1)] : c.askStart;
+  return (
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+      <Sheet cls="z5-sheet">
+        <KzAsk text={askText} />
+        <div className="kz-scene z5-s5 z5-w1">
+          <div className="kz-col">
+            <KzCode lines={[textLine('h', 'h1', pick(C.site.sun), { cls: 'z5-ctx' }),
+              codeLine('i', imgCode([{ n: 'src', v: src, lit }, { n: 'alt', v: alt }]), { cls: n >= 1 ? 'is-new' + (lit || n === 2 ? ' is-read' : '') : 'is-read' })]} cls="kz-code-sm" />
+            {seen ? (
+              <div className="z5-url-lbls">
+                <TagChip t={'https:// — ' + pick(C.site.proto)} cls="z5-a-in" on={lit === 'proto'} />
+                {seen >= 2 ? <TagChip t={WEB_HOST + ' — ' + pick(C.site.hostL)} cls="z5-a-in" on={lit === 'host'} /> : null}
+                {seen >= 3 ? <TagChip t={'/quyosh.jpg — ' + pick(C.site.fileL)} cls="z5-a-in" on={lit === 'file'} /> : null}
+              </div>
+            ) : <FilesPanel files={IMG_FILES} />}
+          </div>
+          <div className="kz-col"><Br title={pick(C.site.sun)} url="quyosh.html" short><PageDoc blocks={blocks} /></Br></div>
+        </div>
+      </Sheet>
+    </StageB>
+  );
+}
+
+// Проверка полного адреса картинки (w2): null — верно; 'http' — работает, но без s; иначе — причина.
+function srcUrlIssue(v, want, msgs) {
+  const n = normT(v).replace(/^["'«“]+|["'»”]+$/g, '');
+  if (n === 'https://' + want) return null;
+  if (n === 'http://' + want) return 'http';
+  if (!n) return msgs.empty;
+  if (/^https?:\/\//.test(n)) {
+    const rest = n.replace(/^https?:\/\//, '');
+    if (rest.indexOf('/') < 0 && rest.replace(/\./g, '') === want.replace(/[./]/g, '')) return msgs.slash;
+    if (rest.indexOf('/') < 0 && /\.jpg$/.test(rest)) return msgs.slash;
+    return msgs.typo;
+  }
+  if (/^h?t?t?ps?(?=[:/]|$)/.test(n) || /^https?/.test(n)) return msgs.colon;
+  return msgs.noProto;
+}
+
+// =============================================================================
+// W2. АДРЕС КАРТИНКИ (Fill in the Blanks) — у img пустой src; внизу — имя сайта и файл картинки. Ученик
+// пишет полный адрес (кнопки https:// и /). Окно браузера честно сразу показывает результат: без https:// —
+// сломанная картинка и alt, с полным адресом — картинка с сайта.
+// =============================================================================
+function W2({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.w2;
+  const [rec, put] = useRec('w2');
+  const solved = !!(rec && rec.done);
+  const want = WEB_HOST + '/olma.jpg';
+  const ty = useTagTyping({ max: 40 });
+  const [msg, setMsg] = useState(null);
+  const [okNow, setOkNow] = useState(solved);
+  const [okVal, setOkVal] = useState(null);
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'explain' }]);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(solved || okNow, spoken);
+  const lad = useKzLadder(!okNow);
+  const st = useRef({ tries: 0, misses: 0 });
+  const led = useIdleLed(canTap && !okNow && !ty.val, 0);
+  const typed = cleanV(ty.val);
+  const val = okNow ? (okVal || 'https://' + want) : typed;
+  const alt = pick(C.site.webAlts)['olma.jpg'];
+  const check = () => {
+    if (!canTap || okNow) return;
+    st.current.tries += 1;
+    const issue = srcUrlIssue(ty.val, want, c.msgs);
+    if (!issue || issue === 'http') {
+      sfx('win', true); setMsg(null); setOkNow(true); setOkVal(typed); put({ done: true });
+      log({ screenId: 'w2', type: 'write-src-url', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
+      sayNow(issue === 'http' ? c.okHttp : c.ok, 'cheer');
+      return;
+    }
+    st.current.misses += 1;
+    sfx('soft', true); setMsg(issue); sayNow(issue, 'think');
+    if (st.current.misses >= 2) lad.bump();
+  };
+  const blocks = [{ t: 'h1', parts: pick(C.site.fruit), k: 'h' }, { t: 'img', src: val || null, alt, k: 'i', hl: !okNow }];
+  return (
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="z5-sheet">
+        <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hintAt(lad.lv, c.hints))} err={!!msg} />
+        <div className="kz-scene kz-scene-col">
+          <div className="kz-col">
+            <Br title={pick(C.site.fruit)} url="meva.html" short><PageDoc blocks={blocks} /></Br>
+            <div className="z5-codecol">
+              <KzCode lines={[textLine('h', 'h1', pick(C.site.fruit), { cls: 'z5-ctx' }),
+                okNow ? codeLine('i', imgCode([{ n: 'src', v: val }, { n: 'alt', v: alt }]), { cls: 'is-new' }) : codeLine('i', [tagOpen(), attrOpen('src'),
+                  <span key="g" className={'kz-gap z5-slot z5-slot-url' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(v) => { ty.setVal(v); setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={40} /></span>,
+                  attrClose(), attrSpan('alt', alt, 'al', true)], { cls: 'is-hl' })]} cls="kz-code-sm" />
+              <div className="z5-files z5-webinfo" aria-label={pick(C.site.hostH)}>
+                <span className="z5-files-h">{pick(C.site.hostH)}</span>
+                <span className={'z5-file z5-file-web' + (lad.lv >= 3 ? ' is-hl' : '')} translate="no"><i aria-hidden="true" />{WEB_HOST}</span>
+                <span className="z5-files-h">{pick(C.site.fileH)}</span>
+                <span className={'z5-file' + (lad.lv >= 3 ? ' is-hl' : '')} translate="no">olma.jpg</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        {!okNow ? <KeyRow keys={['https://', '/']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 8} /> : null}
+      </Sheet>
+    </StageB>
+  );
+}
+
+// =============================================================================
+// W3. ОТКУДА БРАУЗЕР ВОЗЬМЁТ КАРТИНКУ (сортировка по одному) — src: «из файлов сайта» или «из интернета».
+// Ловушка — имя сайта без https://: браузер ищет папку на нашем сайте, картинка ломается. После верного
+// ответа окно честно показывает результат. Промах — причина, можно выбрать снова.
+// =============================================================================
+function W3({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.w3;
+  const [rec, put] = useRec('w3');
+  const solved = !!(rec && rec.done);
+  const [ii, setIi] = useState(solved ? c.items.length - 1 : 0);
+  const [ok, setOk] = useState(solved);
+  const [off, setOff] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [next, setNext] = useState(false);
+  const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.ok, pose: 'smile' }] : [{ text: c.say, pose: 'curious' }]);
+  const canTap = useCanAnswer(spoken);
+  const done = ok && ii === c.items.length - 1;
+  const canGo = useAdvanceGate(solved || done, spoken);
+  const st = useRef({ tries: 0, misses: 0 });
+  const led = useIdleLed(canTap && !ok, ii * 10 + (off === null ? 0 : 1));
+  const it = c.items[ii];
+  const file = it.src.split('/').pop();
+  const alt = (pick(C.site.alts)[file] || pick(C.site.webAlts)[file]);
+  const choose = (v) => {
+    if (!canTap || ok || off === v) return;
+    st.current.tries += 1;
+    if (v !== it.right) {
+      st.current.misses += 1;
+      sfx('soft', true); setOff(v); setMsg(it.why); sayNow(it.why, 'think');
+      return;
+    }
+    sfx('ok', true); setOk(true); setMsg(null);
+    const line = joinL(c.right, it.why);
+    if (ii === c.items.length - 1) {
+      put({ done: true });
+      log({ screenId: 'w3', type: 'sort-src', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: 0, depth: 0 });
+      sayNow(joinL(line, c.ok), 'cheer');
+    } else { sayNow(line, 'smile'); setNext(true); }
+  };
+  useEffect(() => {
+    if (!next || !spoken) return undefined;
+    const t = setTimeout(() => { setNext(false); setIi((x) => x + 1); setOk(false); setOff(null); setMsg(null); }, reduceMotion() ? 300 : 1400);
+    return () => clearTimeout(t);
+  }, [next, spoken]); // eslint-disable-line react-hooks/exhaustive-deps
+  // До ответа браузер «ещё не открыл» страницу: на месте картинки — пусто; после верного ответа — честный результат.
+  const blocks = [{ t: 'h1', parts: pick(C.site.gallery), k: 'h' }, ok ? { t: 'img', src: it.src, alt, k: 'i' + ii } : { t: 'p', parts: '…', k: 'w', cls: 'z5-wait' }];
+  const btn = (v) => (
+    <button key={v} type="button" disabled={!canTap || ok || off === v} onClick={() => choose(v)} data-v={v}
+      className={'kz-btn z5-tf z5-where ' + (ok && v === it.right ? 'is-ok' : off === v ? 'is-off' : 'is-ghost')}>
+      {pick(c[v])}<Led on={led && !ok && off === null} />
+    </button>
+  );
+  return (
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="z5-sheet">
+        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : msg} err={!!msg} n={(ii + 1) + '/' + c.items.length} />
+        <div className="kz-scene z5-s5 z5-w3" key={'i' + ii}>
+          <div className="kz-col">
+            <KzCode lines={[codeLine('i', imgCode([{ n: 'src', v: it.src }, { n: 'alt', v: alt }]), { cls: 'is-hl' })]} cls="kz-code-sm" />
+            <div className="kz-pick z5-tf-pick">{btn('site')}{btn('web')}</div>
+          </div>
+          <div className="kz-col"><Br title={pick(C.site.gallery)} url="galereya.html" short><PageDoc blocks={blocks} /></Br></div>
+        </div>
+      </Sheet>
+    </StageB>
+  );
+}
+
+// =============================================================================
 // S12. СВОЯ КАРТИНКА и S13. СВОЙ alt (Live Code Preview) — своя страница: картинка на выбор (имя любого файла
 // из панели, засчёт по «Проверить»), потом текст alt (засчёт по «Готово»).
 // =============================================================================
@@ -1045,7 +1282,7 @@ function Q2({ p }) {
       {pick(v ? c.yes : c.no)}<Led on={led && !ok && off === null} />
     </button>
   );
-  const codes = { void: imgCode([{ n: 'src', v: 'osh.jpg' }]), alt: imgCode([{ n: 'src', v: 'osh.jgp' }, { n: 'alt', v: pick(C.s5.alt) }]), href: imgCode([{ n: 'href', v: 'osh.jpg' }]) };
+  const codes = { host: imgCode([{ n: 'src', v: WEB_HOST + '/olma.jpg' }]), void: imgCode([{ n: 'src', v: 'osh.jpg' }]), alt: imgCode([{ n: 'src', v: 'osh.jgp' }, { n: 'alt', v: pick(C.s5.alt) }]), href: imgCode([{ n: 'href', v: 'osh.jpg' }]) };
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="z5-sheet">
@@ -1092,8 +1329,8 @@ function S15({ p }) {
           </div>
           <div className="kz-col kz-s15-side">
             <div className="kz-roles">
-              {['img', 'src', 'alt'].map((k) => (
-                <span key={k} className={'kz-role' + (curK === k || (riddle && k === 'src') ? ' is-on' : '')} style={{ '--c': k === 'img' ? '#FA4F28' : k === 'src' ? '#7C5CFA' : '#0FA38E' }}>
+              {['img', 'src', 'alt', 'web'].map((k) => (
+                <span key={k} className={'kz-role' + (curK === k || (riddle && k === 'src') ? ' is-on' : '')} style={{ '--c': k === 'img' ? '#FA4F28' : k === 'src' ? '#7C5CFA' : k === 'alt' ? '#0FA38E' : '#D97706' }}>
                   <i aria-hidden="true" />{pick(c.roles[k])}
                 </span>
               ))}
@@ -1114,14 +1351,16 @@ const SCREENS = [
   { id: 's2', code: 'SHOW', Comp: S2 }, { id: 's3', code: 'LEVEL-1', Comp: S3 }, { id: 's4', code: 'CHECK-1', Comp: S4 },
   { id: 's5', code: 'SHOW', Comp: S5 }, { id: 's6', code: 'LEVEL-2', Comp: S6 }, { id: 's7', code: 'CHECK-2', Comp: S7 },
   { id: 's8', code: 'SHOW', Comp: S8 }, { id: 's9', code: 'LEVEL-3', Comp: S9 }, { id: 's10', code: 'CHECK-3', Comp: S10 },
-  { id: 's11', code: 'SHOW', Comp: S11 }, { id: 's12', code: 'LEVEL-4', Comp: S12 }, { id: 's13', code: 'LEVEL-4B', Comp: S13 },
+  { id: 's11', code: 'SHOW', Comp: S11 },
+  { id: 'w1', code: 'SHOW', Comp: W1 }, { id: 'w2', code: 'LEVEL-W', Comp: W2 }, { id: 'w3', code: 'CHECK-W', Comp: W3 },
+  { id: 's12', code: 'LEVEL-4', Comp: S12 }, { id: 's13', code: 'LEVEL-4B', Comp: S13 },
   { id: 's14', code: 'CHECK-4', Comp: S14 },
   { id: 'q1', code: 'CHECK-5', Comp: Q1 }, { id: 'q2', code: 'QUIZ', Comp: Q2 },
   { id: 's15', code: 'ACHIEVEMENT', Comp: S15 }
 ];
 // «Повторить» стирает только экран; своя картинка ученика (myPic, myAlt) остаётся.
 const SCREEN_RESET = { s1: ['s1'], s2: ['s2'], s3: ['s3'], s4: ['s4'], s5: ['s5'], s6: ['s6'], s7: ['s7'], s8: ['s8'], s9: ['s9'],
-  s10: ['s10'], s11: ['s11'], s12: ['s12'], s13: ['s13'], s14: ['s14'], q1: ['q1'], q2: ['q2'] };
+  s10: ['s10'], s11: ['s11'], w1: ['w1'], w2: ['w2'], w3: ['w3'], s12: ['s12'], s13: ['s13'], s14: ['s14'], q1: ['q1'], q2: ['q2'] };
 
 // Артефакт урока — своя картинка ученика с alt.
 function lesson5Artifact(store) {

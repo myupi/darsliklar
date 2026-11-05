@@ -1,5 +1,5 @@
 // Сценарий проверки урока 4 курса HTML lessons/html/04-ssylki-i-atributy.jsx («Ссылки и атрибуты», облик «Редактор», 03.11.2026).
-// Основной путь: все 17 экранов действиями ученика, честные переходы по ссылкам (адрес, «назад», «Файл не найден»),
+// Основной путь: все 20 экранов действиями ученика, честные переходы по ссылкам (адрес, «назад», «Файл не найден»),
 // своя ссылка (s12, s13), починка href (s14), onFinished один раз, артефакт со своей ссылкой.
 // Ветки: не тот файл (s3); файл не к той ссылке (s4); значение первым (s6); не та пара (s7); промах «до и после» (s10);
 // верная строка в «найди ошибку» (q1); неверный ответ (q2). Причины — в панели снизу (.b-sheet.is-hint).
@@ -103,6 +103,37 @@ const STEPS = [
     await qa.waitFor(() => qa.platform.nextEnabled(), 90000, 'показ закончен');
     qa.expect(qa.events('tts').some((e) => new RegExp(qa.data.endS11).test((e.data && e.data.text) || '')), 'последняя реплика показа прозвучала');
   } },
+  { name: 'w1: сайт в интернете (показ)', shot: 'w1-done', run: async (qa) => {
+    await qa.platform.next();
+    await qa.platform.ready(30000);
+    await qa.waitFor(() => qa.platform.nextEnabled(), 90000, 'показ закончен');
+    qa.expect(qa.text('.kz-code').indexOf('https://' + qa.data.host) >= 0, 'в коде полный адрес');
+    qa.expect(/index\.html/.test(qa.text('.kz-br-url')), 'браузер вернулся на главную');
+    qa.expect(qa.events('tts').some((e) => new RegExp(qa.data.endW1).test((e.data && e.data.text) || '')), 'последняя реплика показа прозвучала');
+  } },
+  { name: 'w2: вписать полный адрес', shot: 'w2-done', run: async (qa) => {
+    await qa.platform.next();
+    await qa.platform.ready();
+    qa.expect(!!qa.q('.z4-host'), 'имя сайта внизу');
+    qa.type('.z4-slot textarea', 'https://' + qa.data.host, 'полный адрес');
+    await qa.click('.key-go', 'Проверить');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано');
+    const links = qa.qa('.kz-br-page .z4-a');
+    links[links.length - 1].click();
+    await qa.waitFor(() => qa.text('.kz-br-url').indexOf(qa.data.host) >= 0 && !qa.q('.kz-br.is-nf'), 3000, 'ссылка открыла Википедию');
+  } },
+  { name: 'w3: где браузер будет искать', shot: 'w3-done', run: async (qa) => {
+    await qa.platform.next();
+    for (const [v, nf] of [['site', false], ['web', false], ['site', true], ['web', false]]) {
+      await qa.platform.ready(30000);
+      await qa.waitFor(() => qa.q('.z4-where:not(:disabled)'), 30000, 'кнопки нажимаются');
+      await qa.click('.z4-where[data-v="' + v + '"]', v);
+      await qa.waitFor(() => qa.q('.z4-where.is-ok'), 5000, 'ответ принят');
+      await qa.waitFor(() => !!qa.q('.kz-br.is-nf') === nf && !/index\.html/.test(qa.text('.kz-br-url')), 3000, nf ? 'честно: без https — «Файл не найден»' : 'браузер открыл адрес');
+      await qa.sleep(300);
+    }
+    await qa.waitFor(() => qa.platform.nextEnabled(), 30000, 'засчитано');
+  } },
   { name: 's12: текст своей ссылки по «Готово»', shot: 's12-done', run: async (qa) => {
     await qa.platform.next();
     await qa.platform.ready();
@@ -142,7 +173,7 @@ const STEPS = [
   } },
   { name: 'q2: верно или нет', shot: 'q2-done', run: async (qa) => {
     await qa.platform.next();
-    for (const k of [1, 0, 1]) {
+    for (const k of [1, 0, 1, 1]) {
       await qa.platform.ready(30000);
       await qa.waitFor(() => qa.q('.z4-tf:not(:disabled)'), 30000, 'кнопки нажимаются');
       await qa.clickNth('.z4-tf', k, k ? 'Неверно' : 'Верно');
@@ -174,13 +205,13 @@ export default {
   langs: ['ru'],
   size: process.env.QA_SIZE || '1280x720',
   voice: 'fast',
-  screens: 17,
-  inputScreens: [3, 9, 12, 13],
+  screens: 20,
+  inputScreens: [3, 9, 13, 15, 16],
   expectFinish: true,
   data: {
-    ru: { myLink: 'Моя страница', endS2: 'говорит, куда вести', endS5: 'значение в кавычках', endS8: 'всегда закрывай ссылку', nfS8: 'Файл не найден', endS11: 'стрелка вверху возвращает' },
-    uz: { myLink: 'Mening sahifam', endS2: 'qayerga borishni aytadi', endS5: "qo'shtirnoq ichida qiymat", endS8: 'doim yopuvchi', nfS8: 'Fayl topilmadi', endS11: 'orqaga qaytaradi' },
-    en: { myLink: 'My page', endS2: 'says where it goes', endS5: 'value in quotes', endS8: 'always close the link', nfS8: 'File not found', endS11: 'takes you back' }
+    ru: { host: 'ru.wikipedia.org', endW1: 'нужен полный адрес', myLink: 'Моя страница', endS2: 'говорит, куда вести', endS5: 'значение в кавычках', endS8: 'всегда закрывай ссылку', nfS8: 'Файл не найден', endS11: 'стрелка вверху возвращает' },
+    uz: { host: 'uz.wikipedia.org', endW1: "to'liq manzil kerak", myLink: 'Mening sahifam', endS2: 'qayerga borishni aytadi', endS5: "qo'shtirnoq ichida qiymat", endS8: 'doim yopuvchi', nfS8: 'Fayl topilmadi', endS11: 'orqaga qaytaradi' },
+    en: { host: 'en.wikipedia.org', endW1: 'needs the full address', myLink: 'My page', endS2: 'says where it goes', endS5: 'value in quotes', endS8: 'always close the link', nfS8: 'File not found', endS11: 'takes you back' }
   },
   steps: STEPS,
   flows: [
@@ -217,13 +248,35 @@ export default {
       await qa.waitFor(() => qa.q('.b-sheet.is-hint'), 3000, 'причина в панели');
       await qa.waitFor(() => /\/4/.test(qa.text('.kz-ask-n')), 30000, 'раундов стало четыре');
     } }] },
-    { name: 'q1: верная строка → «в порядке»', start: 14, langs: ['ru'], steps: [{ name: 'первая строка', run: async (qa) => {
+    { name: 'w2: без https:// → причина', start: 12, langs: ['ru'], steps: [{ name: 'одно имя сайта', run: async (qa) => {
+      await qa.platform.ready();
+      qa.type('.z4-slot textarea', qa.data.host, 'имя сайта без https');
+      await qa.click('.key-go', 'Проверить');
+      await qa.waitFor(() => qa.q('.b-sheet.is-hint') && /https/.test(qa.text('.b-sheet.is-hint')), 3000, 'причина про https в панели');
+      qa.expect(!qa.platform.nextEnabled(), '«Дальше» закрыта');
+      qa.qa('.kz-br-page .z4-a').pop().click();
+      await qa.waitFor(() => !!qa.q('.kz-br.is-nf'), 3000, 'честно: «Файл не найден»');
+    } }] },
+    { name: 'w3: адрес без https — «в интернете» → причина', start: 13, langs: ['ru'], steps: [{ name: 'ловушка', run: async (qa) => {
+      await qa.platform.ready();
+      for (const v of ['site', 'web']) {
+        await qa.waitFor(() => qa.q('.z4-where:not(:disabled)'), 30000, 'кнопки нажимаются');
+        await qa.click('.z4-where[data-v="' + v + '"]', v);
+        await qa.waitFor(() => qa.q('.z4-where.is-ok'), 5000, 'ответ принят');
+        await qa.waitFor(() => !qa.q('.z4-where.is-ok'), 8000, 'следующий адрес');
+      }
+      await qa.waitFor(() => qa.q('.z4-where:not(:disabled)'), 30000, 'кнопки нажимаются');
+      await qa.click('.z4-where[data-v="web"]', 'в интернете');
+      await qa.waitFor(() => qa.q('.b-sheet.is-hint'), 3000, 'причина в панели');
+      qa.expect(qa.qa('.z4-where.is-off').length === 1 && !qa.platform.nextEnabled(), 'кнопка погасла, можно выбрать снова');
+    } }] },
+    { name: 'q1: верная строка → «в порядке»', start: 17, langs: ['ru'], steps: [{ name: 'первая строка', run: async (qa) => {
       await qa.platform.ready();
       await qa.clickNth('.kz-code .kz-line.kz-tap', 0, 'верная строка');
       await qa.waitFor(() => qa.q('.b-sheet.is-hint'), 3000, 'причина в панели');
       qa.expect(qa.qa('.kz-code .kz-line.is-off').length === 1 && !qa.platform.nextEnabled(), 'строка погасла, «Дальше» закрыта');
     } }] },
-    { name: 'q2: неверный ответ → объяснение', start: 15, langs: ['ru'], steps: [{ name: '«Верно» про закрывающий тег', run: async (qa) => {
+    { name: 'q2: неверный ответ → объяснение', start: 18, langs: ['ru'], steps: [{ name: '«Верно» про закрывающий тег', run: async (qa) => {
       await qa.platform.ready();
       await qa.waitFor(() => qa.q('.z4-tf:not(:disabled)'), 30000, 'кнопки нажимаются');
       await qa.clickNth('.z4-tf', 0, 'Верно');
