@@ -9321,6 +9321,7 @@ function PageDoc({ blocks, insp, onImgTap, cls }) {
 const Br = ({ title, short, cls, children, url }) => <PaperBrowser title={title} url={url} short={short} cls={'z9-br' + (cls ? ' ' + cls : '')}>{children}</PaperBrowser>;
 
 // КАРТА СТАНЦИЙ — 8 уроков курса. cur — номер текущей станции (0–7), solved — она уже починена; all — все горят.
+// Починенные — зелёные с галочкой, видны и после станций (отзыв учеников, 06.11.2026).
 function StationMap({ cur, solved, all }) {
   const pick = usePick();
   return (
@@ -10111,6 +10112,7 @@ function S11({ p }) {
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="z9-sheet">
+        <StationMap cur={8} all />
         <KzAsk text={done ? c.ok : c.ask} hint={done ? null : (msg || hint)} err={!!msg} n={fixed.length + '/' + BOSS.length} />
         <div className="kz-scene z9-s5 z9-boss">
           <div className="kz-col"><Br title={pick(s.title)} url="index.html" cls={done ? '' : 'z9-broken-br'}><PageDoc blocks={blocks} /></Br></div>
@@ -10183,6 +10185,7 @@ function Q1({ p }) {
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="z9-sheet">
+        <StationMap cur={8} all />
         <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : ch.now(hints)} err={ch.err} n={(ii + 1) + '/' + c.items.length} />
         <div className="kz-scene kz-scene-col kz-q2" key={'i' + ii}>
           <div className="kz-col">
@@ -13895,4 +13898,8 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 @media (min-width: 760px) and (orientation: portrait) { .r28 .kz-sheet .kz-scene.z9-s1 .z9-s1-page > .kz-br.z9-br { --brh: 38dvh; } }
 /* Планшет стоя: на крючке человечек над окном не помещается — окно с картой важнее (как на телефоне). */
 @media (min-width: 760px) and (orientation: portrait) { .r28 .kz-sheet .kz-scene.z9-s1 > .z9-s1-man { display: none; } }
+/* Починенная станция — зелёная с галочкой; текущая непочиненная — оранжевая (отзыв учеников, 06.11.2026). */
+.r28 .z9-st.is-done { background: #DCFCE7; box-shadow: inset 0 0 0 1.5px #22C55E; color: #15803D; }
+.r28 .z9-st.is-done b::after { content: ' ✓'; }
+.r28 .z9-st.is-done.is-cur { box-shadow: inset 0 0 0 2px #16A34A, 0 0 0 3px #BBF7D0; color: #15803D; }
 `;

@@ -106,6 +106,7 @@ function PageDoc({ blocks, insp, onImgTap, cls }) {
 const Br = ({ title, short, cls, children, url }) => <PaperBrowser title={title} url={url} short={short} cls={'z9-br' + (cls ? ' ' + cls : '')}>{children}</PaperBrowser>;
 
 // КАРТА СТАНЦИЙ — 8 уроков курса. cur — номер текущей станции (0–7), solved — она уже починена; all — все горят.
+// Починенные — зелёные с галочкой, видны и после станций (отзыв учеников, 06.11.2026).
 function StationMap({ cur, solved, all }) {
   const pick = usePick();
   return (
@@ -896,6 +897,7 @@ function S11({ p }) {
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="z9-sheet">
+        <StationMap cur={8} all />
         <KzAsk text={done ? c.ok : c.ask} hint={done ? null : (msg || hint)} err={!!msg} n={fixed.length + '/' + BOSS.length} />
         <div className="kz-scene z9-s5 z9-boss">
           <div className="kz-col"><Br title={pick(s.title)} url="index.html" cls={done ? '' : 'z9-broken-br'}><PageDoc blocks={blocks} /></Br></div>
@@ -968,6 +970,7 @@ function Q1({ p }) {
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="z9-sheet">
+        <StationMap cur={8} all />
         <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : ch.now(hints)} err={ch.err} n={(ii + 1) + '/' + c.items.length} />
         <div className="kz-scene kz-scene-col kz-q2" key={'i' + ii}>
           <div className="kz-col">

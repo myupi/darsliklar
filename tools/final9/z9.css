@@ -518,3 +518,7 @@
 @media (min-width: 760px) and (orientation: portrait) { .r28 .kz-sheet .kz-scene.z9-s1 .z9-s1-page > .kz-br.z9-br { --brh: 38dvh; } }
 /* Планшет стоя: на крючке человечек над окном не помещается — окно с картой важнее (как на телефоне). */
 @media (min-width: 760px) and (orientation: portrait) { .r28 .kz-sheet .kz-scene.z9-s1 > .z9-s1-man { display: none; } }
+/* Починенная станция — зелёная с галочкой; текущая непочиненная — оранжевая (отзыв учеников, 06.11.2026). */
+.r28 .z9-st.is-done { background: #DCFCE7; box-shadow: inset 0 0 0 1.5px #22C55E; color: #15803D; }
+.r28 .z9-st.is-done b::after { content: ' ✓'; }
+.r28 .z9-st.is-done.is-cur { box-shadow: inset 0 0 0 2px #16A34A, 0 0 0 3px #BBF7D0; color: #15803D; }
