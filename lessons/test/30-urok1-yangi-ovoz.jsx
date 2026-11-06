@@ -1060,10 +1060,11 @@ function useAudioEngine(ttsApiBase, lang) {
 }
 
 
-// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (тестовая копия, 04.11.2026) ─────────────────────────────────────
+// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (тестовая копия, 04.11.2026; жизненный цикл — 05.11.2026) ──────────
 // await onFinished({ contractVersion: 1, passed, results, analytics, meta }). Монеты считает сервер.
 // passed: true — урок пройден до вывода (оценки в курсе HTML нет). Пока ответа нет — «Saqlanmoqda…»,
 // сбой — понятная ошибка и «Qayta yuborish» с тем же результатом; успех показываем только после ответа.
+// Состояние отправки — своё у каждого открытия урока (makeV1 в useLessonRoot), глобального состояния нет.
 const V1_UI = {
   saving: "Natija saqlanmoqda…",
   saved: "Natija saqlandi. Barakalla!",
@@ -1086,24 +1087,34 @@ function toContractV1(old) {
     meta: { lessonId: o.lessonId || null, lang: o.lang || null }
   });
 }
-let _v1 = { phase: 'idle', payload: null, send: null };
-const _v1Subs = new Set();
-const v1Set = (patch) => { _v1 = Object.assign({}, _v1, patch); _v1Subs.forEach((f) => f(_v1)); };
-function v1Submit(onFinished, old) {
-  if (!_v1.payload) _v1.payload = toContractV1(old);   // повтор отправляет тот же снимок
-  const send = () => {
-    if (_v1.phase === 'saving' || _v1.phase === 'saved') return;
-    v1Set({ phase: 'saving' });
-    let res;
-    try { res = typeof onFinished === 'function' ? onFinished(_v1.payload) : null; } catch (e) { v1Set({ phase: 'failed' }); return; }
-    Promise.resolve(res).then(() => v1Set({ phase: 'saved' }), () => v1Set({ phase: 'failed' }));
+// Отправка одного открытия урока: один снимок результата; повтор шлёт его же; второй клик во время
+// отправки и после успеха ничего не делает.
+function makeV1() {
+  let st = { phase: 'idle' };
+  let payload = null, send = null;
+  const subs = new Set();
+  const set = (patch) => { st = Object.assign({}, st, patch); subs.forEach((f) => f(st)); };
+  return {
+    get: () => st,
+    sub: (f) => { subs.add(f); return () => { subs.delete(f); }; },
+    retry: () => { if (send) send(); },
+    submit(onFinished, old) {
+      if (payload) return;
+      payload = toContractV1(old);
+      send = () => {
+        if (st.phase === 'saving' || st.phase === 'saved') return;
+        set({ phase: 'saving' });
+        let res;
+        try { res = typeof onFinished === 'function' ? onFinished(payload) : null; } catch (e) { set({ phase: 'failed' }); return; }
+        Promise.resolve(res).then(() => set({ phase: 'saved' }), () => set({ phase: 'failed' }));
+      };
+      send();
+    }
   };
-  v1Set({ send });
-  send();
 }
-function V1Status() {
-  const [s, setS] = useState(_v1);
-  useEffect(() => { _v1Subs.add(setS); return () => { _v1Subs.delete(setS); }; }, []);
+function V1Status({ v1 }) {
+  const [s, setS] = useState(() => v1.get());
+  useEffect(() => { const off = v1.sub(setS); setS(v1.get()); return off; }, [v1]);
   if (s.phase === 'idle') return null;
   const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
   const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
@@ -1112,7 +1123,7 @@ function V1Status() {
     <div style={box} role="status" aria-live="polite">
       <div style={card}>
         <div>{V1_UI[s.phase]}</div>
-        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => s.send && s.send()}>{V1_UI.retry}</button> : null}
+        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => v1.retry()}>{V1_UI.retry}</button> : null}
       </div>
     </div>
   );
@@ -3313,6 +3324,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const startedAt = useRef(Date.now());
   const [rows, log] = useAnswerLog();
   const finished = useRef(false);
+  const v1 = useMemo(() => makeV1(), []);   // состояние отправки — своё у каждого открытия урока
 
   // Стор пишет прогресс на каждое изменение. Номер экрана берём из ref, а не из
   // замыкания: колбэк живёт внутри useScreenStore и не пересоздаётся.
@@ -3350,8 +3362,8 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
     // должен начаться сначала, а не с последнего экрана.
     progress.clear();
     setDone(true);
-    v1Submit(onFinished, payload);
-  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress]);
+    v1.submit(onFinished, payload);
+  }, [audio, meta, studentName, lang, rows, store, onFinished, extraPayload, progress, v1]);
 
   // ПЕРЕЗАПУСК ЭКРАНА. Пересобираем его заново (runN входит в key), а перед этим
   // глушим озвучку жёстким обрывом и стираем память экрана. Порядок важен:
@@ -3448,7 +3460,7 @@ function useLessonRoot({ meta, total, studentName, lang: rawLang, ttsApiBase, on
   const displayName = studentName
     || (lang === 'uz' ? "O'quvchi" : lang === 'en' ? 'Student' : 'Ученик');
 
-  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN };
+  return { i, lang, setLang, audio, store, log, next, prev, go, finish, done, displayName, Shell, runN, v1 };
 }
 
 // =============================================================================
@@ -10832,7 +10844,7 @@ export default function HtmlKollazh({ studentName, lang, ttsApiBase, voiceGender
   return (
     <R.Shell css={LESSON_CSS + CANON_UI_CSS}>
       <SpokenTags>
-        {!R.done ? <Comp key={cur.id + ':' + R.runN} p={p} /> : <V1Status />}
+        {!R.done ? <Comp key={cur.id + ':' + R.runN} p={p} /> : <V1Status v1={R.v1} />}
       </SpokenTags>
     </R.Shell>
   );

@@ -12,6 +12,7 @@ import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'node
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildSync } from 'esbuild';
+import { V1, fixLifecycle } from './v1-fix.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '../..');
@@ -199,67 +200,7 @@ function useAudioEngine(ttsApiBase, lang) {
 
 `;
 
-// 3. Завершение по контракту v1: прежний payload раскладывается в results / analytics / meta.
-const V1 = String.raw`
-// ── ЗАВЕРШЕНИЕ: КОНТРАКТ v1 (тестовая копия, 04.11.2026) ─────────────────────────────────────
-// await onFinished({ contractVersion: 1, passed, results, analytics, meta }). Монеты считает сервер.
-// passed: true — урок пройден до вывода (оценки в курсе HTML нет). Пока ответа нет — «Saqlanmoqda…»,
-// сбой — понятная ошибка и «Qayta yuborish» с тем же результатом; успех показываем только после ответа.
-const V1_UI = {
-  saving: "Natija saqlanmoqda…",
-  saved: "Natija saqlandi. Barakalla!",
-  failed: "Natijani saqlab bo'lmadi. Internetni tekshirib, qayta yuboring.",
-  retry: "Qayta yuborish"
-};
-const jsonSafe = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'number' && !isFinite(x) ? null : x)));
-function toContractV1(old) {
-  const o = old || {};
-  const answers = Array.isArray(o.answers) ? o.answers : [];
-  const custom = {};
-  Object.keys(o).forEach((k) => {
-    if (['lessonId', 'lessonTitle', 'module', 'student', 'lang', 'durationSec', 'answers', 'totalQuestions', 'correctAnswers', 'scorePercent', 'finalScore', 'finalTotal', 'passed'].indexOf(k) < 0 && o[k] != null) custom[k] = o[k];
-  });
-  return jsonSafe({
-    contractVersion: 1,
-    passed: true,
-    results: { custom: Object.assign({ screensDone: true }, custom) },
-    analytics: { durationSec: Math.max(0, Math.round(o.durationSec || 0)), finishedAt: new Date().toISOString(), custom: { tasks: answers } },
-    meta: { lessonId: o.lessonId || null, lang: o.lang || null }
-  });
-}
-let _v1 = { phase: 'idle', payload: null, send: null };
-const _v1Subs = new Set();
-const v1Set = (patch) => { _v1 = Object.assign({}, _v1, patch); _v1Subs.forEach((f) => f(_v1)); };
-function v1Submit(onFinished, old) {
-  if (!_v1.payload) _v1.payload = toContractV1(old);   // повтор отправляет тот же снимок
-  const send = () => {
-    if (_v1.phase === 'saving' || _v1.phase === 'saved') return;
-    v1Set({ phase: 'saving' });
-    let res;
-    try { res = typeof onFinished === 'function' ? onFinished(_v1.payload) : null; } catch (e) { v1Set({ phase: 'failed' }); return; }
-    Promise.resolve(res).then(() => v1Set({ phase: 'saved' }), () => v1Set({ phase: 'failed' }));
-  };
-  v1Set({ send });
-  send();
-}
-function V1Status() {
-  const [s, setS] = useState(_v1);
-  useEffect(() => { _v1Subs.add(setS); return () => { _v1Subs.delete(setS); }; }, []);
-  if (s.phase === 'idle') return null;
-  const box = { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 24, zIndex: 50, fontFamily: 'Inter, system-ui, sans-serif' };
-  const card = { maxWidth: 420, padding: '22px 24px', borderRadius: 16, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.12)', textAlign: 'center', color: '#0F172A', fontSize: 17, lineHeight: 1.4 };
-  const btn = { marginTop: 14, padding: '12px 20px', border: 0, borderRadius: 12, background: '#FA4F28', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 0 #C93A19' };
-  return (
-    <div style={box} role="status" aria-live="polite">
-      <div style={card}>
-        <div>{V1_UI[s.phase]}</div>
-        {s.phase === 'failed' ? <button type="button" style={btn} onClick={() => s.send && s.send()}>{V1_UI.retry}</button> : null}
-      </div>
-    </div>
-  );
-}
-
-`;
+// 3. Завершение по контракту v1 и его жизненный цикл — tools/managed-test/v1-fix.mjs (V1, fixLifecycle).
 
 for (const job of JOBS) {
   let s = readFileSync(join(root, job.src), 'utf8');
@@ -291,9 +232,9 @@ for (const job of JOBS) {
   s = must(s, '// Голос браузера (когда сервиса озвучки нет) пометки в скобках не понимает и прочёл\n// бы их вслух — для него они убираются.\n', '', 'комментарий голоса браузера');
 
   // Завершение v1.
-  s = must(s, '    if (typeof onFinished === \'function\') onFinished(payload);', '    v1Submit(onFinished, payload);', 'onFinished в useLessonRoot');
+  s = fixLifecycle(s, 'src');
   s = must(s, "// Реплики экрана для прогрева", V1 + '// Реплики экрана для прогрева', 'место для v1');
-  s = must(s, "{!R.done ? <Comp key={cur.id + ':' + R.runN} p={p} /> : null}", "{!R.done ? <Comp key={cur.id + ':' + R.runN} p={p} /> : <V1Status />}", 'корень урока');
+  s = must(s, "{!R.done ? <Comp key={cur.id + ':' + R.runN} p={p} /> : null}", "{!R.done ? <Comp key={cur.id + ':' + R.runN} p={p} /> : <V1Status v1={R.v1} />}", 'корень урока');
 
   // Только узбекский: язык урока — uz при любом пропсе lang; свой lessonId и название.
   s = must(s, '    meta: META, total: SCREENS.length, studentName, lang, ttsApiBase,', "    meta: META, total: SCREENS.length, studentName, lang: '" + LANG + "', ttsApiBase,", 'язык урока');
