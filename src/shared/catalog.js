@@ -3,7 +3,7 @@
 //   lessons/<курс>/<NN>-<slug>.jsx  — файл урока; привязывается к плану по номеру NN
 //   lessons/<курс>/<NN>p-<slug>.jsx — практика к уроку NN (буква p после номера)
 // Практика идёт в плане сразу после своего урока, если в _course.js стоит
-// practice: true (финальному проекту — final: true — практика не нужна).
+// practice: true (финальному проекту — final: true — практика только со своим practiceTitle).
 // Название практики — practiceTitle в строке урока, иначе просто «Практика».
 // Файл без пары в плане тоже попадает в каталог — с пометкой «вне плана».
 
@@ -49,7 +49,7 @@ function normalizeCourse(id, def) {
       status: 'planned',
       expected: `lessons/${id}/${pad2(l.n)}-${l.slug || 'urok'}.jsx`,
     });
-    if (d.practice && !l.final) plan.push(practiceOf(id, l));
+    if (d.practice && (!l.final || l.practiceTitle)) plan.push(practiceOf(id, l));   // финальному — только если задана своя практика
   });
   return {
     id,
