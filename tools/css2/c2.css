@@ -538,3 +538,13 @@
   .r28 .c2-tapsheet .kz-br.c2-br.is-short { aspect-ratio: 16 / 8.5 !important; --brh: 30dvh; }
 }
 .r28 .c2-tapsheet .c2-doc .c2-blk { padding: 2px 0; }
+/* Телефон: пока открыта панель подсказки или ошибки (она выше обычного низа), окно браузера ниже — строка задания,
+   код, кнопки и палитры видны (как в уроках 6–11; проверено 06.11.2026 снимками с панелью ошибки). */
+@media (max-width: 759px) and (min-height: 700px) { .b-stage.has-sheet .r28 .c2-sheet .kz-br.c2-br, .b-stage.has-sheet.r28 .c2-sheet .kz-br.c2-br, .r28 .b-stage.has-sheet .c2-sheet .kz-br.c2-br { --brh: 19dvh !important; max-height: 19dvh !important; } }
+@media (max-width: 759px) and (max-height: 699px) { .b-stage.has-sheet .r28 .c2-sheet .kz-br.c2-br, .b-stage.has-sheet.r28 .c2-sheet .kz-br.c2-br, .r28 .b-stage.has-sheet .c2-sheet .kz-br.c2-br { --brh: 15dvh !important; max-height: 15dvh !important; } }
+/* Урок 2 на телефоне с открытой панелью: код длинный (CSS и HTML) — служебные строки-рамки <style>, <body> прячутся,
+   строки, которые ученик читает и правит, остаются. */
+@media (max-width: 759px) { .b-stage.has-sheet .c2-sheet .kz-line.c2-edge { display: none; } }
+/* Маленький телефон: окно браузера с панелью превращалось в полоску без содержимого и налезало на клавиши — пока панель
+   открыта, окна нет; после «Попробовать ещё» оно возвращается. */
+@media (max-width: 759px) and (max-height: 699px) { .b-stage.has-sheet .r28 .c2-sheet .kz-br.c2-br, .r28 .b-stage.has-sheet .c2-sheet .kz-br.c2-br, .b-stage.has-sheet.r28 .c2-sheet .kz-br.c2-br { display: none !important; } }

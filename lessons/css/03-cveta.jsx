@@ -14220,4 +14220,12 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .r28 .c3-cmp { padding: 6px 10px; font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .r28 .c3-mx-bar i, .r28 .c3-wh-hand, .r28 .c3-lb-bar i { transition: none; } }
+/* Телефон: пока открыта панель подсказки или ошибки (она выше обычного низа), окно браузера ниже — строка задания,
+   код, кнопки и палитры видны (как в уроках 6–11; проверено 06.11.2026 снимками с панелью ошибки). */
+@media (max-width: 759px) and (min-height: 700px) { .b-stage.has-sheet .r28 .c3-sheet .kz-br.c3-br, .b-stage.has-sheet.r28 .c3-sheet .kz-br.c3-br, .r28 .b-stage.has-sheet .c3-sheet .kz-br.c3-br { --brh: 19dvh !important; max-height: 19dvh !important; } }
+@media (max-width: 759px) and (max-height: 699px) { .b-stage.has-sheet .r28 .c3-sheet .kz-br.c3-br, .b-stage.has-sheet.r28 .c3-sheet .kz-br.c3-br, .r28 .b-stage.has-sheet .c3-sheet .kz-br.c3-br { --brh: 15dvh !important; max-height: 15dvh !important; } }
+/* Маленький телефон с открытой панелью: рядом с кодом своя помощь (палитра, полосы, круг цветов) — окно браузера
+   прячется, пока панель открыта; после «Попробовать ещё» оно возвращается (как в уроке 2). */
+@media (max-width: 759px) and (max-height: 699px) { .b-stage.has-sheet .r28 .c3-sheet .kz-br.c3-br, .r28 .b-stage.has-sheet .c3-sheet .kz-br.c3-br, .b-stage.has-sheet.r28 .c3-sheet .kz-br.c3-br { display: none !important; } }
+@media (max-width: 759px) and (min-height: 700px) { .b-stage.has-sheet .r28 .c3-sheet .kz-br.c3-br, .r28 .b-stage.has-sheet .c3-sheet .kz-br.c3-br, .b-stage.has-sheet.r28 .c3-sheet .kz-br.c3-br { --brh: 13dvh !important; max-height: 13dvh !important; } }
 `;

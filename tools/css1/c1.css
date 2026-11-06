@@ -500,3 +500,10 @@
 /* Страница по умолчанию белая, как в браузере без CSS (слой бумаги окна спрятан, фон даёт сам корпус страницы). */
 .r28 .kz-br.c1-br .kz-br-body { background-color: #fff; }
 .r28 .kz-line .c1-slot-rule .tk-input { color: #D4D4D4; min-width: 12em; }
+/* Телефон: пока открыта панель подсказки или ошибки (она выше обычного низа), окно браузера ниже — строка задания,
+   код, кнопки и палитры видны (как в уроках 6–11; проверено 06.11.2026 снимками с панелью ошибки). */
+@media (max-width: 759px) and (min-height: 700px) { .b-stage.has-sheet .r28 .c1-sheet .kz-br.c1-br, .b-stage.has-sheet.r28 .c1-sheet .kz-br.c1-br, .r28 .b-stage.has-sheet .c1-sheet .kz-br.c1-br { --brh: 19dvh !important; max-height: 19dvh !important; } }
+@media (max-width: 759px) and (max-height: 699px) { .b-stage.has-sheet .r28 .c1-sheet .kz-br.c1-br, .b-stage.has-sheet.r28 .c1-sheet .kz-br.c1-br, .r28 .b-stage.has-sheet .c1-sheet .kz-br.c1-br { --brh: 15dvh !important; max-height: 15dvh !important; } }
+/* Маленький телефон с открытой панелью: рядом с кодом своя помощь (палитра, полосы, круг цветов) — окно браузера
+   прячется, пока панель открыта; после «Попробовать ещё» оно возвращается (как в уроке 2). */
+@media (max-width: 759px) and (max-height: 699px) { .b-stage.has-sheet .r28 .c1-sheet .kz-br.c1-br, .r28 .b-stage.has-sheet .c1-sheet .kz-br.c1-br, .b-stage.has-sheet.r28 .c1-sheet .kz-br.c1-br { display: none !important; } }
