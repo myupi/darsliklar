@@ -172,6 +172,9 @@ swap(`.tour-back { position: absolute; inset: 0; display: grid; place-items: cen
 @media (prefers-reduced-motion: reduce) { .tour-back i { animation: none; } }`);
 
 writeFileSync(root + 'canon/html/canon-v1.jsx', text);
+// Курс CSS строится на том же каноне, что HTML (заказчик, 05.11.2026: «как html редактор возьмём»):
+// canon/css/canon-v1.jsx — дословная копия, чтобы sync-canon / check-canon работали и для уроков CSS.
+writeFileSync(root + 'canon/css/canon-v1.jsx', text);
 console.log('canon/html/canon-v1.jsx —', out.length, 'строк');
 
 function swapTts() {
