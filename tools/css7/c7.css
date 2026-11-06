@@ -1,0 +1,790 @@
+/* ── УРОК 4 «Ссылки и атрибуты» — свои части в облике «Редактор» (классы c7-*) ─────────────
+   Весь CSS урока — здесь (основа — CSS уроков 2–3), поверх r28.css эталона. Бумаги нет нигде.
+   Страница в Chrome — как браузер по умолчанию: шрифт с засечками, ссылка — синяя с подчёркиванием
+   (так её рисует любой браузер без CSS; это содержимое страницы, а не акцент интерфейса). */
+
+/* ══ СТРАНИЦА В БРАУЗЕРЕ ══ */
+/* Без прокрутки: страница помещается целиком (шрифт подгоняет useFitPage). */
+.c7-br .kz-br-page { overflow: hidden; }
+.c7-doc { display: flex; flex-direction: column; align-items: flex-start; gap: 0; overflow-wrap: anywhere; padding: 4px 4px 0; }   /* запас под заливку подсветки: окно её не подрезает */
+.c7-blk { position: relative; max-width: 100%; transition: background .2s; border-radius: 3px; }
+.c7-h1 { font-size: 1.75em; font-weight: 700; line-height: 1.12; margin: 0 0 .32em; }
+.c7-h2 { font-size: 1.4em; font-weight: 700; line-height: 1.15; margin: .2em 0 .28em; }
+.c7-h3 { font-size: 1.17em; font-weight: 700; margin: .2em 0 .24em; }
+.c7-h4 { font-size: 1em; font-weight: 700; margin: .2em 0 .2em; }
+.c7-h5 { font-size: .83em; font-weight: 700; margin: .2em 0 .2em; }
+.c7-h6 { font-size: .7em; font-weight: 700; margin: .2em 0 .2em; }
+.c7-p { font-weight: 400; margin: 0 0 .62em; line-height: 1.32; }
+.c7-raw { font-weight: 400; line-height: 1.32; }
+.c7-p.c7-inh1 { font-size: 1.75em; font-weight: 700; line-height: 1.12; }   /* p внутри незакрытого h1 */
+.c7-big { font-size: 1.12em; }
+.c7-wall { display: block; font-weight: 400; line-height: 1.32; }   /* каша — слитный текст, а не столбик */
+.c7-b { font-weight: 700; }
+.c7-i { font-style: italic; }
+/* Подсветка за речью Коди — мягкая заливка, как у инспектора DevTools, без рамок
+   (тонкая рамка впритык к тексту выглядела странно — заказчик, 03.11.2026). */
+.r28 .c7-blk.is-hl, .r28 .c7-b.is-hl, .r28 .c7-i.is-hl { background: rgba(250, 79, 40, .13); box-shadow: 0 0 0 4px rgba(250, 79, 40, .13); }
+.r28 .c7-b.is-hl, .r28 .c7-i.is-hl { border-radius: 2px; }
+
+/* Плавное появление нового (вместо «штампа»). */
+.c7-a-in { animation: c3In .35s cubic-bezier(.2, .7, .2, 1) both; }
+@keyframes c3In { from { opacity: 0; translate: 0 4px; } to { opacity: 1; translate: 0 0; } }
+
+/* Ярлык тега над частью страницы — как подпись блока в инспекторе. */
+.r28 .c7-chip { display: inline-flex; align-items: center; padding: 2px 8px 3px; border-radius: 6px; background: #fff; border: 1px solid var(--r-edge);
+  font: 600 clamp(12px, 1.8dvh, 15px)/1.2 var(--r-mono); white-space: nowrap; transition: background .2s, border-color .2s, box-shadow .2s; }
+.r28 .c7-chip .kz-tk-b { color: var(--r-pri); }
+.r28 .c7-chip .kz-tk-n { color: var(--r-ink); }
+.r28 .c7-chip.is-on, .r28 .c7-chip.is-hl { background: #FFF1EC; border-color: var(--r-insp-edge); }
+.r28 .c7-chip.is-hl { box-shadow: 0 0 0 3px #FFD3C6; }
+
+/* ══ s1 — каша → страница: каша тает, страница собирается по блокам сверху вниз ══ */
+.c7-s1-box { position: relative; }
+.c7-chunk { display: inline; }
+.c7-wall-out { position: absolute; left: 0; top: 0; right: 0; animation: c3Out .3s ease-in both; pointer-events: none; }
+@keyframes c3Out { to { opacity: 0; filter: blur(2px); } }
+.c7-build { animation: c3Build .45s cubic-bezier(.2, .7, .2, 1) var(--dl, 0s) both; transform-origin: 0 50%; }
+@keyframes c3Build { from { opacity: 0; scale: .7; translate: 0 6px; } to { opacity: 1; scale: 1; translate: 0 0; } }
+.c7-s1 { align-items: center; }
+.c7-s1-man { height: min(100%, 38dvh); flex: 0 0 auto; }
+.c7-s1-page { max-width: 640px; flex: 1 1 0; }
+@media (max-width: 759px) {
+  .c7-s1 { flex-direction: column; }
+  .c7-s1-man { display: none; }
+  .c7-s1 .c7-s1-page { width: 100%; align-self: stretch; flex: 0 0 auto; }
+  .c7-s1 .c7-s1-page .kz-br.c7-br { --brh: 34dvh; }
+}
+
+/* ══ s3 — лист body с шестью заголовками ══ */
+.c7-body { position: relative; width: min(100%, 620px); align-self: center; padding: clamp(26px, 4.5dvh, 40px) clamp(12px, 3vw, 26px) clamp(14px, 2.4dvh, 22px);
+  background: #F0FDFA; border-radius: 12px; box-shadow: inset 0 0 0 1.5px #5EEAD4; }
+.c7-body-lbl { position: absolute; left: 16px; top: -12px; }
+.c7-body-in { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: flex-start; gap: clamp(5px, 1dvh, 9px); }
+.c7-hstrip { position: relative; display: inline-flex; border: none; background: none; padding: 0; cursor: default; }
+.c7-hstrip.is-tap { cursor: pointer; }
+.c7-hstrip-paper { display: inline-flex; align-items: center; gap: .5em; padding: .22em .7em .26em .55em; background: #fff; color: var(--r-ink); border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--r-line), 0 1px 2px rgba(15, 23, 42, .08); transition: background .2s, box-shadow .2s; }
+.c7-hstrip .kz-tag { font: 600 clamp(11px, 1.6dvh, 14px) var(--r-mono); color: var(--r-muted); }
+.c7-hstrip-w { font: 700 calc(clamp(24px, 4.6dvh, 42px) * var(--hs, 1)) / 1.1 var(--r-font); letter-spacing: -.02em; }
+.c7-hstrip.is-hl .c7-hstrip-paper { background: #FFF1EC; box-shadow: inset 0 0 0 1.5px var(--r-insp-edge), 0 1px 2px rgba(15, 23, 42, .08); }
+.c7-hstrip .led { top: -4px; right: -4px; }
+.c7-star { position: absolute; right: -16px; top: -14px; font-size: 26px; color: var(--r-pri); }
+.c7-loupe { position: absolute; right: -30px; top: 50%; translate: 0 -55%; width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--r-ink); background: rgba(255, 255, 255, .8); }
+.c7-loupe::after { content: ''; position: absolute; right: -8px; bottom: -8px; width: 4px; height: 10px; background: var(--r-ink); rotate: -45deg; border-radius: 2px; }
+
+/* ══ s5, s6, s12, s14 — код и браузер рядом (на телефоне — в колонку) ══ */
+.c7-s5 { align-items: stretch; }
+.c7-s5 > .kz-col { justify-content: center; }
+@media (max-width: 759px) {
+  .c7-s5 { flex-direction: column; gap: 10px; }
+  .c7-s5 .kz-br.c7-br { --brh: 26dvh; }
+}
+/* Строки-цели в тёмном редакторе. */
+.r28 .kz-line.c7-hline { background: rgba(255, 255, 255, .05); }
+.r28 .kz-line.c7-hline.kz-tap:not(:disabled) { cursor: pointer; }
+.r28 .kz-line.c7-hline.kz-tap:not(:disabled):hover { background: #2A2D2E; }
+.r28 .kz-line.is-hover { background: #2A2D2E; outline: 1.5px dashed var(--r-pri); outline-offset: -2px; }
+.r28 .kz-line.c7-later { opacity: .45; }
+.r28 .kz-line.c7-hline.is-off { opacity: .5; }
+
+/* ══ s7, s10 — поля для тега; слово-цель ══ */
+.c7-slot .tk-input { min-width: 3.6em; }
+.r28 .kz-txt.c7-target { background: rgba(250, 79, 40, .28); color: #fff; padding: 0 3px; border-radius: 3px; }
+
+/* ══ s9 — карточка абзаца с ярлыками над словами ══ */
+.c7-pcard { position: relative; align-self: center; width: min(100%, 600px); padding: clamp(18px, 3dvh, 26px) clamp(14px, 3vw, 28px) clamp(12px, 2dvh, 18px);
+  background: #fff; border-radius: 10px; box-shadow: 0 1px 2px rgba(15, 23, 42, .08), 0 8px 18px rgba(15, 23, 42, .08); }
+.c7-pcard-lbl { position: absolute; left: 14px; top: -12px; }
+.c7-pcard-text { position: relative; z-index: 1; margin: 0; padding-top: 1.1em; font: 400 clamp(18px, 2.9dvh, 28px)/2.7 'Times New Roman', Times, serif; color: var(--r-ink); }
+@media (max-width: 759px) { .c7-pcard-text { font-size: clamp(16px, 4.6vw, 19px); line-height: 2.9; } }
+.c7-w { position: relative; display: inline-block; line-height: 1.2; }
+.c7-w-lbl { position: absolute; left: 50%; bottom: 100%; translate: -50% -6px; }
+.c7-w-txt { position: relative; z-index: 0; display: inline-block; transition: transform .3s ease; }
+.c7-w.is-b.is-on .c7-w-txt { font-weight: 700; }
+.r28 .c7-w.is-b.is-on .c7-w-txt::before { content: ''; position: absolute; z-index: -1; left: -.14em; right: -.14em; top: .1em; bottom: .02em; border-radius: 3px;
+  background: #FFD3C6; animation: c3In .3s ease-out both; }
+.c7-w.is-i.is-on .c7-w-txt { font-style: italic; }
+.r28 .c7-w.is-say .c7-w-txt { color: var(--r-pri-d); }
+
+/* ══ s11 — до и после; кнопки-теги ══ */
+.c7-card { position: relative; padding: 10px 16px 8px; align-self: center; width: min(100%, 520px); background: #fff; border-radius: 10px;
+  box-shadow: inset 0 0 0 1.5px var(--r-edge), 0 1px 2px rgba(15, 23, 42, .06);
+  font: 400 clamp(14px, 2dvh, 18px)/1.35 'Times New Roman', Times, serif; color: var(--r-ink); }
+.c7-card-h { display: block; margin-bottom: 2px; font: 700 11.5px var(--r-font); letter-spacing: .05em; text-transform: uppercase; color: var(--r-pri-d); }
+.r28 .c7-ba { display: flex; align-items: stretch; gap: 10px; align-self: center; width: min(100%, 620px); }
+.r28 .c7-ba .c7-card { flex: 1 1 0; min-width: 0; width: auto; }
+.r28 .c7-ba .c7-card.is-after { box-shadow: inset 0 0 0 1.5px var(--r-insp-edge), 0 1px 2px rgba(15, 23, 42, .06); }
+.r28 .c7-ba-arrow { flex: 0 0 auto; align-self: center; width: 22px; height: 2px; background: var(--r-pri); position: relative; }
+.r28 .c7-ba-arrow::after { content: ''; position: absolute; right: -1px; top: -5px; border: 6px solid transparent; border-left: 8px solid var(--r-pri); border-right: 0; }
+@media (max-width: 420px) { .r28 .c7-ba { gap: 6px; } .r28 .c7-ba-arrow { width: 12px; } }
+.r28 .kz-btn.c7-tagbtn .kz-tag { font: 700 22px var(--r-mono); }
+.r28 .kz-btn.c7-tagbtn.is-ghost .kz-tk-n { color: var(--r-ink); }
+.r28 .kz-btn.c7-tagbtn:not(.is-ghost) .kz-tk-b, .r28 .kz-btn.c7-tagbtn:not(.is-ghost) .kz-tk-n { color: #fff; }
+
+/* ══ s7 — Code Builder ══ */
+.r28 .c7-s7-tray { flex-wrap: wrap; justify-content: center; }
+.r28 .kz-scrap.c7-s7-text { font-family: var(--r-mono); font-weight: 500; max-width: 100%; white-space: normal; text-align: left; }
+.r28 .c7-s7 .kz-line .kz-dash { display: inline-block; min-width: 4.5em; height: 1.2em; vertical-align: middle; border: 1.5px dashed #5A5A5A; border-radius: 4px; background: rgba(255, 255, 255, .04); }
+.r28 .c7-s7 .kz-line.is-hl .kz-dash { border-color: var(--r-pri); background: rgba(250, 79, 40, .1); }
+.r28 .c7-s7 .kz-line .kz-dash.is-hover { background: rgba(250, 79, 40, .22); }
+
+/* ══ s8 — Visual Code Mapping: абзацы на странице нажимаются, как блоки в инспекторе ══ */
+.r28 button.c7-blk.c7-map { display: block; width: 100%; text-align: left; font: inherit; font-weight: 400; color: inherit; background: transparent; border: none;
+  padding: .12em .3em; margin-left: -.3em; border-radius: 4px; cursor: pointer; position: relative; }
+.r28 button.c7-blk.c7-map.is-call { box-shadow: inset 0 0 0 1px var(--r-edge); }
+.r28 button.c7-blk.c7-map.is-call:hover { background: var(--r-insp); box-shadow: inset 0 0 0 1.5px var(--r-insp-edge); }
+.r28 button.c7-blk.c7-map.is-hl { background: rgba(250, 79, 40, .13); box-shadow: none; }
+.r28 .c7-blk.c7-map.is-off { opacity: .45; }
+.r28 .c7-blk.c7-map:disabled { cursor: default; }
+.r28 .c7-blk.c7-map .led { top: 50%; right: 4px; translate: 0 -50%; }
+
+/* ══ q2 — True / False ══ */
+.r28 .c7-tf-card { width: min(100%, 520px); }
+.r28 .c7-tf-t { margin: 4px 0 2px; font: 600 clamp(17px, 2.6dvh, 22px)/1.35 var(--r-font); color: var(--r-ink); }
+.r28 .kz-pick.c7-tf-pick { grid-template-columns: repeat(2, minmax(0, 1fr)); width: min(100%, 520px); align-self: center; }
+.r28 .kz-pick.c7-tf-pick .kz-btn { font-size: 18px; }
+
+/* ══ s4, s10, s14, q1 — поломка заметнее: браузер вздрагивает, пустое место мигает ══ */
+.r28 .c7-broken.kz-br { animation: kzShake .5s ease-in-out .3s 2; }
+.c7-miss { position: relative; }
+.r28 .kz-dash.c7-miss { animation: c3Miss 1.2s ease-in-out infinite; }
+.r28 .c7-miss::after { content: '?'; position: absolute; right: -10px; top: -12px; width: 18px; height: 18px; border-radius: 50%; background: var(--r-pri); color: #fff;
+  font: 700 12px/18px var(--r-font); text-align: center; box-shadow: 0 0 0 2px #fff; animation: c3Q 1.2s ease-in-out infinite; }
+@keyframes c3Miss { 0%, 100% { border-color: var(--r-pri); } 50% { border-color: rgba(250, 79, 40, .25); } }
+@keyframes c3Q { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+/* Своё предложение (s13b) с длинным образцом: поле в строке кода сжимается и переносит текст,
+   а не уходит за край экрана (открытая клавиатура телефона). */
+.r28 .kz-line .kz-gap { min-width: 0; flex: 0 1 auto; max-width: 100%; }
+.r28 .kz-line .kz-gap .tk-grow { max-width: 100%; }
+
+/* ══ НОУТБУК: браузер крупнее, браузер и код — в ряд ══ */
+@media (min-width: 760px) {
+  .c7-br.kz-br { --brh: 46dvh; }
+  .c7-br.kz-br.is-short { --brh: 34dvh; }
+  .c7-s5 .c7-br.kz-br, .c7-s5 .c7-br.kz-br.is-short { --brh: 50dvh; aspect-ratio: 16 / 11; }
+  .c7-s1 .c7-s1-page .kz-br { --brh: 56dvh; }
+  .kz-s15 .c7-br.kz-br { --brh: 52dvh; }
+  .c7-s5 > .kz-col { max-width: none; }
+  .c7-br .kz-br-page { font-size: clamp(14px, 2.4dvh, 21px); }
+  .kz-scene-col .c7-br.kz-br.is-short { --brh: 25dvh; }
+  .c7-sheet .kz-scene-col { justify-content: center; }
+  .c7-sheet .kz-scene-col > .kz-col { width: min(100%, 760px); }
+  .c7-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) { flex-direction: row; align-items: center; gap: clamp(14px, 2vw, 26px); width: 100%; max-width: 1000px; }
+  .c7-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .kz-br { flex: 1 1 0; min-width: 0; --brh: 40dvh; aspect-ratio: 16 / 11; }
+  .c7-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .kz-code { flex: 1.15 1 0; min-width: 0; }
+  /* Панель «Файлы» (экраны 3 и 13) — своей строкой под браузером и кодом, а не третьим столбцом: иначе браузер и код сжимались. */
+  .c7-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code):has(> .c7-files) { display: grid; grid-template-columns: 1fr 1.15fr; row-gap: 14px; }
+  .c7-sheet .kz-scene-col > .kz-col:has(> .kz-br + .kz-code) > .c7-files { grid-column: 1 / -1; justify-self: center; }
+  .c7-sheet .kz-code { font-size: clamp(15px, 2.3dvh, 20px); gap: 6px; }
+  .c7-sheet .kz-line { min-height: 34px; }
+  .c7-sheet .kz-code.kz-code-sm { font-size: clamp(14px, 2.05dvh, 18px); }
+}
+
+/* ══ НИЗКИЙ ТЕЛЕФОН (360 × 640): браузер ниже, строки кода плотнее ══ */
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .c7-s5 .kz-br.c7-br { --brh: 19dvh; }
+  .r28 .c7-s5 .kz-code.kz-code-sm .kz-line { padding-top: 0; padding-bottom: 0; }
+}
+
+/* ══ КЛАВИАТУРА ТЕЛЕФОНА (видимая высота ~330 px): задание, поле и кнопки на виду;
+   браузер — полоска вкладок и одна строка страницы; строки body и декор уходят ══ */
+.is-kbd .kz-deco, .is-kbd .kz-line.c7-edge, .is-kbd .kz-line.c7-ctx { display: none; }
+.is-kbd .kz-sheet-body { padding: 6px 8px; gap: 6px; }
+.is-kbd .kz-ask { font-size: 13.5px; padding: 4px 10px 5px; }
+.is-kbd .c7-br.kz-br { aspect-ratio: auto; max-width: 100%; padding-bottom: 6px; }
+.is-kbd .c7-br .kz-br-tool { display: none; }
+.is-kbd .c7-br .kz-br-bar { height: 22px; }
+.is-kbd .c7-br .kz-br-body { flex: 0 0 auto; height: 34px; }
+.is-kbd .c7-br .kz-br-page { inset: 4px 8px; font-size: 13px; }
+.is-kbd .kz-code { gap: 3px; }
+.is-kbd .kz-line { min-height: 26px; padding-top: 2px; padding-bottom: 2px; }
+.is-kbd .keys .key-b { min-height: 38px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .c7-a-in, .c7-build, .c7-wall-out, .r28 .c7-broken.kz-br, .r28 .kz-dash.c7-miss, .r28 .c7-miss::after, .r28 .c7-w.is-b.is-on .c7-w-txt::before{ animation: none !important; }
+}
+
+/* ══ СПИСКИ — как браузер по умолчанию: отступ слева, ul — точки, ol — номера ══ */
+.c7-doc ul.c7-ul, .c7-doc ol.c7-ol { margin: .1em 0 .55em; padding-left: 1.7em; line-height: 1.35; }
+.c7-doc ul.c7-ul { list-style: disc outside; }
+.c7-doc ol.c7-ol { list-style: decimal outside; }
+.c7-doc .c7-ul > li, .c7-doc .c7-ol > li { display: list-item; margin: 0; padding: 0 .15em; border-radius: 3px; transition: background .2s; }
+.c7-doc .c7-bare { display: block; padding: 0 .15em; }   /* текст в списке без li — без точки и номера */
+.r28 .c7-doc li.is-hl, .r28 .c7-doc .c7-bare.is-hl { background: rgba(250, 79, 40, .13); box-shadow: 0 0 0 3px rgba(250, 79, 40, .13); }
+.c7-doc li.c7-a-in { animation: c3In .35s cubic-bezier(.2, .7, .2, 1) both; }
+.c7-doc ul.c7-ul, .c7-doc ol.c7-ol, .c7-doc .c7-bare { font-weight: 400; }   /* страница браузера по умолчанию — 600 */
+.c7-doc li.c7-later-li { color: #94A3B8; }
+.r28 .c7-doc li::marker { color: var(--r-ink); }
+
+/* ══ s7 — Matching Pairs: теги слева, их дела справа ══ */
+.r28 .c7-match { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: clamp(12px, 3vw, 28px); align-items: stretch; align-self: center; width: min(100%, 560px); }
+.r28 .c7-match-col { display: flex; flex-direction: column; justify-content: space-around; gap: 12px; }
+.r28 .c7-mtag { min-width: 76px; min-height: 58px; justify-content: center; font-size: 20px; }
+.r28 .c7-mtag.is-ok { background: #F0FDF4; border-color: #86EFAC; color: #15803D; opacity: 1; }
+.r28 .c7-mcard { position: relative; display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 10px 14px; text-align: left; cursor: pointer;
+  background: #fff; border: 1px solid var(--r-edge); border-radius: 10px; font: 600 16px/1.25 var(--r-font); color: var(--r-ink); transition: border-color .2s, background .2s, box-shadow .2s; }
+.r28 .c7-mcard.is-call { border-color: var(--r-pri); box-shadow: 0 0 0 3px #FFE3D9; }
+.r28 .c7-mcard.is-ok { background: #F0FDF4; border-color: #86EFAC; cursor: default; }
+.r28 .c7-mcard:disabled { cursor: default; }
+.r28 .c7-mcard-t { flex: 1 1 auto; min-width: 0; }
+.r28 .c7-mcard-tag { font: 600 15px var(--r-mono); color: #15803D; }
+.r28 .c7-mcard .led { top: 50%; right: 8px; translate: 0 -50%; }
+.r28 .c7-mini { flex: 0 0 auto; display: inline-flex; flex-direction: column; gap: 1px; min-width: 30px; padding: 4px 6px; border-radius: 6px; background: #F4F5F7;
+  font: 700 11px/1.15 'Times New Roman', Times, serif; color: var(--r-ink2); }
+.r28 .c7-mini.is-one { justify-content: center; }
+
+/* ══ s8 — два примера рядом: покупки и утро ══ */
+.r28 .c7-exs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(10px, 2.5vw, 24px); align-self: center; width: min(100%, 640px); }
+.r28 .c7-ex { position: relative; padding: 12px 14px 14px; background: #fff; border-radius: 10px; box-shadow: inset 0 0 0 1.5px var(--r-edge), 0 1px 2px rgba(15, 23, 42, .06);
+  font: 400 clamp(15px, 2.2dvh, 19px)/1.35 'Times New Roman', Times, serif; color: var(--r-ink); transition: box-shadow .3s; }
+.r28 .c7-ex.is-good { box-shadow: inset 0 0 0 1.5px #86EFAC, 0 1px 2px rgba(15, 23, 42, .06); }
+.r28 .c7-ex.is-bad { box-shadow: inset 0 0 0 1.5px var(--r-insp-edge), 0 1px 2px rgba(15, 23, 42, .06); }
+.r28 .c7-ex .c7-doc { padding: 0; }
+.r28 .c7-ex li.c7-swap { animation: c3Swap .5s cubic-bezier(.2, .7, .2, 1) both; }
+@keyframes c3Swap { from { opacity: .2; translate: 0 -8px; } to { opacity: 1; translate: 0 0; } }
+.r28 .c7-ex-v { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 6px; background: #F0FDF4; color: #15803D; font: 600 13px var(--r-font); }
+.r28 .c7-ex-v.is-bad { background: #FFF1EC; color: var(--r-pri-d); }
+.r28 .c7-ex-tag { position: absolute; right: 10px; top: -12px; }
+@media (max-width: 420px) { .r28 .c7-exs { gap: 8px; } .r28 .c7-ex { padding: 10px 10px 12px; font-size: 15px; } }
+
+/* ══ s10 — до и после: на узком телефоне карточки одна под другой, стрелка вниз ══ */
+.r28 .c7-pick3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 480px) {
+  .r28 .c7-ba { flex-direction: column; align-items: stretch; gap: 6px; width: min(100%, 360px); }
+  .r28 .c7-ba-arrow { width: 2px; height: 14px; align-self: center; }
+  .r28 .c7-ba-arrow::after { right: -5px; top: auto; bottom: -2px; border: 6px solid transparent; border-top: 8px solid var(--r-pri); border-bottom: 0; }
+  .r28 .c7-ba .c7-card { padding: 6px 12px 4px; }
+}
+
+/* ══ s11 — вся страница: код плотнее и мельче, чтобы браузер был виден ══ */
+.r28 .c7-s11 .kz-code.c7-code-xs { font-size: clamp(12px, 1.9dvh, 16px); }
+.r28 .c7-s11 .kz-code.c7-code-xs .kz-line { min-height: 0; padding-top: 0; padding-bottom: 0; }
+@media (max-width: 759px) { .r28 .c7-s11 .kz-br.c7-br { --brh: 30dvh; } }
+
+/* ══ s9 — прежний тег ul, который заменяем: зачёркнут ══ */
+.r28 .c7-old { opacity: .45; text-decoration: line-through; margin-right: 6px; }
+.r28 .c7-out { opacity: .75; }
+.r28 .c7-step { font-family: var(--r-font); }
+.r28 .c7-match { align-items: center; }
+.r28 .c7-match-col { justify-content: flex-start; }
+.r28 .c7-exs { align-items: start; }
+@media (max-width: 759px) {
+  .r28 .c7-s5 .kz-code.kz-code-sm { font-size: 13px; }
+  .r28 .c7-s5 .kz-br.c7-br { --brh: 28dvh; }
+  .r28 .c7-s11 .kz-code.c7-code-xs { font-size: 12.5px; }
+}
+/* Списки выше абзацев: на телефоне окно браузера выше пропорции 16:7,4, чтобы пункты читались. */
+@media (max-width: 759px) and (min-height: 700px) { .r28 .kz-br.c7-br.is-short { aspect-ratio: 16 / 11; } }
+@media (max-width: 759px) and (max-height: 699px) { .r28 .kz-br.c7-br.is-short { aspect-ratio: 16 / 8.6; } }
+/* Крючок на ноутбуке: рецепт выше страницы урока 2 — окно браузера крупнее общего правила невысоких экранов. */
+@media (min-width: 760px) { .r28 .kz-scene.c7-s1 .c7-s1-page > .kz-br.c7-br { --brh: 52dvh; } }
+/* Клавиатура телефона открыта: окно — полоска (правило «списки выше» не действует), видны только строки с полями. */
+.is-kbd .r28 .kz-br.c7-br.is-short, .is-kbd .r28 .kz-br.c7-br { aspect-ratio: auto; }
+.is-kbd .r28 .c7-sheet .kz-code .kz-line:not(:has(textarea)) { display: none; }
+/* Ноутбук: код и браузер рядом (s2, s4, s5, s11, s14) — окно браузера крупнее общего 27dvh облика,
+   чтобы страница со списками читалась и помещалась. */
+@media (min-width: 760px) { .r28 .kz-sheet .kz-scene.c7-s5 > .kz-col > .kz-br.c7-br { --brh: 46dvh; } }
+/* s8 — код под каждым примером (заказчик, 03.11.2026: «показать и коды»). */
+.r28 .c7-ex .kz-code.c7-ex-code { margin: 10px -6px -6px; font-size: clamp(12px, 1.9dvh, 15px); }
+.r28 .c7-ex .kz-code.c7-ex-code .kz-line { min-height: 0; padding-top: 1px; padding-bottom: 1px; }
+@media (max-width: 420px) { .r28 .c7-ex .kz-code.c7-ex-code { font-size: 11px; margin: 8px -4px -4px; } .r28 .c7-ex .kz-code.c7-ex-code .kz-line { padding-right: 4px; } }
+@media (max-width: 480px) {
+  .r28 .c7-ex .kz-code.c7-ex-code .kz-line { padding-left: calc(2.1em + var(--d, 0) * .7em); }
+  .r28 .c7-ex .kz-code.c7-ex-code .kz-line::before { width: 1.4em; }
+  .r28 .c7-ex .kz-code.c7-ex-code { letter-spacing: -.02em; }
+}
+/* s8 на телефоне с запасом высоты: примеры один под другим — список слева, код справа, без переносов. */
+@media (max-width: 480px) and (min-height: 700px) {
+  .r28 .c7-exs { grid-template-columns: minmax(0, 1fr); gap: 16px; width: 100%; }
+  .r28 .c7-ex { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); column-gap: 10px; align-items: start; }
+  .r28 .c7-ex > .c7-card-h, .r28 .c7-ex > .c7-ex-v { grid-column: 1; }
+  .r28 .c7-ex > .c7-doc { grid-column: 1; }
+  .r28 .c7-ex .kz-code.c7-ex-code { grid-column: 2; grid-row: 1 / span 3; margin: 0 -4px 0 0; font-size: 11.5px; }
+}
+.r28 .c7-exs { align-content: center; }
+
+/* ══ УРОК 4: ссылки в браузере — как без CSS: синие, подчёркнутые; a без href — обычный текст ══ */
+.c7-doc .c7-a { color: #0000EE; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; border-radius: 2px; }
+.c7-doc .c7-a:active { color: #EE0000; }
+.c7-doc .c7-an { color: inherit; }
+.r28 .c7-doc .c7-a.is-hl, .r28 .c7-doc .c7-an.is-hl { background: rgba(250, 79, 40, .13); box-shadow: 0 0 0 3px rgba(250, 79, 40, .13); }
+.c7-doc .c7-p { font-weight: 400; }
+.c7-doc .c7-nf { font: 600 1.25em/1.2 var(--r-font, system-ui); color: #3C4043; margin: .4em 0 .3em; }
+.c7-doc .c7-nf::before { content: ''; display: block; width: 1.6em; height: 1.6em; margin-bottom: .4em; border-radius: 4px; background: #E8EAED;
+  -webkit-mask: radial-gradient(circle at 50% 50%, #000 34%, transparent 36%); }
+.c7-doc .c7-nf-p { font: 400 .8em/1.4 var(--r-font, system-ui); color: #5F6368; }
+.r28 .kz-br.is-nf .kz-br-url { box-shadow: inset 0 0 0 1.5px #F28B82; }
+.c7-a-in { animation: c3In .3s cubic-bezier(.2, .7, .2, 1) both; }
+.r28 .c7-nudge { animation: kzShake .4s ease-in-out 1; }
+
+/* Атрибут в тёмном редакторе — как в VS Code: имя атрибута голубое, значение рыжее. */
+.r28 .kz-line .c7-attr { color: #9CDCFE; font-family: var(--r-mono); }
+.r28 .kz-line .c7-val { color: #CE9178; font-family: var(--r-mono); }
+.r28 .kz-line .c7-slot .tk-input { color: #CE9178; min-width: 6em; }
+
+/* Панель «Файлы» — как список файлов проекта. */
+.r28 .c7-files { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; align-self: center; padding: 8px 10px; border-radius: 10px; background: #fff;
+  box-shadow: inset 0 0 0 1px var(--r-edge); font: 500 13px var(--r-mono); color: var(--r-ink2); max-width: 100%; }
+.r28 .c7-files-h { font: 700 11px var(--r-font); letter-spacing: .05em; text-transform: uppercase; color: var(--r-muted); margin-right: 2px; }
+.r28 .c7-file { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 6px; background: #F4F5F7; }
+.r28 .c7-file i { width: 9px; height: 11px; border-radius: 1px; background: var(--r-html); }
+.r28 .c7-file.is-hl { background: #FFF1EC; box-shadow: inset 0 0 0 1.5px var(--r-insp-edge); }
+
+/* s5 — ссылка крупно, части загораются, под ними подписи. */
+.r28 .c7-anat { flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+.r28 .c7-anat-code { padding: 18px 20px; border-radius: 12px; background: var(--r-ed); color: var(--r-ed-tx); font: 500 clamp(16px, 2.8dvh, 26px)/1.4 var(--r-mono);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, .14); max-width: 100%; overflow-wrap: anywhere; }
+.r28 .c7-anat-code i { font-style: normal; color: var(--r-ed-br); }
+.r28 .c7-part { border-radius: 4px; transition: background .25s, box-shadow .25s; }
+.r28 .c7-part-tag b, .r28 .c7-part-close b { color: var(--r-ed-tag); font-weight: 500; }
+.r28 .c7-part-attr b { color: #9CDCFE; font-weight: 500; }
+.r28 .c7-part-val b { color: #CE9178; font-weight: 500; }
+.r28 .c7-part.is-cur { background: rgba(250, 79, 40, .3); box-shadow: 0 0 0 3px rgba(250, 79, 40, .3); }
+.r28 .c7-anat-txt { color: var(--r-ed-tx); }
+.r28 .c7-anat-labels { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.r28 .c7-chip { display: inline-flex; padding: 4px 10px; border-radius: 999px; background: #fff; border: 1px solid var(--r-edge); font: 600 14px var(--r-font); color: var(--r-ink2); }
+.r28 .c7-chip.is-on { background: #FFF1EC; border-color: var(--r-insp-edge); color: var(--r-pri-d); }
+
+/* s6 — собранные куски атрибута и пустые места. */
+.r28 .c7-built { font-family: var(--r-mono); margin-right: 1px; }
+.r28 .kz-line .c7-bslot { display: inline-block; min-width: 2.6em; height: 1.2em; vertical-align: middle; margin-right: 3px; border: 1.5px dashed #5A5A5A; border-radius: 4px; background: rgba(255, 255, 255, .04); }
+.r28 .kz-line .c7-bslot.is-next { border-color: var(--r-pri); background: rgba(250, 79, 40, .1); }
+.r28 .kz-line .c7-bslot.is-hover { background: rgba(250, 79, 40, .22); }
+.r28 .c7-piece, .r28 .c7-filechip { font-family: var(--r-mono); }
+
+/* s7 — части ссылки слева: в цветах редактора. */
+.r28 .c7-mtag { min-width: 112px; min-height: 52px; justify-content: center; font: 600 17px var(--r-mono); }
+.r28 .c7-mtag-href span { color: #2F6FB0; }
+.r28 .c7-mtag-val span { color: #A0522D; }
+.r28 .c7-mcard-tag { font: 600 14px var(--r-mono); color: #15803D; }
+
+/* s10 — маленький браузер «до/после» с адресом. */
+.r28 .c7-mini-url { display: block; margin-bottom: 4px; padding: 2px 8px; border-radius: 999px; background: #F1F3F4; font: 500 11px var(--r-font); color: #3C4043; }
+.r28 .c7-tagbtn span { font-family: var(--r-mono); font-size: 15px; }
+.r28 .c7-pick3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* Вывод: у a, href и значения — свои цвета (общее правило урока 1 красит 2-ю и 3-ю роль одинаково — head и title). */
+.r28 .c7-sheet .kz-role:nth-child(2) { --c: #7C5CFA !important; }
+.r28 .c7-sheet .kz-role:nth-child(3) { --c: #0FA38E !important; }
+
+
+/* ══ НЕВЫСОКИЙ ТЕЛЕФОН (ниже 700 px, 04.11.2026): окно браузера по пропорциям выходило слишком высоким, и вместе
+   с кодом и кнопками не влезало в сцену — элементы наезжали друг на друга (код на клавиатуру, окно на лоток).
+   Окно ниже, строки кода плотнее; !important — потому что выше по файлу пропорции заданы более узкими правилами. ══ */
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .kz-sheet .kz-scene-col .kz-br.c7-br.is-short { aspect-ratio: 16 / 6 !important; }
+  .r28 .kz-sheet .kz-scene.c7-s5 .kz-br.c7-br { aspect-ratio: 16 / 6.5 !important; }
+  .r28 .c7-sheet .kz-code.kz-code-sm .kz-line { padding-top: 0; padding-bottom: 0; min-height: 0; }
+}
+/* Планшет стоя: на крючке человечек над окном не помещается и наезжает на кнопку — окно важнее (как на телефоне). */
+@media (min-width: 760px) and (orientation: portrait) { .r28 .kz-sheet .kz-scene.c7-s1 > .c7-s1-man { display: none; } }
+/* Клавиатура телефона открыта: окно — полоска; правила невысокого телефона выше (с !important) здесь не действуют. */
+.is-kbd .r28 .kz-sheet .kz-scene-col .kz-br.c7-br.is-short, .is-kbd .r28 .kz-sheet .kz-scene.c7-s5 .kz-br.c7-br { aspect-ratio: auto !important; }
+
+/* w1–w3 — сайт в интернете: части полного адреса загораются, подписи под кодом; имя сайта — в панели. */
+.r28 .kz-line .c7-u { border-radius: 3px; transition: background .25s, box-shadow .25s; }
+.r28 .kz-line .c7-u.is-cur { background: rgba(250, 79, 40, .3); box-shadow: 0 0 0 2px rgba(250, 79, 40, .3); }
+.r28 .c7-url-lbls { justify-content: flex-start; }
+.r28 .c7-file-web i { border-radius: 50%; width: 10px; height: 10px; background: #0FA38E; }
+.r28 .kz-line .c7-slot-url .tk-input { min-width: 9em; }
+.r28 .c7-where { min-width: 0; }
+
+/* w1 — показ «как взять адрес сайта»: курсор мыши, меню правой кнопки, две вкладки окна (как в уроке 5). */
+.r28 .kz-scene.c7-w1 { position: relative; }
+.r28 .c7-cur { position: absolute; z-index: 30; width: 24px; height: 24px; margin: -3px 0 0 -5px; pointer-events: none;
+  transition: left .7s cubic-bezier(.4, 0, .2, 1), top .7s cubic-bezier(.4, 0, .2, 1); filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .25)); }
+.r28 .c7-cur svg { display: block; }
+.r28 .c7-cur-ring { position: absolute; left: -7px; top: -6px; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--r-pri); opacity: 0; transform: scale(.4); }
+.r28 .c7-cur.is-press svg { transform: scale(.88); transform-origin: 5px 3px; }
+.r28 .c7-cur.is-press .c7-cur-ring { animation: c3Ring .3s ease-out; }
+.r28 .c7-cur.is-r .c7-cur-ring { border-color: #7C5CFA; }
+@keyframes c3Ring { from { opacity: .9; transform: scale(.4); } to { opacity: 0; transform: scale(1.4); } }
+.r28 .c7-cmenu { position: absolute; z-index: 25; display: flex; flex-direction: column; min-width: 180px; max-width: 210px; padding: 6px 0; border-radius: 8px;
+  background: #fff; box-shadow: 0 10px 28px rgba(15, 23, 42, .22), 0 0 0 1px rgba(15, 23, 42, .08); font: 500 13px/1.25 var(--r-font); color: #202124; pointer-events: none;
+  animation: c3MenuIn .14s ease-out; }
+@keyframes c3MenuIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.r28 .c7-cmenu-i { padding: 6px 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.r28 .c7-cmenu-i.is-sep { border-bottom: 1px solid #E8EAED; }
+.r28 .c7-cmenu-i.is-hl { background: #E8EAED; }
+.r28 .c7-tbar { gap: 2px; padding-right: 4px; }
+.r28 .c7-tbr .kz-br-tab.c7-ttab.is-cur { flex: 0 1 auto; min-width: 0; max-width: 52%; gap: 6px; }
+.r28 .c7-ttab.is-side { display: flex; align-items: center; gap: 6px; flex: 0 1 auto; min-width: 0; max-width: 40%; height: 76%; padding: 0 10px;
+  font: 500 12px var(--r-font); color: #5F6368; border-radius: 8px 8px 0 0; }
+.r28 .c7-ttab-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.r28 .c7-fav-web { flex: none; display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #0FA38E; box-shadow: inset 0 0 0 2px #fff, 0 0 0 1px #0FA38E; }
+.r28 .c7-url-sel { background: #C2DBFF; border-radius: 2px; }
+.r28 .kz-line .c7-w1-href { display: inline-block; min-width: .6ch; height: 1.1em; vertical-align: -.15em; }
+.r28 .kz-line .c7-w1-href.is-caret { border-left: 2px solid #AEAFAD; animation: z5Caret 1s steps(1) infinite; }
+@keyframes z5Caret { 50% { border-color: transparent; } }
+.r28 .c7-clip { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 7px 10px; border-radius: 10px; background: #ECFDF3; border: 1px solid #BBF7D0;
+  color: #15803D; font: 600 13px var(--r-font); }
+.r28 .c7-clip code { font: 500 13px var(--r-mono); color: var(--r-ink); overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) { .r28 .c7-cur { transition: none; } .r28 .c7-cmenu { animation: none; } .r28 .kz-line .c7-w1-href.is-caret { animation: none; } }
+/* w1: редактор — по высоте кода (без вытягивания до высоты окна), чтобы при появлении плашки под ним ничего не прыгало. */
+.r28 .kz-sheet .kz-scene.c7-w1 > .kz-col:first-child > .kz-code { flex: none !important; height: auto !important; }
+/* Полный адрес в href — длинный: в узком редакторе (планшет стоя, телефон) переносится внутри адреса, а не обрезается. */
+.r28 .kz-line .kz-tag:has(.c7-u) { white-space: normal; overflow-wrap: anywhere; }
+.r28 .kz-line .c7-u { word-break: break-all; }
+
+/* ══ УРОК 1 CSS — код CSS в редакторе (цвета как в VS Code), честная страница со стилями, палитра ══ */
+.r28 .kz-line .c7-sel { color: #D7BA7D; font-family: var(--r-mono); }
+.r28 .kz-line .c7-prop, .r28 .c7-anat-code .c7-prop, .r28 .c7-match-rule .c7-prop { color: #9CDCFE; font-family: var(--r-mono); }
+.r28 .kz-line .c7-val, .r28 .c7-anat-code .c7-val, .r28 .c7-match-rule .c7-val { color: #CE9178; font-family: var(--r-mono); }
+.r28 .kz-line .c7-punc, .r28 .c7-match-rule .c7-punc { color: #D4D4D4; font-family: var(--r-mono); }
+.r28 .c7-anat-code .c7-sel, .r28 .c7-match-rule .c7-sel { color: #D7BA7D; }
+.r28 .kz-line .c7-bad { color: #F48771; }
+.r28 .kz-line .c7-raw { color: #D4D4D4; font-family: var(--r-mono); }
+.r28 .kz-line .c7-part { border-radius: 3px; transition: background .25s, box-shadow .25s; }
+.r28 .kz-line .c7-part.is-cur { background: rgba(250, 79, 40, .3); box-shadow: 0 0 0 2px rgba(250, 79, 40, .3); }
+.r28 .kz-line.c7-dim { opacity: .55; }
+.r28 .kz-line .c7-slot .tk-input { color: #CE9178; min-width: 4.5em; }
+.r28 .kz-line .c7-slot-sel .tk-input { color: #D7BA7D; min-width: 2.2em; }
+.r28 .kz-line .c7-slot-sign .tk-input { color: #F48771; min-width: 1.4em; text-align: center; }
+/* Страница: стили урока ложатся на настоящие элементы — body (фон), h1, p; текст CSS без style — моноширинно. */
+.r28 .c7-doc { min-height: 100%; padding: 6px 8px 4px; border-radius: 2px; transition: background-color .35s, color .35s; }
+.r28 .c7-doc .c7-blk { transition: color .35s, background-color .35s; }
+.r28 .c7-raw { font: 400 .78em/1.35 var(--r-mono); color: #1F2937; margin: 0 0 .5em; }
+.r28 .c7-br .kz-br-page { padding: 0; }
+.r28 .c7-pop .kz-br-page { animation: c3In .45s cubic-bezier(.2, .7, .2, 1) both; }
+/* s10 — страница нажимается: заголовок, абзац или фон. */
+.r28 .c7-doc.is-tap, .r28 .c7-doc.is-tap .c7-blk { cursor: pointer; }
+.r28 .c7-doc.is-tap .c7-blk:hover { outline: 2px dashed rgba(250, 79, 40, .5); outline-offset: 2px; }
+.r28 .c7-doc { position: relative; }
+.r28 .c7-doc .led { top: 4px; right: 4px; }
+.r28 .c7-doc .c7-blk .led { top: -6px; right: -8px; }
+.r28 .c7-doc .c7-blk { position: relative; }
+/* Палитра: образец цвета и английское имя. */
+.r28 .c7-palette .c7-sw i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .15); }
+/* s4 — до и после мини-страницами. */
+.r28 .c7-mini { min-height: 70px; border-radius: 8px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--r-edge); background: #fff; font-family: 'Times New Roman', Georgia, serif; font-size: 14px; }
+.r28 .c7-mini .c7-doc { padding: 8px 10px; }
+.r28 .c7-where { min-width: 0; }
+/* s5 — разбор правила: под строкой — окно браузера. */
+.r28 .c7-anat-br { width: min(100%, 560px); }
+.r28 .c7-anat-code .c7-part.is-cur { background: rgba(250, 79, 40, .3); box-shadow: 0 0 0 3px rgba(250, 79, 40, .3); }
+/* s7 — правило над парами. */
+.r28 .c7-match-rule { align-self: center; padding: 10px 16px; border-radius: 10px; background: var(--r-ed); font: 500 clamp(16px, 2.6dvh, 22px)/1.3 var(--r-mono); }
+.r28 .kz-line .c7-sp { white-space: pre; }
+/* Фон body заполняет всё окно страницы, как в настоящем браузере: отступы страницы — внутри body. */
+.r28 .kz-br.c7-br .kz-br-page { padding: 0 !important; display: flex; flex-direction: column; }
+.r28 .kz-br.c7-br .kz-br-page > .c7-doc { flex: 1 1 auto; padding: clamp(12px, 2.4dvh, 26px) clamp(14px, 2.4vw, 30px); }
+.r28 .kz-br.c7-br .kz-br-body { transition: background-color .35s; }
+.r28 .kz-br.c7-br .kz-br-paper { display: none; }
+/* Открытая клавиатура телефона: палитра прячется — видны задание, правило с полем и кнопки. */
+.is-kbd .r28 .c7-palette { display: none; }
+/* Страница = окно: высота с отступами внутри (border-box), без «100% + отступы» — иначе подгонка шрифта
+   считала её переполненной и сжимала текст до минимума. На телефоне отступы меньше. */
+.r28 .c7-doc { box-sizing: border-box; min-height: 0; }
+.r28 .kz-br.c7-br .kz-br-page > .c7-doc { min-height: 100%; }
+@media (max-width: 759px) { .r28 .kz-br.c7-br .kz-br-page > .c7-doc { padding: 8px 12px; } }
+/* Телефон: окно браузера выше — урок про то, как выглядит страница, её должно быть хорошо видно. */
+@media (max-width: 759px) and (min-height: 700px) {
+  .r28 .c7-sheet .kz-br.c7-br.is-short { aspect-ratio: 16 / 10 !important; --brh: 34dvh; }
+}
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .c7-sheet .kz-br.c7-br.is-short { aspect-ratio: 16 / 8 !important; --brh: 27dvh; }
+}
+/* s14 на телефоне: два правила, палитра и «Готово» — окно браузера ниже, чтобы кнопка не наезжала на палитру. */
+@media (max-width: 759px) {
+  .r28 .c7-sheet.c7-own .kz-br.c7-br.is-short { aspect-ratio: 16 / 11 !important; --brh: 36dvh; }
+  .r28 .c7-own .c7-palette { padding: 6px 8px; gap: 4px 6px; }
+  .r28 .c7-own .c7-palette .c7-file { padding: 2px 6px; font-size: 12px; }
+}
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .c7-sheet.c7-own .kz-br.c7-br.is-short { aspect-ratio: 16 / 8 !important; --brh: 27dvh; }
+  .r28 .c7-own .c7-palette .c7-files-h { display: none; }
+}
+/* Вывод: точка роли — своего цвета (style — оранжевый, селектор — янтарный, свойство — фиолетовый, значение — бирюзовый). */
+.r28 .c7-sheet .kz-role i { background: var(--c) !important; }
+
+/* ══ УРОК 2 CSS — знаки селектора, атрибуты class / id в HTML, страница «какие покрасит» ══ */
+.r28 .kz-line .c7-mark { color: #FFD866; font-family: var(--r-mono); font-weight: 700; }
+.r28 .kz-line .c7-attr { color: #9CDCFE; font-family: var(--r-mono); }
+.r28 .kz-line .c7-aval { color: #CE9178; font-family: var(--r-mono); }
+.r28 .kz-line .c7-att.is-cur { background: rgba(250, 79, 40, .3); box-shadow: 0 0 0 2px rgba(250, 79, 40, .3); border-radius: 3px; }
+.r28 .c7-doc .c7-blk.is-tap { cursor: pointer; border-radius: 4px; }
+.r28 .c7-doc .c7-blk.is-tap:hover { outline: 2px dashed rgba(250, 79, 40, .5); outline-offset: 2px; }
+.r28 .c7-doc .c7-blk.is-mark { outline: 2px solid #22C55E; outline-offset: 2px; }
+.r28 .c7-doc .c7-blk.is-off { opacity: .45; }
+.r28 .kz-code.c7-html { margin-top: 6px; }
+/* Страница по умолчанию белая, как в браузере без CSS (слой бумаги окна спрятан, фон даёт сам корпус страницы). */
+.r28 .kz-br.c7-br .kz-br-body { background-color: #fff; }
+/* Урок 2 на телефоне: кода больше (CSS и HTML с классами) — окно браузера ниже, строки кода плотнее. */
+@media (max-width: 759px) and (min-height: 700px) {
+  .r28 .c7-sheet .kz-br.c7-br.is-short { aspect-ratio: 16 / 7 !important; --brh: 24dvh; }
+}
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .c7-sheet .kz-br.c7-br.is-short { aspect-ratio: 16 / 5.5 !important; --brh: 19dvh; }
+}
+@media (max-width: 759px) {
+  .r28 .c7-sheet .kz-code.kz-code-sm .kz-line { min-height: 0; padding-top: 1px; padding-bottom: 1px; }
+  .r28 .c7-sheet .c7-pair { gap: 8px; }
+}
+/* Самый маленький телефон (ниже 700 px): служебные строки style и body прячутся — видны правило и абзацы. */
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .c7-sheet .kz-code .kz-line.c7-edge { display: none; }
+}
+.r28 .kz-line .c7-slot-rule .tk-input { color: #D4D4D4; min-width: 12em; }
+/* k2 (селектор целиком): на телефоне и планшете стоя служебные строки style и body прячутся — кода много. */
+@media (max-width: 999px) and (orientation: portrait), (max-width: 759px) {
+  .r28 .c7-k2 .kz-code .kz-line.c7-edge { display: none; }
+}
+/* s4 (нажать абзацы): на телефоне окно выше — по абзацам должно быть удобно попадать пальцем. */
+@media (max-width: 759px) and (min-height: 700px) {
+  .r28 .c7-tapsheet .kz-br.c7-br.is-short { aspect-ratio: 16 / 10 !important; --brh: 34dvh; }
+}
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .c7-tapsheet .kz-br.c7-br.is-short { aspect-ratio: 16 / 8.5 !important; --brh: 30dvh; }
+}
+.r28 .c7-tapsheet .c7-doc .c7-blk { padding: 2px 0; }
+
+/* ── УРОК 3 «ЦВЕТА» ─────────────────────────────────────────────────────── */
+/* Логотип сайта Коди — картинка с постоянным цветом #FA4F28. */
+.r28 .c7-blk.c7-logo { display: inline-flex; align-items: center; gap: .4em; margin: 0 0 .4em; font: 800 .95em/1 var(--r-font); letter-spacing: .02em; color: #1F2430; }
+.r28 .c7-blk.c7-logo::before { content: ''; width: 1.5em; height: 1.5em; border-radius: 50%; background: #FA4F28; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .15); }
+/* hex по парам, rgb по числам: пары горят цветом своего луча. */
+.r28 .kz-line .c7-hex .c7-hx-m { color: #CE9178; }
+.r28 .kz-line .c7-hx { transition: color .3s, background-color .3s; border-radius: 3px; }
+.r28 .kz-line .is-lit .c7-hx-r, .r28 .kz-line .c7-hx.c7-hx-r.is-lit { color: #FF8A8A; background: rgba(255, 80, 80, .16); }
+.r28 .kz-line .is-lit .c7-hx-g { color: #7EE2A8; background: rgba(60, 200, 120, .16); }
+.r28 .kz-line .is-lit .c7-hx-b { color: #8DB8FF; background: rgba(80, 140, 255, .18); }
+.r28 .kz-line .c7-hs { color: #CE9178; border-radius: 3px; transition: background-color .3s; }
+.r28 .kz-line .c7-hs.is-cur { background: rgba(250, 79, 40, .3); box-shadow: 0 0 0 2px rgba(250, 79, 40, .3); }
+.r28 .kz-line .c7-val.c7-bad { text-decoration: wavy underline #F48771; text-underline-offset: 3px; }
+.r28 .kz-line .c7-slot-hex .tk-input { color: #CE9178; min-width: 4.6em; text-transform: uppercase; }
+.r28 .kz-line .c7-slot-num .tk-input { color: #CE9178; min-width: 2.1em; text-align: center; }
+.r28 .kz-line .c7-slot-col .tk-input { color: #CE9178; min-width: 5em; }
+/* Лучи: три полосы и пятно цвета. */
+.r28 .c7-mx { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; align-self: stretch; padding: 8px 12px; border-radius: 10px; background: #fff; box-shadow: inset 0 0 0 1px var(--r-edge); }
+.r28 .c7-mx-rows { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.r28 .c7-mx-row { display: grid; grid-template-columns: 5.6em minmax(0, 1fr) 2.6em; gap: 8px; align-items: center; font: 600 12.5px/1.2 var(--r-font); color: var(--r-ink-2, #475569); border-radius: 6px; transition: background-color .3s; }
+.r28 .c7-mx-row.is-on { background: rgba(250, 79, 40, .1); box-shadow: 0 0 0 3px rgba(250, 79, 40, .1); color: var(--r-ink); }
+.r28 .c7-mx-l { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.r28 .c7-mx-bar { height: 8px; border-radius: 4px; background: #EEF0F4; overflow: hidden; }
+.r28 .c7-mx-bar i { display: block; height: 100%; border-radius: 4px; transition: width .45s cubic-bezier(.2, .7, .2, 1); }
+.r28 .c7-mx-r .c7-mx-bar i { background: #EF4444; }
+.r28 .c7-mx-g .c7-mx-bar i { background: #22C55E; }
+.r28 .c7-mx-b .c7-mx-bar i { background: #3B82F6; }
+.r28 .c7-mx-v { font: 600 12.5px var(--r-mono); text-align: right; color: var(--r-ink); }
+.r28 .c7-mx-res { width: 46px; height: 46px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .18), 0 2px 6px rgba(15, 23, 42, .12); transition: background-color .45s; }
+.r28 .c7-mx.is-none .c7-mx-res { background-image: repeating-linear-gradient(45deg, #EEF0F4 0 6px, #fff 6px 12px) !important; }
+.r28 .c7-mx-ext { grid-column: 1 / -1; display: flex; gap: 14px; justify-content: center; font: 600 12px var(--r-mono); color: var(--r-ink); }
+.r28 .c7-mx-ext span { display: inline-flex; align-items: center; gap: 6px; }
+.r28 .c7-mx-ext i { width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .25); }
+/* Круг цветов и полоса светлоты. */
+.r28 .c7-whbox { display: flex; align-items: center; justify-content: center; gap: 18px; align-self: stretch; padding: 10px 12px; border-radius: 10px; background: #fff; box-shadow: inset 0 0 0 1px var(--r-edge); }
+.r28 .c7-wh { position: relative; flex: none; width: clamp(78px, 13dvh, 118px); aspect-ratio: 1; margin: 22px; }
+.r28 .c7-wh-ring { position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(hsl(0, 100%, 50%), hsl(60, 100%, 50%), hsl(120, 100%, 50%), hsl(180, 100%, 50%), hsl(240, 100%, 50%), hsl(300, 100%, 50%), hsl(360, 100%, 50%));
+  -webkit-mask: radial-gradient(circle, transparent 54%, #000 55%); mask: radial-gradient(circle, transparent 54%, #000 55%); }
+.r28 .c7-wh-hand { position: absolute; inset: 0; transition: transform .8s cubic-bezier(.3, .7, .2, 1); }
+.r28 .c7-wh-hand i { position: absolute; left: 50%; top: -4px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2.5px #1F2430, 0 2px 4px rgba(0, 0, 0, .3); }
+.r28 .c7-wh-mid { position: absolute; inset: 30%; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .18); transition: background-color .6s; }
+.r28 .c7-wh-lab { position: absolute; translate: -50% -50%; font: 700 11px var(--r-mono); color: var(--r-ink-2, #475569); }
+.r28 .c7-lb { flex: 1 1 auto; max-width: 220px; min-width: 0; }
+.r28 .c7-lb-bar { position: relative; height: 12px; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .15); }
+.r28 .c7-lb-bar i { position: absolute; top: 50%; width: 14px; height: 14px; translate: -50% -50%; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2.5px #1F2430; transition: left .6s cubic-bezier(.3, .7, .2, 1); }
+.r28 .c7-lb-t { display: flex; justify-content: space-between; margin-top: 6px; font: 600 11.5px var(--r-mono); color: var(--r-ink-2, #475569); }
+.r28 .c7-lb-t b { color: var(--r-pri-d); font-size: 13px; }
+/* Сравнение: логотип и заголовок. */
+.r28 .c7-cmp { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; align-self: stretch; padding: 8px 12px; border-radius: 10px; background: #fff; box-shadow: inset 0 0 0 1px var(--r-edge); font: 600 13px/1.2 var(--r-font); color: var(--r-ink); }
+.r28 .c7-cmp-i { display: inline-flex; align-items: center; gap: 6px; }
+.r28 .c7-cmp-i i { width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .18); transition: background-color .35s; }
+.r28 .c7-cmp-r { margin-left: auto; padding: 3px 10px; border-radius: 99px; background: #F1F5F9; color: #64748B; font-size: 12.5px; }
+.r28 .c7-cmp-r.is-ok { background: #DCFCE7; color: #15803D; }
+/* s4 — пятна цвета вместо слов. */
+.r28 .c7-swcard { justify-content: flex-start; }
+.r28 .c7-sw { display: block; flex: none; width: 54px; height: 34px; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .18); }
+/* s7 — большое пятно и три кода. */
+.r28 .c7-swatch-card { display: flex; justify-content: center; padding: 12px; }
+.r28 .c7-swatch { display: block; width: min(100%, 260px); height: clamp(64px, 14dvh, 120px); border-radius: 12px; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .18); }
+.r28 .kz-pick.c7-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: min(100%, 620px); align-self: center; }
+.r28 .kz-pick.c7-opts .kz-btn { font: 600 15px var(--r-mono); padding-left: 8px; padding-right: 8px; white-space: nowrap; }
+.r28 .kz-btn.c7-opt.is-led { box-shadow: 0 0 0 3px var(--r-pri); }
+@media (max-width: 640px) { .r28 .kz-pick.c7-opts { grid-template-columns: 1fr; gap: 8px; } .r28 .kz-pick.c7-opts .kz-btn { min-height: 44px; } }
+/* s10 — hsl-код, после ответа — его цвет. */
+.r28 .c7-hslcard { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; }
+.r28 .c7-hslcard .c7-card-h { grid-column: 1 / -1; }
+.r28 .c7-code-t { font-family: var(--r-mono) !important; }
+.r28 .c7-swatch-sm { width: 56px; height: 56px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--r-edge); background-image: repeating-linear-gradient(45deg, #EEF0F4 0 6px, #fff 6px 12px); transition: background-color .4s; }
+.r28 .c7-swatch-sm.is-on { background-image: none; }
+.r28 .c7-ld { display: inline-block; width: 14px; height: 14px; margin-right: 8px; border-radius: 50%; vertical-align: -2px; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .2); }
+.r28 .c7-ld-light { background: hsl(210, 100%, 88%); }
+.r28 .c7-ld-dark { background: hsl(210, 100%, 22%); }
+/* Вывод — пример каждой записи у её роли. */
+.r28 .c7-role-ex { margin-left: auto; padding-left: 8px; white-space: nowrap; font: 600 12px var(--r-mono); color: var(--r-ink); }
+/* Колонка с кодом: под кодом — лучи, круг или сравнение. */
+.r28 .c7-pair > .kz-col:first-child { gap: 10px; }
+@media (max-width: 759px) {
+  .r28 .c7-mx { padding: 6px 10px; gap: 4px 10px; }
+  .r28 .c7-mx-row { font-size: 11.5px; grid-template-columns: 5em minmax(0, 1fr) 2.4em; }
+  .r28 .c7-mx-res { width: 34px; height: 34px; }
+  .r28 .c7-whbox { padding: 4px 10px; gap: 12px; }
+  .r28 .c7-wh { width: clamp(64px, 11dvh, 92px); margin: 18px; }
+  .r28 .kz-line .c7-slot-col .tk-input { min-width: 3.4em; }
+  .r28 .c7-cmp { padding: 6px 10px; font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { .r28 .c7-mx-bar i, .r28 .c7-wh-hand, .r28 .c7-lb-bar i { transition: none; } }
+
+/* ── УРОК 4 «ФОН» ───────────────────────────────────────────────────────── */
+/* Блоки страницы — на всю ширину, как в браузере: фон заголовка — полоса во всю строку. */
+.r28 .c7-doc { align-items: stretch; }
+.r28 .kz-br.c7-br .kz-br-body { transition: background-color .35s; }
+.r28 .c7-doc.is-tap { cursor: pointer; }
+.r28 .c7-doc .c7-blk.is-mark { box-shadow: 0 0 0 3px #22C55E; }
+.r28 .c7-doc .c7-blk.is-off { opacity: .55; }
+.r28 .c7-doc > .led { top: 6px; right: 6px; }
+.r28 .kz-line .c7-val.is-cur { background: rgba(250, 79, 40, .3); box-shadow: 0 0 0 2px rgba(250, 79, 40, .3); border-radius: 3px; }
+.r28 .kz-line .c7-val.c7-bad { text-decoration: wavy underline #F48771; text-underline-offset: 3px; }
+.r28 .kz-line .c7-slot-col .tk-input { color: #CE9178; min-width: 4.5em; }
+.r28 .kz-line .c7-slot-file .tk-input { color: #CE9178; min-width: 5.5em; }
+.r28 .kz-line .c7-slot-sign .tk-input { min-width: 2.6em; }
+.r28 .kz-line .c7-bslot { min-width: 3.2em; }
+.r28 .c7-built { font-family: var(--r-mono); }
+/* Полоса «Файлы». */
+.r28 .c7-files { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; align-self: stretch; padding: 8px 10px; border-radius: 10px; background: #fff; box-shadow: inset 0 0 0 1px var(--r-edge); }
+.r28 .c7-files-h { display: inline-flex; align-items: center; gap: 5px; font: 700 11.5px var(--r-font); letter-spacing: .04em; text-transform: uppercase; color: var(--r-ink-2, #475569); margin-right: 2px; }
+.r28 .c7-file { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px 3px 3px; border-radius: 8px; font: 600 12px var(--r-mono); color: var(--r-ink); transition: background-color .3s, box-shadow .3s; }
+.r28 .c7-file i { width: 26px; height: 26px; border-radius: 6px; background-color: #F1F5F9; background-size: cover; background-position: center; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .12); }
+.r28 .c7-file.is-on { background: rgba(250, 79, 40, .12); box-shadow: 0 0 0 2px rgba(250, 79, 40, .35); }
+/* Мини-страница (выбор и сортировка). */
+.r28 .c7-thumb-card { padding: 10px; }
+.r28 .c7-thumb { position: relative; width: 100%; height: clamp(84px, 16dvh, 150px); border-radius: 8px; background-color: #fff; box-shadow: inset 0 0 0 1px var(--r-edge); overflow: hidden; }
+.r28 .c7-thumb b { position: absolute; left: 12px; top: 10px; padding: 2px 6px; font: 700 15px/1.2 'Times New Roman', Georgia, serif; color: #1F2430; background: rgba(255, 255, 255, .85); border-radius: 3px; }
+.r28 .c7-sortcard { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; }
+.r28 .c7-sortcard .c7-card-h { grid-column: 1 / -1; }
+.r28 .c7-code-t { margin: 2px 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 600 clamp(13px, 2.2dvh, 16px)/1.45 var(--r-mono); color: var(--r-ink); }
+.r28 .c7-thumb-sm { width: 96px; height: 64px; background-image: repeating-linear-gradient(45deg, #EEF0F4 0 6px, #fff 6px 12px); }
+.r28 .c7-thumb-sm.is-on { background-color: #fff; }
+.r28 .kz-pick.c7-opts { display: grid; grid-template-columns: 1fr; gap: 8px; width: min(100%, 560px); align-self: center; }
+.r28 .kz-pick.c7-opts .kz-btn { font: 600 14.5px/1.3 var(--r-mono); padding-left: 10px; padding-right: 10px; white-space: normal; overflow-wrap: anywhere; min-height: 44px; }
+.r28 .kz-btn.c7-opt.is-led { box-shadow: 0 0 0 3px var(--r-pri); }
+.r28 .c7-role-ex { margin-left: auto; padding-left: 8px; white-space: nowrap; font: 600 12px var(--r-mono); color: var(--r-ink); }
+.r28 .c7-pair > .kz-col:first-child { gap: 10px; }
+@media (max-width: 759px) {
+  .r28 .c7-files { padding: 6px 8px; gap: 4px 8px; }
+  .r28 .c7-file { font-size: 11px; }
+  .r28 .c7-file i { width: 20px; height: 20px; }
+  .r28 .kz-pick.c7-opts .kz-btn { font-size: 13px; }
+}
+/* s14 на телефоне: без строк style, поля уже, браузер ниже — «Готово» не наезжает на «Файлы». */
+@media (max-width: 759px) {
+  .r28 .c7-own .kz-code .kz-line.c7-edge { display: none; }
+  .r28 .c7-own .kz-line .c7-slot-file .tk-input { min-width: 2.4em; }
+  .r28 .c7-own .kz-line .c7-slot-col .tk-input { min-width: 2.2em; }
+  .r28 .c7-own .kz-col { gap: 8px; }
+}
+@media (max-width: 759px) {
+  .r28 .c7-own .c7-files-h { display: none; }
+  .r28 .c7-own .kz-code.kz-code-sm { font-size: 12.5px; }
+  .r28 .c7-own .c7-files { padding: 4px 6px; gap: 3px 6px; }
+}
+/* s14 с открытой клавиатурой телефона — полоса «Файлы» прячется (как палитра в уроке 1): имена видны до набора. */
+.is-kbd .c7-own .c7-files { display: none; }
+
+/* ── УРОК 5 «ТЕКСТ И ШРИФТЫ» ─────────────────────────────────────────────── */
+/* Ссылка на странице — как в браузере: синяя, подчёркнутая. */
+.r28 .c7-doc .c7-blk.c7-a { color: #0000EE; text-decoration: underline; text-underline-offset: 2px; margin: 0 0 .4em; }
+/* s4 — надписи разного размера. */
+.r28 .c7-szcard { justify-content: flex-start; min-height: 64px; overflow: hidden; }
+.r28 .c7-szw { font-family: 'Times New Roman', Georgia, serif; line-height: 1; color: #1F2430; }
+/* s7, s10 — образец надписи. */
+.r28 .c7-sample-card { display: flex; justify-content: center; align-items: center; min-height: 96px; padding: 16px; }
+.r28 .c7-sample { font-size: clamp(26px, 5dvh, 40px); color: #1F2430; font-family: 'Times New Roman', serif; }
+.r28 .c7-effcard { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.r28 .c7-eff { font-size: clamp(22px, 4dvh, 30px); color: #1F2430; font-family: 'Times New Roman', serif; }
+.r28 .c7-eff-code { font: 600 13px var(--r-mono); color: #15803D; }
+.r28 .kz-pick.c7-opts { display: grid; grid-template-columns: 1fr; gap: 8px; width: min(100%, 520px); align-self: center; }
+.r28 .kz-pick.c7-opts .kz-btn { font: 600 15px/1.3 var(--r-mono); min-height: 44px; }
+.r28 .kz-btn.c7-opt.is-led { box-shadow: 0 0 0 3px var(--r-pri); }
+.r28 .c7-where span { font-family: var(--r-mono); }
+.r28 .c7-role-ex { margin-left: auto; padding-left: 8px; white-space: nowrap; font: 600 12px var(--r-mono); color: var(--r-ink); }
+.r28 .kz-line .c7-slot-col .tk-input { color: #CE9178; min-width: 4.5em; }
+.r28 .kz-line .c7-bslot { min-width: 3.2em; }
+.r28 .c7-built { font-family: var(--r-mono); }
+@media (max-width: 759px) { .r28 .kz-pick.c7-opts .kz-btn { font-size: 13.5px; } .r28 .c7-sample-card { min-height: 72px; padding: 10px; } }
+@media (max-width: 759px) { .r28 .c7-own .kz-code .kz-line.c7-edge { display: none; } .r28 .c7-own .kz-line .c7-slot-col .tk-input { min-width: 3em; } }
+/* Размеры в px подгонкой не сжимаются — длинная страница прокручивается, как в браузере. */
+.r28 .kz-br.c7-br .kz-br-page { overflow-y: auto !important; scrollbar-width: thin; }
+/* Страница — обычная толщина букв, как в браузере (иначе ссылка наследовала 600 от рамки окна). */
+.r28 .c7-doc { font-weight: 400; }
+
+/* ── УРОК 6 «РАЗМЕРЫ ЭЛЕМЕНТОВ» ──────────────────────────────────────────── */
+/* «Инспектор» (как в уроке 8 HTML): пунктирная рамка и ярлык «тег ширина×высота» — слой поверх страницы. */
+.r28 .c7-doc { position: relative; font-weight: 400; }
+.r28 .c7-doc .c7-blk.c7-img { display: block; max-width: none; margin: 0 0 .5em; }
+.r28 .c7-doc .c7-blk.c7-h1 { margin-bottom: .45em; }
+.r28 .c7-doc .c7-blk.c7-p { margin-bottom: .45em; }
+.r28 .c7-ibox { position: absolute; pointer-events: none; outline: 1.5px dashed rgba(124, 92, 250, .85); outline-offset: 0; border-radius: 1px; z-index: 2; }
+.r28 .c7-itag { position: absolute; left: 0; top: 0; translate: 0 -100%; padding: 0 5px; border-radius: 4px 4px 4px 0; background: #7C5CFA; color: #fff;
+  font: 700 10px/1.5 var(--r-mono); font-style: normal; white-space: nowrap; }
+.r28 .c7-doc.is-insp { padding-top: 16px !important; }
+.r28 .c7-doc.is-insp .c7-blk { margin-top: 12px; }
+.r28 .kz-br.c7-br .kz-br-page { overflow-x: hidden !important; }
+/* s5 — окно сужается. */
+.r28 .kz-br.c7-br { transition: width .8s cubic-bezier(.3, .7, .2, 1); }
+.r28 .kz-br.c7-br.c7-narrow { width: 66% !important; align-self: center; }
+@media (prefers-reduced-motion: reduce) { .r28 .kz-br.c7-br { transition: none; } }
+/* s4 — полоски заданной ширины; s10 — прямоугольник. */
+.r28 .c7-barcard { justify-content: flex-start; min-height: 52px; }
+.r28 .c7-bar { display: block; height: 18px; border-radius: 4px; background: #FA4F28; flex: none; }
+.r28 .c7-rect-card { display: flex; justify-content: center; align-items: center; min-height: 140px; padding: 12px; }
+.r28 .c7-rect { display: block; background: #FA4F28; border-radius: 4px; flex: none; }
+.r28 .c7-code-t { font-family: var(--r-mono) !important; }
+.r28 .kz-pick.c7-opts { display: grid; grid-template-columns: 1fr; gap: 8px; width: min(100%, 520px); align-self: center; }
+.r28 .kz-pick.c7-opts .kz-btn { font: 600 15px/1.3 var(--r-mono); min-height: 44px; }
+.r28 .kz-btn.c7-opt.is-led { box-shadow: 0 0 0 3px var(--r-pri); }
+.r28 .c7-role-ex { margin-left: auto; padding-left: 8px; white-space: nowrap; font: 600 12px var(--r-mono); color: var(--r-ink); }
+.r28 .kz-line .c7-slot-col .tk-input { color: #CE9178; min-width: 4em; }
+@media (max-width: 759px) { .r28 .kz-pick.c7-opts .kz-btn { font-size: 13.5px; } .r28 .c7-rect-card { min-height: 128px; padding: 6px; } }
+@media (max-width: 759px) { .r28 .c7-own .kz-code .kz-line.c7-edge { display: none; } .r28 .c7-own .kz-line .c7-slot-col .tk-input { min-width: 3em; } }
+/* Пиксели не сжимаются под окно — иначе показ «px не меняется» был бы нечестным; лишнее уходит за край, как в браузере. */
+.r28 .c7-doc .c7-blk { max-width: none !important; }
+.r28 .kz-br.c7-br.c7-narrow { height: var(--c7h, auto) !important; aspect-ratio: auto !important; }
+/* Телефон: окно браузера выше — видны и заголовок, и фото. */
+@media (max-width: 759px) and (min-height: 700px) { .r28 .c7-sheet:not(.c7-own) .kz-br.c7-br.is-short { aspect-ratio: 16 / 12.5 !important; --brh: 38dvh; } }
+@media (max-width: 759px) and (max-height: 699px) { .r28 .c7-sheet:not(.c7-own) .kz-br.c7-br.is-short { aspect-ratio: 16 / 9.5 !important; --brh: 28dvh; } }
+/* Страница — обычный поток, как в браузере: блоки во всю ширину, картинка — своего размера (флекс растягивал её). */
+.r28 .c7-doc { display: block !important; }
+
+/* ══ УРОК 7 — Box Model: заметки на жёлтом фоне, «Инспектор» с отступами (как DevTools) ══ */
+/* Страница — как в браузере без CSS: у h1 и p свои margin, углов нет. Отступ страницы — как margin у body. */
+.r28 .kz-br.c7-br .kz-br-page > .c7-doc { padding: 20px 16px 12px; }
+.r28 .c7-doc .c7-blk { border-radius: 0; transition: none; box-sizing: content-box; }   /* как в браузере: по умолчанию content-box */
+.r28 .c7-doc .c7-h1 { margin: .67em 0; }
+.r28 .c7-doc .c7-p { margin: 1em 0; line-height: 1.35; }
+.r28 .c7-doc .c7-blk.is-hl { background-color: transparent; box-shadow: none; }
+/* Отступы подсвеченного элемента: margin — оранжевый, padding — зелёный (цвета DevTools), полупрозрачные. */
+.c7-tint { position: absolute; box-sizing: border-box; border-style: solid; background: transparent; pointer-events: none; z-index: 2;
+  transition: left .3s, top .3s, width .3s, height .3s, border-width .3s; }
+.c7-tm { border-color: rgba(246, 166, 80, .55); }
+.c7-tp { border-color: rgba(120, 190, 95, .6); }
+.r28 .c7-ibox.is-hl { outline-color: rgba(124, 92, 250, .9); }
+.c7-legend { position: absolute; top: 2px; right: 4px; display: flex; gap: 6px; z-index: 3; font: 600 10px/1 var(--r-mono, ui-monospace, monospace); pointer-events: none; }
+.c7-legend i { font-style: normal; padding: 3px 5px; border-radius: 3px; color: #3B2A12; }
+.c7-legend .c7-lg-m { background: rgba(246, 166, 80, .7); }
+.c7-legend .c7-lg-p { background: rgba(120, 190, 95, .7); color: #13300B; }
+@media (prefers-reduced-motion: reduce) { .c7-tint { transition: none; } }
+/* s4: заметки-карточки с разным padding. */
+.r28 .c7-notecard { display: flex; align-items: center; justify-content: center; min-height: 64px; padding: 8px; }
+.r28 .c7-mnote { display: inline-block; background: #FFE58F; color: #1F2937; font: 400 14px/1.3 Georgia, 'Times New Roman', serif; }
+/* s7: коробка с рамкой. */
+.r28 .c7-bbox { display: block; width: 120px; height: 56px; background: #FFF8DC; box-sizing: border-box; }
+.r28 .c7-rect-card { display: flex; align-items: center; justify-content: center; min-height: 104px; }
+/* Вывод: точки ролей — цветами Инспектора (padding зелёный, margin оранжевый), border — фиолетовый, border-box — бирюзовый. */
+.r28 .c7-sheet .kz-roles .kz-role:nth-child(1) { --c: #16A34A !important; }
+.r28 .c7-sheet .kz-roles .kz-role:nth-child(2) { --c: #F08A24 !important; }
+.r28 .c7-sheet .kz-roles .kz-role:nth-child(3) { --c: #7C5CFA !important; }
+.r28 .c7-sheet .kz-roles .kz-role:nth-child(4) { --c: #0FA38E !important; }
+/* s10 на телефоне: код, браузер и две кнопки — окно ниже, чтобы строка задания и кнопки не наезжали. */
+@media (max-width: 759px) and (min-height: 700px) { .r28 .c7-sheet.c7-sort .kz-br.c7-br.is-short { aspect-ratio: 16 / 11 !important; --brh: 31dvh; } }
+@media (max-width: 759px) and (max-height: 699px) { .r28 .c7-sheet.c7-sort .kz-br.c7-br.is-short { aspect-ratio: 16 / 8.5 !important; --brh: 25dvh; } }
+/* s10 на телефоне: обе заметки должны быть видны целиком — страница в окне уменьшена, как масштаб браузера (пропорции честные). */
+.r28 .kz-br.c7-br .kz-br-page > .c7-doc:not(.is-insp) { padding-top: 8px; }
+@media (max-width: 759px) { .r28 .c7-sort .kz-br-page > .c7-doc { zoom: .8; } }
+@media (max-width: 759px) and (max-height: 699px) { .r28 .c7-sort .kz-br-page > .c7-doc { zoom: .62; } }
+/* Телефон: пока открыта панель подсказки или ошибки (она выше обычного низа), окно браузера ниже — строка задания,
+   код и кнопки видны (как в уроках 6 и 8; проверено 06.11.2026 снимками с панелью ошибки). */
+@media (max-width: 759px) and (min-height: 700px) { .b-stage.has-sheet .r28 .c7-sheet .kz-br.c7-br.is-short, .b-stage.has-sheet.r28 .c7-sheet .kz-br.c7-br.is-short, .r28 .b-stage.has-sheet .c7-sheet .kz-br.c7-br.is-short { --brh: 21dvh !important; } }
+@media (max-width: 759px) and (max-height: 699px) { .b-stage.has-sheet .r28 .c7-sheet .kz-br.c7-br.is-short, .b-stage.has-sheet.r28 .c7-sheet .kz-br.c7-br.is-short, .r28 .b-stage.has-sheet .c7-sheet .kz-br.c7-br.is-short { --brh: 16dvh !important; } }
