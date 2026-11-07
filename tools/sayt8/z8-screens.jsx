@@ -334,11 +334,20 @@ function S5({ p }) {
   const [rec, put] = useRec('s5');
   const solved = !!(rec && rec.done);
   const [st5, setSt5] = useState(solved ? 2 : 0);   // 0 меню без nav; 1 nav; 2 сравнение head и header
+  // Курсор мыши (tools/mysh): пока Коди говорит про nav, стрелка проходит по ссылкам меню — над каждой рука, как в Chrome.
+  const root = useRef(null);
+  const M = useMysh(root);
+  const tms = useRef([]);
+  useEffect(() => () => tms.current.forEach(clearTimeout), []);
+  const glide = () => {
+    const step = reduceMotion() ? 0 : 1100;
+    [0, 1, 2].forEach((j) => tms.current.push(setTimeout(() => M.go('.z8-menu .z8-a:nth-child(' + (j + 1) + ')', 0.5, 0.75, { hand: true }), 400 + j * step)));
+  };
   const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
-    { act: () => { sfx('pop', true); setSt5(1); } },
+    { act: () => { sfx('pop', true); setSt5(1); glide(); } },
     { say: [{ text: c.sayNav, pose: 'point' }] },
-    { act: () => { sfx('tap', true); setSt5(2); } },
+    { act: () => { tms.current.forEach(clearTimeout); M.hide(); sfx('tap', true); setSt5(2); } },
     { say: [{ text: c.sayHead, pose: 'think' }, { text: c.done, pose: 'smile' }] },
     { act: () => put({ done: true }) }
   ] });
@@ -350,7 +359,7 @@ function S5({ p }) {
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Sheet cls="z8-sheet">
         <KzAsk text={askText} />
-        <div className="kz-scene z8-s5">
+        <div ref={root} className="kz-scene z8-s5 ms-root">
           <div className="kz-col">
             <KzCode lines={lines} cls="kz-code-sm" />
             {st5 >= 2 ? (
@@ -361,6 +370,7 @@ function S5({ p }) {
             ) : null}
           </div>
           <div className="kz-col"><Br title={pick(s.title)} url="index.html"><SitePage cfg={cfg} insp hl={st5 === 1 ? 'nav' : st5 === 2 ? 'header' : null} /></Br></div>
+          {M.el}
         </div>
       </Sheet>
     </StageB>

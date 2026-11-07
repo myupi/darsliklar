@@ -310,3 +310,7 @@
 @media (min-width: 760px) and (orientation: portrait) { .r28 .kz-sheet .kz-scene.z7-s1 > .z7-s1-man { display: none; } }
 /* Клавиатура телефона открыта: окно — полоска; правила невысокого телефона выше (с !important) здесь не действуют. */
 .is-kbd .r28 .kz-sheet .kz-scene-col .kz-br.z7-br.is-short, .is-kbd .r28 .kz-sheet .kz-scene.z7-s5 .kz-br.z7-br { aspect-ratio: auto !important; }
+/* Показ курсором (tools/mysh): textarea, которую тянут за уголок, растёт плавно. */
+.r28 .z7-ta { transition: min-height .75s cubic-bezier(.4, 0, .2, 1); }
+.r28 .z7-ta.is-grow { min-height: 7.4em; }
+@media (prefers-reduced-motion: reduce) { .r28 .z7-ta { transition: none; } }

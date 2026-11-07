@@ -465,6 +465,8 @@ Object.assign(NOT_SPOKEN_IN, { items: { code: 1 } });
 
 /*@FILE:gen/kollazh-trans.jsx@*/
 
+/*@FILE:../mysh/mysh.jsx@*/
+
 /*@FILE:z7-screens.jsx@*/
 
 const LESSON_CSS = CANON_SCREEN_CSS + `
@@ -473,5 +475,6 @@ const LESSON_CSS = CANON_SCREEN_CSS + `
 /*@FILE:gen/b16.css@*/
 /*@FILE:gen/p17.css@*/
 /*@FILE:gen/r28.css@*/
+/*@FILE:../mysh/mysh.css@*/
 /*@FILE:z7.css@*/
 `;

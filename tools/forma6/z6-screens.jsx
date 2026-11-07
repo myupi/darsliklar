@@ -502,28 +502,43 @@ function S8({ p }) {
   const [rec, put] = useRec('s8');
   const solved = !!(rec && rec.done);
   const [st8, setSt8] = useState(solved ? 3 : 0);   // 0 пусто; 1 подсказка; 2 написали; 3 стёрли
+  // Курсор мыши (tools/mysh): щёлкает в поле — мигает курсор ввода; буквы печатаются по одной, потом стираются.
+  const root = useRef(null);
+  const M = useMysh(root);
+  const [foc, setFoc] = useState(false);
+  const [txt, setTxt] = useState('');
+  const word = 'Futbol';
+  const typeTo = (to) => {   // напечатать или стереть по букве (под «меньше движения» — сразу)
+    if (reduceMotion()) { setTxt(to); return; }
+    let i = 0;
+    const from = to ? 0 : word.length;
+    const iv = setInterval(() => { i += 1; const n = to ? i : from - i; setTxt(word.slice(0, n)); sfx('tap', true); if (i >= word.length) clearInterval(iv); }, 110);
+  };
   const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'curious' }]);
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
     { act: () => { sfx('pop', true); setSt8(1); } },
     { say: [{ text: c.sayPh, pose: 'explain' }] },
-    { act: () => { sfx('tap', true); setSt8(2); } },
+    { act: () => M.go('.z6-in', 0.3, 0.6) }, { wait: M.slow },
+    { act: () => { M.click(); setFoc(true); } }, { wait: 500 },
+    { act: () => { M.hide(); setSt8(2); typeTo(word); } }, { wait: reduceMotion() ? 100 : 900 },
     { say: [{ text: c.sayTyped, pose: 'wonder' }] },
-    { act: () => { sfx('tap', true); setSt8(3); } },
+    { act: () => { setSt8(3); typeTo(''); } }, { wait: reduceMotion() ? 100 : 900 },
     { say: [{ text: c.sayBack, pose: 'point' }, { text: c.done, pose: 'smile' }] },
-    { act: () => put({ done: true }) }
+    { act: () => { setFoc(false); put({ done: true }); } }
   ] });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
   const ph = pick(s.phGame);
   const attrs = [TYPE_ATTR('text')].concat(st8 >= 1 ? [{ n: 'placeholder', v: ph }] : []);
-  const blocks = [{ t: 'p', parts: pick(s.capGame), k: 'c' }, { t: 'fld', f: { type: 'text', ph: st8 >= 1 ? ph : '', val: st8 === 2 ? 'Futbol' : '', focus: st8 >= 2 }, k: 'f', hl: true }];
+  const blocks = [{ t: 'p', parts: pick(s.capGame), k: 'c' }, { t: 'fld', f: { type: 'text', ph: st8 >= 1 ? ph : '', val: st8 >= 2 ? txt : '', focus: foc }, k: 'f', hl: true }];
   const askText = solved || demo.done ? c.askDone : st8 >= 3 ? c.askBack : st8 >= 2 ? c.askTyped : c.askPh;
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Sheet cls="z6-sheet">
         <KzAsk text={askText} />
-        <div className="kz-scene z6-s5">
+        <div ref={root} className="kz-scene z6-s5 ms-root">
           <div className="kz-col"><KzCode lines={[textLine('c', 'p', pick(s.capGame), { cls: 'z6-ctx' }), codeLine('i', inputCode(attrs), { cls: st8 === 1 ? 'is-new' : 'is-read' })]} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(s.club)} url="klub.html" short><PageDoc blocks={blocks} /></Br></div>
+          {M.el}
         </div>
       </Sheet>
     </StageB>
@@ -694,15 +709,20 @@ function S11({ p }) {
   const [rec, put] = useRec('s11');
   const solved = !!(rec && rec.done);
   const [st11, setSt11] = useState(solved ? 4 : 0);   // 0 p+input; 1 нажали подпись — ничего; 2 label; 3 нажали подпись — поле выбрано; 4 form
+  // Курсор мыши (tools/mysh) щёлкает по подписи: без label — ничего; с label — в поле встаёт курсор ввода.
+  const root = useRef(null);
+  const M = useMysh(root);
   const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
-    { act: () => { sfx('tap', true); setSt11(1); } },
+    { act: () => M.go('.z6-blk.z6-p', 0.25, 0.55) }, { wait: M.slow },
+    { act: () => { M.click(); setSt11(1); } }, { wait: 400 },
     { say: [{ text: c.sayNoLabel, pose: 'think' }] },
-    { act: () => { sfx('pop', true); setSt11(2); } },
+    { act: () => { M.hide(); sfx('pop', true); setSt11(2); } },
     { say: [{ text: c.sayLabel, pose: 'explain' }] },
-    { act: () => { sfx('ok', true); setSt11(3); } },
+    { act: () => M.go('.z6-cap', 0.4, 0.55) }, { wait: M.slow },
+    { act: () => { M.click(); sfx('ok', true); setSt11(3); } }, { wait: 300 },
     { say: [{ text: c.sayFocus, pose: 'smile' }] },
-    { act: () => { sfx('pop', true); setSt11(4); } },
+    { act: () => { M.hide(); sfx('pop', true); setSt11(4); } },
     { say: [{ text: c.sayForm, pose: 'point' }, { text: c.done, pose: 'smile' }] },
     { act: () => put({ done: true }) }
   ] });
@@ -723,9 +743,10 @@ function S11({ p }) {
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Sheet cls="z6-sheet">
         <KzAsk text={askText} />
-        <div className="kz-scene z6-s5">
+        <div ref={root} className="kz-scene z6-s5 ms-root">
           <div className="kz-col"><KzCode lines={lines} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(s.club)} url="klub.html" short cls={inForm ? 'is-form' : ''}><PageDoc blocks={blocks} /></Br></div>
+          {M.el}
         </div>
       </Sheet>
     </StageB>

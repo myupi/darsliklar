@@ -9293,6 +9293,75 @@ function useKzTransition(screenKey) {
 }
 
 // =============================================================================
+// КУРСОР МЫШИ ДЛЯ ПОКАЗОВ (общий для уроков HTML 1, 6, 7, 8; заказчик, 07.11.2026: «давай это сделаем как ты предложил»).
+// По образцу курсора уроков 4–5 (Z4Cursor): стрелка сама едет к вещи в окне браузера и делает то, что человек делает
+// мышкой (наводит, щёлкает, тянет). Кнопки урока («Дальше», «Проверить», ответы) курсор никогда не нажимает.
+//   const M = useMysh(root);           root — ref на .kz-scene (ей нужен класс ms-root: position: relative)
+//   M.go('.css', fx, fy, { hand })     ехать к вещи: точка fx, fy — доля ширины и высоты (по умолчанию середина)
+//   M.click()                          щелчок: кольцо и звук касания
+//   M.hide()                           убрать курсор
+//   M.hold(true|false)                 зажать / отпустить кнопку мыши (тянуть уголок)
+//   M.follow('.css', fx, fy, мс)       ехать вместе с вещью, пока она меняется (тянем уголок — поле растёт)
+//   M.card({ t, sub }) / M.card(null)  карточка под курсором, как у вкладки Chrome при наведении: название и адрес
+//   M.slow                             сколько ждать полёта ({ wait: M.slow } в шагах useKzDemo)
+//   {M.el}                             сам курсор — последним ребёнком root
+// =============================================================================
+function useMysh(root) {
+  const [cur, setCur] = useState(null);
+  const [press, setPress] = useState(false);
+  const [down, setDown] = useState(false);
+  const [card, setCard] = useState(null);
+  const rm = reduceMotion();
+  const slow = rm ? 200 : 800;
+  const pt = (q, fx, fy) => {
+    const r = root.current; const el = r && r.querySelector(q);
+    if (!r || !el) return null;
+    const a = r.getBoundingClientRect(), b = el.getBoundingClientRect();
+    return { x: Math.round(b.left - a.left + b.width * (fx == null ? 0.5 : fx)), y: Math.round(b.top - a.top + b.height * (fy == null ? 0.5 : fy)) };
+  };
+  const go = (q, fx, fy, o) => {
+    const t = pt(q, fx, fy);
+    if (!t) return;
+    const hand = !!(o && o.hand);
+    setCur((old) => {
+      if (old || rm) return { x: t.x, y: t.y, hand };
+      // Первое появление — чуть в стороне, затем полёт к вещи (а не возникновение прямо на ней).
+      setTimeout(() => setCur((o2) => (o2 ? { x: t.x, y: t.y, hand } : o2)), 40);
+      return { x: t.x + 46, y: t.y + 34, hand: false, fresh: true };
+    });
+  };
+  const click = () => { setPress(true); sfx('tap', true); setTimeout(() => setPress(false), 280); };
+  const hide = () => { setCur(null); setDown(false); setCard(null); };
+  const hold = (v) => setDown(!!v);
+  const follow = (q, fx, fy, ms) => {
+    const t0 = performance.now();
+    const tick = () => {
+      const t = pt(q, fx, fy);
+      const live = performance.now() - t0 < ms;
+      if (t) setCur((o) => (o ? { x: t.x, y: t.y, hand: o.hand, follow: live } : o));
+      if (live) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  };
+  const W = root.current ? root.current.clientWidth : 400;
+  const cardEl = cur && card ? (
+    <span className="ms-card" style={{ left: Math.max(4, Math.min(cur.x - 14, W - 214)) + 'px', top: (cur.y + 24) + 'px' }} aria-hidden="true">
+      <b>{card.t}</b>{card.sub ? <i>{card.sub}</i> : null}
+    </span>
+  ) : null;
+  const el = cur ? (
+    <span className={'ms-cur' + (cur.hand ? ' is-hand' : '') + (press ? ' is-press' : '') + (down ? ' is-down' : '') + (cur.follow ? ' is-follow' : '')} style={{ left: cur.x + 'px', top: cur.y + 'px' }} aria-hidden="true">
+      {cur.hand
+        ? <svg viewBox="0 0 24 24" width="24" height="24"><path d="M9 2.5c-.9 0-1.6.7-1.6 1.6v8.6l-1.3-1.4c-.6-.7-1.7-.7-2.3-.1-.6.6-.6 1.5-.1 2.1l4.2 5.6c.8 1.1 2.1 1.7 3.4 1.7h3.6c2.2 0 4-1.8 4-4v-5.1c0-.9-.7-1.6-1.6-1.6-.4 0-.7.1-1 .4v-.3c0-.9-.7-1.6-1.6-1.6-.5 0-.9.2-1.2.5-.2-.7-.8-1.2-1.5-1.2-.4 0-.8.1-1.1.4V4.1c0-.9-.7-1.6-1.6-1.6z" fill="#fff" stroke="#111" strokeWidth="1.3" strokeLinejoin="round" /></svg>
+        : <svg viewBox="0 0 24 24" width="24" height="24"><path d="M5 2.5 L5 19.5 L9.4 15.4 L12.3 21.6 L15.2 20.3 L12.4 14.3 L18.4 14.1 Z" fill="#fff" stroke="#111" strokeWidth="1.5" strokeLinejoin="round" /></svg>}
+      <i className="ms-ring" />
+    </span>
+  ) : null;
+  const both = cur ? <>{cardEl}{el}</> : null;
+  return { go, click, hide, hold, follow, card: setCard, slow, el: both, on: !!cur };
+}
+
+// =============================================================================
 // ЭКРАНЫ УРОКА 7 «Формы, часть 2: выбор и отправка» (облик «Редактор»). Сделаны с нуля; основа кода — экраны уроков 2–6.
 // Типы заданий — по разделу 3а навыка: s3 вписать — s4 строка кода ↔ пункт списка; s6 собрать код — s7 найти пару;
 // s9 вписать — s10 до и после; s12, s13 живое превью — s14 починить; q1 найти ошибку — q2 верно или нет.
@@ -9325,8 +9394,8 @@ function Sel({ opts, val, open, tap, hiItem, offItems, led, hl, focus }) {
   );
 }
 // БОЛЬШОЕ ПОЛЕ (textarea): текст переносится; ph — серая подсказка; в углу — уголок для растягивания.
-const TArea = ({ val, ph, focus, hl, mono }) => (
-  <span className={'z7-ta' + (focus ? ' is-focus' : '') + (hl ? ' is-hl' : '') + (mono ? ' is-mono' : '')}>
+const TArea = ({ val, ph, focus, hl, mono, grow }) => (
+  <span className={'z7-ta' + (focus ? ' is-focus' : '') + (hl ? ' is-hl' : '') + (mono ? ' is-mono' : '') + (grow ? ' is-grow' : '')}>
     {val ? <span className="z7-ta-v">{val}</span> : ph ? <span className="z7-ta-ph">{ph}</span> : <span className="z7-ta-v">{' '}</span>}
     <i className="z7-grip" aria-hidden="true" />
   </span>
@@ -9349,22 +9418,26 @@ function useFitPage(dep) {
     };
     fit();
     if (typeof ResizeObserver === 'undefined') return undefined;
-    const ro = new ResizeObserver(() => fit());
+    // Поле тянут за уголок — страница ужимается и тогда, когда растёт само поле. Ужатие — в следующем кадре,
+    // иначе ResizeObserver зацикливается (fit сам меняет размер страницы).
+    let raf = 0;
+    const ro = new ResizeObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(fit); });
     ro.observe(page);
-    return () => ro.disconnect();
+    ro.observe(el);
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
   }, [dep]); // eslint-disable-line react-hooks/exhaustive-deps
   return ref;
 }
 // Страница: блоки { t: 'h1' | 'p' | 'sel' | 'ta' | 'btn' | 'in' | 'none', … , hl, k, cls }.
 function PageDoc({ blocks, cls }) {
-  const ref = useFitPage(JSON.stringify(blocks.map((b) => [b.t, b.k, b.cls, b.hl, b.parts, b.opts, b.val, b.open, b.ph, b.text, b.pressed, b.focus, b.hiItem, b.offItems])));
+  const ref = useFitPage(JSON.stringify(blocks.map((b) => [b.t, b.k, b.cls, b.hl, b.parts, b.opts, b.val, b.open, b.ph, b.text, b.pressed, b.focus, b.hiItem, b.offItems, b.grow])));
   return (
     <div ref={ref} className={'z7-doc' + (cls ? ' ' + cls : '')}>
       {blocks.map((bk, i) => {
         const c = 'z7-blk ' + (/^(sel|ta|btn|in)$/.test(bk.t) ? 'z7-b-' : 'z7-') + bk.t + (bk.hl && (bk.t === 'h1' || bk.t === 'p' || bk.t === 'none') ? ' is-hl' : '') + (bk.cls ? ' ' + bk.cls : '');
         const key = bk.k || i;
         if (bk.t === 'sel') return <div key={key} className={c}><Sel opts={bk.opts} val={bk.val} open={bk.open} tap={bk.tap} hiItem={bk.hiItem} offItems={bk.offItems} led={bk.led} hl={bk.hl} focus={bk.focus} /></div>;
-        if (bk.t === 'ta') return <div key={key} className={c}><TArea val={bk.val} ph={bk.ph} focus={bk.focus} hl={bk.hl} mono={bk.mono} /></div>;
+        if (bk.t === 'ta') return <div key={key} className={c}><TArea val={bk.val} ph={bk.ph} focus={bk.focus} hl={bk.hl} mono={bk.mono} grow={bk.grow} /></div>;
         if (bk.t === 'btn') return <div key={key} className={c}><Btn text={bk.text} pressed={bk.pressed} hl={bk.hl} /></div>;
         if (bk.t === 'in') return <div key={key} className={c}><In1 val={bk.val} hl={bk.hl} /></div>;
         if (bk.t === 'none') return <div key={key} className={c}><span className="z7-none" /></div>;
@@ -9442,15 +9515,22 @@ function S2({ p }) {
   const [rec, put] = useRec('s2');
   const solved = !!(rec && rec.done);
   const [n, setN] = useState(solved ? 4 : 0);   // 1 пустой select; 2 пункты; 3 раскрыт; 4 выбран второй
+  // Курсор мыши (tools/mysh): щёлкает по списку — он раскрывается; наводится на второй пункт — щелчок, пункт выбран.
+  const root = useRef(null);
+  const M = useMysh(root);
+  const [hi, setHi] = useState(null);
   const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
     { act: () => { sfx('pop', true); setN(1); } },
     { say: [{ text: c.saySel, pose: 'point' }] },
     { act: () => { sfx('pop', true); setN(2); } },
     { say: [{ text: c.sayOpt, pose: 'explain' }] },
-    { act: () => { sfx('tap', true); setN(3); } },
-    { wait: reduceMotion() ? 200 : 900 },
-    { act: () => { sfx('ok', true); setN(4); } },
+    { act: () => M.go('.z7-sel', 0.55, 0.55) }, { wait: M.slow },
+    { act: () => { M.click(); setN(3); } }, { wait: reduceMotion() ? 150 : 500 },
+    { act: () => M.go('.z7-pop .z7-opt:nth-child(2)', 0.35, 0.55) }, { wait: M.slow },
+    { act: () => setHi(1) }, { wait: reduceMotion() ? 100 : 350 },
+    { act: () => { M.click(); sfx('ok', true); setN(4); setHi(null); } }, { wait: 300 },
+    { act: () => M.hide() },
     { say: [{ text: c.sayPick, pose: 'smile' }, { text: c.done, pose: 'smile' }] },
     { act: () => put({ done: true }) }
   ] });
@@ -9460,15 +9540,16 @@ function S2({ p }) {
     .concat(n >= 1 ? (n >= 2 ? selLines(games, '', { cls: n === 2 ? 'is-new' : '' }) : [codeLine('se', [T_('select'), T_('select', true)], { cls: 'is-new' })]) : []);
   lines.forEach((l) => { if (l.parts && l.k.charAt(0) === 'o') l.cls = n === 2 ? 'is-new' : speaker.text === c.sayOpt ? 'is-read' : ''; });
   const blocks = [{ t: 'p', parts: pick(s.capGame), k: 'c' }]
-    .concat(n >= 1 ? [{ t: 'sel', opts: n >= 2 ? games : [], val: n >= 4 ? games[1] : null, open: n === 3, hiItem: n === 3 ? 1 : null, hl: true, k: 's', cls: n === 1 ? 'z7-a-in' : '' }] : []);
+    .concat(n >= 1 ? [{ t: 'sel', opts: n >= 2 ? games : [], val: n >= 4 ? games[1] : null, open: n === 3, hiItem: n === 3 ? hi : null, hl: true, k: 's', cls: n === 1 ? 'z7-a-in' : '' }] : []);
   const askText = solved || demo.done ? c.askDone : n >= 3 ? c.askPick : n >= 2 ? c.askOpt : c.askSel;
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Sheet cls="z7-sheet">
         <KzAsk text={askText} />
-        <div className="kz-scene z7-s5">
+        <div ref={root} className="kz-scene z7-s5 ms-root">
           <div className="kz-col"><KzCode lines={lines} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(s.club)} url="klub.html" short><PageDoc blocks={blocks} /></Br></div>
+          {M.el}
         </div>
       </Sheet>
     </StageB>
@@ -9614,11 +9695,20 @@ function S5({ p }) {
   const [rec, put] = useRec('s5');
   const solved = !!(rec && rec.done);
   const [st5, setSt5] = useState(solved ? 2 : 0);   // 0 input; 1 textarea; 2 текст между тегами
+  // Курсор мыши (tools/mysh) берёт уголок textarea и тянет вниз — поле растёт.
+  const root = useRef(null);
+  const M = useMysh(root);
+  const [grow, setGrow] = useState(solved);
   const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
     { say: [{ text: c.sayInput, pose: 'think' }] },
     { act: () => { sfx('pop', true); setSt5(1); } },
     { say: [{ text: c.sayTa, pose: 'wonder' }] },
+    { act: () => M.go('.z7-grip', 0.5, 0.5) }, { wait: M.slow },
+    { act: () => { M.hold(true); sfx('tap', true); } }, { wait: 250 },
+    { act: () => { setGrow(true); M.follow('.z7-grip', 0.5, 0.5, 1200); } }, { wait: reduceMotion() ? 150 : 1250 },
+    { act: () => M.hold(false) }, { wait: 300 },
+    { act: () => M.hide() },
     { act: () => { sfx('pop', true); setSt5(2); } },
     { say: [{ text: c.sayClose, pose: 'point' }, { text: c.done, pose: 'smile' }] },
     { act: () => put({ done: true }) }
@@ -9629,15 +9719,16 @@ function S5({ p }) {
   const line = st5 === 0 ? codeLine('i', [<span key="o" className="kz-tag" translate="no"><span className="kz-tk-b">{'<'}</span><span className="kz-tk-n">input</span></span>, attrSpan('type', 'text', 't', true)], { cls: 'is-read' })
     : taLine('ta' + st5, null, st5 === 2 ? hello : '', { cls: 'is-new' });
   const blocks = [{ t: 'p', parts: pick(s.capAbout), k: 'c' },
-    st5 === 0 ? { t: 'in', val: about, k: 'i', hl: true } : { t: 'ta', val: st5 === 2 ? hello : about, k: 'ta' + st5, hl: true, cls: 'z7-a-in' }];
+    st5 === 0 ? { t: 'in', val: about, k: 'i', hl: true } : { t: 'ta', val: st5 === 2 ? hello : about, k: 'ta' + st5, hl: true, cls: 'z7-a-in', grow }];
   const askText = solved || demo.done ? c.askDone : c.asks[st5];
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Sheet cls="z7-sheet">
         <KzAsk text={askText} />
-        <div className="kz-scene z7-s5">
+        <div ref={root} className="kz-scene z7-s5 ms-root">
           <div className="kz-col"><KzCode lines={[textLine('c', 'p', pick(s.capAbout), { cls: 'z7-ctx' }), line]} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(s.club)} url="klub.html" short><PageDoc blocks={blocks} /></Br></div>
+          {M.el}
         </div>
       </Sheet>
     </StageB>
@@ -9823,13 +9914,17 @@ function S8({ p }) {
   const [rec, put] = useRec('s8');
   const solved = !!(rec && rec.done);
   const [st8, setSt8] = useState(solved ? 3 : 0);   // 0 без кнопки; 1 кнопка; 2 нажата; 3 страница заново
+  // Курсор мыши (tools/mysh) нажимает кнопку анкеты — анкета уходит.
+  const root = useRef(null);
+  const M = useMysh(root);
   const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'curious' }]);
   const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
     { act: () => { sfx('pop', true); setSt8(1); } },
     { say: [{ text: c.sayBtn, pose: 'explain' }] },
-    { act: () => { sfx('tap', true); setSt8(2); } },
+    { act: () => M.go('.z7-btn', 0.6, 0.6) }, { wait: M.slow },
+    { act: () => { M.click(); setSt8(2); } },
     { wait: reduceMotion() ? 150 : 450 },
-    { act: () => { sfx('ok', true); setSt8(3); } },
+    { act: () => { M.hide(); sfx('ok', true); setSt8(3); } },
     { say: [{ text: c.saySent, pose: 'wonder' }, { text: c.done, pose: 'smile' }] },
     { act: () => put({ done: true }) }
   ] });
@@ -9846,9 +9941,10 @@ function S8({ p }) {
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
       <Sheet cls="z7-sheet">
         <KzAsk text={askText} />
-        <div className="kz-scene z7-s5">
+        <div ref={root} className="kz-scene z7-s5 ms-root">
           <div className="kz-col"><KzCode lines={lines} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(s.club)} url="klub.html" short cls={st8 === 3 && !solved ? 'z7-reload' : ''}><PageDoc blocks={blocks} key={empty ? 'r' : 'f'} /></Br></div>
+          {M.el}
         </div>
       </Sheet>
     </StageB>
@@ -13557,6 +13653,29 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 
 /* Перетаскивание строки (урок 1, s13): строка, куда встанет полоска, подсвечена, пока её несут. */
 .r28 .kz-line.is-drop { background: rgba(250, 79, 40, .18) !important; box-shadow: inset 3px 0 0 var(--r-pri); }
+/* Курсор мыши для показов (tools/mysh): как в уроках 4–5 — стрелка с тенью, кольцо щелчка; над ссылкой — рука. */
+.r28 .kz-scene.ms-root { position: relative; }
+.r28 .ms-cur { position: absolute; z-index: 30; width: 24px; height: 24px; margin: -3px 0 0 -5px; pointer-events: none;
+  transition: left .7s cubic-bezier(.4, 0, .2, 1), top .7s cubic-bezier(.4, 0, .2, 1); filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .25)); }
+.r28 .ms-cur { animation: msIn .25s ease-out both; }
+@keyframes msIn { from { opacity: 0; } to { opacity: 1; } }
+.r28 .ms-cur.is-hand { margin: -2.5px 0 0 -9px; }
+.r28 .ms-cur svg { display: block; }
+.r28 .ms-ring { position: absolute; left: -7px; top: -6px; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--r-pri); opacity: 0; transform: scale(.4); }
+.r28 .ms-cur.is-hand .ms-ring { left: -3px; top: -6px; }
+.r28 .ms-cur.is-follow { transition: none; }
+.r28 .ms-cur.is-down svg, .r28 .ms-cur.is-press svg { transform: scale(.88); transform-origin: 5px 3px; }
+.r28 .ms-cur.is-press .ms-ring { animation: msRing .3s ease-out; }
+@keyframes msRing { from { opacity: .9; transform: scale(.4); } to { opacity: 0; transform: scale(1.4); } }
+@media (prefers-reduced-motion: reduce) { .r28 .ms-cur { transition: none; animation: none; } }
+/* Карточка вкладки при наведении (как в Chrome): белая, с тенью; название жирно, адрес серым. */
+.r28 .ms-card { position: absolute; z-index: 29; display: flex; flex-direction: column; gap: 2px; width: max-content; max-width: 210px; padding: 8px 12px;
+  border-radius: 8px; background: #fff; box-shadow: 0 6px 20px rgba(15, 23, 42, .2), 0 0 0 1px rgba(15, 23, 42, .08); pointer-events: none;
+  font: 600 13px/1.3 var(--r-font, Inter, sans-serif); color: #202124; animation: msCard .18s ease-out both; }
+.r28 .ms-card b { font-weight: 600; overflow-wrap: anywhere; }
+.r28 .ms-card i { font: 400 12px/1.3 var(--r-font, Inter, sans-serif); color: #5F6368; font-style: normal; }
+@keyframes msCard { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .r28 .ms-card { animation: none; } }
 /* ── УРОК 7 «Формы, часть 2» — свои части в облике «Редактор» (классы z7-*) ───────────────────
    Весь CSS урока — здесь (основа — CSS уроков 2–5), поверх r28.css эталона. Бумаги нет нигде.
    Список, большое поле и кнопка в браузере — как рисует Chrome по умолчанию. */
@@ -13869,4 +13988,8 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 @media (min-width: 760px) and (orientation: portrait) { .r28 .kz-sheet .kz-scene.z7-s1 > .z7-s1-man { display: none; } }
 /* Клавиатура телефона открыта: окно — полоска; правила невысокого телефона выше (с !important) здесь не действуют. */
 .is-kbd .r28 .kz-sheet .kz-scene-col .kz-br.z7-br.is-short, .is-kbd .r28 .kz-sheet .kz-scene.z7-s5 .kz-br.z7-br { aspect-ratio: auto !important; }
+/* Показ курсором (tools/mysh): textarea, которую тянут за уголок, растёт плавно. */
+.r28 .z7-ta { transition: min-height .75s cubic-bezier(.4, 0, .2, 1); }
+.r28 .z7-ta.is-grow { min-height: 7.4em; }
+@media (prefers-reduced-motion: reduce) { .r28 .z7-ta { transition: none; } }
 `;

@@ -43,11 +43,23 @@ for (const [k, from, to] of [
   ['head', "c0: '#DEE1E6', c: '#E9B48C'", "c0: '#DEE1E6', c: '#F1C29E'"],
   ['name', "c0: '#FFFFFF', c: '#F7A3CB'", "c0: '#FFFFFF', c: '#FFFFFF'"]
 ]) scr = must(scr, "{ k: '" + k + "', " + from, "{ k: '" + k + "', " + to, 'morph ' + k);
+// Экран 6 «Голова страницы»: курсор мыши показа (tools/mysh; заказчик, 07.11.2026) — когда название перелетело
+// на вкладку, стрелка наводится на вкладку, и всплывает карточка с названием и адресом, как в Chrome.
+// Правка только урока 1: общие экраны tools/bdizayn16 (и тестовые уроки на них) не меняются.
+scr = must(scr, "  const sceneRef = useRef(null);\n  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]\n    : [{ text: c.say, pose: 'explain' }, { text: c.sayInfo, pose: 'explain' }]);",
+  "  const sceneRef = useRef(null);\n  const M = useMysh(sceneRef);\n  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }]\n    : [{ text: c.say, pose: 'explain' }, { text: c.sayInfo, pose: 'explain' }]);", 's6 mysh');
+scr = must(scr, "    { act: () => { setFlying(false); setStep(2); setStamp((v) => v + 1); sfx('ok', true); } },\n    { say: [{ text: c.flew, pose: 'wonder' }, { text: c.inHead, pose: 'point' }, { text: c.done, pose: 'smile' }] },",
+  "    { act: () => { setFlying(false); setStep(2); setStamp((v) => v + 1); sfx('ok', true); } },\n    { act: () => M.go('.kz-br-tab', 0.4, 0.62) }, { wait: M.slow },\n    { act: () => M.card({ t: pick(UI.mySite), sub: 'index.html' }) },\n    { say: [{ text: c.flew, pose: 'wonder' }] },\n    { act: () => M.hide() },\n    { say: [{ text: c.inHead, pose: 'point' }, { text: c.done, pose: 'smile' }] },", 's6 steps');
+scr = must(scr, "<div ref={sceneRef} className={'kz-scene kz-s6' + (flying ? ' is-flying' : '')}", "<div ref={sceneRef} className={'kz-scene kz-s6 ms-root' + (flying ? ' is-flying' : '')}", 's6 root');
+scr = must(scr, "parts: [T_('head', true)] }\n            ]} />\n          </div>\n        </div>\n      </Sheet>",
+  "parts: [T_('head', true)] }\n            ]} />\n          </div>\n          {M.el}\n        </div>\n      </Sheet>", 's6 cursor');
 writeFileSync(join(gen, 'kollazh-screens.jsx'), scr);
 
 // META — урока 1 курса (lessonId html-01-struktura-dokumenta) из исходника, без замены.
 let src = readFileSync(join(gen, 'p17.src.jsx'), 'utf8');
 src = must(src, '/*@FILE:p17.css@*/', '/*@FILE:p17.css@*/\n/*@FILE:r28.css@*/', 'css');
+src = must(src, '/*@FILE:kollazh-screens.jsx@*/', '/*@FILE:../../mysh/mysh.jsx@*/\n\n/*@FILE:kollazh-screens.jsx@*/', 'mysh jsx');
+src = must(src, '/*@FILE:r28.css@*/', '/*@FILE:r28.css@*/\n/*@FILE:../../mysh/mysh.css@*/', 'mysh css');
 src = src.replace(/^\/\/ СГЕНЕРИРОВАНО[^\n]*\n/, '// СГЕНЕРИРОВАНО tools/redaktor28/build.mjs (урок 1 курса HTML, облик «Редактор») — не править руками.\n');
 const srcOut = join(gen, 'r28.src.jsx');
 writeFileSync(srcOut, src);
