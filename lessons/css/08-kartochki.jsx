@@ -14158,4 +14158,11 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 /* Телефон: пока открыта панель подсказки или ошибки (она выше обычного низа), окно браузера ниже — строка задания и кнопки видны. */
 @media (max-width: 759px) and (min-height: 700px) { .b-stage.has-sheet .r28 .c8-sheet .kz-br.c8-br.is-short, .b-stage.has-sheet.r28 .c8-sheet .kz-br.c8-br.is-short, .r28 .b-stage.has-sheet .c8-sheet .kz-br.c8-br.is-short { --brh: 21dvh !important; } }
 @media (max-width: 759px) and (max-height: 699px) { .b-stage.has-sheet .r28 .c8-sheet .kz-br.c8-br.is-short, .b-stage.has-sheet.r28 .c8-sheet .kz-br.c8-br.is-short, .r28 .b-stage.has-sheet .c8-sheet .kz-br.c8-br.is-short { --brh: 16dvh !important; } }
+/* Маленький телефон: вывод — код мельче, роли и «Следующий урок» плотнее (длинное название урока 9 переносится). */
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .kz-s15 .kz-code.kz-code-sm { font-size: 12px; }
+  .r28 .kz-s15 .kz-code.kz-code-sm .kz-line { min-height: 0; padding-top: 1px; padding-bottom: 1px; }
+  .r28 .kz-s15 .kz-roles > * { padding-top: 4px; padding-bottom: 4px; min-height: 0; }
+  .r28 .kz-s15 .kz-next { font-size: 13px; padding-top: 6px; padding-bottom: 6px; }
+}
 `;

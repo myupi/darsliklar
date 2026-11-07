@@ -14206,4 +14206,11 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .r28 .c10-arrbtn b { font-size: 22px; line-height: 1; }
 .r28 .kz-pick.c10-three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .r28 .kz-pick.c10-three .kz-btn { font-family: var(--r-mono, ui-monospace, monospace); font-size: 13px; padding-inline: 4px; }
+/* Маленький телефон: вывод — код мельче, роли и «Следующий урок» плотнее (длинное название следующего урока переносится). */
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .kz-s15 .kz-code.kz-code-sm { font-size: 12px; }
+  .r28 .kz-s15 .kz-code.kz-code-sm .kz-line { min-height: 0; padding-top: 1px; padding-bottom: 1px; }
+  .r28 .kz-s15 .kz-roles > * { padding-top: 4px; padding-bottom: 4px; min-height: 0; }
+  .r28 .kz-s15 .kz-next { font-size: 13px; padding-top: 6px; padding-bottom: 6px; }
+}
 `;
