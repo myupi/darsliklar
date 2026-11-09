@@ -13213,6 +13213,11 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   font: 600 14px/1 var(--cc-font); text-transform: none; letter-spacing: 0; gap: 8px; }
 .r28 .cc-count { display: inline; flex: none; font: 600 16px/1 var(--cc-font); color: var(--cc-ink); letter-spacing: 0; }
 .r28 .cc-count i { font-style: normal; color: #A9A6B8; }
+/* Ноутбук и планшет: номер слайда — ровно по середине шапки, а не у кнопок справа (заказчик, 09.11.2026). */
+@media (min-width: 760px) {
+  .r28 .cc-row2 { position: relative; }
+  .r28 .cc-row2 > .cc-count { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+}
 .r28 .cc-row2 .b-side { display: flex; flex: none; align-items: center; gap: 2px; }
 .r28.b-stage .cc-row2 .ctl-btn { width: 38px; height: 38px; border: none; border-radius: 12px; background: transparent; box-shadow: none; color: var(--cc-ink2); }
 .r28.b-stage .cc-row2 .ctl-btn:hover { background: var(--cc-surface); }
