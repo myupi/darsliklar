@@ -114,6 +114,11 @@ const C = {
   },
   s2: {
     eyebrow: L3("Ichki bo'shliq", 'Внутренний отступ', 'Inner space'),
+    help: [
+      L3('Yashil qismga qarang: u matn va qutining cheti orasida. Son kattalashsa, yashil qism ham kattalashadi.', 'Посмотри на зелёное: оно между текстом и краем коробки. Число растёт — растёт и зелёное.', 'Look at the green part: it’s between the text and the edge of the box. A bigger number makes the green bigger.'),
+      L3("padding ya'ni ichki chekinish degani: matn atrofidagi bo'sh joy, qutining ichida. Fon bu joyni ham bo'yaydi.", 'padding — это внутренний отступ: место вокруг текста внутри коробки. Фон закрашивает и его.', 'padding is the inner spacing: room around the text inside the box. The background covers it too.'),
+      L3("Telefonni g'ilofga solsangiz, telefon va g'ilof cheti orasida joy qoladi. padding ham shunday: matn va cheti orasidagi joy.", 'Когда кладёшь телефон в чехол, между телефоном и краем чехла есть место. padding — такое же место между текстом и краем.', 'When you put a phone in a case, there’s room between the phone and the case’s edge. padding is that room between the text and the edge.')
+    ],
     say: L3("Har bir element quti kabi: ichida matn, atrofida esa bo'shliqlar. Birinchisi padding, ya'ni ichki bo'shliq degani: matn bilan qutining cheti orasidagi joy. Inspektorda u yashil rangda ko'rinadi. Hozir u nolga teng.",
       'Каждый элемент — как коробка: внутри текст, а вокруг — отступы. Первый из них — padding, то есть внутренний отступ: место между текстом и краем коробки. В Инспекторе он зелёный. Сейчас он равен нулю.',
       'Every element is like a box: text inside, and space around it. The first kind is padding, meaning the inner space: the room between the text and the edge of the box. In the Inspector it’s green. Right now it’s zero.'),
@@ -177,6 +182,11 @@ const C = {
   },
   s5: {
     eyebrow: L3("Chegara", 'Рамка', 'Border'),
+    help: [
+      L3("Kodda border qiymatiga qarang: unda uchta qism bor. Har birini o'zgartirsak, ramka qanday o'zgarishini kuzating.", 'Посмотри на значение border в коде: в нём три части. Следи, как меняется рамка, когда меняется каждая.', 'Look at the border value in the code: it has three parts. Watch how the frame changes when each part changes.'),
+      L3("border uch qismdan iborat: qalinligi, chiziq turi va rangi. Chiziq turi solid, dashed yoki dotted bo'ladi. Turi yozilmasa, ramka chizilmaydi.", 'border состоит из трёх частей: толщина, вид линии и цвет. Вид линии — solid, dashed или dotted. Без вида линии рамки нет.', 'border has three parts: thickness, line style and color. The line style is solid, dashed or dotted. Without a line style there’s no frame.'),
+      L3('Rasm uchun ramka tanlayotganda uch narsani aytasiz: qanchalik qalin, qanday naqsh va qaysi rang. CSS da ham xuddi shu uchta narsa.', 'Когда выбираешь рамку для картины, ты говоришь три вещи: какой толщины, с каким узором и какого цвета. В CSS — те же три.', 'When you pick a frame for a picture, you say three things: how thick, what pattern and what color. CSS needs the same three.')
+    ],
     say: L3("Endi chegara, ya'ni border. Uning qiymati uch qismdan iborat: qalinligi, chiziq turi va rangi. Ular bo'sh joy bilan ketma-ket yoziladi.",
       'Теперь рамка, то есть border. Её значение из трёх частей: толщина, вид линии и цвет. Они пишутся подряд через пробел.',
       'Now the frame, that is border. Its value has three parts: thickness, line type and color. They’re written one after another with spaces.'),
@@ -212,7 +222,8 @@ const C = {
       solid: L3("Bu yaxlit chiziq. Bizga esa chiziqchalar kerak.", 'Это сплошная линия. А нужны чёрточки.', 'That’s a solid line. We need dashes.'),
       dotted: L3("Bu nuqtalar. Bizga esa chiziqchalar kerak.", 'Это точки. А нужны чёрточки.', 'Those are dots. We need dashes.'),
       bad: L3("Brauzer bu so'zni tanimadi va chegarani chizmadi. So'zni tekshiring.", 'Браузер не узнал это слово и не нарисовал рамку. Проверь слово.', 'The browser didn’t recognize that word and didn’t draw the frame. Check the word.'),
-      other: L3("Bu boshqa tur. Bizga chiziqchalar kerak.", 'Это другой вид. Нужны чёрточки.', 'That’s a different type. We need dashes.')
+      other: L3("Bu boshqa tur. Bizga chiziqchalar kerak.", 'Это другой вид. Нужны чёрточки.', 'That’s a different type. We need dashes.'),
+      extra: L3("Qalinlik 3px va orange rangi kodda allaqachon bor. Faqat chiziq turini yozing: bitta so'z.", "Толщина 3px и цвет orange уже есть в коде. Впиши только вид линии — одно слово.", "The 3px thickness and the orange color are already in the code. Type only the line type: one word.")
     },
     hints: [
       L3("Chiziq turlari: solid, dashed va dotted. Qaysi biri chiziqchalar?", 'Виды линии: solid, dashed и dotted. Какой из них — чёрточки?', 'Line types: solid, dashed and dotted. Which one is dashes?'),
@@ -243,6 +254,11 @@ const C = {
   },
   s8: {
     eyebrow: L3("Tashqi bo'shliq", 'Внешний отступ', 'Outer space'),
+    help: [
+      L3("To'q sariq qismga qarang: u qutining tashqarisida, ramkadan keyin. Son kattalashsa, qo'shni qutilar uzoqlashadi.", 'Посмотри на оранжевое: оно снаружи коробки, за рамкой. Число растёт — соседние коробки отодвигаются.', 'Look at the orange part: it’s outside the box, past the frame. A bigger number pushes the neighbor boxes away.'),
+      L3("margin ya'ni tashqi chekinish degani: qutidan tashqaridagi bo'sh joy. U qo'shnilarni itaradi, fon esa unga chiqmaydi.", 'margin — это внешний отступ: место снаружи коробки. Он отодвигает соседей, а фон на него не заходит.', 'margin is the outer spacing: room outside the box. It pushes the neighbors away, and the background doesn’t cover it.'),
+      L3("Partalar orasidagi yo'lakni eslang: partalar bir-biriga tegmaydi. margin ham qutilar orasida shunday yo'lak qiladi.", 'Вспомни проход между партами: парты не касаются друг друга. margin делает такой же проход между коробками.', 'Think of the aisle between school desks: the desks don’t touch. margin makes that kind of aisle between boxes.')
+    ],
     say: L3("Endi uchinchisi: margin, ya'ni tashqi bo'shliq degani. U qutining tashqarisida, chegaradan keyin turadi va qo'shnilarni nariga suradi. Inspektorda u to'q sariq. Qarang, brauzer o'zi har bir abzasga ozgina margin beradi.",
       'Теперь третье: margin, то есть внешний отступ. Он снаружи коробки, за рамкой, и отодвигает соседей. В Инспекторе он оранжевый. Смотри, браузер сам даёт каждому абзацу небольшой margin.',
       'Now the third one: margin, meaning the outer space. It’s outside the box, beyond the frame, and pushes the neighbours away. In the Inspector it’s orange. Look, the browser gives every paragraph a little margin by itself.'),
@@ -285,8 +301,8 @@ const C = {
       'Теперь проверь себя. В коде имя свойства спрятано. Посмотри на страницу и реши: это padding или margin?',
       'Now check yourself. The property name is hidden in the code. Look at the page and decide: is it padding or margin?'),
     ask: L3("Bu padding mi yoki margin mi?", 'Это padding или margin?', 'Is it padding or margin?'),
-    hint1: L3("Sariq fonga qarang: u kattalashdimi yoki eslatmalar orasi ochildimi?", 'Посмотри на жёлтый фон: он вырос или заметки раздвинулись?', 'Look at the yellow background: did it grow, or did the notes move apart?'),
-    hint2: L3("Fon kattalashsa, bu padding. Eslatmalar uzoqlashsa, bu margin.", 'Вырос фон — это padding. Разошлись заметки — это margin.', 'If the background grew, it’s padding. If the notes moved apart, it’s margin.'),
+    hint1: L3("Sariq eslatmaning ichiga qarang: matn bilan sariq chet orasida joy bormi? Yoki eslatmalarning o'zi bir-biridan uzoqlashdimi?", "Посмотри внутрь жёлтой заметки: есть место между текстом и краем жёлтого? Или раздвинулись сами заметки?", "Look inside the yellow note: is there room between the text and the yellow edge? Or did the notes themselves move apart?"),
+    hint2: L3("Matn sariq chetdan uzoq bo'lsa, bu padding. Matn chetga yopishgan, eslatmalar orasida esa joy bo'lsa, bu margin.", "Текст далеко от края жёлтого — это padding. Текст у самого края, а между заметками промежуток — это margin.", "If the text is far from the yellow edge, it’s padding. If the text is at the edge and there’s a gap between the notes, it’s margin."),
     items: [
       { code: '20px', right: 'pad', why: L3("Sariq fon kattalashdi, matn chetdan uzoqlashdi: bu padding.", 'Жёлтый фон вырос, текст отошёл от края: это padding.', 'The yellow background grew, the text moved from the edge: it’s padding.') },
       { code: '30px', right: 'mar', why: L3("Fon o'zgarmadi, eslatmalar esa uzoqlashdi: bu margin.", 'Фон не изменился, а заметки разошлись: это margin.', 'The background didn’t change, but the notes moved apart: it’s margin.') },
@@ -298,6 +314,11 @@ const C = {
   },
   s11: {
     eyebrow: L3("Haqiqiy kenglik", 'Настоящая ширина', 'The real width'),
+    help: [
+      L3("Inspektordagi kenglik soniga qarang: padding va ramka qo'shilganda u qanday o'zgaradi? Oxirida yana ikki yuzga qaytadi.", 'Смотри на число ширины в Инспекторе: как оно меняется, когда добавляются padding и рамка? В конце оно снова двести.', 'Watch the width number in the Inspector: how does it change when padding and a frame are added? At the end it’s two hundred again.'),
+      L3("Odatda padding va ramka width ga qo'shiladi, quti kattaroq bo'ladi. box-sizing border-box bilan esa width butun qutiga tegishli bo'ladi.", 'Обычно padding и рамка прибавляются к width, и коробка становится больше. А с box-sizing border-box width — это вся коробка целиком.', 'Normally padding and the frame are added to width, so the box gets bigger. With box-sizing border-box, width is the whole box.'),
+      L3("Sumkaning o'lchami tashqi tomondan o'lchanadi, ichidagi yumshoq qatlam ham shu o'lchamga kiradi. border-box ham qutini shunday o'lchaydi.", 'Размер рюкзака меряют снаружи, и мягкая подкладка внутри входит в этот размер. border-box меряет коробку так же.', 'A backpack is measured from the outside, and the soft lining inside is part of that size. border-box measures a box the same way.')
+    ],
     say: L3("Endi bitta sir. Eslatmaga width ikki yuz piksel berdik. Inspektorga qarang: hozircha roppa-rosa ikki yuz.",
       'А теперь один секрет. Мы дали заметке width двести пикселей. Посмотри на Инспектор: пока ровно двести.',
       'Now a secret. We gave the note width two hundred pixels. Look at the Inspector: so far exactly two hundred.'),
@@ -378,7 +399,7 @@ const C = {
     hints: [
       L3("Qaysi selektor sarlavhani tanlaydi? Qaysi xususiyat chegara beradi?", 'Какой селектор выбирает заголовок? Какое свойство даёт рамку?', 'Which selector picks the heading? Which property gives a frame?'),
       L3("Selektor h1, xususiyat border, qiymat uch qismdan: ikki piksel, solid, black.", 'Селектор h1, свойство border, значение из трёх частей: два пикселя, solid, black.', 'Selector h1, property border, a value of three parts: two pixels, solid, black.'),
-      L3("Shunday yozing: h1, figurali qavs, border, ikki nuqta, ikki piksel solid black, nuqtali vergul va yopuvchi figurali qavs.", 'Напиши так: h1, фигурная скобка, border, двоеточие, два пикселя solid black, точка с запятой и закрывающая фигурная скобка.', 'Write it like this: h1, curly brace, border, colon, two pixels solid black, semicolon and the closing curly brace.')
+      L3("Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", "Образец появился под кодом. Перепиши его в поле и нажми «Проверить».", "An example appeared under the code. Copy it into the field and tap Check.")
     ],
     ok: L3("Ajoyib! Sarlavha chegara ichida. Qoidani o'zingiz yozdingiz.", 'Отлично! Заголовок в рамке. Правило написано тобой целиком.', 'Great! The heading has a frame. You wrote the whole rule yourself.'),
     ask: L3("Sarlavhaga 2px solid black chegara bering", 'Дай заголовку рамку 2px solid black', 'Give the heading a 2px solid black border')
@@ -454,7 +475,7 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayPad: 1, sayBig: 1, saySolid: 1, sayDashed: 1,
+Object.assign(SPOKEN, { help: 1, hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayPad: 1, sayBig: 1, saySolid: 1, sayDashed: 1,
   sayDotted: 1, sayNoStyle: 1, sayZero: 1, sayBorder: 1, sayBox: 1, miss: 1, say2: 1, fine: 1, found: 1, items: 1, right: 1, rounds: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1, css: 1 }, rounds: { want: 1, opts: 1 } });
 

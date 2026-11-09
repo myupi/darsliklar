@@ -839,3 +839,10 @@
 .r28 .c9-doc .c9-ilist i { font: 600 11px/1.2 var(--r-mono, ui-monospace, monospace); font-style: normal; color: #fff; background: #FA4F28; padding: 2px 5px; border-radius: 3px; }
 /* Урок 9: без масштаба страницы (zoom из урока 7) — «Инспектор» меряет настоящие пиксели, рамки ложатся точно на теги. */
 .r28 .c9-sort .kz-br-page > .c9-doc { zoom: 1 !important; }
+
+/* Образец на третьей ступени помощи (09.11.2026). */
+.r28 .kz-helpcode { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; align-self: stretch; padding: 6px 10px; border-radius: 10px; background: #FFF8E1; box-shadow: inset 0 0 0 1.5px #F5C451; animation: kzHelpIn .3s ease-out both; }
+.r28 .kz-helpcode span { font: 600 12px var(--r-font); color: #8A6100; }
+.r28 .kz-helpcode code { font: 600 14px var(--r-mono); color: var(--r-ink); white-space: pre-wrap; word-break: break-word; }
+@keyframes kzHelpIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .r28 .kz-helpcode { animation: none; } }

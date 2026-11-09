@@ -6771,6 +6771,11 @@ const C = {
   },
   s2: {
     eyebrow: L3("Piksel yoki foiz", 'Пиксели или проценты', 'Pixels or percent'),
+    help: [
+      L3("Bannerga va o'ng tepadagi belgiga qarang: telefonda u qizarib, sahifa oynadan keng ekanini ko'rsatadi.", 'Посмотри на баннер и на метку справа вверху: на телефоне она краснеет и показывает, что страница шире окна.', 'Look at the banner and the label at the top right: on a phone it turns red and shows the page is wider than the window.'),
+      L3("Piksel doim bir xil, foiz esa oynaga qarab o'zgaradi. Yuz foiz bu butun en.", 'Пиксели всегда одинаковые, а проценты меняются вместе с окном. Сто процентов — вся ширина.', 'Pixels always stay the same, and percent changes with the window. A hundred percent is the full width.'),
+      L3("Suv stakanni to'ldiradi, stakan katta bo'lsa ham, kichik bo'lsa ham. Yuz foizli banner ham har qanday oynani to'ldiradi.", 'Вода заполняет стакан, большой он или маленький. Баннер в сто процентов так же заполняет любое окно.', 'Water fills a glass, whether it’s big or small. A hundred percent banner fills any window the same way.')
+    ],
     say: L3("Oldin bannerni ko'ramiz. Hozir uning eni yetti yuz piksel. Kompyuterda u bemalol sig'adi.",
       'Сначала посмотрим на баннер. Сейчас его ширина семьсот пикселей. На компьютере он спокойно помещается.',
       'First, the banner. Right now it’s seven hundred pixels wide. On a computer it fits easily.'),
@@ -6800,7 +6805,7 @@ const C = {
     hints: [
       L3("Butun narsa necha foiz bo'ladi?", 'Сколько процентов — это всё целиком?', 'How many percent is the whole thing?'),
       L3("Butun narsa yuz foiz.", 'Всё целиком — это сто процентов.', 'The whole thing is a hundred percent.'),
-      L3("Yuz va foiz belgisini yozing, keyin Tekshirishni bosing.", 'Впиши сто и знак процента, потом нажми «Проверить».', 'Type a hundred and a percent sign, then tap Check.')
+      L3("Yuz deb yozing, keyin pastdagi foiz belgisi tugmasini va Tekshirishni bosing.", "Впиши сто, потом нажми внизу кнопку со знаком процента и «Проверить».", "Type a hundred, then tap the percent sign button below and Check.")
     ],
     ok: L3("Zo'r! Banner endi har qanday ekranga sig'adi. Telefon va kompyuterni almashtirib ko'ring.", 'Огонь! Теперь баннер помещается на любом экране. Переключи телефон и компьютер.', 'Awesome! Now the banner fits any screen. Switch between phone and computer.'),
     ask: L3("Banner butun en bo'ylab", 'Баннер во всю ширину', 'The banner at full width')
@@ -6825,6 +6830,11 @@ const C = {
   },
   s5: {
     eyebrow: L3("@media", '@media', '@media'),
+    help: [
+      L3("Kartochkalarga va oyna kengligiga qarang: oyna tor bo'lganda ular ustma-ust turadi, keng bo'lganda qatorga.", 'Посмотри на карточки и ширину окна: в узком окне они друг под другом, в широком — в ряд.', 'Look at the cards and the window width: in a narrow window they stack, in a wide one they sit in a row.'),
+      L3("media ichidagi qoidalar faqat shart bajarilganda ishlaydi. max-width olti yuz piksel, oyna olti yuzdan keng bo'lmasa degani.", 'Правила внутри media работают, только когда выполнено условие. max-width шестьсот пикселей — значит, окно не шире шестисот.', 'Rules inside media only work when the condition is met. max-width six hundred pixels means the window is no wider than six hundred.'),
+      L3("Yomg'ir yog'sagina soyabon ochasiz. media qoidasi ham faqat oyna tor bo'lsagina ishlaydi.", 'Зонт открывают, только когда идёт дождь. Правило media так же работает, только когда окно узкое.', 'You open an umbrella only when it rains. A media rule works only when the window is narrow.')
+    ],
     say: L3("Endi kartalar. Kompyuterda ular qatorda chiroyli turibdi. Telefonda-chi? Keling, ko'ramiz.",
       'Теперь карточки. На компьютере они красиво стоят в ряд. А на телефоне? Давай посмотрим.',
       'Now the cards. On a computer they look nice in a row. And on a phone? Let’s see.'),
@@ -6855,7 +6865,7 @@ const C = {
       L3("Olti yuz va px deb yozing, keyin Tekshirishni bosing.", 'Впиши шестьсот и px, потом нажми «Проверить».', 'Type six hundred and px, then tap Check.')
     ],
     ok: L3("Barakalla! Telefonda kartalar ustma-ust. Kompyuterni ham tekshirib ko'ring.", 'Молодец! На телефоне карточки друг под другом. Проверь и на компьютере.', 'Well done! On a phone the cards stack. Check the computer too.'),
-    ask: L3("Chegara: 600 piksel", 'Граница: 600 пикселей', 'Breakpoint: 600 pixels')
+    ask: L3("Kartochkalar 600 piksel va undan tor oynada ustma-ust tursin", "Карточки столбиком в окнах 600 пикселей и уже", "Cards stacked in windows 600 pixels and narrower")
   },
   s7: {
     eyebrow: L3("Ishlaydimi?", 'Сработает?', 'Will it work?'),
@@ -6880,6 +6890,11 @@ const C = {
   },
   s8: {
     eyebrow: L3("Telefonda yana nima?", 'Что ещё на телефоне?', 'What else on a phone?'),
+    help: [
+      L3("Bannerga qarang: telefonda u yo'qoladi, kompyuterda esa joyida turadi.", 'Посмотри на баннер: на телефоне он пропадает, а на компьютере остаётся.', 'Look at the banner: on a phone it disappears, and on a computer it stays.'),
+      L3("media ichida telefon uchun istalgan o'zgarishni yozish mumkin: joylashuv, o'lcham, yashirish. display none elementni yashiradi.", 'Внутри media можно писать любые изменения для телефона: расположение, размеры, что спрятать. display none прячет элемент.', 'Inside media you can write any change for a phone: layout, sizes, what to hide. display none hides an element.'),
+      L3('Sumkaga safar uchun hamma narsani solmaysiz, keraksizini uyda qoldirasiz. Telefonda ham keraksiz narsani display none bilan yashirasiz.', 'В дорогу не берут всё подряд — лишнее оставляют дома. На телефоне лишнее так же прячут через display none.', 'You don’t pack everything for a trip; you leave extras at home. On a phone you hide extras with display none.')
+    ],
     say: L3("Media ichida faqat kartalar emas, istalgan narsani o'zgartirish mumkin. Masalan, telefonda ekran kichik, banner esa ko'p joy egallaydi.",
       'Внутри media можно менять не только карточки, а что угодно. Например, на телефоне экран маленький, а баннер занимает много места.',
       'Inside media you can change anything, not just the cards. For example, a phone screen is small, and the banner takes up a lot of space.'),
@@ -6933,12 +6948,17 @@ const C = {
   },
   s11: {
     eyebrow: L3("Qachon ishlamaydi", 'Когда не работает', 'When it doesn’t work'),
+    help: [
+      L3('Har safar shartga qarang: qavslar bormi, son yonida px bormi, max yoki min yozilganmi? Keyin kartochkalarga qarang.', 'Каждый раз смотри на условие: есть ли скобки, есть ли px у числа, написано max или min? Потом на карточки.', 'Each time, look at the condition: are there brackets, does the number have px, is it max or min? Then look at the cards.'),
+      L3('Shart qavs ichida yoziladi, son px bilan. Telefon uchun max-width kerak, min-width esa keng oynalarda ishlaydi.', 'Условие пишут в скобках, число — с px. Для телефона нужен max-width, а min-width работает на широких окнах.', 'The condition goes in brackets, the number with px. A phone needs max-width; min-width works on wide windows.'),
+      L3("«O'n ikki yoshdan kichiklarga» va «o'n ikki yoshdan kattalarga» degan yozuvlar teskari ma'noni beradi. max va min ham shunday teskari.", 'Надписи «до двенадцати лет» и «от двенадцати лет» значат противоположное. max и min — так же наоборот.', 'Signs saying “under twelve” and “twelve and over” mean opposite things. max and min are opposites the same way.')
+    ],
     say: L3("Media qoidasida ham xatolar bo'ladi. Keling, uchtasini telefonda ko'ramiz. Hozir hammasi to'g'ri: kartalar ustma-ust.",
       'И в правиле media бывают ошибки. Давай посмотрим на три на телефоне. Сейчас всё правильно: карточки друг под другом.',
       'Media rules have mistakes too. Let’s look at three on a phone. Right now everything is correct: the cards are stacked.'),
     sayParens: L3("Birinchisi: shart qavssiz yozilgan. Brauzer uni tushunmadi va butun media qoidasini tashlab yubordi. Kartalar yana qatorda.", 'Первая: условие без скобок. Браузер его не понял и выбросил всё правило media. Карточки снова в ряд.', 'The first: the condition has no brackets. The browser didn’t understand it and threw the whole media rule away. The cards are in a row again.'),
     sayPx: L3("Ikkinchisi: olti yuz yozilgan, lekin px yo'q. Bu ham xato, brauzer qoidani yana tashlab yubordi.", 'Вторая: написано шестьсот, а px нет. Это тоже ошибка, браузер снова выбросил правило.', 'The second: six hundred is written, but no px. That’s a mistake too, and the browser threw the rule away again.'),
-    sayMin: L3("Uchinchisi ayyorroq: max o'rniga min. min-width ya'ni olti yuzdan kam bo'lmasa degani. Endi qoida telefonda uxlaydi, keng kompyuterda esa kartalarni ustma-ust qo'yadi. Teskari bo'lib qoldi!", 'Третья — хитрее: min вместо max. min-width — то есть «если окно не уже шестисот». Теперь правило спит на телефоне, а на широком компьютере ставит карточки столбиком. Всё наоборот!', 'The third is sneakier: min instead of max. min-width means if the window is at least six hundred. Now the rule sleeps on a phone, and on a wide computer it stacks the cards. Backwards!'),
+    sayMin: L3("Uchinchisi ayyorroq: max o'rniga min. min-width ya'ni oyna olti yuz piksel yoki undan keng bo'lsa degani. Endi qoida telefonda uxlaydi, keng kompyuterda esa kartalarni ustma-ust qo'yadi. Teskari bo'lib qoldi!", "Третья — хитрее: min вместо max. min-width — то есть «если окно шестьсот пикселей или шире». Теперь правило спит на телефоне, а на широком компьютере ставит карточки столбиком. Всё наоборот!", "The third is sneakier: min instead of max. min-width means if the window is six hundred pixels or wider. Now the rule sleeps on a phone, and on a wide computer it stacks the cards. Backwards!"),
     done: L3("Demak, shart qavs ichida, son px bilan yoziladi, telefon uchun esa max-width kerak.", 'Значит, условие пишут в скобках, число — с px, а для телефона нужен max-width.', 'So the condition goes in brackets, the number has px, and a phone needs max-width.'),
     askStart: L3("Qarang: hammasi to'g'ri", 'Смотри: всё правильно', 'Watch: everything is correct'),
     askParens: L3("Qarang: qavssiz", 'Смотри: без скобок', 'Watch: no brackets'),
@@ -6962,7 +6982,7 @@ const C = {
     hints: [
       L3("Shartning chetlariga qarang.", 'Посмотри на края условия.', 'Look at the edges of the condition.'),
       L3("Media sharti doim qavs ichida yoziladi.", 'Условие media всегда пишут в скобках.', 'A media condition is always written in brackets.'),
-      L3("Ochuvchi qavs, max-width ikki nuqta olti yuz px, yopuvchi qavs deb yozing va Tekshirishni bosing.", 'Впиши открывающую скобку, max-width двоеточие 600px, закрывающую скобку и нажми «Проверить».', 'Type an opening bracket, max-width colon 600px, a closing bracket, then tap Check.')
+      L3("Ochuvchi qavs tugmasini bosing: u boshiga turadi. Keyin kursorni eng oxiriga qo'yib, yopuvchi qavsni bosing. Yoki hammasini o'chirib, kod ostidagi namunani ko'chiring.", "Нажми кнопку «(» — скобка встанет в начало. Потом поставь курсор в самый конец и нажми «)». Или сотри всё и перепиши образец под кодом.", "Tap the opening bracket button: it goes to the start. Then put the cursor at the very end and tap the closing one. Or erase everything and copy the example under the code.")
     ],
     ok: L3("Ura, ishladi! Telefonda kartalar ustma-ust.", 'Ура, заработало! На телефоне карточки друг под другом.', 'Hooray, it works! On a phone the cards stack.'),
     ask: L3("Shartni tuzating", 'Исправь условие', 'Fix the condition')
@@ -7013,7 +7033,7 @@ const C = {
     hints: [
       L3("Oldin media va qavs ichida shart, keyin figurali qavs ichida banner qoidasi.", 'Сначала media и условие в скобках, потом в фигурных скобках правило для баннера.', 'First media and the condition in brackets, then the banner rule in curly braces.'),
       L3("Shart: max-width olti yuz px. Ichida: nuqta banner, display none.", 'Условие: max-width 600px. Внутри: точка banner, display none.', 'Condition: max-width 600px. Inside: dot banner, display none.'),
-      L3("Shunday yozing: kuchukcha media, qavs max-width ikki nuqta olti yuz px qavs, figurali qavs, nuqta banner figurali qavs display ikki nuqta none nuqtali vergul, ikkita yopuvchi figurali qavs.", 'Напиши так: собачка media, скобка max-width двоеточие 600px скобка, фигурная скобка, точка banner фигурная скобка display двоеточие none точка с запятой, две закрывающие фигурные скобки.', 'Write it like this: at media, bracket max-width colon 600px bracket, curly brace, dot banner curly brace display colon none semicolon, two closing curly braces.')
+      L3("Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", "Образец появился под кодом. Перепиши его в поле и нажми «Проверить».", "An example appeared under the code. Copy it into the field and tap Check.")
     ],
     ok: L3("Ajoyib! Telefonda banner yashirin, kompyuterda joyida. Qoidani o'zingiz yozdingiz.", 'Отлично! На телефоне баннер спрятан, на компьютере на месте. Правило написано тобой целиком.', 'Great! The banner is hidden on a phone and there on a computer. You wrote the whole rule yourself.'),
     ask: L3("Telefonda bannerni yashiring: @media", 'Спрячь баннер на телефоне: @media', 'Hide the banner on a phone: @media')
@@ -7055,7 +7075,7 @@ const C = {
       { t: L3("Media ichidagi qoidalar hamma ekranda ishlaydi.", 'Правила внутри media работают на всех экранах.', 'The rules inside media work on every screen.'), right: false,
         why: L3("Aslida ular faqat shart bajarilganda ishlaydi.", 'На самом деле они работают только при выполненном условии.', 'Actually they only work when the condition is met.') },
       { t: L3("Shunday yozilsa, telefonda banner ekranga sig'adi.", 'Если написать так, на телефоне баннер поместится в экран.', 'Written like this, the banner fits the screen on a phone.'), right: false, code: 'order',
-        why: L3("Aslida banner sig'maydi. Nega, hozir ko'ramiz.", 'На самом деле баннер не поместится. Почему — сейчас увидим.', 'Actually the banner won’t fit. We’ll see why in a moment.') }
+        why: L3("Aslida sig'maydi: ikkala qoidaning kuchi bir xil, pastdagisi g'olib bo'ladi. Pastda esa yetti yuz piksel turibdi.", 'На самом деле не поместится: оба правила одной силы, а побеждает то, что ниже. А ниже стоит 700px.', 'Actually it won’t fit: both rules are equally strong, and the lower one wins. And the lower one says 700px.') }
     ],
     ok: L3("Hammasi to'g'ri! Siz moslashuvchan saytni yaxshi tushunasiz.", 'Всё верно! Ты отлично понимаешь адаптивный сайт.', 'All correct! You understand responsive sites really well.')
   },
@@ -7791,7 +7811,7 @@ function GoalCard({ goal, n, total, done, doneText }) {
 }
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayPhone: 1, sayPct: 1, sayWide: 1,
+Object.assign(SPOKEN, { help: 1, hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayPhone: 1, sayPct: 1, sayWide: 1,
   sayTight: 1, sayMedia: 1, sayHide: 1, sayParens: 1, sayPx: 1, sayMin: 1, miss: 1, say2: 1, fine: 1, found: 1,
   items: 1, right: 1, rounds: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1, css: 1, right: 1, tag: 1, dir: 1, mq: 1, vw: 1 }, rounds: { want: 1, opts: 1, hover: 1 } });
@@ -9293,6 +9313,21 @@ const cssOk = (p, v) => {
   if (CSS_PROPS.indexOf(p) < 0 || !v) return false;
   try { return typeof CSS === 'undefined' || !CSS.supports ? true : CSS.supports(p, v); } catch (e) { return false; }
 };
+// Русские (кириллические) буквы вместо латинских (09.11.2026, проход «слабого ученика»): «рх», «р» выглядят как px, p —
+// своя причина раньше любой проверки, иначе ученик видит «верный» ответ и не понимает отказа.
+const CYR_MSG = L3("Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.",
+  'Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.',
+  'Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.');
+const cyrIn = (...vs) => (vs.some((x) => /[\u0400-\u04FF]/.test(String(x == null ? '' : x))) ? CYR_MSG : null);
+// Лишняя «;» в конце значения (ученик помнит, что правило кончается ею) — не ошибка: значение без неё.
+const noSemi = (s) => String(s || '').replace(/[“”«»„]/g, '"').trim().replace(/;+\s*$/, '').trim();
+// Образец на третьей ступени помощи (09.11.2026, проход «слабого ученика»): третья подсказка звучит словами — без
+// символов, а на экране под кодом печатью стоит готовый ответ; ученик переписывает его сам и жмёт «Проверить».
+const HELP_CODE = L3('Namuna', 'Образец', 'Example');
+function HelpCode({ code }) {
+  const pick = usePick();
+  return <div className="kz-helpcode" translate="no"><span>{pick(HELP_CODE)}</span><code>{code}</code></div>;
+}
 // Селектор: тег, .class или #id (ровно один простой селектор, как в уроке); иное — ничего не выбирает.
 // Селектор: тег, .class или #id (ровно один простой селектор, как в уроке), с :hover на конце или без.
 // «.tugma :hover» (с пробелом) — уже другой селектор: «то, над чем мышь, внутри .tugma»; у кнопки внутри ничего нет.
@@ -9861,7 +9896,7 @@ function useFill(id, c, issueOf, pose) {
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const issue = issueOf(ty.val.trim());
+    const issue = cyrIn(ty.val) || issueOf(noSemi(ty.val));
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: id, type: 'write-value', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -9912,7 +9947,7 @@ const withBase = (list, page) => {
 // Экран «впиши значение»: правило sel { prop: [pre] ▢ [post]; } (и готовые правила given), страница честно.
 function FillScreen({ p, c, F, sel, prop, want, given, hl, pre, post, propSlot, fixed, page, scroll, hoverOk, pulseOk }) {
   const pick = usePick();
-  const v = F.T.okNow ? want : F.ty.val.trim();
+  const v = F.T.okNow ? want : noSemi(F.ty.val);
   const full = [pre, v, post].filter(Boolean).join(' ');
   // Пустое поле — правила ещё нет (иначе «transition: 0.5s» уже сработал бы: без свойства это all).
   const rules = (given || []).concat(v ? [ruleTxt(sel, [propSlot ? [v, fixed] : [prop, full]])] : []);
@@ -9925,7 +9960,7 @@ function FillScreen({ p, c, F, sel, prop, want, given, hl, pre, post, propSlot, 
       <Sheet cls="c16-sheet">
         <KzAsk text={F.T.okNow ? c.ok : c.ask} hint={F.T.okNow ? null : (F.T.msg || hintAt(F.T.lad.lv, c.hints))} err={!!F.T.msg} />
         <div className="kz-scene c16-s5 c16-pair">
-          <div className="kz-col"><KzCode lines={styleWrap(baseL(page).concat((given || []).map((r, i) => cssL('g' + i, 1, r, { cls: 'c16-dim' })), [ruleLine('r', partsOf(), F.T.okNow ? 'is-new' : 'is-hl')]))} cls="kz-code-sm" /></div>
+          <div className="kz-col"><KzCode lines={styleWrap(baseL(page).concat((given || []).map((r, i) => cssL('g' + i, 1, r, { cls: 'c16-dim' })), [ruleLine('r', partsOf(), F.T.okNow ? 'is-new' : 'is-hl')]))} cls="kz-code-sm" />{!F.T.okNow && F.T.lad.lv >= 3 ? <HelpCode code={want} /> : null}</div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { hl: hl, page })} rules={withBase(rules, page)} scroll={scroll == null ? null : scroll} hover={hoverOk && F.T.okNow ? hoverOk : null} pulse={pulseOk && F.T.okNow ? HV : null} mouse={!!((hoverOk || pulseOk) && F.T.okNow)} timer /></Br></div>
         </div>
         {!F.T.okNow ? <KeyRow keys={[]} ty={F.ty} canTap={F.canTap} onCheck={F.check} ready={F.ty.val.trim().length > 1} /> : null}
@@ -9981,7 +10016,7 @@ function WidthToggle({ vw, setVw }) {
 function CodeFill({ p, c, F, tpl, want, keys, vw0 }) {
   const pick = usePick();
   const [vw, setVw] = useState(vw0 || 360);
-  const v = F.T.okNow ? want : F.ty.val.trim();
+  const v = F.T.okNow ? want : noSemi(F.ty.val);
   const items = tpl.map((t) => (t.indexOf('▢') >= 0 ? (v ? t.replace('▢', v) : null) : t)).filter(Boolean);
   const slot = F.T.okNow ? P('v', 'c16-val', want) : <Slot key="slot" ty={F.ty} led={F.led} onEnter={F.check} label={c.ask} onChange={F.onChange} />;
   const lines = baseL().concat(...tpl.map((t, i) => ruleLines('t' + i, 1, t, { cls: t.indexOf('▢') >= 0 ? (F.T.okNow ? 'is-new' : 'is-hl') : '' }, { '▢': slot })));
@@ -9990,7 +10025,7 @@ function CodeFill({ p, c, F, tpl, want, keys, vw0 }) {
       <Sheet cls="c16-sheet c16-fill">
         <KzAsk text={F.T.okNow ? c.ok : c.ask} hint={F.T.okNow ? null : (F.T.msg || hintAt(F.T.lad.lv, c.hints))} err={!!F.T.msg} />
         <div className="kz-scene c16-s5 c16-pair">
-          <div className="kz-col"><KzCode lines={styleWrap(lines)} cls="kz-code-sm" /></div>
+          <div className="kz-col"><KzCode lines={styleWrap(lines)} cls="kz-code-sm" />{!F.T.okNow && F.T.lad.lv >= 3 ? <HelpCode code={want} /> : null}</div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick)} rules={withBase(items)} vw={vw} /></Br><WidthToggle vw={vw} setVw={setVw} /></div>
         </div>
         {!F.T.okNow ? <KeyRow keys={keys || []} ty={F.ty} canTap={F.canTap} onCheck={F.check} ready={F.ty.val.trim().length > 1} /> : null}
@@ -9999,6 +10034,15 @@ function CodeFill({ p, c, F, tpl, want, keys, vw0 }) {
   );
 }
 // Экран-показ: шаги правил по очереди; steps[n] — список правил, hl[n] — подсвеченный элемент.
+// Помощь на экране-объяснении (заказчик, 09.11.2026): ступени 1-2-3 по лампочке (useKzLadder) — 1 на что смотреть,
+// 2 что это значит, 3 пример из жизни. now — открытая ступень с номером «2/3» для панели, next — текст следующей
+// ступени без номера: его читает вслух лампочка.
+function useShowHelp(help) {
+  const lad = useKzLadder(!!(help && help.length));
+  const num = (k) => { const o = {}; LANGS.forEach((l) => { o[l] = k + '/' + help.length + ' · ' + (help[k - 1][l] !== undefined ? help[k - 1][l] : help[k - 1].ru); }); return o; };
+  if (!help || !help.length) return { now: null, next: null };
+  return { now: lad.lv > 0 ? num(Math.min(lad.lv, help.length)) : null, next: help[Math.min(lad.lv, help.length - 1)] };
+}
 function ShowScreen({ p, c, id, steps, says, asks, pose, hl, page, scrolls, hovers, pulse, vws }) {
   const pick = usePick();
   const [rec, put] = useRec(id);
@@ -10013,10 +10057,11 @@ function ShowScreen({ p, c, id, steps, says, asks, pose, hl, page, scrolls, hove
   const rules = steps[n];
   const askText = solved || demo.done ? asks.done : asks.list[n];
   const prev = n > 0 ? steps[n - 1] : [];
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c16-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c16-s5 c16-pair">
           <div className="kz-col"><KzCode lines={styleWrap(baseL(page).concat(...rules.map((r, i) => ruleLines('r' + i + hashS(r), 1, r, { cls: live && prev.indexOf(r) < 0 ? 'is-new is-read' : '' }))))} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { hl: hl ? hl[Math.min(n, hl.length - 1)] : null, page })} rules={withBase(rules, page)} scroll={scrolls ? scrolls[n] : null} vw={vws ? vws[Math.min(n, vws.length - 1)] : 800} /></Br></div>
@@ -10300,8 +10345,10 @@ function S12({ p }) {
     return mq.px === 600 ? null : c.msgs.other;
   }, 'embarrassed');
   const set0 = useRef(false);
-  useEffect(() => { if (!set0.current && !Fl.T.okNow && !Fl.ty.val) { set0.current = true; Fl.ty.setVal('max-width: 600px'); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  return <CodeFill p={p} c={c} F={Fl} tpl={[BN_PCT, MQ('▢', '.qator { flex-direction: column; }')]} want="(max-width: 600px)" />;
+  useEffect(() => { if (!set0.current && !Fl.T.okNow && !Fl.ty.val) { set0.current = true; Fl.ty.setVal('max-width: 600px');
+    // Курсор — в начало (09.11.2026): первая скобка встаёт перед условием с кнопки «(».
+    requestAnimationFrame(() => { const el = Fl.ty.inputRef && Fl.ty.inputRef.current; if (el && el.setSelectionRange) { try { el.setSelectionRange(0, 0); } catch (e) { /* без выделения */ } } }); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return <CodeFill p={p} c={c} F={Fl} tpl={[BN_PCT, MQ('▢', '.qator { flex-direction: column; }')]} want="(max-width: 600px)" keys={['(', ')']} />;
 }
 
 // S13. НАЙДИ ОШИБКУ (Error Detective) — окно телефона: раунд 1 — 600 без px; раунд 2 — min-width вместо max-width.
@@ -10350,7 +10397,7 @@ function S13({ p }) {
   const lines = [].concat(...rules.map((r, j) => ruleLines('l' + ri + j + (found && j === R.bad ? 'f' : ''), 0, r).map((l, li) => Object.assign(l, {
     cls: l.cls + ' c16-hline' + (found && j === R.bad ? ' is-new' : '') + (off.indexOf(j) >= 0 ? ' is-off' : ''),
     onTap: found ? null : () => tap(j), disabled: !canTap || found || off.indexOf(j) >= 0,
-    led: !found && li === 0 && ((led && off.length === 0 && j === 0) || (lit && j === R.bad))
+    led: !found && li === 0 && ((led && off.length === 0) || (lit && j === R.bad))
   }))));
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
@@ -10403,7 +10450,7 @@ function W1({ p }) {
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const issue = ruleIssue(ty.val, c.msgs);
+    const issue = cyrIn(ty.val) || (ruleIssue(ty.val, c.msgs));
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: 'w1', type: 'write-rule', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -10419,7 +10466,7 @@ function W1({ p }) {
       <Sheet cls="c16-sheet c16-w1">
         <KzAsk text={T.okNow ? c.ok : c.ask} hint={T.okNow ? null : (T.msg || hintAt(T.lad.lv, c.hints))} err={!!T.msg} />
         <div className="kz-scene c16-s5 c16-pair">
-          <div className="kz-col"><KzCode lines={styleWrap(baseL().concat([cssL('pc', 1, BN_PCT, { cls: 'c16-dim' })], T.okNow ? ruleLines('r', 1, css, { cls: 'is-new' }) : [ruleLine('r', [<span key="g" className={'kz-gap c16-slot c16-slot-rule' + (led ? ' kz-gap-led' : '')}><LessonInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={72} /></span>], 'is-hl')]))} cls="kz-code-sm" /></div>
+          <div className="kz-col"><KzCode lines={styleWrap(baseL().concat([cssL('pc', 1, BN_PCT, { cls: 'c16-dim' })], T.okNow ? ruleLines('r', 1, css, { cls: 'is-new' }) : [ruleLine('r', [<span key="g" className={'kz-gap c16-slot c16-slot-rule' + (led ? ' kz-gap-led' : '')}><LessonInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={72} /></span>], 'is-hl')]))} cls="kz-code-sm" />{!T.okNow && T.lad.lv >= 3 ? <HelpCode code={MQ_HIDE} /> : null}</div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick)} rules={withBase([BN_PCT].concat(isMq(css) ? [css] : []))} vw={vw} /></Br><WidthToggle vw={vw} setVw={setVw} /></div>
         </div>
         {!T.okNow ? <KeyRow keys={['@', '(', ')', '{', '}', ':', ';']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 8} /> : null}
@@ -10460,7 +10507,7 @@ function S14({ p }) {
   };
   const confirm = () => {
     if (!canTap || !ready || solved) return;
-    const issue = issueOf();
+    const issue = cyrIn([].concat(v).join(" ")) || issueOf();
     if (issue) { sfx('soft', true); setMsg(issue); sayNow(issue, 'think'); if (lad.lv < 1) lad.bump(); return; }
     sfx('win', true); setMsg(null);
     OWN.forEach((o, i) => store.set(o.k, i === 0 ? nows(v[i]) : norm(v[i]))); put({ done: true });
@@ -14807,4 +14854,11 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .r28 .c16-sheet.c16-own .kz-br.c16-br.is-short { --brh: 19dvh !important; }
 }
 .is-kbd .c16-own .c16-wt, .is-kbd .c16-fill .c16-wt, .is-kbd .c16-w1 .c16-wt { display: none; }
+
+/* Образец на третьей ступени помощи (09.11.2026). */
+.r28 .kz-helpcode { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; align-self: stretch; padding: 6px 10px; border-radius: 10px; background: #FFF8E1; box-shadow: inset 0 0 0 1.5px #F5C451; animation: kzHelpIn .3s ease-out both; }
+.r28 .kz-helpcode span { font: 600 12px var(--r-font); color: #8A6100; }
+.r28 .kz-helpcode code { font: 600 14px var(--r-mono); color: var(--r-ink); white-space: pre-wrap; word-break: break-word; }
+@keyframes kzHelpIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .r28 .kz-helpcode { animation: none; } }
 `;

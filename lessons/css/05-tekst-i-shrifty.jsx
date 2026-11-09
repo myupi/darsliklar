@@ -6767,6 +6767,11 @@ const C = {
   },
   s2: {
     eyebrow: L3("Harf o'lchami", 'Размер букв', 'Text size'),
+    help: [
+      L3("Kodga qarang: font-size qatorida son o'zgaryapti. Keyin brauzerga qarang: harflar shu zahoti kattalashadi yoki kichrayadi.", 'Посмотри на код: в строке font-size меняется число. Потом посмотри в браузер: буквы сразу становятся крупнее или мельче.', 'Look at the code: the number in the font-size line changes. Then look at the browser: the letters get bigger or smaller right away.'),
+      L3("font-size harflar qancha katta bo'lishini aytadi. Son katta bo'lsa, harflar ham katta. Son yonida doim px yoziladi.", 'font-size говорит, какого размера буквы. Больше число — крупнее буквы. Рядом с числом всегда пишут px.', 'font-size says how big the letters are. A bigger number means bigger letters. You always write px next to the number.'),
+      L3("Telefonda shriftni kattalashtirib ko'rganmisiz? Bu xuddi shunday: yigirma to'rt piksel bo'lsa, matn yirikroq va o'qish osonroq.", 'Помнишь, в телефоне можно сделать шрифт крупнее? Это то же самое: двадцать четыре пикселя — текст крупнее, читать легче.', 'Have you ever made the text bigger on a phone? It’s the same thing: twenty-four pixels means bigger text that’s easier to read.')
+    ],
     say: L3("Birinchi xususiyat font-size, ya'ni harf o'lchami degani. O'lcham piksellarda yoziladi: son va yonida px. Piksel bu ekrandagi eng kichik nuqta. Oddiy matn odatda o'n olti piksel bo'ladi.",
       'Первое свойство — font-size, то есть размер букв. Размер пишут в пикселях: число и рядом px. Пиксель — это самая маленькая точка на экране. Обычный текст — обычно шестнадцать пикселей.',
       'The first property is font-size, meaning the size of the letters. The size is written in pixels: a number with px next to it. A pixel is the smallest dot on the screen. Normal text is usually sixteen pixels.'),
@@ -6789,7 +6794,8 @@ const C = {
       empty: L3("Qiymat yozing: son va px.", 'Впиши значение: число и px.', 'Type the value: a number and px.'),
       noUnit: L3("Faqat son yozildi. Brauzer bunday qiymatni tashlab yuboradi: son yoniga px qo'shing.", 'Написано только число. Браузер такое значение выбрасывает: добавь к числу px.', 'Only a number. The browser throws a value like that away: add px to the number.'),
       bad: L3("Brauzer bu qiymatni tanimadi. Son va px yozing, masalan 30px.", 'Браузер не узнал это значение. Напиши число и px, например 30px.', 'The browser didn’t recognize that value. Write a number and px, for example 30px.'),
-      other: L3("Bu boshqa o'lcham. Sarlavha qirq piksel bo'lishi kerak.", 'Это другой размер. Заголовок должен быть сорок пикселей.', 'That’s a different size. The heading should be forty pixels.')
+      other: L3("Bu boshqa o'lcham. Sarlavha qirq piksel bo'lishi kerak.", 'Это другой размер. Заголовок должен быть сорок пикселей.', 'That’s a different size. The heading should be forty pixels.'),
+      space: L3("Son va px o'rtasida bo'sh joy bo'lmaydi: qo'shib yozing, masalan 30px.", "Между числом и px не нужен пробел: пиши слитно, например 30px.", "No space between the number and px: write them together, like 30px.")
     },
     hints: [
       L3("Qiymat ikki qismdan: son va o'lcham birligi.", 'Значение из двух частей: число и единица.', 'The value has two parts: a number and a unit.'),
@@ -6824,12 +6830,17 @@ const C = {
   },
   s5: {
     eyebrow: L3("Shrift", 'Шрифт', 'Font'),
+    help: [
+      L3("font-family qatoridagi so'zga va brauzerdagi harflar shakliga qarang: so'z o'zgarsa, harflar shakli ham o'zgaradi.", 'Посмотри на слово в строке font-family и на форму букв в браузере: меняется слово — меняется и форма букв.', 'Look at the word in the font-family line and at the shape of the letters in the browser: when the word changes, the letters change shape.'),
+      L3('font-family shriftni tanlaydi. serif bilan harflar uchida kichik chiziqchalar bor, xuddi kitobdagidek. sans-serif bilan harflar silliq. monospace bilan hamma harf bir xil kenglikda.', 'font-family выбирает шрифт. В serif у букв маленькие засечки, как в книге. В sans-serif буквы гладкие. В monospace все буквы одной ширины.', 'font-family picks the font. serif letters have little feet, like in a book. sans-serif letters are smooth. In monospace every letter has the same width.'),
+      L3("Kitobdagi harflar va telefondagi harflarni solishtiring: ular har xil ko'rinadi. Saytda ham sarlavha uchun bir shrift, matn uchun boshqasini tanlash mumkin.", 'Сравни буквы в книге и в телефоне: они выглядят по-разному. На сайте тоже можно взять один шрифт для заголовка, а другой для текста.', 'Compare the letters in a book and on a phone: they look different. On a site you can also pick one font for headings and another for text.')
+    ],
     say: L3("Ikkinchi xususiyat font-family, ya'ni shrift degani. Hozir brauzer oddiy shriftni ishlatyapti: harflarda kichik oyoqchalar bor, xuddi kitobdagidek. Bunday shriftlar serif deyiladi.",
       'Второе свойство — font-family, то есть шрифт. Сейчас браузер показывает обычный шрифт: у букв маленькие засечки, как в книге. Такие шрифты называются serif.',
       'The second property is font-family, meaning the font. Right now the browser uses its normal font: the letters have little feet, like in a book. Fonts like that are called serif.'),
     saySans: L3("sans-serif yozamiz. Oyoqchalar yo'qoldi, harflar silliq va zamonaviy bo'ldi.", 'Пишем sans-serif. Засечки пропали, буквы стали гладкими и современными.', 'We write sans-serif. The little feet are gone, and the letters look smooth and modern.'),
     sayMono: L3("monospace da esa har bir harf bir xil kenglikda, xuddi kod muharriridagidek.", 'А в monospace каждая буква одинаковой ширины, как в редакторе кода.', 'And in monospace every letter has the same width, like in a code editor.'),
-    sayList: L3("Shrift nomini ham yozish mumkin, masalan Georgia. Vergul bilan zaxira shriftni qo'yamiz: Georgia topilmasa, brauzer serif ni oladi.", 'Можно написать и имя шрифта, например Georgia. Через запятую ставим запасной: если Georgia нет, браузер возьмёт serif.', 'You can also write a font name, for example Georgia. After a comma we put a backup: if Georgia isn’t there, the browser takes serif.'),
+    sayList: L3("Shrift nomini ham yozish mumkin, masalan Georgia. Vergul bilan zaxira shriftni qo'yamiz: Georgia topilmasa, brauzer serif ni oladi. Agar shrift nomi ikki so'zdan iborat bo'lsa, uni qo'shtirnoqqa olamiz, masalan Courier New.", "Можно написать и имя шрифта, например Georgia. Через запятую ставим запасной: если Georgia нет, браузер возьмёт serif. А если в имени шрифта два слова, его берут в кавычки, например Courier New.", "You can also write a font name, for example Georgia. After a comma we put a backup: if Georgia isn’t there, the browser takes serif. And if a font name has two words, we put it in quotes, for example Courier New."),
     done: L3("Demak, font-family shriftni tanlaydi: serif, sans-serif, monospace yoki shrift nomi va vergul bilan zaxira.", 'Значит, font-family выбирает шрифт: serif, sans-serif, monospace или имя шрифта и запасной через запятую.', 'So font-family picks the font: serif, sans-serif, monospace, or a font name with a backup after a comma.'),
     askStart: L3("Qarang: serif — oyoqchali", 'Смотри: serif — с засечками', 'Watch: serif has little feet'),
     askSans: L3("Qarang: sans-serif — silliq", 'Смотри: sans-serif — гладкий', 'Watch: sans-serif is smooth'),
@@ -6858,7 +6869,7 @@ const C = {
     eyebrow: L3("Qaysi shrift?", 'Какой шрифт?', 'Which font?'),
     say: L3("Endi o'zingizni sinab ko'ring. Men yozuvni ko'rsataman, siz esa uni qaysi shrift berganini tanlang.", 'Теперь проверь себя. Я покажу надпись, а ты выбери, какой шрифт её дал.', 'Now check yourself. I’ll show some words, and you pick the font that made them.'),
     ask: L3("Bu yozuvni qaysi kod beradi?", 'Какой код даёт эту надпись?', 'Which code makes these words?'),
-    hint1: L3("Harflarga qarang: oyoqchalari bormi? Hammasi bir xil kenglikdami?", 'Посмотри на буквы: есть ли засечки? Все ли одинаковой ширины?', 'Look at the letters: do they have little feet? Are they all the same width?'),
+    hint1: L3("Harflarga qarang: oyoqchalari bormi? monospace da hatto ingichka i ham keng m qancha joy olsa, shuncha joy oladi.", "Посмотри на буквы: есть ли засечки? В monospace даже узкая «i» занимает столько же места, сколько широкая «m».", "Look at the letters: do they have little feet? In monospace even a thin “i” takes as much room as a wide “m”."),
     hint2: L3("serif oyoqchali, sans-serif silliq, monospace da esa harflar bir xil kenglikda.", 'serif — с засечками, sans-serif — гладкий, в monospace буквы одинаковой ширины.', 'serif has feet, sans-serif is smooth, and monospace letters are all the same width.'),
     rounds: [
       { want: 'font-family: monospace;', opts: ['font-family: serif;', 'font-family: monospace;', 'font-family: sans-serif;'],
@@ -6873,18 +6884,25 @@ const C = {
   },
   s8: {
     eyebrow: L3("Qalinlik va chiziq", 'Жирность и черта', 'Weight and line'),
+    help: [
+      L3("Avval abzaslarga qarang: harflar qalinlashadi. Keyin havolaga qarang: uning tagidagi chiziq yo'qoladi.", 'Сначала посмотри на абзацы: буквы становятся жирными. Потом на ссылку: черта под ней пропадает.', 'First look at the paragraphs: the letters get bold. Then look at the link: the line under it disappears.'),
+      L3('font-weight harflar qalinligini beradi: bold qalin, normal oddiy. text-decoration esa chiziq beradi: underline tagida, line-through ustidan, none chiziqsiz.', 'font-weight задаёт толщину букв: bold — жирно, normal — обычно. А text-decoration — черту: underline снизу, line-through поверх, none — без черты.', 'font-weight sets how thick the letters are: bold is thick, normal is regular. text-decoration sets a line: underline below, line-through across, none for no line.'),
+      L3("Daftarda muhim so'zni qalin qilib yozasiz, xatoni esa ustidan chizib qo'yasiz. Saytda buni bold va line-through qiladi.", 'В тетради важное слово ты пишешь жирно, а ошибку зачёркиваешь. На сайте это делают bold и line-through.', 'In a notebook you write an important word in bold and cross out a mistake. On a site, bold and line-through do that.')
+    ],
     say: L3("Yana ikki foydali xususiyat bor. font-weight harflar qalinligini beradi, text-decoration esa matn ustidagi yoki ostidagi chiziqni.",
       'Есть ещё два полезных свойства. font-weight задаёт жирность букв, а text-decoration — черту на тексте или под ним.',
       'There are two more useful properties. font-weight sets how thick the letters are, and text-decoration sets a line on or under the text.'),
     sayBold: L3("Abzaslarga font-weight: bold yozamiz. Harflar qalin bo'ldi.", 'Пишем абзацам font-weight: bold. Буквы стали жирными.', 'We write font-weight: bold for the paragraphs. The letters got thick.'),
-    sayNone: L3("Havolalar tagida odatda chiziq bo'ladi. text-decoration: none uni olib tashlaydi. underline esa chiziqni qo'yadi, line-through esa so'zni o'chirilgandek qiladi.", 'Под ссылками обычно есть черта. text-decoration: none её убирает. underline ставит черту, а line-through делает слово зачёркнутым.', 'Links usually have a line under them. text-decoration: none removes it. underline adds the line, and line-through crosses the word out.'),
+    sayNone: L3("Havolalar tagida odatda chiziq bo'ladi. text-decoration: none uni olib tashlaydi, none ya'ni hech narsa degani. underline esa chiziqni qaytaradi.", "Под ссылками обычно есть черта. text-decoration: none её убирает: none значит «ничего». А underline возвращает черту.", "Links usually have a line under them. text-decoration: none removes it: none means “nothing”. And underline brings the line back."),
     sayNormal: L3("Sarlavha odatda qalin. font-weight: normal yozsak, u oddiy qalinlikda bo'ladi.", 'Заголовок обычно жирный. Если написать font-weight: normal, он станет обычной толщины.', 'A heading is usually bold. If we write font-weight: normal, it becomes normal thickness.'),
     done: L3("Demak, font-weight qalinlik uchun: bold yoki normal. text-decoration chiziq uchun: underline, line-through yoki none.", 'Значит, font-weight — для жирности: bold или normal. text-decoration — для черты: underline, line-through или none.', 'So font-weight is for thickness: bold or normal. text-decoration is for lines: underline, line-through or none.'),
     askStart: L3("Qarang: qalinlik va chiziq", 'Смотри: жирность и черта', 'Watch: weight and line'),
     askBold: L3("Qarang: bold — qalin", 'Смотри: bold — жирный', 'Watch: bold is thick'),
     askNone: L3("Qarang: none — chiziqsiz", 'Смотри: none — без черты', 'Watch: none means no line'),
     askNormal: L3("Qarang: normal — oddiy", 'Смотри: normal — обычный', 'Watch: normal is regular'),
-    askDone: L3("font-weight va text-decoration", 'font-weight и text-decoration', 'font-weight and text-decoration')
+    askDone: L3("font-weight va text-decoration", 'font-weight и text-decoration', 'font-weight and text-decoration'),
+    sayLine: L3("Avval qiziq bir narsa: line-through so'zni xuddi daftardagi xatoni chizib qo'ygandek o'chiradi.", "Сначала интересное: line-through зачёркивает слово, как ошибку в тетради.", "First, something fun: line-through crosses the word out, like a mistake in a notebook."),
+    askLine: L3("line-through — chizilgan", "line-through — зачёркнуто", "line-through: crossed out")
   },
   s9: {
     eyebrow: L3("Chiziqsiz havola", 'Ссылка без черты', 'A link with no line'),
@@ -6896,7 +6914,7 @@ const C = {
       other: L3("Brauzer bu qiymatni tanimadi. Chiziqsiz degani none.", 'Браузер не узнал это значение. Без черты — это none.', 'The browser didn’t recognize that value. No line is none.')
     },
     hints: [
-      L3("Inglizcha «hech narsa» degan so'z qanday edi?", 'Как было английское слово «ничего»?', 'What was the English word for “nothing”?'),
+      L3("Ko'rsatuvni eslang: text-decoration dan keyin qaysi so'z havola tagidagi chiziqni olib tashladi?", "Вспомни показ: каким словом после text-decoration Коди убрал черту под ссылкой?", "Remember the demo: which word after text-decoration removed the line under the link?"),
       L3("text-decoration ning chiziqsiz qiymati to'rt harfli so'z.", 'Значение text-decoration без черты — слово из четырёх букв.', 'The no-line value of text-decoration is a four-letter word.'),
       L3("none deb yozing va Tekshirishni bosing.", 'Впиши none и нажми «Проверить».', 'Type none and tap Check.')
     ],
@@ -6917,10 +6935,17 @@ const C = {
       { css: 'font-weight: normal; font-size: 26px', right: 'weight', why: L3("Katta sarlavha qalin emas, oddiy bo'ldi. Bu font-weight: normal.", 'Крупный заголовок стал не жирным, а обычным. Это font-weight: normal.', 'The big heading isn’t bold, it’s regular. That’s font-weight: normal.') }
     ],
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
-    ok: L3("Hammasi to'g'ri! Qalinlik va chiziqni adashtirmaysiz.", 'Всё верно! Ты не путаешь жирность и черту.', 'All correct! You don’t mix up weight and lines.')
+    ok: L3("Hammasi to'g'ri! Qalinlik va chiziqni adashtirmaysiz.", 'Всё верно! Ты не путаешь жирность и черту.', 'All correct! You don’t mix up weight and lines.'),
+    before: L3("Oldin", "До", "Before"),
+    after: L3("Keyin", "После", "After")
   },
   s11: {
     eyebrow: L3("Joylashuv", 'Выравнивание', 'Alignment'),
+    help: [
+      L3("Sarlavhaga qarang: u qatorning chap tomoniga, o'rtasiga va o'ng tomoniga ko'chadi.", 'Посмотри на заголовок: он переезжает влево, в середину и вправо строки.', 'Look at the heading: it moves to the left, the middle and the right of the line.'),
+      L3("text-align matn qatorning qaysi tomonida turishini aytadi: left bo'lsa chapda, center bo'lsa o'rtada, right bo'lsa o'ngda.", 'text-align говорит, у какого края строки стоит текст: left — слева, center — по центру, right — справа.', 'text-align says which side of the line the text sits on: left on the left, center in the middle, right on the right.'),
+      L3("Kitob muqovasida nom odatda o'rtada turadi. Sayt sarlavhasini ham shunday o'rtaga qo'yish mumkin: text-align center.", 'На обложке книги название обычно стоит посередине. Заголовок сайта тоже можно поставить по центру: text-align center.', 'On a book cover the title usually sits in the middle. You can put a site heading in the middle too: text-align center.')
+    ],
     say: L3("Oxirgi xususiyat text-align, ya'ni matnni qatorning qaysi tomoniga qo'yish degani. Odatda matn chapda turadi.", 'Последнее свойство — text-align, то есть к какому краю строки поставить текст. Обычно текст стоит слева.', 'The last property is text-align, meaning which side of the line the text goes to. Normally text sits on the left.'),
     sayCenter: L3("Sarlavhaga text-align: center yozamiz. Sarlavha o'rtaga keldi.", 'Пишем заголовку text-align: center. Заголовок встал по центру.', 'We write text-align: center for the heading. The heading moved to the center.'),
     sayRight: L3("right yozsak, o'ng tomonga o'tadi.", 'Если написать right, он уедет вправо.', 'If we write right, it moves to the right.'),
@@ -6985,7 +7010,7 @@ const C = {
     hints: [
       L3("Abzaslar qaysi selektor bilan tanlanadi? Qalinlik uchun qaysi xususiyat kerak?", 'Каким селектором выбирают абзацы? Какое свойство нужно для жирности?', 'Which selector picks the paragraphs? Which property is for thickness?'),
       L3("Selektor p, xususiyat font-weight, qiymat bold.", 'Селектор p, свойство font-weight, значение bold.', 'The selector is p, the property font-weight, the value bold.'),
-      L3("Shunday yozing: p, jingalak qavs, font-weight, ikki nuqta, bold, nuqtali vergul va yopuvchi jingalak qavs.", 'Напиши так: p, фигурная скобка, font-weight, двоеточие, bold, точка с запятой и закрывающая фигурная скобка.', 'Write: p, a curly brace, font-weight, a colon, bold, a semicolon and a closing curly brace.')
+      L3("Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", "Образец появился под кодом. Перепиши его в поле и нажми «Проверить».", "An example appeared under the code. Copy it into the field and tap Check.")
     ],
     ok: L3("Ajoyib! Abzaslar qalin bo'ldi. Qoidani o'zingiz yozdingiz.", 'Отлично! Абзацы стали жирными. Ты сам написал правило.', 'Great! The paragraphs are bold. You wrote the rule yourself.'),
     ask: L3("Abzaslarni qalin qiladigan qoidani yozing", 'Напиши правило, которое сделает абзацы жирными', 'Write a rule that makes the paragraphs bold')
@@ -7754,7 +7779,7 @@ function GoalCard({ goal, n, total, done, doneText }) {
 }
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, saySmall: 1, sayBig: 1, sayH1: 1, saySans: 1, sayMono: 1,
+Object.assign(SPOKEN, { help: 1, sayLine: 1, hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, saySmall: 1, sayBig: 1, sayH1: 1, saySans: 1, sayMono: 1,
   sayList: 1, sayBold: 1, sayNone: 1, sayNormal: 1, sayCenter: 1, sayRight: 1, sayLeft: 1, miss: 1, say2: 1, fine: 1, found: 1, items: 1, right: 1, rounds: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1, css: 1 } });
 
@@ -9254,6 +9279,21 @@ const cssOk = (p, v) => {
   if (CSS_PROPS.indexOf(p) < 0 || !v) return false;
   try { return typeof CSS === 'undefined' || !CSS.supports ? true : CSS.supports(p, v); } catch (e) { return false; }
 };
+// Русские (кириллические) буквы вместо латинских (09.11.2026, проход «слабого ученика»): «рх», «р» выглядят как px, p —
+// своя причина раньше любой проверки, иначе ученик видит «верный» ответ и не понимает отказа.
+const CYR_MSG = L3("Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.",
+  'Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.',
+  'Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.');
+const cyrIn = (...vs) => (vs.some((x) => /[\u0400-\u04FF]/.test(String(x == null ? '' : x))) ? CYR_MSG : null);
+// Лишняя «;» в конце значения (ученик помнит, что правило кончается ею) — не ошибка: значение без неё.
+const noSemi = (s) => String(s || '').replace(/[“”«»„]/g, '"').trim().replace(/;+\s*$/, '').trim();
+// Образец на третьей ступени помощи (09.11.2026, проход «слабого ученика»): третья подсказка звучит словами — без
+// символов, а на экране под кодом печатью стоит готовый ответ; ученик переписывает его сам и жмёт «Проверить».
+const HELP_CODE = L3('Namuna', 'Образец', 'Example');
+function HelpCode({ code }) {
+  const pick = usePick();
+  return <div className="kz-helpcode" translate="no"><span>{pick(HELP_CODE)}</span><code>{code}</code></div>;
+}
 // Селектор: тег, .class или #id (ровно один простой селектор, как в уроке); иное — ничего не выбирает.
 function selOf(raw) {
   const s = String(raw || '').trim();
@@ -9480,7 +9520,7 @@ function useFill(id, c, issueOf, pose) {
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const issue = issueOf(ty.val.trim());
+    const issue = cyrIn(ty.val) || issueOf(noSemi(ty.val));
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: id, type: 'write-value', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -9496,7 +9536,7 @@ function useFill(id, c, issueOf, pose) {
 // Экран «впиши значение»: правило sel { prop: ▢; } (и готовые правила before), страница честно.
 function FillScreen({ p, c, F, sel, prop, want, given, hl }) {
   const pick = usePick();
-  const v = F.T.okNow ? want : F.ty.val.trim();
+  const v = F.T.okNow ? want : noSemi(F.ty.val);
   const rules = (given || []).concat([ruleTxt(sel, [[prop, v]])]);
   const val = F.T.okNow ? V(want) : [<Slot key="slot" ty={F.ty} led={F.led} onEnter={F.check} label={c.ask} onChange={F.onChange} />];
   return (
@@ -9504,7 +9544,7 @@ function FillScreen({ p, c, F, sel, prop, want, given, hl }) {
       <Sheet cls="c5-sheet">
         <KzAsk text={F.T.okNow ? c.ok : c.ask} hint={F.T.okNow ? null : (F.T.msg || hintAt(F.T.lad.lv, c.hints))} err={!!F.T.msg} />
         <div className="kz-scene c5-s5 c5-pair">
-          <div className="kz-col"><KzCode lines={styleWrap((given || []).map((r, i) => cssL('g' + i, 1, r, { cls: 'c5-dim' })).concat([ruleLine('r', ruleParts(sel, prop, val), F.T.okNow ? 'is-new' : 'is-hl')]))} cls="kz-code-sm" /></div>
+          <div className="kz-col"><KzCode lines={styleWrap((given || []).map((r, i) => cssL('g' + i, 1, r, { cls: 'c5-dim' })).concat([ruleLine('r', ruleParts(sel, prop, val), F.T.okNow ? 'is-new' : 'is-hl')]))} cls="kz-code-sm" />{!F.T.okNow && F.T.lad.lv >= 3 ? <HelpCode code={want} /> : null}</div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { hl: F.T.okNow ? null : hl })} rules={cssParse(rules.join(' '))} /></Br></div>
         </div>
         {!F.T.okNow ? <KeyRow keys={[]} ty={F.ty} canTap={F.canTap} onCheck={F.check} ready={F.ty.val.trim().length > 1} /> : null}
@@ -9513,6 +9553,14 @@ function FillScreen({ p, c, F, sel, prop, want, given, hl }) {
   );
 }
 // Экран-показ: шаги правил по очереди; steps[n] — список правил; lit(n, i) — горит ли правило i.
+// Помощь на экране-объяснении: ступени 1-2-3 по лампочке (useKzLadder). now — открытая ступень с номером «2/3»
+// для панели, next — текст следующей ступени без номера: его читает вслух лампочка.
+function useShowHelp(help) {
+  const lad = useKzLadder(!!(help && help.length));
+  const num = (k) => { const o = {}; LANGS.forEach((l) => { o[l] = k + '/' + help.length + ' · ' + (help[k - 1][l] !== undefined ? help[k - 1][l] : help[k - 1].ru); }); return o; };
+  if (!help || !help.length) return { now: null, next: null };
+  return { now: lad.lv > 0 ? num(Math.min(lad.lv, help.length)) : null, next: help[Math.min(lad.lv, help.length - 1)] };
+}
 function ShowScreen({ p, c, id, steps, says, asks, pose, hl }) {
   const pick = usePick();
   const [rec, put] = useRec(id);
@@ -9527,10 +9575,13 @@ function ShowScreen({ p, c, id, steps, says, asks, pose, hl }) {
   const rules = steps[n];
   const askText = solved || demo.done ? asks.done : asks.list[n];
   const prev = n > 0 ? steps[n - 1] : [];
+  // Помощь 1-2-3 на объяснении (заказчик, 09.11.2026): лампочка открывает ступени по очереди — 1 на что смотреть,
+  // 2 что это значит, 3 пример из жизни; Коди читает ступень вслух, жёлтая панель показывает её с номером.
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c5-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c5-s5 c5-pair">
           <div className="kz-col"><KzCode lines={styleWrap(rules.length ? rules.map((r, i) => cssL('r' + i + r, 1, r, { cls: live && prev.indexOf(r) < 0 ? 'is-new is-read' : '' })) : [codeLine('e', [P('e', 'c5-raw', ' ')], { d: 1 })])} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { hl: live && hl ? hl[n] : null })} rules={cssParse(rules.join(' '))} /></Br></div>
@@ -9593,6 +9644,7 @@ function S3({ p }) {
     const v = norm(w);
     if (!v) return c.msgs.empty;
     if (/^\d+(\.\d+)?$/.test(v)) return c.msgs.noUnit;
+    if (/^\d+\s+px$/.test(v)) return c.msgs.space;
     if (!cssOk('font-size', v)) return c.msgs.bad;
     return v.replace(/\s/g, '') === '40px' ? null : c.msgs.other;
   });
@@ -9829,9 +9881,9 @@ function S7({ p }) {
 function S8({ p }) {
   const c = C.s8;
   return <ShowScreen p={p} c={c} id="s8" pose="explain"
-    steps={[[], ['p { font-weight: bold; }'], ['p { font-weight: bold; }', 'a { text-decoration: none; }'], ['p { font-weight: bold; }', 'a { text-decoration: none; }', 'h1 { font-weight: normal; }']]}
-    says={[c.sayBold, c.sayNone, c.sayNormal]} hl={[null, 'p', 'a', 'h1']}
-    asks={{ list: [c.askStart, c.askBold, c.askNone, c.askNormal], done: c.askDone }} />;
+    steps={[[], ['p { font-weight: bold; }'], ['p { font-weight: bold; }', 'a { text-decoration: line-through; }'], ['p { font-weight: bold; }', 'a { text-decoration: none; }'], ['p { font-weight: bold; }', 'a { text-decoration: none; }', 'h1 { font-weight: normal; }']]}
+    says={[c.sayBold, c.sayLine, c.sayNone, c.sayNormal]} hl={[null, 'p', 'a', 'a', 'h1']}
+    asks={{ list: [c.askStart, c.askBold, c.askLine, c.askNone, c.askNormal], done: c.askDone }} />;
 }
 
 // S9. ССЫЛКА БЕЗ ЧЕРТЫ (Fill) — a { text-decoration: ▢; } → none.
@@ -9867,7 +9919,8 @@ function S10({ p }) {
           <div className="kz-col">
             <div className="c5-card c5-tf-card c5-effcard kz-a-drop">
               <span className="c5-card-h">{pick(c.card)}</span>
-              <span className="c5-eff" style={cssStyle(R.it.css)}>{pick(C.site.title)}</span>
+              <span className="c5-ba"><i>{pick(c.before)}</i><span className="c5-eff c5-eff-sm" style={cssStyle('')}>{pick(C.site.title)}</span></span>
+              <span className="c5-ba"><i>{pick(c.after)}</i><span className="c5-eff" style={cssStyle(R.it.css)}>{pick(C.site.title)}</span></span>
               {R.ok ? <code className="c5-eff-code" translate="no">{R.it.css}</code> : null}
             </div>
             <div className="kz-pick c5-tf-pick">{btn('weight')}{btn('deco')}</div>
@@ -9947,7 +10000,7 @@ function S13({ p }) {
     k: 'l' + j + (found && j === R.bad ? 'f' : ''), d: 0, parts: cssTokens(r),
     cls: 'c5-cssline c5-hline' + (found && j === R.bad ? ' is-new' : '') + (off.indexOf(j) >= 0 ? ' is-off' : ''),
     onTap: found ? null : () => tap(j), disabled: !canTap || found || off.indexOf(j) >= 0,
-    led: !found && ((led && off.length === 0 && j === 0) || (lit && j === R.bad))
+    led: !found && ((led && off.length === 0) || (lit && j === R.bad))
   }));
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
@@ -9995,7 +10048,7 @@ function W1({ p }) {
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const issue = ruleIssue(ty.val, c.msgs);
+    const issue = cyrIn(ty.val) || (ruleIssue(ty.val, c.msgs));
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: 'w1', type: 'write-rule', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -10011,7 +10064,7 @@ function W1({ p }) {
       <Sheet cls="c5-sheet">
         <KzAsk text={T.okNow ? c.ok : c.ask} hint={T.okNow ? null : (T.msg || hintAt(T.lad.lv, c.hints))} err={!!T.msg} />
         <div className="kz-scene c5-s5 c5-pair">
-          <div className="kz-col"><KzCode lines={styleWrap([T.okNow ? cssL('r', 1, css, { cls: 'is-new' }) : ruleLine('r', [<span key="g" className={'kz-gap c5-slot c5-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={48} /></span>], 'is-hl')])} cls="kz-code-sm" /></div>
+          <div className="kz-col"><KzCode lines={styleWrap([T.okNow ? cssL('r', 1, css, { cls: 'is-new' }) : ruleLine('r', [<span key="g" className={'kz-gap c5-slot c5-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={48} /></span>], 'is-hl')])} cls="kz-code-sm" />{!T.okNow && T.lad.lv >= 3 ? <HelpCode code={'p { font-weight: bold; }'} /> : null}</div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { hl: T.okNow ? null : 'p' })} rules={cssParse(css)} /></Br></div>
         </div>
         {!T.okNow ? <KeyRow keys={['{', '}', ':', ';']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 8} /> : null}
@@ -10040,7 +10093,7 @@ function S14({ p }) {
   const ready = !!(va && vb);
   const confirm = () => {
     if (!canTap || !ready || solved) return;
-    const issue = !cssOk('font-size', va) ? fillL(c.msgs.size, { w: va }) : !cssOk('font-family', vb) ? fillL(c.msgs.font, { w: vb }) : null;
+    const issue = cyrIn(va, vb) || (!cssOk('font-size', va) ? fillL(c.msgs.size, { w: va }) : !cssOk('font-family', vb) ? fillL(c.msgs.font, { w: vb }) : null);
     if (issue) { sfx('soft', true); setMsg(issue); sayNow(issue, 'think'); if (lad.lv < 1) lad.bump(); return; }
     sfx('win', true); setMsg(null);
     store.set('mySize', va); store.set('myFont', vb); put({ done: true });
@@ -14033,4 +14086,16 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .r28 .kz-br.c5-br .kz-br-page { overflow-y: auto !important; scrollbar-width: thin; }
 /* Страница — обычная толщина букв, как в браузере (иначе ссылка наследовала 600 от рамки окна). */
 .r28 .c5-doc { font-weight: 400; }
+
+/* Образец на третьей ступени помощи (09.11.2026). */
+.r28 .kz-helpcode { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; align-self: stretch; padding: 6px 10px; border-radius: 10px; background: #FFF8E1; box-shadow: inset 0 0 0 1.5px #F5C451; animation: kzHelpIn .3s ease-out both; }
+.r28 .kz-helpcode span { font: 600 12px var(--r-font); color: #8A6100; }
+.r28 .kz-helpcode code { font: 600 14px var(--r-mono); color: var(--r-ink); white-space: pre-wrap; word-break: break-word; }
+@keyframes kzHelpIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .r28 .kz-helpcode { animation: none; } }
+
+/* s10 — «До» и «После»: есть с чем сравнить (09.11.2026). */
+.r28 .c5-ba { display: flex; align-items: baseline; gap: 10px; }
+.r28 .c5-ba > i { flex: none; width: 4.2em; font: 600 12px var(--r-font); font-style: normal; color: var(--r-mute, #64748B); }
+.r28 .c5-eff-sm { font-size: clamp(18px, 3dvh, 24px); color: #64748B; }
 `;

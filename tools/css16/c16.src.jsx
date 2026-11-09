@@ -115,6 +115,11 @@ const C = {
   },
   s2: {
     eyebrow: L3("Piksel yoki foiz", 'Пиксели или проценты', 'Pixels or percent'),
+    help: [
+      L3("Bannerga va o'ng tepadagi belgiga qarang: telefonda u qizarib, sahifa oynadan keng ekanini ko'rsatadi.", 'Посмотри на баннер и на метку справа вверху: на телефоне она краснеет и показывает, что страница шире окна.', 'Look at the banner and the label at the top right: on a phone it turns red and shows the page is wider than the window.'),
+      L3("Piksel doim bir xil, foiz esa oynaga qarab o'zgaradi. Yuz foiz bu butun en.", 'Пиксели всегда одинаковые, а проценты меняются вместе с окном. Сто процентов — вся ширина.', 'Pixels always stay the same, and percent changes with the window. A hundred percent is the full width.'),
+      L3("Suv stakanni to'ldiradi, stakan katta bo'lsa ham, kichik bo'lsa ham. Yuz foizli banner ham har qanday oynani to'ldiradi.", 'Вода заполняет стакан, большой он или маленький. Баннер в сто процентов так же заполняет любое окно.', 'Water fills a glass, whether it’s big or small. A hundred percent banner fills any window the same way.')
+    ],
     say: L3("Oldin bannerni ko'ramiz. Hozir uning eni yetti yuz piksel. Kompyuterda u bemalol sig'adi.",
       'Сначала посмотрим на баннер. Сейчас его ширина семьсот пикселей. На компьютере он спокойно помещается.',
       'First, the banner. Right now it’s seven hundred pixels wide. On a computer it fits easily.'),
@@ -144,7 +149,7 @@ const C = {
     hints: [
       L3("Butun narsa necha foiz bo'ladi?", 'Сколько процентов — это всё целиком?', 'How many percent is the whole thing?'),
       L3("Butun narsa yuz foiz.", 'Всё целиком — это сто процентов.', 'The whole thing is a hundred percent.'),
-      L3("Yuz va foiz belgisini yozing, keyin Tekshirishni bosing.", 'Впиши сто и знак процента, потом нажми «Проверить».', 'Type a hundred and a percent sign, then tap Check.')
+      L3("Yuz deb yozing, keyin pastdagi foiz belgisi tugmasini va Tekshirishni bosing.", "Впиши сто, потом нажми внизу кнопку со знаком процента и «Проверить».", "Type a hundred, then tap the percent sign button below and Check.")
     ],
     ok: L3("Zo'r! Banner endi har qanday ekranga sig'adi. Telefon va kompyuterni almashtirib ko'ring.", 'Огонь! Теперь баннер помещается на любом экране. Переключи телефон и компьютер.', 'Awesome! Now the banner fits any screen. Switch between phone and computer.'),
     ask: L3("Banner butun en bo'ylab", 'Баннер во всю ширину', 'The banner at full width')
@@ -169,6 +174,11 @@ const C = {
   },
   s5: {
     eyebrow: L3("@media", '@media', '@media'),
+    help: [
+      L3("Kartochkalarga va oyna kengligiga qarang: oyna tor bo'lganda ular ustma-ust turadi, keng bo'lganda qatorga.", 'Посмотри на карточки и ширину окна: в узком окне они друг под другом, в широком — в ряд.', 'Look at the cards and the window width: in a narrow window they stack, in a wide one they sit in a row.'),
+      L3("media ichidagi qoidalar faqat shart bajarilganda ishlaydi. max-width olti yuz piksel, oyna olti yuzdan keng bo'lmasa degani.", 'Правила внутри media работают, только когда выполнено условие. max-width шестьсот пикселей — значит, окно не шире шестисот.', 'Rules inside media only work when the condition is met. max-width six hundred pixels means the window is no wider than six hundred.'),
+      L3("Yomg'ir yog'sagina soyabon ochasiz. media qoidasi ham faqat oyna tor bo'lsagina ishlaydi.", 'Зонт открывают, только когда идёт дождь. Правило media так же работает, только когда окно узкое.', 'You open an umbrella only when it rains. A media rule works only when the window is narrow.')
+    ],
     say: L3("Endi kartalar. Kompyuterda ular qatorda chiroyli turibdi. Telefonda-chi? Keling, ko'ramiz.",
       'Теперь карточки. На компьютере они красиво стоят в ряд. А на телефоне? Давай посмотрим.',
       'Now the cards. On a computer they look nice in a row. And on a phone? Let’s see.'),
@@ -199,7 +209,7 @@ const C = {
       L3("Olti yuz va px deb yozing, keyin Tekshirishni bosing.", 'Впиши шестьсот и px, потом нажми «Проверить».', 'Type six hundred and px, then tap Check.')
     ],
     ok: L3("Barakalla! Telefonda kartalar ustma-ust. Kompyuterni ham tekshirib ko'ring.", 'Молодец! На телефоне карточки друг под другом. Проверь и на компьютере.', 'Well done! On a phone the cards stack. Check the computer too.'),
-    ask: L3("Chegara: 600 piksel", 'Граница: 600 пикселей', 'Breakpoint: 600 pixels')
+    ask: L3("Kartochkalar 600 piksel va undan tor oynada ustma-ust tursin", "Карточки столбиком в окнах 600 пикселей и уже", "Cards stacked in windows 600 pixels and narrower")
   },
   s7: {
     eyebrow: L3("Ishlaydimi?", 'Сработает?', 'Will it work?'),
@@ -224,6 +234,11 @@ const C = {
   },
   s8: {
     eyebrow: L3("Telefonda yana nima?", 'Что ещё на телефоне?', 'What else on a phone?'),
+    help: [
+      L3("Bannerga qarang: telefonda u yo'qoladi, kompyuterda esa joyida turadi.", 'Посмотри на баннер: на телефоне он пропадает, а на компьютере остаётся.', 'Look at the banner: on a phone it disappears, and on a computer it stays.'),
+      L3("media ichida telefon uchun istalgan o'zgarishni yozish mumkin: joylashuv, o'lcham, yashirish. display none elementni yashiradi.", 'Внутри media можно писать любые изменения для телефона: расположение, размеры, что спрятать. display none прячет элемент.', 'Inside media you can write any change for a phone: layout, sizes, what to hide. display none hides an element.'),
+      L3('Sumkaga safar uchun hamma narsani solmaysiz, keraksizini uyda qoldirasiz. Telefonda ham keraksiz narsani display none bilan yashirasiz.', 'В дорогу не берут всё подряд — лишнее оставляют дома. На телефоне лишнее так же прячут через display none.', 'You don’t pack everything for a trip; you leave extras at home. On a phone you hide extras with display none.')
+    ],
     say: L3("Media ichida faqat kartalar emas, istalgan narsani o'zgartirish mumkin. Masalan, telefonda ekran kichik, banner esa ko'p joy egallaydi.",
       'Внутри media можно менять не только карточки, а что угодно. Например, на телефоне экран маленький, а баннер занимает много места.',
       'Inside media you can change anything, not just the cards. For example, a phone screen is small, and the banner takes up a lot of space.'),
@@ -277,12 +292,17 @@ const C = {
   },
   s11: {
     eyebrow: L3("Qachon ishlamaydi", 'Когда не работает', 'When it doesn’t work'),
+    help: [
+      L3('Har safar shartga qarang: qavslar bormi, son yonida px bormi, max yoki min yozilganmi? Keyin kartochkalarga qarang.', 'Каждый раз смотри на условие: есть ли скобки, есть ли px у числа, написано max или min? Потом на карточки.', 'Each time, look at the condition: are there brackets, does the number have px, is it max or min? Then look at the cards.'),
+      L3('Shart qavs ichida yoziladi, son px bilan. Telefon uchun max-width kerak, min-width esa keng oynalarda ishlaydi.', 'Условие пишут в скобках, число — с px. Для телефона нужен max-width, а min-width работает на широких окнах.', 'The condition goes in brackets, the number with px. A phone needs max-width; min-width works on wide windows.'),
+      L3("«O'n ikki yoshdan kichiklarga» va «o'n ikki yoshdan kattalarga» degan yozuvlar teskari ma'noni beradi. max va min ham shunday teskari.", 'Надписи «до двенадцати лет» и «от двенадцати лет» значат противоположное. max и min — так же наоборот.', 'Signs saying “under twelve” and “twelve and over” mean opposite things. max and min are opposites the same way.')
+    ],
     say: L3("Media qoidasida ham xatolar bo'ladi. Keling, uchtasini telefonda ko'ramiz. Hozir hammasi to'g'ri: kartalar ustma-ust.",
       'И в правиле media бывают ошибки. Давай посмотрим на три на телефоне. Сейчас всё правильно: карточки друг под другом.',
       'Media rules have mistakes too. Let’s look at three on a phone. Right now everything is correct: the cards are stacked.'),
     sayParens: L3("Birinchisi: shart qavssiz yozilgan. Brauzer uni tushunmadi va butun media qoidasini tashlab yubordi. Kartalar yana qatorda.", 'Первая: условие без скобок. Браузер его не понял и выбросил всё правило media. Карточки снова в ряд.', 'The first: the condition has no brackets. The browser didn’t understand it and threw the whole media rule away. The cards are in a row again.'),
     sayPx: L3("Ikkinchisi: olti yuz yozilgan, lekin px yo'q. Bu ham xato, brauzer qoidani yana tashlab yubordi.", 'Вторая: написано шестьсот, а px нет. Это тоже ошибка, браузер снова выбросил правило.', 'The second: six hundred is written, but no px. That’s a mistake too, and the browser threw the rule away again.'),
-    sayMin: L3("Uchinchisi ayyorroq: max o'rniga min. min-width ya'ni olti yuzdan kam bo'lmasa degani. Endi qoida telefonda uxlaydi, keng kompyuterda esa kartalarni ustma-ust qo'yadi. Teskari bo'lib qoldi!", 'Третья — хитрее: min вместо max. min-width — то есть «если окно не уже шестисот». Теперь правило спит на телефоне, а на широком компьютере ставит карточки столбиком. Всё наоборот!', 'The third is sneakier: min instead of max. min-width means if the window is at least six hundred. Now the rule sleeps on a phone, and on a wide computer it stacks the cards. Backwards!'),
+    sayMin: L3("Uchinchisi ayyorroq: max o'rniga min. min-width ya'ni oyna olti yuz piksel yoki undan keng bo'lsa degani. Endi qoida telefonda uxlaydi, keng kompyuterda esa kartalarni ustma-ust qo'yadi. Teskari bo'lib qoldi!", "Третья — хитрее: min вместо max. min-width — то есть «если окно шестьсот пикселей или шире». Теперь правило спит на телефоне, а на широком компьютере ставит карточки столбиком. Всё наоборот!", "The third is sneakier: min instead of max. min-width means if the window is six hundred pixels or wider. Now the rule sleeps on a phone, and on a wide computer it stacks the cards. Backwards!"),
     done: L3("Demak, shart qavs ichida, son px bilan yoziladi, telefon uchun esa max-width kerak.", 'Значит, условие пишут в скобках, число — с px, а для телефона нужен max-width.', 'So the condition goes in brackets, the number has px, and a phone needs max-width.'),
     askStart: L3("Qarang: hammasi to'g'ri", 'Смотри: всё правильно', 'Watch: everything is correct'),
     askParens: L3("Qarang: qavssiz", 'Смотри: без скобок', 'Watch: no brackets'),
@@ -306,7 +326,7 @@ const C = {
     hints: [
       L3("Shartning chetlariga qarang.", 'Посмотри на края условия.', 'Look at the edges of the condition.'),
       L3("Media sharti doim qavs ichida yoziladi.", 'Условие media всегда пишут в скобках.', 'A media condition is always written in brackets.'),
-      L3("Ochuvchi qavs, max-width ikki nuqta olti yuz px, yopuvchi qavs deb yozing va Tekshirishni bosing.", 'Впиши открывающую скобку, max-width двоеточие 600px, закрывающую скобку и нажми «Проверить».', 'Type an opening bracket, max-width colon 600px, a closing bracket, then tap Check.')
+      L3("Ochuvchi qavs tugmasini bosing: u boshiga turadi. Keyin kursorni eng oxiriga qo'yib, yopuvchi qavsni bosing. Yoki hammasini o'chirib, kod ostidagi namunani ko'chiring.", "Нажми кнопку «(» — скобка встанет в начало. Потом поставь курсор в самый конец и нажми «)». Или сотри всё и перепиши образец под кодом.", "Tap the opening bracket button: it goes to the start. Then put the cursor at the very end and tap the closing one. Or erase everything and copy the example under the code.")
     ],
     ok: L3("Ura, ishladi! Telefonda kartalar ustma-ust.", 'Ура, заработало! На телефоне карточки друг под другом.', 'Hooray, it works! On a phone the cards stack.'),
     ask: L3("Shartni tuzating", 'Исправь условие', 'Fix the condition')
@@ -357,7 +377,7 @@ const C = {
     hints: [
       L3("Oldin media va qavs ichida shart, keyin figurali qavs ichida banner qoidasi.", 'Сначала media и условие в скобках, потом в фигурных скобках правило для баннера.', 'First media and the condition in brackets, then the banner rule in curly braces.'),
       L3("Shart: max-width olti yuz px. Ichida: nuqta banner, display none.", 'Условие: max-width 600px. Внутри: точка banner, display none.', 'Condition: max-width 600px. Inside: dot banner, display none.'),
-      L3("Shunday yozing: kuchukcha media, qavs max-width ikki nuqta olti yuz px qavs, figurali qavs, nuqta banner figurali qavs display ikki nuqta none nuqtali vergul, ikkita yopuvchi figurali qavs.", 'Напиши так: собачка media, скобка max-width двоеточие 600px скобка, фигурная скобка, точка banner фигурная скобка display двоеточие none точка с запятой, две закрывающие фигурные скобки.', 'Write it like this: at media, bracket max-width colon 600px bracket, curly brace, dot banner curly brace display colon none semicolon, two closing curly braces.')
+      L3("Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", "Образец появился под кодом. Перепиши его в поле и нажми «Проверить».", "An example appeared under the code. Copy it into the field and tap Check.")
     ],
     ok: L3("Ajoyib! Telefonda banner yashirin, kompyuterda joyida. Qoidani o'zingiz yozdingiz.", 'Отлично! На телефоне баннер спрятан, на компьютере на месте. Правило написано тобой целиком.', 'Great! The banner is hidden on a phone and there on a computer. You wrote the whole rule yourself.'),
     ask: L3("Telefonda bannerni yashiring: @media", 'Спрячь баннер на телефоне: @media', 'Hide the banner on a phone: @media')
@@ -399,7 +419,7 @@ const C = {
       { t: L3("Media ichidagi qoidalar hamma ekranda ishlaydi.", 'Правила внутри media работают на всех экранах.', 'The rules inside media work on every screen.'), right: false,
         why: L3("Aslida ular faqat shart bajarilganda ishlaydi.", 'На самом деле они работают только при выполненном условии.', 'Actually they only work when the condition is met.') },
       { t: L3("Shunday yozilsa, telefonda banner ekranga sig'adi.", 'Если написать так, на телефоне баннер поместится в экран.', 'Written like this, the banner fits the screen on a phone.'), right: false, code: 'order',
-        why: L3("Aslida banner sig'maydi. Nega, hozir ko'ramiz.", 'На самом деле баннер не поместится. Почему — сейчас увидим.', 'Actually the banner won’t fit. We’ll see why in a moment.') }
+        why: L3("Aslida sig'maydi: ikkala qoidaning kuchi bir xil, pastdagisi g'olib bo'ladi. Pastda esa yetti yuz piksel turibdi.", 'На самом деле не поместится: оба правила одной силы, а побеждает то, что ниже. А ниже стоит 700px.', 'Actually it won’t fit: both rules are equally strong, and the lower one wins. And the lower one says 700px.') }
     ],
     ok: L3("Hammasi to'g'ri! Siz moslashuvchan saytni yaxshi tushunasiz.", 'Всё верно! Ты отлично понимаешь адаптивный сайт.', 'All correct! You understand responsive sites really well.')
   },
@@ -432,7 +452,7 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayPhone: 1, sayPct: 1, sayWide: 1,
+Object.assign(SPOKEN, { help: 1, hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayPhone: 1, sayPct: 1, sayWide: 1,
   sayTight: 1, sayMedia: 1, sayHide: 1, sayParens: 1, sayPx: 1, sayMin: 1, miss: 1, say2: 1, fine: 1, found: 1,
   items: 1, right: 1, rounds: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1, css: 1, right: 1, tag: 1, dir: 1, mq: 1, vw: 1 }, rounds: { want: 1, opts: 1, hover: 1 } });

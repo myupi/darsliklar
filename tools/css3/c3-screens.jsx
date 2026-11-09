@@ -1,8 +1,7 @@
 // =============================================================================
-// ЭКРАНЫ УРОКА 3 КУРСА CSS «Цвета» (облик «Редактор», 05.11.2026). Основа кода — урок 2 курса CSS (tools/css2/).
-// Типы заданий — по разделу 3а навыка: s3 вписать hex — s4 найти пару; s6 три числа rgb — s7 какой код;
-// s9 место на круге — s10 светлый или тёмный; s12 поставить «#» — s13 найти сломанное правило; w1 правило целиком;
-// s14 свои цвета; q1 верно или нет. Экрана плана нет.
+// ЭКРАНЫ УРОКА 3 КУРСА CSS «Цвета» (облик «Редактор», 05.11.2026; упрощён 09.11.2026: названия, hex из палитры, rgb).
+// Основа кода — урок 2 курса CSS (tools/css2/). Общие экраны: ShowScreen (показ с помощью 1-2-3 по лампочке),
+// FillScreen (впиши значение), RoundsScreen (выбор по одному). Экрана плана нет.
 // Честный браузер: принимает ли браузер цвет — решает сам Chrome (CSS.supports), один ли это цвет — canvas.
 // Бумаги нет нигде.
 // =============================================================================
@@ -15,6 +14,21 @@ const cssOk = (p, v) => {
   if (CSS_PROPS.indexOf(p) < 0 || !v) return false;
   try { return typeof CSS === 'undefined' || !CSS.supports ? true : CSS.supports(p, v); } catch (e) { return false; }
 };
+// Русские (кириллические) буквы вместо латинских (09.11.2026, проход «слабого ученика»): «рх», «р» выглядят как px, p —
+// своя причина раньше любой проверки, иначе ученик видит «верный» ответ и не понимает отказа.
+const CYR_MSG = L3("Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.",
+  'Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.',
+  'Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.');
+const cyrIn = (...vs) => (vs.some((x) => /[\u0400-\u04FF]/.test(String(x == null ? '' : x))) ? CYR_MSG : null);
+// Лишняя «;» в конце значения (ученик помнит, что правило кончается ею) — не ошибка: значение без неё.
+const noSemi = (s) => String(s || '').replace(/[“”«»„]/g, '"').trim().replace(/;+\s*$/, '').trim();
+// Образец на третьей ступени помощи (09.11.2026, проход «слабого ученика»): третья подсказка звучит словами — без
+// символов, а на экране под кодом печатью стоит готовый ответ; ученик переписывает его сам и жмёт «Проверить».
+const HELP_CODE = L3('Namuna', 'Образец', 'Example');
+function HelpCode({ code }) {
+  const pick = usePick();
+  return <div className="kz-helpcode" translate="no"><span>{pick(HELP_CODE)}</span><code>{code}</code></div>;
+}
 // Селектор: тег, .class или #id (ровно один простой селектор, как в уроке); иное — ничего не выбирает.
 function selOf(raw) {
   const s = String(raw || '').trim();
@@ -334,70 +348,74 @@ function S1({ p }) {
   );
 }
 
+
 // =============================================================================
-// S2. hex (показ) — «#FF0000»: «#» и три пары; пары загораются цветами лучей; FF переезжает: зелёный, синий.
+// ОБЩИЕ ЭКРАНЫ (09.11.2026, урок упрощён по просьбе заказчика): показ с помощью 1-2-3, «впиши значение», выбор по одному.
 // =============================================================================
-function S2({ p }) {
+// Помощь на экране-объяснении: ступени 1-2-3 по лампочке (useKzLadder) — 1 на что смотреть, 2 что это значит,
+// 3 пример из жизни. now — открытая ступень с номером «2/3» для панели, next — текст следующей ступени без номера:
+// его читает вслух лампочка.
+function useShowHelp(help) {
+  const lad = useKzLadder(!!(help && help.length));
+  const num = (k) => { const o = {}; LANGS.forEach((l) => { o[l] = k + '/' + help.length + ' · ' + (help[k - 1][l] !== undefined ? help[k - 1][l] : help[k - 1].ru); }); return o; };
+  if (!help || !help.length) return { now: null, next: null };
+  return { now: lad.lv > 0 ? num(Math.min(lad.lv, help.length)) : null, next: help[Math.min(lad.lv, help.length - 1)] };
+}
+// Экран-показ: шаги по очереди; view(n) — { css, val, extra } для шага n: строка CSS, значение для правила и что
+// показать под кодом (полосы лучей, палитра). says — реплики после каждого шага.
+function ShowScreen({ p, c, id, n0, view, says, asks, pose, els }) {
   const pick = usePick();
-  const c = C.s2;
-  const [rec, put] = useRec('s2');
+  const [rec, put] = useRec(id);
   const solved = !!(rec && rec.done);
-  const [n, setN] = useState(solved ? 3 : 0);
-  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
-  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
-    { act: () => { sfx('pop', true); setN(1); } }, { say: [{ text: c.sayParts, pose: 'point' }] },
-    { act: () => { sfx('ok', true); setN(2); } }, { say: [{ text: c.sayGreen, pose: 'wonder' }] },
-    { act: () => { sfx('ok', true); setN(3); } }, { say: [{ text: c.sayBlue, pose: 'point' }] },
-    { say: [{ text: c.done, pose: 'smile' }] },
-    { act: () => put({ done: true }) }
-  ] });
+  const last = says.length;
+  const [n, setN] = useState(solved ? last : (n0 || 0));
+  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: pose || 'explain' }]);
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [].concat(...says.map((t, i) => [{ act: () => { sfx(i ? 'ok' : 'pop', true); setN(i + 1); } }, { say: [{ text: t, pose: i % 2 ? 'wonder' : 'point' }] }]),
+    [{ say: [{ text: c.done, pose: 'smile' }] }, { act: () => put({ done: true }) }]) });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
-  const live = !solved && !demo.done;
-  const hex = n === 3 ? '0000FF' : n === 2 ? '00FF00' : 'FF0000';
-  const askText = solved || demo.done ? c.askDone : n >= 1 ? c.askParts : c.askStart;
-  const lit = n === 1 ? 'all' : n === 2 ? 'g' : n === 3 ? 'b' : null;
+  const v = view(n);
+  const askText = solved || demo.done ? asks.done : asks.list[n];
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c3-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c3-s5 c3-pair">
           <div className="kz-col">
-            <KzCode lines={styleWrap([ruleLine('r' + n, ruleParts('h1', 'color', hexVal(hex, n >= 1)), n >= 2 && live ? 'is-new is-read' : n >= 1 ? 'is-read' : '')])} cls="kz-code-sm" />
-            <Mixer rgb={rgbOf('#' + hex)} fmt="hex" lit={live ? lit : null} />
+            <KzCode lines={styleWrap([ruleLine('r' + n, v.parts || ruleParts(v.sel || 'h1', v.prop || 'color', [P('v', 'c3-val', v.val)]), 'is-new is-read')])} cls="kz-code-sm" />
+            {v.extra || null}
           </div>
-          <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { noLogo: true })} rules={cssParse('h1 { color: #' + hex + '; }')} /></Br></div>
+          <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={els || site(pick, { noLogo: true, short: true })} rules={cssParse(v.css)} /></Br></div>
         </div>
       </Sheet>
     </StageB>
   );
 }
-
-// =============================================================================
-// S3. ВПИШИ hex (Fill in the Blanks) — «h1 { color: #▢; }»: синий. Браузер красит то, что вписано;
-// короткая запись «00F» — тоже синий (честно).
-// =============================================================================
-function S3({ p }) {
-  const pick = usePick();
+const ruleTxt = (sel, prop, v) => sel + ' { ' + prop + ': ' + v + '; }';
+const norm = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+const Slot = ({ ty, led, onEnter, label, cls, max, onChange }) => (
+  <span key="g" className={'kz-gap c3-slot ' + (cls || 'c3-slot-col') + (led ? ' kz-gap-led' : '')}>
+    <InlineInput value={ty.val} onChange={onChange || ((x) => ty.setVal(x))} inputRef={ty.inputRef} onEnter={onEnter} placeholder={L3('…', '…', '…')} label={label} max={max || 24} />
+  </span>
+);
+// Задание «впиши значение»: одно поле, проверка issueOf(v) → msg | null.
+function useFill(id, c, issueOf, pose) {
   const log = useLog();
-  const c = C.s3;
-  const [rec, put] = useRec('s3');
+  const [rec, put] = useRec(id);
   const solved = !!(rec && rec.done);
-  const ty = useTagTyping({ max: 8 });
-  const T = useTypeTask('s3', solved);
-  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'explain' }]);
+  const ty = useTagTyping({ max: 24 });
+  const T = useTypeTask(id, solved);
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : (pose || 'explain') }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || T.okNow, spoken);
   const led = useIdleLed(canTap && !T.okNow && !ty.val, 0);
-  const w = T.okNow ? '0000FF' : ty.val.replace(/\s+/g, '');
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const v = ty.val.replace(/\s+/g, '');
-    const issue = !v ? c.msgs.empty : /^#/.test(v) ? c.msgs.hash : /[^0-9a-f]/i.test(v) ? c.msgs.chars : v.length !== 6 && v.length !== 3 ? c.msgs.len
-      : colorKey('#' + v) === colorKey('#0000FF') ? null : c.msgs.other;
+    const issue = cyrIn(ty.val) || issueOf(noSemi(ty.val));
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
-      log({ screenId: 's3', type: 'write-hex', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
+      log({ screenId: id, type: 'write-value', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
       sayNow(c.ok, 'cheer');
       return;
     }
@@ -405,228 +423,60 @@ function S3({ p }) {
     sfx('soft', true); T.setMsg(issue); sayNow(issue, 'think');
     if (T.st.current.misses >= 2) T.lad.bump();
   };
-  const val = T.okNow ? hexVal('0000FF', true) : [<span key="m" className="c3-val c3-hex"><span className="c3-hx-m">#</span></span>,
-    <span key="g" className={'kz-gap c3-slot c3-slot-hex' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={8} /></span>];
+  return { ty, T, speaker, canTap, canGo, led, check, onChange: (x) => { ty.setVal(x); T.setMsg(null); } };
+}
+// Экран «впиши значение»: «h1 { color: [pre] ▢ [post]; }», страница честно (пустое поле — правила нет); extra — что под
+// кодом (палитра, полосы лучей); keys — кнопки знаков.
+function FillScreen({ p, c, F, want, pre, post, extra, keys, sel }) {
+  const pick = usePick();
+  const v = F.T.okNow ? want : noSemi(F.ty.val);
+  const full = (pre || '') + v + (post || '');
+  const css = v ? ruleTxt(sel || 'h1', 'color', full) : '';
+  const slot = F.T.okNow ? P('v', 'c3-val', want) : <Slot key="slot" ty={F.ty} led={F.led} onEnter={F.check} label={c.ask} onChange={F.onChange} />;
+  const val = [].concat(pre ? [P('pre', 'c3-val', pre)] : [], [slot], post ? [P('post', 'c3-val', post)] : []);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, T.lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
-      <Sheet cls="c3-sheet">
-        <KzAsk text={T.okNow ? c.ok : c.ask} hint={T.okNow ? null : (T.msg || hintAt(T.lad.lv, c.hints))} err={!!T.msg} />
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={F.speaker} done={F.canGo} hint={hintAt(Math.min(3, F.T.lad.lv + 1), c.hints) || c.ask} nav={navOf(p, F.canGo)}>
+      <Sheet cls="c3-sheet c3-fill">
+        <KzAsk text={F.T.okNow ? c.ok : c.ask} hint={F.T.okNow ? null : (F.T.msg || hintAt(F.T.lad.lv, c.hints))} err={!!F.T.msg} />
         <div className="kz-scene c3-s5 c3-pair">
           <div className="kz-col">
-            <KzCode lines={styleWrap([ruleLine('r', ruleParts('h1', 'color', val), T.okNow ? 'is-new' : 'is-hl')])} cls="kz-code-sm" />
-            <Mixer rgb={rgbOf('#' + w)} fmt="hex" lit={T.lad.lv >= 2 && !T.okNow ? 'b' : null} />
+            <KzCode lines={styleWrap([ruleLine('r', ruleParts(sel || 'h1', 'color', val), F.T.okNow ? 'is-new' : 'is-hl')])} cls="kz-code-sm" />{!F.T.okNow && F.T.lad.lv >= 3 ? <HelpCode code={want} /> : null}
+            {extra || null}
           </div>
-          <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { noLogo: true })} rules={cssParse('h1 { color: #' + w + '; }')} /></Br></div>
+          <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { noLogo: true, short: true, hl: !F.T.okNow })} rules={cssParse(css)} /></Br></div>
         </div>
-        {!T.okNow ? <KeyRow keys={['0', 'F']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length >= 6} /> : null}
+        {!F.T.okNow ? <KeyRow keys={keys || []} ty={F.ty} canTap={F.canTap} onCheck={F.check} ready={F.ty.val.trim().length > 1} /> : null}
       </Sheet>
     </StageB>
   );
 }
-
-// =============================================================================
-// S4. НАЙДИ ПАРУ (Matching Pairs) — #FF0000, #00FF00, #000000 ↔ пятна цвета.
-// =============================================================================
-const S4_CODES = ['red', 'green', 'black'];
-const S4_CARDS = ['black', 'red', 'green'];
-const S4_TXT = { red: '#FF0000', green: '#00FF00', black: '#000000' };
-function S4({ p }) {
-  const pick = usePick();
+// Выбор по одному (раунды): список, ключ ответа, объяснение, что сказать ответом.
+function useRounds(id, c, list, keyOf, whyOf, ansOf) {
   const log = useLog();
-  const c = C.s4;
-  const [rec, put] = useRec('s4');
+  const [rec, put] = useRec(id);
   const solved = !!(rec && rec.done);
-  const [paired, setPaired] = useState(solved ? S4_CODES.slice() : []);
-  const [sel, setSel] = useState(null);
-  const [msg, setMsg] = useState(null);
-  const [shake, setShake] = useState(null);
-  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'curious' }]);
-  const canTap = useCanAnswer(spoken);
-  const done = paired.length === 3;
-  const canGo = useAdvanceGate(solved || done, spoken);
-  const lad = useKzLadder(!done);
-  const st = useRef({ tries: 0, misses: 0 });
-  const led = useIdleLed(canTap && !done, paired.length * 10 + (sel ? 1 : 0));
-  const lit = lad.lv >= 3;
-  const nextT = S4_CODES.find((t) => paired.indexOf(t) < 0);
-  const pickCard = (card) => {
-    if (!canTap || done || paired.indexOf(card) >= 0) return;
-    if (!sel) { setMsg(c.pickFirst); return; }
-    st.current.tries += 1;
-    if (sel !== card) {
-      st.current.misses += 1;
-      sfx('soft', true); setShake(card); setTimeout(() => setShake(null), 520);
-      const m = c.why[sel];
-      setMsg(m); sayNow(m, 'think'); setSel(null);
-      if (st.current.misses >= 2) lad.bump();
-      return;
-    }
-    sfx('pop', true); setMsg(null);
-    const nx = paired.concat(card);
-    setPaired(nx); setSel(null);
-    if (nx.length === 3) {
-      put({ done: true });
-      log({ screenId: 's4', type: 'match-hex', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
-      sayNow(c.ok, 'cheer');
-    } else sayNow(c.pairOk[card], 'smile');
-  };
-  return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
-      <Sheet cls="c3-sheet">
-        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hintAt(lad.lv, c.hints))} err={!!msg} n={done ? null : paired.length + '/3'} />
-        <div className="kz-scene c3-match">
-          <div className="c3-match-col">
-            {S4_CODES.map((t) => {
-              const ok = paired.indexOf(t) >= 0;
-              return (
-                <button key={t} type="button" disabled={!canTap || ok || done} data-t={t} onClick={() => { setSel(sel === t ? null : t); setMsg(null); sfx('tap', true); }}
-                  className={'kz-scrap kz-scrap-code c3-mtag' + (ok ? ' is-ok' : '') + (sel === t ? ' is-sel' : '') + (lit && t === nextT && !sel ? ' is-led' : '')}>
-                  <span translate="no">{S4_TXT[t]}</span><Led on={led && !sel && !ok} />
-                </button>
-              );
-            })}
-          </div>
-          <div className="c3-match-col">
-            {S4_CARDS.map((k) => {
-              const ok = paired.indexOf(k) >= 0;
-              return (
-                <button key={k} type="button" disabled={!canTap || ok || done} data-card={k} onClick={() => pickCard(k)}
-                  className={'c3-mcard c3-swcard' + (ok ? ' is-ok' : '') + (shake === k ? ' kz-a-shake' : '') + (sel && !ok ? ' is-call' : '') + (lit && sel === k ? ' is-led' : '')}>
-                  <span className="c3-sw" style={{ background: S4_TXT[k] }} />
-                  {ok ? <span className="c3-mcard-tag" translate="no">{S4_TXT[k]}</span> : null}
-                  <Led on={led && !!sel && !ok} />
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </Sheet>
-    </StageB>
-  );
-}
-
-// =============================================================================
-// S5. rgb (показ) — «rgb(255, 0, 0)»: три числа; красный + зелёный = жёлтый; все нули — чёрный, 255 — белый.
-// =============================================================================
-function S5({ p }) {
-  const pick = usePick();
-  const c = C.s5;
-  const [rec, put] = useRec('s5');
-  const solved = !!(rec && rec.done);
-  const [n, setN] = useState(solved ? 3 : 0);
-  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
-  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
-    { act: () => { sfx('pop', true); setN(1); } }, { say: [{ text: c.sayParts, pose: 'point' }] },
-    { act: () => { sfx('ok', true); setN(2); } }, { say: [{ text: c.sayMix, pose: 'wonder' }] },
-    { act: () => { sfx('ok', true); setN(3); } }, { say: [{ text: c.sayBlack, pose: 'point' }] },
-    { say: [{ text: c.done, pose: 'smile' }] },
-    { act: () => put({ done: true }) }
-  ] });
-  const canGo = useAdvanceGate(solved || demo.done, spoken);
-  const live = !solved && !demo.done;
-  const v = n === 3 ? [0, 0, 0] : n === 2 ? [255, 255, 0] : [255, 0, 0];
-  const askText = solved || demo.done ? c.askDone : n === 3 ? c.askBlack : n === 2 ? c.askMix : n === 1 ? c.askParts : c.askStart;
-  return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
-      <Sheet cls="c3-sheet">
-        <KzAsk text={askText} />
-        <div className="kz-scene c3-s5 c3-pair">
-          <div className="kz-col">
-            <KzCode lines={styleWrap([ruleLine('r' + n, ruleParts('h1', 'color', rgbVal(v, n >= 1)), n >= 2 && live ? 'is-new is-read' : n >= 1 ? 'is-read' : '')])} cls="kz-code-sm" />
-            <Mixer rgb={v} lit={!live ? null : n === 1 ? 'all' : n === 2 ? ['r', 'g'] : null} extremes={n === 3} />
-          </div>
-          <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { noLogo: true })} rules={cssParse('h1 { color: rgb(' + v.join(', ') + '); }')} /></Br></div>
-        </div>
-      </Sheet>
-    </StageB>
-  );
-}
-
-// =============================================================================
-// S6. СОБЕРИ ЖЁЛТЫЙ (Fill in the Blanks) — «body { background-color: rgb(▢, ▢, ▢); }»: 255, 255, 0. Фон
-// красится тем, что вписано (браузер сам решает, верная ли запись).
-// =============================================================================
-function S6({ p }) {
-  const pick = usePick();
-  const log = useLog();
-  const c = C.s6;
-  const [rec, put] = useRec('s6');
-  const solved = !!(rec && rec.done);
-  const [vals, setVals] = useState(solved ? ['255', '255', '0'] : ['', '', '']);
-  const T = useTypeTask('s6', solved);
-  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'explain' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved || T.okNow, spoken);
-  const led = useIdleLed(canTap && !T.okNow && !vals[0], 0);
-  const nums = vals.map((x) => x.trim());
-  const css = 'body { background-color: rgb(' + nums.join(', ') + '); }';
-  const check = () => {
-    if (!canTap || T.okNow) return;
-    T.st.current.tries += 1;
-    const n = nums.map(Number);
-    const issue = nums.some((x) => !x) ? c.msgs.empty : nums.some((x) => !/^\d+$/.test(x) || Number(x) > 255) ? c.msgs.range
-      : n[0] !== 255 ? c.msgs.red : n[1] !== 255 ? c.msgs.green : n[2] !== 0 ? c.msgs.blue : null;
-    if (!issue) {
-      sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
-      log({ screenId: 's6', type: 'write-rgb', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
-      sayNow(c.ok, 'cheer');
-      return;
-    }
-    T.st.current.misses += 1;
-    sfx('soft', true); T.setMsg(issue); sayNow(issue, 'think');
-    if (T.st.current.misses >= 2) T.lad.bump();
-  };
-  const field = (i) => (T.okNow ? <span key={'v' + i} className={'c3-hx c3-hx-' + 'rgb'[i]}>{nums[i]}</span>
-    : <span key={'f' + i} className={'kz-gap c3-slot c3-slot-num' + (led && i === 0 ? ' kz-gap-led' : '')} data-f={i}><InlineInput value={vals[i]} onChange={(x) => { const nx = vals.slice(); nx[i] = x; setVals(nx); T.setMsg(null); }} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={3} /></span>);
-  const val = [<span key="rg" className="c3-val c3-rgbv is-lit">rgb(</span>, field(0), P('c1', 'c3-val', ','), ' ', field(1), P('c2', 'c3-val', ','), ' ', field(2), P('c3', 'c3-val', ')')];
-  return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, T.lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
-      <Sheet cls="c3-sheet">
-        <KzAsk text={T.okNow ? c.ok : c.ask} hint={T.okNow ? null : (T.msg || hintAt(T.lad.lv, c.hints))} err={!!T.msg} />
-        <div className="kz-scene c3-s5 c3-pair">
-          <div className="kz-col">
-            <KzCode lines={styleWrap(ruleBlock('r', 'body', 'background-color', val, T.okNow ? 'is-new' : 'is-hl'))} cls="kz-code-sm" />
-            <Mixer rgb={cssOk('color', 'rgb(' + nums.join(', ') + ')') ? rgbOf('rgb(' + nums.join(', ') + ')') : null} />
-          </div>
-          <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { noLogo: true })} rules={cssParse(css)} /></Br></div>
-        </div>
-        {!T.okNow ? <CheckRow canTap={canTap} onCheck={check} ready={nums.every((x) => x)} /> : null}
-      </Sheet>
-    </StageB>
-  );
-}
-
-// =============================================================================
-// S7. КАКОЙ КОД? (выбор, по одному) — пятно цвета и три rgb-кода: жёлтый, чёрный, фиолетовый.
-// =============================================================================
-function S7({ p }) {
-  const pick = usePick();
-  const log = useLog();
-  const c = C.s7;
-  const [rec, put] = useRec('s7');
-  const solved = !!(rec && rec.done);
-  const [ii, setIi] = useState(solved ? c.rounds.length - 1 : 0);
+  const [ii, setIi] = useState(solved ? list.length - 1 : 0);
   const [ok, setOk] = useState(solved);
   const [off, setOff] = useState([]);
   const [next, setNext] = useState(false);
   const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.ok, pose: 'smile' }] : [{ text: c.say, pose: 'curious' }]);
   const canTap = useCanAnswer(spoken);
-  const done = ok && ii === c.rounds.length - 1;
+  const done = ok && ii === list.length - 1;
   const canGo = useAdvanceGate(solved || done, spoken);
   const st = useRef({ tries: 0, misses: 0 });
   const led = useIdleLed(canTap && !ok, ii * 10 + off.length);
-  const it = c.rounds[ii];
+  const it = list[ii];
   const ch = useChoiceHints(!ok, ii);
-  const hints = choiceHints(c.hint1, c.hint2, it.why, it.want);
+  const hints = choiceHints(c.hint1, c.hint2, whyOf(it), ansOf(it));
   const choose = (v) => {
     if (!canTap || ok || off.indexOf(v) >= 0) return;
     st.current.tries += 1;
-    if (v !== it.want) { st.current.misses += 1; sfx('soft', true); setOff(off.concat(v)); sayNow(ch.miss(it.why, hints), 'think'); return; }
+    if (v !== keyOf(it)) { st.current.misses += 1; sfx('soft', true); setOff(off.concat(v)); sayNow(ch.miss(whyOf(it), hints), 'think'); return; }
     sfx('ok', true); setOk(true); ch.clear();
-    const line = joinL(c.right, it.why);
-    if (ii === c.rounds.length - 1) {
+    const line = joinL(c.right, whyOf(it));
+    if (ii === list.length - 1) {
       put({ done: true });
-      log({ screenId: 's7', type: 'pick-rgb', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: ch.lad.asked.current, depth: ch.lad.lv });
+      log({ screenId: id, type: 'choose', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: ch.lad.asked.current, depth: ch.lad.lv });
       sayNow(joinL(line, c.ok), 'cheer');
     } else { sayNow(line, 'smile'); setNext(true); }
   };
@@ -635,18 +485,23 @@ function S7({ p }) {
     const t = setTimeout(() => { setNext(false); setIi((x) => x + 1); setOk(false); setOff([]); }, reduceMotion() ? 300 : 1100);
     return () => clearTimeout(t);
   }, [next, spoken]); // eslint-disable-line react-hooks/exhaustive-deps
+  return { it, ii, ok, off, done, canTap, canGo, led, ch, hints, choose, speaker };
+}
+// Кнопки выбора для useRounds: v — значения, label(v) — подпись.
+function RoundsScreen({ p, c, R, n, card, opts, label, cls, mono }) {
+  const pick = usePick();
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={R.speaker} done={R.canGo} hint={R.ch.next(R.hints) || c.ask} nav={navOf(p, R.canGo)}>
       <Sheet cls="c3-sheet">
-        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : ch.now(hints)} err={ch.err} n={(ii + 1) + '/' + c.rounds.length} />
-        <div className="kz-scene kz-scene-col kz-q2" key={'i' + ii}>
+        <KzAsk text={R.done ? c.ok : c.ask} hint={R.ok ? null : R.ch.now(R.hints)} err={R.ch.err} n={(R.ii + 1) + '/' + n} />
+        <div className="kz-scene kz-scene-col kz-q2" key={'i' + R.ii}>
           <div className="kz-col">
-            <div className="c3-card c3-swatch-card kz-a-drop"><span className="c3-swatch" style={{ background: it.want }} /></div>
-            <div className="kz-pick c3-opts">
-              {it.opts.map((v) => (
-                <button key={v} type="button" disabled={!canTap || ok || off.indexOf(v) >= 0} onClick={() => choose(v)} data-v={v}
-                  className={'kz-btn c3-tf c3-opt ' + (ok && v === it.want ? 'is-ok' : off.indexOf(v) >= 0 ? 'is-off' : 'is-ghost') + (ch.lad.lv >= 3 && !ok && v === it.want ? ' is-led' : '')}>
-                  <span translate="no">{v}</span><Led on={led && !ok && off.length === 0} />
+            {card}
+            <div className={'kz-pick c3-opts ' + (cls || '')}>
+              {opts.map((v) => (
+                <button key={v} type="button" disabled={!R.canTap || R.ok || R.off.indexOf(v) >= 0} onClick={() => R.choose(v)} data-v={v}
+                  className={'kz-btn c3-tf c3-opt' + (mono ? ' is-mono' : '') + ' ' + (R.ok && v === R.it.right ? 'is-ok' : R.off.indexOf(v) >= 0 ? 'is-off' : 'is-ghost')}>
+                  <span translate="no">{label ? pick(label(v)) : v}</span><Led on={R.led && !R.ok && R.off.length === 0} />
                 </button>
               ))}
             </div>
@@ -657,265 +512,139 @@ function S7({ p }) {
   );
 }
 
+// Палитра, как в программе для рисования: квадратики цвета, под каждым — его код. lit — горит код.
+const PAL = ['#FA4F28', '#1E90FF', '#2ECC71', '#8E44AD'];
+const Palette = ({ lit }) => (
+  <div className="c3-pal" aria-hidden="true">
+    {PAL.map((h) => (
+      <span key={h} className={'c3-pal-i' + (lit === h ? ' is-on' : '')}><i style={{ background: h }} /><b translate="no">{h}</b></span>
+    ))}
+  </div>
+);
+// Большое пятно цвета (задания на выбор).
+const Swatch = ({ color }) => <div className="c3-card c3-swatch-card kz-a-drop"><span className="c3-swatch" style={{ background: color }} /></div>;
+const CodeCard = ({ code }) => <KzCode lines={[cssL('c', 0, code, { cls: 'is-hl' })]} cls="kz-code-sm c3-big" />;
+
 // =============================================================================
-// S8. hsl (показ) — круг цветов: место 0 → 120 → 240; светлота 85% — светлее, 25% — темнее.
+// S2. НАЗВАНИЯ ЦВЕТОВ (показ) — red → blue → lightblue (светлый) → darkblue (тёмный).
 // =============================================================================
+const S2_V = ['red', 'blue', 'lightblue', 'darkblue'];
+function S2({ p }) {
+  const c = C.s2;
+  return <ShowScreen p={p} c={c} id="s2" view={(n) => ({ val: S2_V[n], css: ruleTxt('h1', 'color', S2_V[n]) })}
+    says={[c.sayBlue, c.sayLight, c.sayDark]} asks={{ list: [c.askStart, c.askBlue, c.askLight, c.askDark], done: c.askDone }} />;
+}
+// S3. ЗЕЛЁНЫЙ ЗАГОЛОВОК — «h1 { color: ▢; }» → green.
+function S3({ p }) {
+  const c = C.s3;
+  const Fl = useFill('s3', c, (w) => {
+    const v = norm(w);
+    if (!v) return c.msgs.empty;
+    if (!cssOk('color', v)) return c.msgs.notColor;
+    return colorKey(v) === colorKey('green') ? null : c.msgs.other;
+  });
+  return <FillScreen p={p} c={c} F={Fl} want="green" />;
+}
+// S4. КАКОЕ НАЗВАНИЕ? (выбор по одному) — пятно цвета → его название.
+function S4({ p }) {
+  const c = C.s4;
+  const R = useRounds('s4', c, c.rounds, (it) => it.right, (it) => it.why, (it) => it.right);
+  return <RoundsScreen p={p} c={c} R={R} n={c.rounds.length} card={<Swatch color={R.it.right} />} opts={R.it.opts} mono />;
+}
+
+// S5. КОД ИЗ ПАЛИТРЫ (показ) — названий мало; точный оттенок — код из палитры: «#» и шесть знаков.
+// orange (не тот оттенок) → #FA4F28 (как логотип) → #1E90FF → из чего код.
+const S5_V = ['orange', '#FA4F28', '#1E90FF', '#1E90FF'];
+function S5({ p }) {
+  const c = C.s5;
+  return <ShowScreen p={p} c={c} id="s5" els={null}
+    view={(n) => ({ val: S5_V[n], css: ruleTxt('h1', 'color', S5_V[n]), extra: <>{n <= 1 ? <LogoMatch color={S5_V[n]} /> : null}<Palette lit={n >= 1 ? S5_V[n] : null} />{n === 3 ? <div className="c3-hexparts c3-a-in" translate="no"><b>#</b><span>1E90FF</span></div> : null}</> })}
+    says={[c.sayLogo, c.sayBlue, c.sayParts]} asks={{ list: [c.askStart, c.askLogo, c.askBlue, c.askParts], done: c.askDone }} />;
+}
+// S6. ЦВЕТ ИЗ ПАЛИТРЫ — фиолетовый: «h1 { color: ▢; }» → #8E44AD (код под квадратиком).
+function S6({ p }) {
+  const c = C.s6;
+  const Fl = useFill('s6', c, (w) => {
+    const v = w.replace(/\s+/g, '');
+    if (!v) return c.msgs.empty;
+    if (/^[0-9a-f]{6}$/i.test(v)) return c.msgs.noHash;
+    if (!cssOk('color', v)) return /^#/.test(v) ? c.msgs.badHex : c.msgs.notColor;
+    if (colorKey(v) === colorKey('#8E44AD')) return null;
+    return /^#[0-9a-f]{6}$/i.test(v) ? c.msgs.near : c.msgs.other;
+  });
+  return <FillScreen p={p} c={c} F={Fl} want="#8E44AD" extra={<Palette />} keys={['#']} />;
+}
+// S7. ВЕРНЫЙ КОД? (Sort по одному) — запись hex: верная или сломана.
+function S7({ p }) {
+  const c = C.s7;
+  const R = useRounds('s7', c, c.items, (it) => it.right, (it) => it.why, (it) => c.opts[it.right]);
+  return <RoundsScreen p={p} c={c} R={R} n={c.items.length} card={<CodeCard code={'h1 { color: ' + R.it.code + '; }'} />} opts={['ok', 'bad']} label={(v) => c.opts[v]} />;
+}
+
+// S8. rgb (показ) — сколько красного, зелёного и синего света: 255 — много, 0 — нет. Красный → синий → жёлтый
+// (красный + зелёный) → чёрный (всё 0) и белый (всё 255).
+const S8_V = [[255, 0, 0], [0, 0, 255], [255, 255, 0], [0, 0, 0]];
 function S8({ p }) {
-  const pick = usePick();
   const c = C.s8;
-  const [rec, put] = useRec('s8');
-  const solved = !!(rec && rec.done);
-  const [n, setN] = useState(solved ? 3 : 0);
-  const [hue, setHue] = useState(solved ? 240 : 0);
-  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
-  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
-    { act: () => { sfx('pop', true); setN(1); } }, { say: [{ text: c.sayHue, pose: 'point' }] },
-    { act: () => { sfx('ok', true); setN(2); setHue(240); } }, { say: [{ text: c.sayLight, pose: 'wonder' }] },
-    { act: () => { sfx('ok', true); setN(3); } }, { say: [{ text: c.sayDark, pose: 'point' }] },
-    { say: [{ text: c.done, pose: 'smile' }] },
-    { act: () => put({ done: true }) }
-  ] });
-  useEffect(() => {
-    if (n !== 1) return undefined;
-    const ts = [setTimeout(() => setHue(120), 2600), setTimeout(() => setHue(240), 5200)];
-    return () => ts.forEach(clearTimeout);
-  }, [n]);
-  const canGo = useAdvanceGate(solved || demo.done, spoken);
-  const live = !solved && !demo.done;
-  const light = n === 3 ? 25 : n === 2 ? 85 : 50;
-  const askText = solved || demo.done ? c.askDone : n === 3 ? c.askDark : n === 2 ? c.askLight : n === 1 ? c.askHue : c.askStart;
-  const lit = !live ? null : n === 1 ? 'h' : n >= 2 ? 'l' : null;
-  return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
-      <Sheet cls="c3-sheet">
-        <KzAsk text={askText} />
-        <div className="kz-scene c3-s5 c3-pair">
-          <div className="kz-col">
-            <KzCode lines={styleWrap(ruleBlock('r', 'h1', 'color', hslVal(hue, '100%', light + '%', lit), live && n >= 1 ? 'is-read' : ''))} cls="kz-code-sm" />
-            <Wheel hue={hue} light={light} showLight={n >= 2} />
-          </div>
-          <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { noLogo: true })} rules={cssParse('h1 { color: hsl(' + hue + ', 100%, ' + light + '%); }')} /></Br></div>
-        </div>
-      </Sheet>
-    </StageB>
-  );
+  return <ShowScreen p={p} c={c} id="s8"
+    view={(n) => ({ parts: ruleParts('h1', 'color', rgbVal(S8_V[n])), css: ruleTxt('h1', 'color', 'rgb(' + S8_V[n].join(', ') + ')'), extra: <Mixer rgb={S8_V[n]} lit="all" extremes={n === 3} /> })}
+    says={[c.sayBlue, c.sayYellow, c.sayBlack]} asks={{ list: [c.askStart, c.askBlue, c.askYellow, c.askBlack], done: c.askDone }} />;
 }
-
-// =============================================================================
-// S9. МЕСТО НА КРУГЕ (Fill in the Blanks) — «h1 { color: hsl(▢, 100%, 40%); }»: 120 — зелёный.
-// Метка на круге идёт за вписанным числом.
-// =============================================================================
+// S9. ЯРКО-ЗЕЛЁНЫЙ — «h1 { color: rgb(0, ▢, 0); }» → 255. Полосы лучей идут за числом.
 function S9({ p }) {
-  const pick = usePick();
-  const log = useLog();
   const c = C.s9;
-  const [rec, put] = useRec('s9');
-  const solved = !!(rec && rec.done);
-  const ty = useTagTyping({ max: 4 });
-  const T = useTypeTask('s9', solved);
-  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'explain' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved || T.okNow, spoken);
-  const led = useIdleLed(canTap && !T.okNow && !ty.val, 0);
-  const w = T.okNow ? '120' : ty.val.trim();
-  const hue = /^\d{1,3}$/.test(w) ? Number(w) : null;
-  const check = () => {
-    if (!canTap || T.okNow) return;
-    T.st.current.tries += 1;
-    const v = ty.val.trim();
-    const issue = !v ? c.msgs.empty : /%/.test(v) || !/^\d+$/.test(v) ? c.msgs.num : Number(v) === 120 ? null : c.msgs.other;
-    if (!issue) {
-      sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
-      log({ screenId: 's9', type: 'write-hue', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
-      sayNow(c.ok, 'cheer');
-      return;
-    }
-    T.st.current.misses += 1;
-    sfx('soft', true); T.setMsg(issue); sayNow(issue, 'think');
-    if (T.st.current.misses >= 2) T.lad.bump();
-  };
-  const val = [<span key="o" className="c3-val c3-hslv">hsl(</span>,
-    T.okNow ? <span key="v" className="c3-hs is-cur">120</span> : <span key="g" className={'kz-gap c3-slot c3-slot-num' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={4} /></span>,
-    P('tl', 'c3-val', ', 100%, 40%)')];
-  return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, T.lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
-      <Sheet cls="c3-sheet">
-        <KzAsk text={T.okNow ? c.ok : c.ask} hint={T.okNow ? null : (T.msg || hintAt(T.lad.lv, c.hints))} err={!!T.msg} />
-        <div className="kz-scene c3-s5 c3-pair">
-          <div className="kz-col">
-            <KzCode lines={styleWrap(ruleBlock('r', 'h1', 'color', val, T.okNow ? 'is-new' : 'is-hl'))} cls="kz-code-sm" />
-            <Wheel hue={hue} light={40} />
-          </div>
-          <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { noLogo: true })} rules={cssParse('h1 { color: hsl(' + w + ', 100%, 40%); }')} /></Br></div>
-        </div>
-        {!T.okNow ? <KeyRow keys={[]} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 0} /> : null}
-      </Sheet>
-    </StageB>
-  );
+  const Fl = useFill('s9', c, (w) => {
+    const v = w.replace(/\s+/g, '');
+    if (!v) return c.msgs.empty;
+    if (!/^\d+$/.test(v)) return c.msgs.notNum;
+    const n = parseInt(v, 10);
+    if (n > 255) return c.msgs.big;
+    return n === 255 ? null : c.msgs.small;
+  });
+  const g = Math.max(0, Math.min(255, parseInt(Fl.T.okNow ? '255' : Fl.ty.val, 10) || 0));
+  return <FillScreen p={p} c={c} F={Fl} want="255" pre="rgb(0, " post=", 0)" extra={<Mixer rgb={[0, g, 0]} lit="g" />} />;
 }
-
-// =============================================================================
-// S10. СВЕТЛЫЙ ИЛИ ТЁМНЫЙ (Sort по одному) — hsl-код без пятна; после ответа пятно показывает цвет.
-// =============================================================================
+// S10. КАКОЙ ЦВЕТ? (выбор по одному) — rgb-код → название цвета.
 function S10({ p }) {
-  const pick = usePick();
-  const log = useLog();
   const c = C.s10;
-  const [rec, put] = useRec('s10');
-  const solved = !!(rec && rec.done);
-  const [ii, setIi] = useState(solved ? c.items.length - 1 : 0);
-  const [ok, setOk] = useState(solved);
-  const [off, setOff] = useState(null);
-  const [next, setNext] = useState(false);
-  const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.ok, pose: 'smile' }] : [{ text: c.say, pose: 'curious' }]);
-  const canTap = useCanAnswer(spoken);
-  const done = ok && ii === c.items.length - 1;
-  const canGo = useAdvanceGate(solved || done, spoken);
-  const st = useRef({ tries: 0, misses: 0 });
-  const led = useIdleLed(canTap && !ok, ii * 10 + (off === null ? 0 : 1));
-  const it = c.items[ii];
-  const ch = useChoiceHints(!ok, ii);
-  const hints = choiceHints(c.hint1, c.hint2, it.why, C.site[it.right]);
-  const choose = (v) => {
-    if (!canTap || ok || off === v) return;
-    st.current.tries += 1;
-    if (v !== it.right) { st.current.misses += 1; sfx('soft', true); setOff(v); sayNow(ch.miss(it.why, hints), 'think'); return; }
-    sfx('ok', true); setOk(true); ch.clear();
-    const line = joinL(c.right, it.why);
-    if (ii === c.items.length - 1) {
-      put({ done: true });
-      log({ screenId: 's10', type: 'sort-light', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: ch.lad.asked.current, depth: ch.lad.lv });
-      sayNow(joinL(line, c.ok), 'cheer');
-    } else { sayNow(line, 'smile'); setNext(true); }
-  };
-  useEffect(() => {
-    if (!next || !spoken) return undefined;
-    const t = setTimeout(() => { setNext(false); setIi((x) => x + 1); setOk(false); setOff(null); }, reduceMotion() ? 300 : 1100);
-    return () => clearTimeout(t);
-  }, [next, spoken]); // eslint-disable-line react-hooks/exhaustive-deps
-  const btn = (v) => (
-    <button key={v} type="button" disabled={!canTap || ok || off === v} onClick={() => choose(v)} data-v={v}
-      className={'kz-btn c3-tf c3-where ' + (ok && v === it.right ? 'is-ok' : off === v ? 'is-off' : 'is-ghost')}>
-      <i className={'c3-ld c3-ld-' + v} aria-hidden="true" />{pick(C.site[v])}<Led on={led && !ok && off === null} />
-    </button>
-  );
-  return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
-      <Sheet cls="c3-sheet">
-        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : ch.now(hints)} err={ch.err} n={(ii + 1) + '/' + c.items.length} />
-        <div className="kz-scene kz-scene-col kz-q2" key={'i' + ii}>
-          <div className="kz-col">
-            <div className="c3-card c3-tf-card c3-hslcard kz-a-drop">
-              <span className="c3-card-h">{pick(c.card)}</span>
-              <p className="c3-tf-t c3-code-t" translate="no">{it.code}</p>
-              <span className={'c3-swatch c3-swatch-sm' + (ok ? ' is-on' : '')} style={{ background: ok ? it.code : 'transparent' }} />
-            </div>
-            <div className="kz-pick c3-tf-pick">{btn('light')}{btn('dark')}</div>
-          </div>
-        </div>
-      </Sheet>
-    </StageB>
-  );
+  const R = useRounds('s10', c, c.items, (it) => it.right, (it) => it.why, (it) => it.right);
+  return <RoundsScreen p={p} c={c} R={R} n={c.items.length} card={<CodeCard code={'h1 { color: ' + R.it.code + '; }'} />} opts={['red', 'blue', 'black', 'white']} mono
+    label={(v) => ({ uz: v + ' · ' + C.site.names.uz[v], ru: v + ' · ' + C.site.names.ru[v], en: v })} />;
 }
 
-// =============================================================================
-// S11. КОГДА ЦВЕТ ЛОМАЕТСЯ (показ) — «FA4F28» без «#», «#FA4F2» (пять знаков), «hsl(11, 95, 57)» без «%»:
-// каждый раз браузер выбрасывает цвет, заголовок остаётся чёрным (сравнение — «Не тот»).
-// =============================================================================
-const S11_RULES = ['#FA4F28', 'FA4F28', '#FA4F2', 'hsl(11, 95, 57)'];
+// S11. КОГДА ЦВЕТ ЛОМАЕТСЯ (показ) — «FA4F28» без «#», «#FA4F2» (пять знаков), «gren» (опечатка): каждый раз «Не тот».
+const S11_V = ['#FA4F28', 'FA4F28', '#FA4F2', 'gren'];
 function S11({ p }) {
-  const pick = usePick();
   const c = C.s11;
-  const [rec, put] = useRec('s11');
-  const solved = !!(rec && rec.done);
-  const [n, setN] = useState(solved ? 3 : 0);
-  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'curious' }]);
-  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
-    { act: () => { sfx('soft', true); setN(1); } }, { say: [{ text: c.sayNoHash, pose: 'think' }] },
-    { act: () => { sfx('soft', true); setN(2); } }, { say: [{ text: c.sayFive, pose: 'wonder' }] },
-    { act: () => { sfx('soft', true); setN(3); } }, { say: [{ text: c.sayPct, pose: 'think' }] },
-    { say: [{ text: c.done, pose: 'smile' }] },
-    { act: () => put({ done: true }) }
-  ] });
-  const canGo = useAdvanceGate(solved || demo.done, spoken);
-  const live = !solved && !demo.done;
-  const v = S11_RULES[n];
-  const css = 'h1 { color: ' + v + '; }';
-  const askText = solved || demo.done ? c.askDone : n === 3 ? c.askPct : n === 2 ? c.askFive : n === 1 ? c.askNoHash : c.askDone;
-  return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
-      <Sheet cls="c3-sheet">
-        <KzAsk text={askText} />
-        <div className="kz-scene c3-s5 c3-pair">
-          <div className="kz-col">
-            <KzCode lines={styleWrap([ruleLine('r' + n, ruleParts('h1', 'color', [P('v', 'c3-val' + (n && live ? ' c3-bad' : ''), v)]), n && live ? 'is-read' : '')])} cls="kz-code-sm" />
-            <LogoMatch color={cssOk('color', v) ? v : ''} />
-          </div>
-          <div className="kz-col"><Br title={pick(C.site.title)} short cls={n ? 'c3-broken' : ''}><CssPage els={site(pick, { hl: n > 0 })} rules={cssParse(css)} /></Br></div>
-        </div>
-      </Sheet>
-    </StageB>
-  );
-}
-
-// =============================================================================
-// S12. ПОСТАВЬ ЗНАК (Debug & Fix) — «h1 { color: ▢FA4F28; }»: ученик пишет «#» (кнопки # и .).
-// =============================================================================
-function S12({ p }) {
   const pick = usePick();
-  const log = useLog();
-  const c = C.s12;
-  const [rec, put] = useRec('s12');
-  const solved = !!(rec && rec.done);
-  const ty = useTagTyping({ max: 3 });
-  const T = useTypeTask('s12', solved);
-  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'embarrassed' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved || T.okNow, spoken);
-  const led = useIdleLed(canTap && !T.okNow && !ty.val, 0);
-  const sign = T.okNow ? '#' : ty.val.replace(/\s+/g, '');
-  const check = () => {
-    if (!canTap || T.okNow) return;
-    T.st.current.tries += 1;
-    const w = ty.val.replace(/\s+/g, '');
-    const issue = w === '#' ? null : !w ? c.msgs.empty : w === '.' ? c.msgs.dot : c.msgs.other;
-    if (!issue) {
-      sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
-      log({ screenId: 's12', type: 'fix-hash', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
-      sayNow(c.ok, 'cheer');
-      return;
-    }
-    T.st.current.misses += 1;
-    sfx('soft', true); T.setMsg(issue); sayNow(issue, 'think');
-    if (T.st.current.misses >= 2) T.lad.bump();
-  };
-  const color = sign + 'FA4F28';
-  const val = T.okNow ? hexVal('FA4F28', false) : [<span key="g" className={'kz-gap c3-slot c3-slot-sign' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={3} /></span>,
-    P('v', 'c3-val', 'FA4F28')];
-  return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, T.lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
-      <Sheet cls="c3-sheet">
-        <KzAsk text={T.okNow ? c.ok : c.ask} hint={T.okNow ? null : (T.msg || hintAt(T.lad.lv, c.hints))} err={!!T.msg} />
-        <div className="kz-scene c3-s5 c3-pair">
-          <div className="kz-col">
-            <KzCode lines={styleWrap([ruleLine('r', ruleParts('h1', 'color', val), T.okNow ? 'is-new' : 'is-hl')])} cls="kz-code-sm" />
-            <LogoMatch color={cssOk('color', color) ? color : ''} />
-          </div>
-          <div className="kz-col"><Br title={pick(C.site.title)} short cls={T.okNow ? '' : 'c3-broken'}><CssPage els={site(pick, { hl: !T.okNow })} rules={cssParse('h1 { color: ' + color + '; }')} /></Br></div>
-        </div>
-        {!T.okNow ? <KeyRow keys={['#', '.']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 0} /> : null}
-      </Sheet>
-    </StageB>
-  );
+  return <ShowScreen p={p} c={c} id="s11" pose="curious" els={site(pick, { hl: false, short: true })}
+    view={(n) => ({ val: S11_V[n], css: ruleTxt('h1', 'color', S11_V[n]), extra: <LogoMatch color={S11_V[n]} /> })}
+    says={[c.sayHash, c.sayFive, c.sayTypo]} asks={{ list: [c.askStart, c.askHash, c.askFive, c.askTypo], done: c.askDone }} />;
 }
-
+// S12. ИСПРАВЬ (Debug & Fix) — в поле «FA4F28» без «#»: цвет логотипа не совпал. Ученик ставит «#» (кнопка #).
+function S12({ p }) {
+  const c = C.s12;
+  const Fl = useFill('s12', c, (w) => {
+    const v = w.replace(/\s+/g, '');
+    if (!v) return c.msgs.empty;
+    if (/^[0-9a-f]{6}$/i.test(v)) return c.msgs.noHash;
+    if (!cssOk('color', v)) return c.msgs.bad;
+    return colorKey(v) === colorKey(LOGO) ? null : c.msgs.other;
+  }, 'embarrassed');
+  const set0 = useRef(false);
+  useEffect(() => { if (!set0.current && !Fl.T.okNow && !Fl.ty.val) { set0.current = true; Fl.ty.setVal('FA4F28');
+    // Курсор — в начало: решётку ставят перед кодом, кнопка «#» вставляет знак туда, где курсор (09.11.2026).
+    requestAnimationFrame(() => { const el = Fl.ty.inputRef && Fl.ty.inputRef.current; if (el && el.setSelectionRange) { try { el.setSelectionRange(0, 0); } catch (e) { /* поле без выделения */ } } }); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const shown = Fl.T.okNow ? LOGO : Fl.ty.val.trim();
+  return <FillScreen p={p} c={c} F={Fl} want={LOGO} extra={<LogoMatch color={shown} />} keys={['#']} />;
+}
 // =============================================================================
-// S13. НАЙДИ ОШИБКУ (Error Detective) — три правила. Раунд 1: «#GG0000» (буква G) — заголовок чёрный;
-// раунд 2: «hsl(30, 100, 88)» без «%» — фон белый. Ученик нажимает сломанную строку.
+// S13. НАЙДИ ОШИБКУ (Error Detective) — три правила. Раунд 1: «gren» (опечатка в названии) — абзац не зелёный;
+// раунд 2: «#1E90F» (пять знаков) — заголовок не синий. Ученик нажимает сломанную строку.
 // =============================================================================
 const S13_ROUNDS = [
-  { kind: 'letter', bad: 0, rules: ['h1 { color: #GG0000; }', 'p { color: rgb(0, 128, 0); }', 'body { background-color: #FFE0B2; }'], fixed: 'h1 { color: #CC0000; }' },
-  { kind: 'pct', bad: 2, rules: ['h1 { color: #7C3AED; }', 'p { color: rgb(0, 0, 255); }', 'body { background-color: hsl(30, 100, 88); }'], fixed: 'body { background-color: hsl(30, 100%, 88%); }' }
+  { kind: 'typo', bad: 1, rules: ['h1 { color: #FA4F28; }', 'p { color: gren; }', 'body { background-color: lightyellow; }'], fixed: 'p { color: green; }' },
+  { kind: 'five', bad: 0, rules: ['h1 { color: #1E90F; }', 'p { color: rgb(255, 0, 0); }', 'body { background-color: lavender; }'], fixed: 'h1 { color: #1E90FF; }' }
 ];
 function S13({ p }) {
   const pick = usePick();
@@ -958,7 +687,7 @@ function S13({ p }) {
     k: 'l' + j + (found && j === R.bad ? 'f' : ''), d: 0, parts: cssTokens(r),
     cls: 'c3-cssline c3-hline' + (found && j === R.bad ? ' is-new' : '') + (off.indexOf(j) >= 0 ? ' is-off' : ''),
     onTap: found ? null : () => tap(j), disabled: !canTap || found || off.indexOf(j) >= 0,
-    led: !found && ((led && off.length === 0 && j === 0) || (lit && j === R.bad))
+    led: !found && ((led && off.length === 0) || (lit && j === R.bad))
   }));
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
@@ -974,10 +703,10 @@ function S13({ p }) {
 }
 
 // =============================================================================
-// W1. ПРАВИЛО ЦЕЛИКОМ (перенос) — «body { background-color: #FFE0B2; }». Браузер честно применяет написанное;
-// проверка называет одну, самую полезную проблему.
+// W1. ПРАВИЛО ЦЕЛИКОМ (перенос) — «p { color: rgb(0, 0, 255); }»: абзац синий через rgb. Браузер честно применяет
+// написанное; проверка называет одну, самую полезную проблему.
 // =============================================================================
-const W1_BG = '#FFE0B2';
+const W1_CSS = 'p { color: rgb(0, 0, 255); }';
 function ruleIssue(t, msgs) {
   const s = String(t || '').trim();
   if (!s) return msgs.empty;
@@ -985,14 +714,14 @@ function ruleIssue(t, msgs) {
   if (!m) return msgs.braces;
   const inner = m[2];
   if (inner.indexOf(':') < 0) return msgs.colon;
-  if (m[1].trim().toLowerCase() !== 'body') return msgs.sel;
+  if (m[1].trim().toLowerCase() !== 'p') return msgs.sel;
   const d = inner.split(';').map((x) => x.trim()).filter(Boolean)[0] || '';
   const i = d.indexOf(':');
   const prop = d.slice(0, i).trim().toLowerCase(), val = d.slice(i + 1).trim();
-  if (prop !== 'background-color') return msgs.prop;
-  if (/^[0-9a-f]{6}$/i.test(val)) return msgs.noHash;
+  if (prop !== 'color') return msgs.prop;
+  if (!/^rgb\s*\(/i.test(val)) return cssOk('color', val) && colorKey(val) === colorKey('blue') ? msgs.notRgb : msgs.rgbNeed;
   if (!cssOk(prop, val)) return msgs.notColor;
-  if (colorKey(val) !== colorKey(W1_BG)) return msgs.other;
+  if (colorKey(val) !== colorKey('blue')) return msgs.other;
   return null;
 }
 function W1({ p }) {
@@ -1007,11 +736,11 @@ function W1({ p }) {
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || T.okNow, spoken);
   const led = useIdleLed(canTap && !T.okNow && !ty.val, 0);
-  const css = T.okNow ? 'body { background-color: ' + W1_BG + '; }' : ty.val;
+  const css = T.okNow ? W1_CSS : ty.val;
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const issue = ruleIssue(ty.val, c.msgs);
+    const issue = cyrIn(ty.val) || (ruleIssue(ty.val, c.msgs));
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: 'w1', type: 'write-rule', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -1027,10 +756,10 @@ function W1({ p }) {
       <Sheet cls="c3-sheet">
         <KzAsk text={T.okNow ? c.ok : c.ask} hint={T.okNow ? null : (T.msg || hintAt(T.lad.lv, c.hints))} err={!!T.msg} />
         <div className="kz-scene c3-s5 c3-pair">
-          <div className="kz-col"><KzCode lines={styleWrap([T.okNow ? cssL('r', 1, css, { cls: 'is-new' }) : ruleLine('r', [<span key="g" className={'kz-gap c3-slot c3-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={48} /></span>], 'is-hl')])} cls="kz-code-sm" /></div>
+          <div className="kz-col"><KzCode lines={styleWrap([T.okNow ? cssL('r', 1, css, { cls: 'is-new' }) : ruleLine('r', [<span key="g" className={'kz-gap c3-slot c3-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={48} /></span>], 'is-hl')])} cls="kz-code-sm" />{!T.okNow && T.lad.lv >= 3 ? <HelpCode code={W1_CSS} /> : null}</div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { noLogo: true })} rules={cssParse(css)} /></Br></div>
         </div>
-        {!T.okNow ? <KeyRow keys={['#', '{', '}', ':', ';']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 8} /> : null}
+        {!T.okNow ? <KeyRow keys={['{', '}', ':', ';', '(', ')', ',']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 8} /> : null}
       </Sheet>
     </StageB>
   );
@@ -1060,7 +789,7 @@ function S14({ p }) {
   const confirm = () => {
     if (!canTap || !ready || solved) return;
     const bad = !cssOk('color', va) ? va : !cssOk('color', vb) ? vb : null;
-    const issue = bad ? fillL(c.msgs.notColor, { w: bad }) : colorKey(va) === colorKey(vb) ? c.msgs.same : null;
+    const issue = cyrIn(va, vb) || (bad ? fillL(c.msgs.notColor, { w: bad }) : colorKey(va) === colorKey(vb) ? c.msgs.same : null);
     if (issue) { sfx('soft', true); setMsg(issue); sayNow(issue, 'think'); if (lad.lv < 1) lad.bump(); return; }
     sfx('win', true); setMsg(null);
     store.set('myColor', va); store.set('myBg', vb); put({ done: true });
@@ -1137,9 +866,8 @@ function Q1({ p }) {
     </button>
   );
   const codes = {
-    hex: [cssL('c', 0, 'h1 { color: #FF0000; }')],
-    rgb: [cssL('c', 0, 'h1 { color: rgb(255, 255, 0); }')],
-    hsl: [cssL('c1', 0, 'h1 { color: hsl(210, 100%, 25%); }'), cssL('c2', 0, 'h1 { color: hsl(210, 100%, 85%); }')]
+    rgb: [cssL('c', 0, 'h1 { color: rgb(0, 0, 0); }')],
+    yel: [cssL('c', 0, 'h1 { color: rgb(255, 255, 0); }')]
   };
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
@@ -1161,8 +889,8 @@ function Q1({ p }) {
 }
 
 // =============================================================================
-// S15. ВЫВОД — разгадка: «FA4F28» без «#» — цвет не узнан, заголовок не тот; своя страница ученика в своих
-// цветах; роли hex / rgb / hsl загораются, пока Коди их называет.
+// S15. ВЫВОД — разгадка: «#fa4f28» маленькими буквами — тот же цвет, «Совпадает!»; своя страница ученика в своих
+// цветах; роли: название, hex, rgb (и hsl — только упомянут), загораются, пока Коди их называет.
 // =============================================================================
 function S15({ p }) {
   const pick = usePick();
@@ -1174,9 +902,9 @@ function S15({ p }) {
   useEffect(() => { const t = setTimeout(() => celebrate(), 900); return () => clearTimeout(t); }, []);
   const curK = (c.say.find((x) => x.text === speaker.text) || {}).k || null;
   const riddle = curK === 'riddle';
-  const rows = riddle ? ['h1 { color: FA4F28; }'] : ['h1 { color: ' + mc + '; }', 'body { background-color: ' + mb + '; }'];
+  const rows = riddle ? ['h1 { color: #fa4f28; }'] : ['h1 { color: ' + mc + '; }', 'body { background-color: ' + mb + '; }'];
   const els = riddle ? site(pick, { hl: true, short: true }) : [{ t: 'h1', text: pick(UI.mySite), k: 'h' }, { t: 'p', text: pick(C.site.hello), k: 'p1' }];
-  const ex = { hex: '#FA4F28', rgb: 'rgb(250, 79, 40)', hsl: 'hsl(11, 95%, 57%)' };
+  const ex = { name: 'orange', hex: '#FA4F28', rgb: 'rgb(250, 79, 40)', hsl: 'hsl(…)' };
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask}
       nav={<><BackBtn onPrev={p.prev} /><NextBtn disabled={!canGo} onClick={p.finish} label={UI.finish} /></>}>
@@ -1188,9 +916,10 @@ function S15({ p }) {
           </div>
           <div className="kz-col kz-s15-side">
             <KzCode lines={rows.map((r, i) => cssL('r' + i, 0, r, { cls: riddle ? 'is-read' : '' }))} cls="kz-code-sm" />
+            {riddle ? <LogoMatch color="#fa4f28" /> : null}
             <div className="kz-roles">
-              {['hex', 'rgb', 'hsl'].map((k) => (
-                <span key={k} className={'kz-role' + (curK === k || (riddle && k === 'hex') ? ' is-on' : '')} style={{ '--c': k === 'hex' ? '#FA4F28' : k === 'rgb' ? '#7C5CFA' : '#0FA38E' }}>
+              {['name', 'hex', 'rgb', 'hsl'].map((k) => (
+                <span key={k} className={'kz-role' + (curK === k || (riddle && k === 'hex') ? ' is-on' : '') + (k === 'hsl' ? ' is-dim' : '')} style={{ '--c': k === 'name' ? '#0FA38E' : k === 'hex' ? '#FA4F28' : k === 'rgb' ? '#7C5CFA' : '#94A3B8' }}>
                   <i aria-hidden="true" />{pick(c.roles[k])}{curK === k ? <code className="c3-role-ex" translate="no">{ex[k]}</code> : null}
                 </span>
               ))}

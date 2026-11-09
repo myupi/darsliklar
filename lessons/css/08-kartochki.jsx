@@ -6767,6 +6767,11 @@ const C = {
   },
   s2: {
     eyebrow: L3("Yumaloq burchaklar", 'Круглые углы', 'Round corners'),
+    help: [
+      L3("Kartochka burchaklariga qarang: son kattalashgani sari ular yumaloqroq bo'ladi.", 'Посмотри на углы карточки: чем больше число, тем они круглее.', 'Look at the card’s corners: the bigger the number, the rounder they get.'),
+      L3("border-radius burchaklarni yumaloq qiladi. Son qancha katta bo'lsa, burchak shuncha yumaloq.", 'border-radius скругляет углы. Чем больше число, тем круглее угол.', 'border-radius rounds the corners. The bigger the number, the rounder the corner.'),
+      L3("Telefoningiz burchaklariga qarang: ular o'tkir emas, yumaloq. Ilovalardagi tugma va kartochkalar ham shunday qilingan.", 'Посмотри на углы своего телефона: они не острые, а круглые. Кнопки и карточки в приложениях сделаны так же.', 'Look at your phone’s corners: they’re round, not sharp. Buttons and cards in apps are made the same way.')
+    ],
     say: L3("Birinchisi border-radius. U burchaklarni yumaloqlaydi. Son qancha katta bo'lsa, burchak shuncha yumaloq bo'ladi. Hozir burchaklar o'tkir.",
       'Первое — border-radius. Он скругляет углы. Чем больше число, тем круглее угол. Сейчас углы острые.',
       'The first is border-radius. It rounds the corners. The bigger the number, the rounder the corner. Right now the corners are sharp.'),
@@ -6826,6 +6831,11 @@ const C = {
   },
   s5: {
     eyebrow: L3("Soya", 'Тень', 'Shadow'),
+    help: [
+      L3("Kodda box-shadow ning to'rtta qismiga qarang va qaysi biri o'zgarganda soya qanday o'zgarishini kuzating.", 'Посмотри на четыре части box-shadow в коде и следи, как меняется тень, когда меняется каждая.', 'Look at the four parts of box-shadow in the code and watch how the shadow changes when each part changes.'),
+      L3("box-shadow to'rt qismdan iborat: o'ngga siljishi, pastga siljishi, xiralik va rang. Xiralik katta bo'lsa, soya yumshoq bo'ladi.", 'box-shadow состоит из четырёх частей: сдвиг вправо, сдвиг вниз, размытие и цвет. Чем больше размытие, тем мягче тень.', 'box-shadow has four parts: shift right, shift down, blur and color. The more blur, the softer the shadow.'),
+      L3("Quyoshli kunda qo'lingizning soyasiga qarang: chiroq qayerda bo'lsa, soya o'sha tomonga tushadi. CSS soyasini ham siz qayerga tushishini aytasiz.", 'Посмотри на тень от руки в солнечный день: она падает в сторону от света. Тени в CSS ты сам говоришь, куда падать.', 'Look at your hand’s shadow on a sunny day: it falls away from the light. In CSS, you tell the shadow where to fall.')
+    ],
     say: L3("Endi soya, ya'ni box-shadow. Uning qiymatida to'rtta qism bor: birinchi son, soya o'ngga qancha siljiydi; ikkinchisi, pastga qancha; uchinchisi, qanchalik xira; oxirida rang.",
       'Теперь тень, то есть box-shadow. В её значении четыре части: первое число — насколько тень сдвинута вправо; второе — насколько вниз; третье — насколько она размыта; в конце — цвет.',
       'Now the shadow, that is box-shadow. Its value has four parts: the first number is how far the shadow moves right; the second, how far down; the third, how blurry it is; and the color at the end.'),
@@ -6882,6 +6892,11 @@ const C = {
   },
   s8: {
     eyebrow: L3("Bir tomondagi chiziq", 'Полоса с одной стороны', 'A stripe on one side'),
+    help: [
+      L3("Kartochka tomonlariga qarang: chiziq faqat bitta tomonda paydo bo'ladi, keyin boshqa tomonlarda ham.", 'Посмотри на стороны карточки: линия появляется только с одной стороны, потом и с других.', 'Look at the card’s sides: a line appears on just one side, then on others too.'),
+      L3("border hamma tomonga chiziq chizadi. border-left esa faqat chapga, border-top tepaga, border-right o'ngga, border-bottom pastga. Qiymati bir xil: qalinlik, tur va rang.", 'border рисует линию со всех сторон, а border-left — только слева, border-top — сверху, border-right — справа, border-bottom — снизу. Значение то же: толщина, вид и цвет.', 'border draws a line on every side; border-left only on the left, border-top on top, border-right on the right, border-bottom at the bottom. The value is the same: thickness, style and color.'),
+      L3("Daftarda hoshiya chizig'i faqat chap tomonda bo'ladi. border-left ham shunday: bitta tomonda chiziq.", 'В тетради линия полей есть только слева. border-left так же: линия с одной стороны.', 'In a notebook the margin line is only on the left. border-left is the same: a line on one side.')
+    ],
     say: L3("Chegarani bitta tomonga ham berish mumkin. Buning uchun border so'zidan keyin chiziqcha va tomon nomi yoziladi: top, ya'ni tepa, right, ya'ni o'ng, bottom, ya'ni past, va left, ya'ni chap.",
       'Рамку можно дать и только одной стороне. Для этого после слова border ставят чёрточку и имя стороны: top, то есть верх, right — право, bottom — низ, и left — лево.',
       'You can give a border to just one side. For that, after the word border you add a dash and the side name: top, right, bottom and left.'),
@@ -6934,6 +6949,11 @@ const C = {
   },
   s11: {
     eyebrow: L3("Qachon buziladi", 'Когда ломается', 'When it breaks'),
+    help: [
+      L3('Har safar kodga qarang: sonlar yonida nima bor va ular nima bilan ajratilgan? Keyin kartochkaga qarang.', 'Каждый раз смотри на код: что стоит рядом с числами и чем они разделены? Потом смотри на карточку.', 'Each time, look at the code: what’s next to the numbers and what separates them? Then look at the card.'),
+      L3("Sonlardan keyin px kerak, qismlar esa vergul bilan emas, bo'sh joy bilan ajratiladi. Aks holda brauzer qoidani tashlab yuboradi.", 'После чисел нужен px, а части разделяют не запятой, а пробелом. Иначе браузер выбросит правило.', 'Numbers need px, and the parts are separated by spaces, not commas. Otherwise the browser throws the rule away.'),
+      L3("Telefon raqamiga ortiqcha vergul qo'ysangiz, qo'ng'iroq o'tmaydi. CSS da ham shunday: ortiqcha vergul yoki unutilgan px bo'lsa, brauzer qoidani tashlab yuboradi.", "Если в номере телефона поставить лишнюю запятую, звонок не пройдёт. Так и в CSS: лишняя запятая или забытый px — и браузер выбросит правило.", "Put an extra comma in a phone number and the call won’t go through. Same in CSS: an extra comma or a forgotten px, and the browser throws the rule away.")
+    ],
     say: L3("Kartochka bezaklarida ham xatolar bo'ladi. Keling, ikkitasini ko'ramiz. Hozir burchaklar o'n olti piksel yumaloq.",
       'В украшениях карточек тоже бывают ошибки. Давай посмотрим на две. Сейчас углы скруглены на шестнадцать пикселей.',
       'Card decorations have mistakes too. Let’s look at two. Right now the corners are rounded by sixteen pixels.'),
@@ -6953,7 +6973,7 @@ const C = {
       'Ой, я написал тень, но её нет! В поле — моё значение. Найди ошибку и исправь, а числа не меняй.',
       'Oops, I wrote a shadow, but it doesn’t show up! My value is in the field. Find the mistake and fix it, but don’t change the numbers.'),
     msgs: {
-      empty: L3("Qiymatni yozing: uchta son va rang.", 'Впиши значение: три числа и цвет.', 'Type the value: three numbers and a color.'),
+      empty: L3("Maydon bo'sh. Vergulsiz yozing: 0px 6px 12px gray.", "Поле пустое. Впиши без запятых: 0px 6px 12px gray.", "The field is empty. Type it without commas: 0px 6px 12px gray."),
       comma: L3("Qiymatda hali vergul bor. Vergullarni olib tashlang.", 'В значении ещё есть запятая. Убери запятые.', 'There’s still a comma in the value. Remove the commas.'),
       bad: L3("Brauzer soyani tanimadi. Sonlar va rang bo'sh joy bilan yoziladi.", 'Браузер не узнал тень. Числа и цвет пишутся через пробел.', 'The browser didn’t recognize the shadow. The numbers and the color are separated by spaces.'),
       other: L3("Soya chiqdi, lekin boshqacha. Sonlarni o'zgartirmang, faqat vergullarni olib tashlang.", 'Тень появилась, но другая. Не меняй числа, просто убери запятые.', 'There’s a shadow, but a different one. Don’t change the numbers, just remove the commas.')
@@ -6961,7 +6981,7 @@ const C = {
     hints: [
       L3("Sonlar orasida nima turibdi?", 'Что стоит между числами?', 'What’s between the numbers?'),
       L3("Vergullar ortiqcha: qismlar faqat bo'sh joy bilan ajraladi.", 'Запятые лишние: части разделяются только пробелами.', 'The commas are extra: the parts are separated only by spaces.'),
-      L3("Har bir vergulni o'chiring, bo'sh joylar qolsin, keyin Tekshirishni bosing.", 'Сотри каждую запятую, пробелы оставь, потом нажми «Проверить».', 'Delete every comma, keep the spaces, then tap Check.')
+      L3("Shunday chiqishi kerak: 0px 6px 12px gray. Namuna kod ostida: uni ko'chirib yozing va Tekshirishni bosing.", "Должно получиться так: 0px 6px 12px gray. Образец под кодом: перепиши его и нажми «Проверить».", "It should look like this: 0px 6px 12px gray. The example is under the code: copy it and tap Check.")
     ],
     ok: L3("Ura, ishladi! Soya joyida.", 'Ура, заработало! Тень на месте.', 'Hooray, it works! The shadow is there.'),
     ask: L3("Soyani tuzating", 'Исправь тень', 'Fix the shadow')
@@ -7008,7 +7028,7 @@ const C = {
     hints: [
       L3("Qaysi selektor sarlavhani tanlaydi? Qaysi xususiyat faqat pastga chiziq beradi?", 'Какой селектор выбирает заголовок? Какое свойство даёт линию только снизу?', 'Which selector picks the heading? Which property gives a line only at the bottom?'),
       L3("Selektor h1, xususiyat border-bottom, qiymat: uch piksel, solid, orange.", 'Селектор h1, свойство border-bottom, значение: три пикселя, solid, orange.', 'Selector h1, property border-bottom, value: three pixels, solid, orange.'),
-      L3("Shunday yozing: h1, figurali qavs, border-bottom, ikki nuqta, uch piksel solid orange, nuqtali vergul va yopuvchi figurali qavs.", 'Напиши так: h1, фигурная скобка, border-bottom, двоеточие, три пикселя solid orange, точка с запятой и закрывающая фигурная скобка.', 'Write it like this: h1, curly brace, border-bottom, colon, three pixels solid orange, semicolon and the closing curly brace.')
+      L3("Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", "Образец появился под кодом. Перепиши его в поле и нажми «Проверить».", "An example appeared under the code. Copy it into the field and tap Check.")
     ],
     ok: L3("Ajoyib! Sarlavha ostida chiroyli chiziq. Qoidani o'zingiz yozdingiz.", 'Отлично! Под заголовком красивая линия. Правило написано тобой целиком.', 'Great! A neat line under the heading. You wrote the whole rule yourself.'),
     ask: L3("Sarlavha ostiga 3px solid orange chiziq bering", 'Дай заголовку линию снизу 3px solid orange', 'Give the heading a 3px solid orange bottom line')
@@ -7789,7 +7809,7 @@ function GoalCard({ goal, n, total, done, doneText }) {
 }
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayS: 1, sayM: 1, sayL: 1, sayRD: 1, sayD: 1,
+Object.assign(SPOKEN, { help: 1, hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayS: 1, sayM: 1, sayL: 1, sayRD: 1, sayD: 1,
   sayBlur: 1, sayColor: 1, sayLeft: 1, sayBottom: 1, sayTop: 1, sayNoUnit: 1, sayComma: 1, sayFixed: 1, miss: 1, say2: 1, fine: 1, found: 1, items: 1,
   right: 1, rounds: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1, css: 1, right: 1 }, rounds: { want: 1, opts: 1 } });
@@ -9290,6 +9310,21 @@ const cssOk = (p, v) => {
   if (CSS_PROPS.indexOf(p) < 0 || !v) return false;
   try { return typeof CSS === 'undefined' || !CSS.supports ? true : CSS.supports(p, v); } catch (e) { return false; }
 };
+// Русские (кириллические) буквы вместо латинских (09.11.2026, проход «слабого ученика»): «рх», «р» выглядят как px, p —
+// своя причина раньше любой проверки, иначе ученик видит «верный» ответ и не понимает отказа.
+const CYR_MSG = L3("Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.",
+  'Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.',
+  'Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.');
+const cyrIn = (...vs) => (vs.some((x) => /[\u0400-\u04FF]/.test(String(x == null ? '' : x))) ? CYR_MSG : null);
+// Лишняя «;» в конце значения (ученик помнит, что правило кончается ею) — не ошибка: значение без неё.
+const noSemi = (s) => String(s || '').replace(/[“”«»„]/g, '"').trim().replace(/;+\s*$/, '').trim();
+// Образец на третьей ступени помощи (09.11.2026, проход «слабого ученика»): третья подсказка звучит словами — без
+// символов, а на экране под кодом печатью стоит готовый ответ; ученик переписывает его сам и жмёт «Проверить».
+const HELP_CODE = L3('Namuna', 'Образец', 'Example');
+function HelpCode({ code }) {
+  const pick = usePick();
+  return <div className="kz-helpcode" translate="no"><span>{pick(HELP_CODE)}</span><code>{code}</code></div>;
+}
 // Селектор: тег, .class или #id (ровно один простой селектор, как в уроке); иное — ничего не выбирает.
 function selOf(raw) {
   const s = String(raw || '').trim();
@@ -9532,7 +9567,7 @@ function useFill(id, c, issueOf, pose) {
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const issue = issueOf(ty.val.trim());
+    const issue = cyrIn(ty.val) || issueOf(noSemi(ty.val));
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: id, type: 'write-value', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -9551,7 +9586,7 @@ const withBase = (list) => cssParse(BASE.concat(list || []).join(' '));
 // Экран «впиши значение»: правило sel { prop: [pre] ▢ [post]; } (и готовые правила given), страница честно.
 function FillScreen({ p, c, F, sel, prop, want, given, hl, pre, post, propSlot, fixed }) {
   const pick = usePick();
-  const v = F.T.okNow ? want : F.ty.val.trim();
+  const v = F.T.okNow ? want : noSemi(F.ty.val);
   const full = [pre, v, post].filter(Boolean).join(' ');
   const rules = (given || []).concat([ruleTxt(sel, [propSlot ? [v || 'x', fixed] : [prop, full]])]);
   const slot = F.T.okNow ? [P('v', propSlot ? 'c8-prop' : 'c8-val', want)] : [<Slot key="slot" ty={F.ty} led={F.led} onEnter={F.check} label={c.ask} onChange={F.onChange} />];
@@ -9563,7 +9598,7 @@ function FillScreen({ p, c, F, sel, prop, want, given, hl, pre, post, propSlot, 
       <Sheet cls="c8-sheet">
         <KzAsk text={F.T.okNow ? c.ok : c.ask} hint={F.T.okNow ? null : (F.T.msg || hintAt(F.T.lad.lv, c.hints))} err={!!F.T.msg} />
         <div className="kz-scene c8-s5 c8-pair">
-          <div className="kz-col"><KzCode lines={styleWrap(baseL().concat((given || []).map((r, i) => cssL('g' + i, 1, r, { cls: 'c8-dim' })), [ruleLine('r', partsOf(), F.T.okNow ? 'is-new' : 'is-hl')]))} cls="kz-code-sm" /></div>
+          <div className="kz-col"><KzCode lines={styleWrap(baseL().concat((given || []).map((r, i) => cssL('g' + i, 1, r, { cls: 'c8-dim' })), [ruleLine('r', partsOf(), F.T.okNow ? 'is-new' : 'is-hl')]))} cls="kz-code-sm" />{!F.T.okNow && F.T.lad.lv >= 3 ? <HelpCode code={want} /> : null}</div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { hl: hl })} rules={withBase(rules)} /></Br></div>
         </div>
         {!F.T.okNow ? <KeyRow keys={[]} ty={F.ty} canTap={F.canTap} onCheck={F.check} ready={F.ty.val.trim().length > 1} /> : null}
@@ -9572,6 +9607,15 @@ function FillScreen({ p, c, F, sel, prop, want, given, hl, pre, post, propSlot, 
   );
 }
 // Экран-показ: шаги правил по очереди; steps[n] — список правил, hl[n] — подсвеченный элемент.
+// Помощь на экране-объяснении (заказчик, 09.11.2026): ступени 1-2-3 по лампочке (useKzLadder) — 1 на что смотреть,
+// 2 что это значит, 3 пример из жизни. now — открытая ступень с номером «2/3» для панели, next — текст следующей
+// ступени без номера: его читает вслух лампочка.
+function useShowHelp(help) {
+  const lad = useKzLadder(!!(help && help.length));
+  const num = (k) => { const o = {}; LANGS.forEach((l) => { o[l] = k + '/' + help.length + ' · ' + (help[k - 1][l] !== undefined ? help[k - 1][l] : help[k - 1].ru); }); return o; };
+  if (!help || !help.length) return { now: null, next: null };
+  return { now: lad.lv > 0 ? num(Math.min(lad.lv, help.length)) : null, next: help[Math.min(lad.lv, help.length - 1)] };
+}
 function ShowScreen({ p, c, id, steps, says, asks, pose, hl }) {
   const pick = usePick();
   const [rec, put] = useRec(id);
@@ -9586,10 +9630,11 @@ function ShowScreen({ p, c, id, steps, says, asks, pose, hl }) {
   const rules = steps[n];
   const askText = solved || demo.done ? asks.done : asks.list[n];
   const prev = n > 0 ? steps[n - 1] : [];
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c8-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c8-s5 c8-pair">
           <div className="kz-col"><KzCode lines={styleWrap(baseL().concat(rules.map((r, i) => cssL('r' + i + r, 1, r, { cls: live && prev.indexOf(r) < 0 ? 'is-new is-read' : '' }))))} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { hl: hl ? hl[Math.min(n, hl.length - 1)] : null })} rules={withBase(rules)} /></Br></div>
@@ -9959,7 +10004,7 @@ function S13({ p }) {
     k: 'l' + j + (found && j === R.bad ? 'f' : ''), d: 0, parts: cssTokens(r),
     cls: 'c8-cssline c8-hline' + (found && j === R.bad ? ' is-new' : '') + (off.indexOf(j) >= 0 ? ' is-off' : ''),
     onTap: found ? null : () => tap(j), disabled: !canTap || found || off.indexOf(j) >= 0,
-    led: !found && ((led && off.length === 0 && j === 0) || (lit && j === R.bad))
+    led: !found && ((led && off.length === 0) || (lit && j === R.bad))
   }));
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
@@ -9990,7 +10035,9 @@ function ruleIssue(t, msgs) {
   if (prop !== 'border-bottom') return msgs.prop;
   if (!cssOk('border-bottom', val)) return msgs.bad;
   if (!hasStyle(val)) return msgs.noStyle;
-  if (!sameParts(val, '3px solid orange')) return msgs.other;
+  { // Цвет — по-настоящему (orange, #FFA500 — один цвет), толщина и вид — словами.
+    const pv = norm(val).split(' '), col = pv.filter((x) => cssOk('color', x));
+    if (pv.filter((x) => !cssOk('color', x)).sort().join(' ') !== '3px solid' || col.length !== 1 || colorKey(col[0]) !== colorKey('orange')) return msgs.other; }
   return null;
 }
 function W1({ p }) {
@@ -10009,7 +10056,7 @@ function W1({ p }) {
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const issue = ruleIssue(ty.val, c.msgs);
+    const issue = cyrIn(ty.val) || (ruleIssue(ty.val, c.msgs));
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: 'w1', type: 'write-rule', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -10025,7 +10072,7 @@ function W1({ p }) {
       <Sheet cls="c8-sheet c8-w1">
         <KzAsk text={T.okNow ? c.ok : c.ask} hint={T.okNow ? null : (T.msg || hintAt(T.lad.lv, c.hints))} err={!!T.msg} />
         <div className="kz-scene c8-s5 c8-pair">
-          <div className="kz-col"><KzCode lines={styleWrap(baseL().concat([T.okNow ? cssL('r', 1, css, { cls: 'is-new' }) : ruleLine('r', [<span key="g" className={'kz-gap c8-slot c8-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={48} /></span>], 'is-hl')]))} cls="kz-code-sm" /></div>
+          <div className="kz-col"><KzCode lines={styleWrap(baseL().concat([T.okNow ? cssL('r', 1, css, { cls: 'is-new' }) : ruleLine('r', [<span key="g" className={'kz-gap c8-slot c8-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={48} /></span>], 'is-hl')]))} cls="kz-code-sm" />{!T.okNow && T.lad.lv >= 3 ? <HelpCode code={'h1 { border-bottom: 3px solid orange; }'} /> : null}</div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { hl: T.okNow ? null : 'h1' })} rules={withBase([css])} /></Br></div>
         </div>
         {!T.okNow ? <KeyRow keys={['{', '}', ':', ';', '-']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 8} /> : null}
@@ -10061,7 +10108,7 @@ function S14({ p }) {
   };
   const confirm = () => {
     if (!canTap || !ready || solved) return;
-    const issue = issueOf();
+    const issue = cyrIn([].concat(v).join(" ")) || issueOf();
     if (issue) { sfx('soft', true); setMsg(issue); sayNow(issue, 'think'); if (lad.lv < 1) lad.bump(); return; }
     sfx('win', true); setMsg(null);
     OWN.forEach((o, i) => store.set(o.k, v[i])); put({ done: true });
@@ -14165,4 +14212,11 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .r28 .kz-s15 .kz-roles > * { padding-top: 4px; padding-bottom: 4px; min-height: 0; }
   .r28 .kz-s15 .kz-next { font-size: 13px; padding-top: 6px; padding-bottom: 6px; }
 }
+
+/* Образец на третьей ступени помощи (09.11.2026). */
+.r28 .kz-helpcode { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; align-self: stretch; padding: 6px 10px; border-radius: 10px; background: #FFF8E1; box-shadow: inset 0 0 0 1.5px #F5C451; animation: kzHelpIn .3s ease-out both; }
+.r28 .kz-helpcode span { font: 600 12px var(--r-font); color: #8A6100; }
+.r28 .kz-helpcode code { font: 600 14px var(--r-mono); color: var(--r-ink); white-space: pre-wrap; word-break: break-word; }
+@keyframes kzHelpIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .r28 .kz-helpcode { animation: none; } }
 `;

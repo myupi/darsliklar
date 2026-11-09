@@ -117,6 +117,11 @@ const C = {
   },
   s2: {
     eyebrow: L3("Ota va bolalar", 'Родитель и дети', 'Parent and children'),
+    help: [
+      L3('Katta qutiga va uning ichidagi kartochkalarga qarang. display flex ota qutiga yozilganda bolalar nima qiladi?', 'Посмотри на большую коробку и карточки внутри неё. Что делают дети, когда родителю пишут display flex?', 'Look at the big box and the cards inside it. What do the children do when the parent gets display flex?'),
+      L3('display flex ota qutiga yoziladi, ichidagi bolalar esa qatorga tizilib turadi.', 'display flex пишут коробке-родителю, а дети внутри неё встают в ряд.', 'display flex goes on the parent box, and the children inside line up in a row.'),
+      L3("O'qituvchi «qatorga turinglar!» desa, o'quvchilar qatorga turadi. flex ham ota qutining shunday buyrug'i.", 'Учитель говорит «встаньте в ряд!» — и ученики встают. flex — такая же команда коробки-родителя.', 'A teacher says “line up!” and the students line up. flex is that kind of command from the parent box.')
+    ],
     say: L3("Sahifaga qarang. Kartochkalar, ya'ni bolalar, bitta katta div ichida turibdi: uning klassi javon. Bu katta quti ularning otasi. Hozir kartochkalar oddiy div, shuning uchun ustma-ust turibdi.",
       'Посмотри на страницу. Карточки, то есть дети, лежат внутри одного большого div с классом javon. Эта большая коробка — их родитель. Сейчас карточки — обычные div, поэтому стоят друг под другом.',
       'Look at the page. The cards, the children, sit inside one big div with the class javon. This big box is their parent. Right now the cards are plain divs, so they stack one under another.'),
@@ -137,10 +142,10 @@ const C = {
       bad: L3("Brauzer bu so'zni tanimadi. display uchun so'zni tekshiring.", 'Браузер не узнал это слово. Проверь слово для display.', 'The browser didn’t recognize that word. Check the word for display.'),
       block: L3("block bilan kartochkalar hozirgidek ustma-ust qoladi.", 'С block карточки так и останутся друг под другом.', 'With block the cards stay stacked.'),
       none: L3("none bilan javon butunlay yo'qoldi. Kartochkalar qatorda ko'rinsin.", 'С none полка совсем пропала. Карточки должны быть видны в ряд.', 'With none the shelf disappeared. The cards should be visible in a row.'),
-      other: L3("Bu boshqa qiymat. Bugungi dars nomidagi so'z kerak.", 'Это другое значение. Нужно слово из названия сегодняшнего урока.', 'That’s a different value. We need the word from today’s lesson name.')
+      other: L3("Bu boshqa qiymat. Oldingi ekranda kartochkalarni qatorga qo'ygan so'z kerak.", "Это другое значение. Нужно то слово, от которого на прошлом экране карточки встали в ряд.", "That’s a different value. You need the word that put the cards in a row on the last screen.")
     },
     hints: [
-      L3("Bugungi darsning nomini eslang.", 'Вспомни название сегодняшнего урока.', 'Remember the name of today’s lesson.'),
+      L3("Oldingi ekranni eslang: display dan keyin qaysi so'z kartochkalarni qatorga qo'ydi?", "Вспомни прошлый экран: какое слово после display поставило карточки в ряд?", "Remember the last screen: which word after display put the cards in a row?"),
       L3("Flexbox so'zining boshi: flex.", 'Начало слова Flexbox: flex.', 'The start of the word Flexbox: flex.'),
       L3("flex deb yozing va Tekshirishni bosing.", 'Впиши flex и нажми «Проверить».', 'Type flex and tap Check.')
     ],
@@ -161,12 +166,18 @@ const C = {
     child: L3("Bu bola teg. display flex esa bolalarni o'z ichiga olgan ota tegga yoziladi.", 'Это тег-ребёнок. А display flex пишут тегу-родителю, в котором лежат дети.', 'That’s a child tag. display flex goes on the parent tag that holds the children.'),
     hint1: L3("Qaysi teg qolganlarini o'z ichiga oladi?", 'Какой тег содержит внутри остальные?', 'Which tag holds the others inside?'),
     hint2: L3("Ota teg eng tepada ochiladi va eng pastda yopiladi.", 'Тег-родитель открывается в самом верху и закрывается в самом низу.', 'The parent tag opens at the very top and closes at the very bottom.'),
-    hint3: L3("Eng birinchi qatorni bosing.", 'Нажми самую первую строку.', 'Tap the very first line.'),
+    hint3: L3("Bolalarni to'g'ridan-to'g'ri o'rab turgan tegni oching: kartochkalar, menyu bandlari yoki ro'yxat bandlari aynan uning ichida. O'sha qatorni bosing.", "Нажми строку, которая открывает тег прямо вокруг детей: карточки, пункты меню или списка лежат именно в нём.", "Tap the line that opens the tag right around the children: the cards, menu items or list items sit directly inside it."),
     right: L3("To'g'ri! Bu ota teg, flex unga yoziladi.", 'Верно! Это тег-родитель, flex пишут ему.', 'Right! That’s the parent tag; flex goes on it.'),
-    ok: L3("Hammasi to'g'ri! Siz ota tegni darhol topasiz.", 'Всё верно! Ты сразу находишь тег-родитель.', 'All correct! You find the parent tag right away.')
+    ok: L3("Hammasi to'g'ri! Siz ota tegni darhol topasiz.", 'Всё верно! Ты сразу находишь тег-родитель.', 'All correct! You find the parent tag right away.'),
+    outer: L3("Bu tashqi quti: bolalar uning ichida emas, undan ham ichkaridagi tegda yotadi. Ularni to'g'ridan-to'g'ri o'rab turgan tegni toping.", "Это внешняя коробка: дети лежат не прямо в ней, а в теге внутри. Найди тег, который обнимает их напрямую.", "That’s the outer box: the children aren’t right inside it but in a tag inside it. Find the tag that wraps them directly.")
   },
   s5: {
     eyebrow: L3("Yo'nalish", 'Направление', 'Direction'),
+    help: [
+      L3("To'q sariq strelkaga qarang: u kartochkalar qaysi tomonga tizilishini ko'rsatadi.", 'Посмотри на оранжевую стрелку: она показывает, в какую сторону выстраиваются карточки.', 'Look at the orange arrow: it shows which way the cards line up.'),
+      L3("flex-direction yo'nalishni beradi: row chapdan o'ngga, column tepadan pastga, reverse esa teskari tomonga.", 'flex-direction задаёт направление: row — слева направо, column — сверху вниз, reverse — в обратную сторону.', 'flex-direction sets the direction: row left to right, column top to bottom, reverse goes the opposite way.'),
+      L3('Navbatda turganlar bir tomonga qarab turadi. flex-direction ham kartochkalar navbati qaysi tomonga yurishini aytadi.', 'Люди в очереди стоят в одну сторону. flex-direction говорит, куда «смотрит» очередь из карточек.', 'People in a line all face one way. flex-direction says which way the line of cards faces.')
+    ],
     say: L3("Qaysi tomonga tizilishini flex-direction xususiyati aytadi, ya'ni yo'nalish degani. Odatda u row, ya'ni qator: chapdan o'ngga. To'q sariq strelka aynan shu yo'nalish.",
       'В какую сторону выстраиваться, говорит свойство flex-direction, то есть направление. Обычно это row, то есть ряд: слева направо. Оранжевая стрелка — это и есть направление.',
       'Which way they line up is set by the flex-direction property, meaning the direction. By default it’s row: left to right. The orange arrow is that very direction.'),
@@ -194,7 +205,7 @@ const C = {
       other: L3("Bu boshqa qiymat. Ustun kerak.", 'Это другое значение. Нужен столбик.', 'That’s a different value. We need a column.')
     },
     hints: [
-      L3("Ustun inglizcha qanday?", 'Как по-английски «столбик»?', 'What’s the English word for a column?'),
+      L3("Ko'rsatuvni eslang: kartochkalar qaysi so'z bilan tepadan pastga turdi, row yoki column?", "Вспомни показ: каким словом карточки встали сверху вниз — row или column?", "Remember the demo: which word made the cards line up top to bottom, row or column?"),
       L3("Ustun column deyiladi.", 'Столбик называется column.', 'It’s called column.'),
       L3("column deb yozing va Tekshirishni bosing.", 'Впиши column и нажми «Проверить».', 'Type column and tap Check.')
     ],
@@ -222,9 +233,12 @@ const C = {
   },
   s8: {
     eyebrow: L3("Ikki o'q", 'Две оси', 'Two axes'),
-    say: L3("Flexbox da ikkita o'q bor. Asosiy o'q, ya'ni elementlar tiziladigan yo'nalish: u to'q sariq strelka. Ko'ndalang o'q esa unga tik turadi: u binafsha strelka. Hozir asosiy o'q chapdan o'ngga, ko'ndalang o'q esa tepadan pastga.",
-      'Во Flexbox две оси. Главная ось — направление, в котором выстраиваются элементы: это оранжевая стрелка. А поперечная ось идёт поперёк неё: это фиолетовая стрелка. Сейчас главная ось — слева направо, а поперечная — сверху вниз.',
-      'Flexbox has two axes. The main axis is the direction the elements line up in: that’s the orange arrow. The cross axis goes across it: that’s the purple arrow. Right now the main axis is left to right, and the cross axis is top to bottom.'),
+    help: [
+      L3("Ikki strelkaga qarang: to'q sariq asosiy o'q, ikkinchisi unga ko'ndalang. column bo'lganda ular almashadi.", 'Посмотри на две стрелки: оранжевая — главная ось, вторая — поперёк неё. С column они меняются местами.', 'Look at the two arrows: orange is the main axis, the other runs across it. With column they swap.'),
+      L3("Asosiy o'q — kartochkalar navbati ketadigan tomon. Ko'ndalang o'q navbatga ko'ndalang. Ko'ndalang o'q bo'ylab kartochkalar o'zi cho'ziladi.", "Главная ось — куда идёт очередь карточек. Поперечная — поперёк очереди. Вдоль поперечной оси карточки сами вытягиваются.", "The main axis is where the line of cards goes. The cross axis runs across the line. Along the cross axis the cards stretch by themselves."),
+      L3("Daftar katagini eslang: chiziqlar bir tomonga, ustunlar unga ko'ndalang. Flexbox da ham shunday ikki yo'nalish bor.", 'Вспомни тетрадь в клетку: строки идут в одну сторону, столбцы — поперёк. Во Flexbox тоже два направления.', 'Think of graph paper: rows go one way, columns across them. Flexbox has two directions like that too.')
+    ],
+    say: L3("Flexbox da ikkita o'q bor. Asosiy o'q, ya'ni kartochkalar tiziladigan yo'nalish degani: u to'q sariq strelka. Ikkinchisi unga ko'ndalang ketadi, xuddi T harfining ustidagi chiziq kabi: bu binafsha strelka, ko'ndalang o'q. Hozir asosiy o'q chapdan o'ngga, ko'ndalang o'q esa tepadan pastga.", "Во Flexbox две оси. Главная — куда выстраиваются карточки: это оранжевая стрелка. Вторая идёт поперёк, как перекладина у буквы Т: это фиолетовая стрелка, поперечная ось. Сейчас главная — слева направо, а поперечная — сверху вниз.", "Flexbox has two axes. The main one is where the cards line up: that’s the orange arrow. The second runs across it, like the bar on a letter T: that’s the purple arrow, the cross axis. Right now the main axis goes left to right, and the cross axis top to bottom."),
     sayStretch: L3("Javonga height bir yuz yigirma piksel beramiz. Qarang: kartochkalar ko'ndalang o'q bo'ylab cho'zildi, javonning butun balandligini egalladi. Flex buni o'zi qiladi.", 'Дадим полке height сто двадцать пикселей. Смотри: карточки растянулись по поперечной оси на всю высоту полки. Flex делает это сам.', 'Give the shelf height one hundred twenty pixels. Look: the cards stretched along the cross axis to the full height of the shelf. Flex does it by itself.'),
     sayCol: L3("Endi column. O'qlar almashdi: asosiy o'q tepadan pastga, ko'ndalang o'q esa chapdan o'ngga. Shuning uchun kartochkalar endi kengligi bo'yicha cho'zildi.", 'Теперь column. Оси поменялись: главная ось — сверху вниз, а поперечная — слева направо. Поэтому теперь карточки растянулись по ширине.', 'Now column. The axes swapped: the main axis is top to bottom, and the cross axis is left to right. That’s why the cards now stretch across the width.'),
     done: L3("Demak, asosiy o'q flex-direction bo'yicha ketadi, ko'ndalang o'q esa doim unga tik.", 'Значит, главная ось идёт по flex-direction, а поперечная — всегда поперёк неё.', 'So the main axis follows flex-direction, and the cross axis always goes across it.'),
@@ -277,6 +291,11 @@ const C = {
   },
   s11: {
     eyebrow: L3("Qachon ishlamaydi", 'Когда не работает', 'When it doesn’t work'),
+    help: [
+      L3("Har safar kodga qarang: so'zlar to'g'ri yozilganmi va display flex bormi? Keyin kartochkalar qanday turganiga qarang.", 'Каждый раз смотри на код: слова написаны верно и есть ли display flex? Потом смотри, как стоят карточки.', 'Each time, look at the code: are the words right, and is there display flex? Then see how the cards are placed.'),
+      L3("Flex so'zlari aniq yozilishi kerak, flex-direction esa faqat display flex bilan ishlaydi.", 'Слова flex пишутся точно, а flex-direction работает только вместе с display flex.', 'Flex words must be exact, and flex-direction only works together with display flex.'),
+      L3('Pult batareyasiz ishlamaydi, tugmani qancha bosmang. flex-direction ham display flex siz ishlamaydi.', 'Пульт без батареек не работает, сколько ни жми кнопки. flex-direction так же не работает без display flex.', 'A remote doesn’t work without batteries, however hard you press. flex-direction doesn’t work without display flex either.')
+    ],
     say: L3("Flexbox da ham xatolar bo'ladi. Keling, uchtasini ko'ramiz. Hozir javon flex, kartochkalar ustunda.",
       'И во Flexbox бывают ошибки. Давай посмотрим на три. Сейчас полка flex, карточки столбиком.',
       'Flexbox has mistakes too. Let’s look at three. Right now the shelf is flex, the cards are in a column.'),
@@ -345,12 +364,13 @@ const C = {
       noFlex: L3("Avval nav flex bo'lishi kerak: display flex.", 'Сначала nav должен быть flex: display flex.', 'First nav has to be flex: display flex.'),
       noDir: L3("flex bor, havolalar esa hali qatorda. Yo'nalishni ham yozing.", 'flex есть, а ссылки пока в ряд. Допиши и направление.', 'flex is there, but the links are still in a row. Add the direction too.'),
       dir: L3("Yo'nalish boshqacha. Havolalar tepadan pastga ustun bo'lsin.", 'Направление другое. Ссылки должны стоять столбиком сверху вниз.', 'The direction is different. The links should stand in a column, top to bottom.'),
-      bad: L3("Brauzer bu so'zni tanimadi. So'zlarni tekshiring.", 'Браузер не узнал это слово. Проверь слова.', 'The browser didn’t recognize that word. Check the words.')
+      bad: L3("Brauzer bu so'zni tanimadi. So'zlarni tekshiring.", 'Браузер не узнал это слово. Проверь слова.', 'The browser didn’t recognize that word. Check the words.'),
+      semi: L3("Ikki xususiyat o'rtasida nuqtali vergul kerak: flex dan keyin nuqtali vergul qo'ying.", "Между двумя свойствами нужна точка с запятой: поставь её после flex.", "Two properties need a semicolon between them: put one after flex.")
     },
     hints: [
       L3("Ikki xususiyat kerak: biri flex qiladi, ikkinchisi yo'nalishni beradi.", 'Нужны два свойства: одно делает flex, второе задаёт направление.', 'Two properties are needed: one makes it flex, the other sets the direction.'),
       L3("display flex va flex-direction column.", 'display flex и flex-direction column.', 'display flex and flex-direction column.'),
-      L3("Shunday yozing: nav, figurali qavs, display ikki nuqta flex nuqtali vergul, flex-direction ikki nuqta column nuqtali vergul, yopuvchi figurali qavs.", 'Напиши так: nav, фигурная скобка, display двоеточие flex точка с запятой, flex-direction двоеточие column точка с запятой, закрывающая фигурная скобка.', 'Write it like this: nav, curly brace, display colon flex semicolon, flex-direction colon column semicolon, closing curly brace.')
+      L3("Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", "Образец появился под кодом. Перепиши его в поле и нажми «Проверить».", "An example appeared under the code. Copy it into the field and tap Check.")
     ],
     ok: L3("Ajoyib! Menyu ustun bo'ldi, havolalar esa kengligi bo'yicha cho'zildi. Qoidani o'zingiz yozdingiz.", 'Отлично! Меню стало столбиком, а ссылки растянулись по ширине. Правило написано тобой целиком.', 'Great! The menu became a column, and the links stretched across the width. You wrote the whole rule yourself.'),
     ask: L3("nav: flex va ustun", 'nav: flex и столбик', 'nav: flex and a column')
@@ -424,7 +444,7 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayFlex: 1, sayCol: 1, sayRR: 1, sayCR: 1,
+Object.assign(SPOKEN, { help: 1, hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayFlex: 1, sayCol: 1, sayRR: 1, sayCR: 1,
   sayStretch: 1, sayTypo: 1, sayFlexbox: 1, sayNoFlex: 1, child: 1, miss: 1, say2: 1, fine: 1, found: 1, items: 1, right: 1, rounds: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1, css: 1, right: 1, tag: 1, dir: 1 }, rounds: { want: 1, opts: 1 } });
 

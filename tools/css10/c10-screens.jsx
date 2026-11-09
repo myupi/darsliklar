@@ -14,6 +14,21 @@ const cssOk = (p, v) => {
   if (CSS_PROPS.indexOf(p) < 0 || !v) return false;
   try { return typeof CSS === 'undefined' || !CSS.supports ? true : CSS.supports(p, v); } catch (e) { return false; }
 };
+// Русские (кириллические) буквы вместо латинских (09.11.2026, проход «слабого ученика»): «рх», «р» выглядят как px, p —
+// своя причина раньше любой проверки, иначе ученик видит «верный» ответ и не понимает отказа.
+const CYR_MSG = L3("Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.",
+  'Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.',
+  'Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.');
+const cyrIn = (...vs) => (vs.some((x) => /[\u0400-\u04FF]/.test(String(x == null ? '' : x))) ? CYR_MSG : null);
+// Лишняя «;» в конце значения (ученик помнит, что правило кончается ею) — не ошибка: значение без неё.
+const noSemi = (s) => String(s || '').replace(/[“”«»„]/g, '"').trim().replace(/;+\s*$/, '').trim();
+// Образец на третьей ступени помощи (09.11.2026, проход «слабого ученика»): третья подсказка звучит словами — без
+// символов, а на экране под кодом печатью стоит готовый ответ; ученик переписывает его сам и жмёт «Проверить».
+const HELP_CODE = L3('Namuna', 'Образец', 'Example');
+function HelpCode({ code }) {
+  const pick = usePick();
+  return <div className="kz-helpcode" translate="no"><span>{pick(HELP_CODE)}</span><code>{code}</code></div>;
+}
 // Селектор: тег, .class или #id (ровно один простой селектор, как в уроке); иное — ничего не выбирает.
 function selOf(raw) {
   const s = String(raw || '').trim();
@@ -276,7 +291,7 @@ function useFill(id, c, issueOf, pose) {
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const issue = issueOf(ty.val.trim());
+    const issue = cyrIn(ty.val) || issueOf(noSemi(ty.val));
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: id, type: 'write-value', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -297,7 +312,7 @@ const withBase = (list, page) => cssParse(BASES[page || 'shelf'].concat(list || 
 // Экран «впиши значение»: правило sel { prop: [pre] ▢ [post]; } (и готовые правила given), страница честно.
 function FillScreen({ p, c, F, sel, prop, want, given, hl, pre, post, propSlot, fixed, page }) {
   const pick = usePick();
-  const v = F.T.okNow ? want : F.ty.val.trim();
+  const v = F.T.okNow ? want : noSemi(F.ty.val);
   const full = [pre, v, post].filter(Boolean).join(' ');
   const rules = (given || []).concat([ruleTxt(sel, [propSlot ? [v || 'x', fixed] : [prop, full]])]);
   const slot = F.T.okNow ? [P('v', propSlot ? 'c10-prop' : 'c10-val', want)] : [<Slot key="slot" ty={F.ty} led={F.led} onEnter={F.check} label={c.ask} onChange={F.onChange} />];
@@ -309,7 +324,7 @@ function FillScreen({ p, c, F, sel, prop, want, given, hl, pre, post, propSlot, 
       <Sheet cls="c10-sheet">
         <KzAsk text={F.T.okNow ? c.ok : c.ask} hint={F.T.okNow ? null : (F.T.msg || hintAt(F.T.lad.lv, c.hints))} err={!!F.T.msg} />
         <div className="kz-scene c10-s5 c10-pair">
-          <div className="kz-col"><KzCode lines={styleWrap(baseL(page).concat((given || []).map((r, i) => cssL('g' + i, 1, r, { cls: 'c10-dim' })), [ruleLine('r', partsOf(), F.T.okNow ? 'is-new' : 'is-hl')]))} cls="kz-code-sm" /></div>
+          <div className="kz-col"><KzCode lines={styleWrap(baseL(page).concat((given || []).map((r, i) => cssL('g' + i, 1, r, { cls: 'c10-dim' })), [ruleLine('r', partsOf(), F.T.okNow ? 'is-new' : 'is-hl')]))} cls="kz-code-sm" />{!F.T.okNow && F.T.lad.lv >= 3 ? <HelpCode code={want} /> : null}</div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { hl: hl, page })} rules={withBase(rules, page)} /></Br></div>
         </div>
         {!F.T.okNow ? <KeyRow keys={[]} ty={F.ty} canTap={F.canTap} onCheck={F.check} ready={F.ty.val.trim().length > 1} /> : null}
@@ -318,6 +333,15 @@ function FillScreen({ p, c, F, sel, prop, want, given, hl, pre, post, propSlot, 
   );
 }
 // Экран-показ: шаги правил по очереди; steps[n] — список правил, hl[n] — подсвеченный элемент.
+// Помощь на экране-объяснении (заказчик, 09.11.2026): ступени 1-2-3 по лампочке (useKzLadder) — 1 на что смотреть,
+// 2 что это значит, 3 пример из жизни. now — открытая ступень с номером «2/3» для панели, next — текст следующей
+// ступени без номера: его читает вслух лампочка.
+function useShowHelp(help) {
+  const lad = useKzLadder(!!(help && help.length));
+  const num = (k) => { const o = {}; LANGS.forEach((l) => { o[l] = k + '/' + help.length + ' · ' + (help[k - 1][l] !== undefined ? help[k - 1][l] : help[k - 1].ru); }); return o; };
+  if (!help || !help.length) return { now: null, next: null };
+  return { now: lad.lv > 0 ? num(Math.min(lad.lv, help.length)) : null, next: help[Math.min(lad.lv, help.length - 1)] };
+}
 function ShowScreen({ p, c, id, steps, says, asks, pose, hl, page }) {
   const pick = usePick();
   const [rec, put] = useRec(id);
@@ -332,10 +356,11 @@ function ShowScreen({ p, c, id, steps, says, asks, pose, hl, page }) {
   const rules = steps[n];
   const askText = solved || demo.done ? asks.done : asks.list[n];
   const prev = n > 0 ? steps[n - 1] : [];
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c10-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c10-s5 c10-pair">
           <div className="kz-col"><KzCode lines={styleWrap(baseL(page).concat(rules.map((r, i) => cssL('r' + i + r, 1, r, { cls: live && prev.indexOf(r) < 0 ? 'is-new is-read' : '' }))))} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { hl: hl ? hl[Math.min(n, hl.length - 1)] : null, page })} rules={withBase(rules, page)} /></Br></div>
@@ -467,11 +492,12 @@ function S3({ p }) {
   return <FillScreen p={p} c={c} F={Fl} sel=".javon" prop="display" want="flex" hl="javon" />;
 }
 
-// S4. КАКОМУ ТЕГУ? (выбор строки HTML) — display: flex пишут родителю: nav, ul, div.javon.
+// S4. КАКОМУ ТЕГУ? (выбор строки HTML) — display: flex пишут родителю: nav, ul, div.javon. В третьем раунде полка
+// лежит внутри main (09.11.2026: ответ не всегда первая строка — нужен тег прямо вокруг детей).
 const S4_ROUNDS = [
   { t: 'nav', cls: null, kid: 'a', kids: ['m1', 'm2', 'm3'] },
   { t: 'ul', cls: null, kid: 'li', kids: ['l1', 'l2', 'l3'] },
-  { t: 'div', cls: 'javon', kid: 'div', kidCls: 'karta', kids: ['c1', 'c2', 'c3'] }
+  { t: 'div', cls: 'javon', kid: 'div', kidCls: 'karta', kids: ['c1', 'c2', 'c3'], wrap: 'main' }
 ];
 function S4({ p }) {
   const pick = usePick();
@@ -489,13 +515,14 @@ function S4({ p }) {
   const canGo = useAdvanceGate(solved || done, spoken);
   const st = useRef({ tries: 0, misses: 0 });
   const R = S4_ROUNDS[ri];
+  const ans = R.wrap ? 1 : 0;
   const ch = useChoiceHints(!found, ri);
   const hints = [c.hint1, c.hint2, c.hint3];
   const led = useIdleLed(canTap && !found, ri * 10 + off.length);
   const tap = (j) => {
     if (!canTap || found || off.indexOf(j) >= 0) return;
     st.current.tries += 1;
-    if (j !== 0) { st.current.misses += 1; sfx('soft', true); setOff(off.concat(j)); sayNow(ch.miss(c.child, hints), 'think'); return; }
+    if (j !== ans) { st.current.misses += 1; sfx('soft', true); setOff(off.concat(j)); sayNow(ch.miss(j < ans ? c.outer : c.child, hints), 'think'); return; }
     sfx('win', true); setFound(true); ch.clear();
     if (ri === S4_ROUNDS.length - 1) {
       put({ done: true });
@@ -511,13 +538,16 @@ function S4({ p }) {
   const lit = ch.lad.lv >= 3;
   const tapLine = (j, parts, d) => ({
     k: 'r' + ri + 'l' + j, d, parts,
-    cls: 'c10-hline' + (found && j === 0 ? ' is-new' : '') + (off.indexOf(j) >= 0 ? ' is-off' : ''),
+    cls: 'c10-hline' + (found && j === ans ? ' is-new' : '') + (off.indexOf(j) >= 0 ? ' is-off' : ''),
     onTap: found ? null : () => tap(j), disabled: !canTap || found || off.indexOf(j) >= 0,
-    led: !found && ((led && off.length === 0 && j === 0 && false) || (lit && j === 0))
+    led: !found && lit && j === ans
   });
-  const lines = [tapLine(0, tagOpen(R.t, R.cls), 0)]
-    .concat(R.kids.map((k, i) => tapLine(i + 1, htmlLine(R.kid, R.kidCls, pick(C.s4.words[k])), 1)))
-    .concat([{ k: 'r' + ri + 'z', d: 0, parts: tagOpen(R.t, null, true) }]);
+  const dd = R.wrap ? 1 : 0;
+  const lines = (R.wrap ? [tapLine(0, tagOpen(R.wrap, null), 0)] : [])
+    .concat([tapLine(ans, tagOpen(R.t, R.cls), dd)])
+    .concat(R.kids.map((k, i) => tapLine(ans + 1 + i, htmlLine(R.kid, R.kidCls, pick(C.s4.words[k])), dd + 1)))
+    .concat([{ k: 'r' + ri + 'z', d: dd, parts: tagOpen(R.t, null, true) }])
+    .concat(R.wrap ? [{ k: 'r' + ri + 'w', d: 0, parts: tagOpen(R.wrap, null, true) }] : []);
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="c10-sheet">
@@ -686,7 +716,7 @@ function S13({ p }) {
     k: 'l' + ri + j + (found && j === R.bad ? 'f' : ''), d: 0, parts: cssTokens(r),
     cls: 'c10-cssline c10-hline' + (found && j === R.bad ? ' is-new' : '') + (off.indexOf(j) >= 0 ? ' is-off' : ''),
     onTap: found ? null : () => tap(j), disabled: !canTap || found || off.indexOf(j) >= 0,
-    led: !found && ((led && off.length === 0 && j === 0) || (lit && j === R.bad))
+    led: !found && ((led && off.length === 0) || (lit && j === R.bad))
   }));
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
@@ -709,6 +739,10 @@ function ruleIssue(t, msgs) {
   if (!m) return msgs.braces;
   const inner = m[2];
   if (inner.indexOf(':') < 0) return msgs.colon;
+  // Два свойства без «;» между ними или кусок без двоеточия — своя причина (09.11.2026), а не «браузер не узнал слово».
+  const chunks = inner.split(';').map((x) => x.trim()).filter(Boolean);
+  if (chunks.some((d) => (d.match(/:/g) || []).length > 1)) return msgs.semi;
+  if (chunks.some((d) => d.indexOf(':') < 0)) return msgs.colon;
   if (m[1].trim().toLowerCase() !== 'nav') return msgs.sel;
   const decl = {};
   inner.split(';').map((x) => x.trim()).filter(Boolean).forEach((d) => {
@@ -739,7 +773,7 @@ function W1({ p }) {
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const issue = ruleIssue(ty.val, c.msgs);
+    const issue = cyrIn(ty.val) || (ruleIssue(ty.val, c.msgs));
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: 'w1', type: 'write-rule', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -755,7 +789,7 @@ function W1({ p }) {
       <Sheet cls="c10-sheet c10-w1">
         <KzAsk text={T.okNow ? c.ok : c.ask} hint={T.okNow ? null : (T.msg || hintAt(T.lad.lv, c.hints))} err={!!T.msg} />
         <div className="kz-scene c10-s5 c10-pair">
-          <div className="kz-col"><KzCode lines={styleWrap(baseL('menu').concat([T.okNow ? cssL('r', 1, css, { cls: 'is-new' }) : ruleLine('r', [<span key="g" className={'kz-gap c10-slot c10-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={64} /></span>], 'is-hl')]))} cls="kz-code-sm" /></div>
+          <div className="kz-col"><KzCode lines={styleWrap(baseL('menu').concat([T.okNow ? cssL('r', 1, css, { cls: 'is-new' }) : ruleLine('r', [<span key="g" className={'kz-gap c10-slot c10-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={64} /></span>], 'is-hl')]))} cls="kz-code-sm" />{!T.okNow && T.lad.lv >= 3 ? <HelpCode code={'nav { display: flex; flex-direction: column; }'} /> : null}</div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { page: 'menu', hl: T.okNow ? null : 'nav' })} rules={withBase([css], 'menu')} /></Br></div>
         </div>
         {!T.okNow ? <KeyRow keys={['{', '}', ':', ';', '-']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 8} /> : null}
@@ -790,7 +824,7 @@ function S14({ p }) {
   };
   const confirm = () => {
     if (!canTap || !ready || solved) return;
-    const issue = issueOf();
+    const issue = cyrIn([].concat(v).join(" ")) || issueOf();
     if (issue) { sfx('soft', true); setMsg(issue); sayNow(issue, 'think'); if (lad.lv < 1) lad.bump(); return; }
     sfx('win', true); setMsg(null);
     OWN.forEach((o, i) => store.set(o.k, v[i])); put({ done: true });

@@ -15,6 +15,21 @@ const cssOk = (p, v) => {
   if (CSS_PROPS.indexOf(p) < 0 || !v) return false;
   try { return typeof CSS === 'undefined' || !CSS.supports ? true : CSS.supports(p, v); } catch (e) { return false; }
 };
+// Русские (кириллические) буквы вместо латинских (09.11.2026, проход «слабого ученика»): «рх», «р» выглядят как px, p —
+// своя причина раньше любой проверки, иначе ученик видит «верный» ответ и не понимает отказа.
+const CYR_MSG = L3("Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.",
+  'Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.',
+  'Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.');
+const cyrIn = (...vs) => (vs.some((x) => /[\u0400-\u04FF]/.test(String(x == null ? '' : x))) ? CYR_MSG : null);
+// Лишняя «;» в конце значения (ученик помнит, что правило кончается ею) — не ошибка: значение без неё.
+const noSemi = (s) => String(s || '').replace(/[“”«»„]/g, '"').trim().replace(/;+\s*$/, '').trim();
+// Образец на третьей ступени помощи (09.11.2026, проход «слабого ученика»): третья подсказка звучит словами — без
+// символов, а на экране под кодом печатью стоит готовый ответ; ученик переписывает его сам и жмёт «Проверить».
+const HELP_CODE = L3('Namuna', 'Образец', 'Example');
+function HelpCode({ code }) {
+  const pick = usePick();
+  return <div className="kz-helpcode" translate="no"><span>{pick(HELP_CODE)}</span><code>{code}</code></div>;
+}
 // Селектор: тег, .class или #id (ровно один простой селектор, как в уроке); иное — ничего не выбирает.
 function selOf(raw) {
   const s = String(raw || '').trim();
@@ -190,6 +205,14 @@ function useTypeTask(id, solved) {
   const st = useRef({ tries: 0, misses: 0 });
   return { msg, setMsg, okNow, setOkNow, lad, st };
 }
+// Помощь на экране-объяснении (09.11.2026): ступени 1-2-3 по лампочке — 1 на что смотреть, 2 что это значит, 3 пример
+// из жизни. now — открытая ступень с номером «2/3» для панели, next — текст следующей ступени: его читает лампочка.
+function useShowHelp(help) {
+  const lad = useKzLadder(!!(help && help.length));
+  const num = (k) => { const o = {}; LANGS.forEach((l) => { o[l] = k + '/' + help.length + ' · ' + (help[k - 1][l] !== undefined ? help[k - 1][l] : help[k - 1].ru); }); return o; };
+  if (!help || !help.length) return { now: null, next: null };
+  return { now: lad.lv > 0 ? num(Math.min(lad.lv, help.length)) : null, next: help[Math.min(lad.lv, help.length - 1)] };
+}
 
 
 // ── ФАЙЛЫ УРОКА: картинки фона (свои SVG, имена — как у файлов сайта) ───────
@@ -306,10 +329,11 @@ function S2({ p }) {
   const css = S2_CSS.slice(0, n + 1);
   const askText = solved || demo.done ? c.askDone : n === 2 ? c.askP : n === 1 ? c.askH1 : c.askStart;
   const els = site(pick).map((el) => Object.assign({}, el, { hl: live && ((n === 1 && el.t === 'h1') || (n === 2 && el.t === 'p')) }));
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c4-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c4-s5 c4-pair">
           <div className="kz-col"><KzCode lines={styleWrap(css.map((r, i) => cssL('r' + i, 1, r, { cls: live && i === n && n > 0 ? 'is-new is-read' : i === n && n > 0 ? 'is-new' : '' })))} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={els} rules={cssParse(css.join(' '))} /></Br></div>
@@ -334,12 +358,12 @@ function S3({ p }) {
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || T.okNow, spoken);
   const led = useIdleLed(canTap && !T.okNow && !ty.val, 0);
-  const v = T.okNow ? 'white' : ty.val.trim();
+  const v = T.okNow ? 'white' : noSemi(ty.val);
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const w = ty.val.trim();
-    const issue = !w ? c.msgs.empty : !cssOk('color', w) ? c.msgs.notColor : colorKey(w) === colorKey('white') ? null : c.msgs.other;
+    const w = noSemi(ty.val);
+    const issue = cyrIn(ty.val) || (!w ? c.msgs.empty : !cssOk('color', w) ? c.msgs.notColor : colorKey(w) === colorKey('white') ? null : c.msgs.other);
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: 's3', type: 'write-bg-color', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv, value: w });
@@ -454,10 +478,11 @@ function S5({ p }) {
   const css = 'body { background-image: url("yulduz.png"); }';
   const askText = solved || demo.done ? c.askDone : n === 2 ? c.askTile : n === 1 ? c.askUrl : c.askStart;
   const lines = n ? blockOf('b', css, live && n === 1 ? 'is-new is-read' : 'is-new', live && n === 1 ? 0 : null) : [codeLine('e', [P('e', 'c4-raw', ' ')], { d: 1 })];
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c4-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c4-s5 c4-pair">
           <div className="kz-col">
             <KzCode lines={styleWrap(lines)} cls="kz-code-sm" />
@@ -590,6 +615,7 @@ function S7({ p }) {
         <div className="kz-scene kz-scene-col kz-q2" key={'i' + ii}>
           <div className="kz-col">
             <div className="c4-card c4-thumb-card kz-a-drop"><div className="c4-thumb" style={thumbStyle(it.want)}><b>{pick(C.site.title)}</b></div></div>
+            <FilesBar />
             <div className="kz-pick c4-opts">
               {it.opts.map((v) => (
                 <button key={v} type="button" disabled={!canTap || ok || off.indexOf(v) >= 0} onClick={() => choose(v)} data-v={v}
@@ -606,46 +632,60 @@ function S7({ p }) {
 }
 
 // =============================================================================
-// S8. ПОВТОР И РАЗМЕР (показ) — мячи плиткой → no-repeat (один в углу) → большое небо одно (сбоку пусто) → cover.
+// S8. ПОВТОР (показ) — мячи плиткой → background-repeat: no-repeat (один мяч в углу). Упрощено 09.11.2026: размер —
+// отдельный экран S8B.
 // =============================================================================
-const S8_STEPS = [
-  [['background-image', 'url("futbol.png")']],
-  [['background-image', 'url("futbol.png")'], ['background-repeat', 'no-repeat']],
-  [['background-image', 'url("osmon.jpg")'], ['background-repeat', 'no-repeat']],
-  [['background-image', 'url("osmon.jpg")'], ['background-repeat', 'no-repeat'], ['background-size', 'cover']]
-];
-function S8({ p }) {
+// Общий показ фона body: steps — объявления по шагам, says/asks — реплики и строки задания, newOf(n) — номер
+// объявления, которое горит на шаге n.
+function BgShow({ p, c, id, steps, says, asks, newOf, files }) {
   const pick = usePick();
-  const c = C.s8;
-  const [rec, put] = useRec('s8');
+  const [rec, put] = useRec(id);
   const solved = !!(rec && rec.done);
-  const [n, setN] = useState(solved ? 3 : 0);
+  const last = steps.length - 1;
+  const [n, setN] = useState(solved ? last : 0);
   const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
-  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
-    { act: () => { sfx('pop', true); setN(1); } }, { say: [{ text: c.sayOne, pose: 'point' }] },
-    { act: () => { sfx('ok', true); setN(2); } }, { say: [{ text: c.sayBig, pose: 'think' }] },
-    { act: () => { sfx('ok', true); setN(3); } }, { say: [{ text: c.sayCover, pose: 'wonder' }] },
-    { say: [{ text: c.done, pose: 'smile' }] },
-    { act: () => put({ done: true }) }
-  ] });
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [].concat(...says.map((t, i) => [{ act: () => { sfx('ok', true); setN(i + 1); } }, { say: [{ text: t, pose: i % 2 ? 'wonder' : 'point' }] }]),
+    [{ say: [{ text: c.done, pose: 'smile' }] }, { act: () => put({ done: true }) }]) });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
   const live = !solved && !demo.done;
-  const dec = S8_STEPS[n];
-  const changed = (i) => live && ((n === 1 && i === 1) || (n === 2 && i === 0) || (n === 3 && i === 2));
-  const lines = blockL('b', 'body', dec.map(([pr, v], i) => ({ prop: pr, val: V(v), key: pr + v, cls: changed(i) ? 'is-new is-read' : '' })), '');
+  const dec = steps[n];
+  const lines = blockL('b', 'body', dec.map(([pr, v], i) => ({ prop: pr, val: V(v), key: pr + v, cls: live && n > 0 && newOf(n) === i ? 'is-new is-read' : '' })), '');
   const css = 'body { ' + dec.map(([pr, v]) => pr + ': ' + v + ';').join(' ') + ' }';
-  const askText = solved || demo.done ? c.askDone : n === 3 ? c.askCover : n === 2 ? c.askBig : n === 1 ? c.askOne : c.askStart;
+  const askText = solved || demo.done ? asks.done : asks.list[n];
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c4-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c4-s5 c4-pair">
-          <div className="kz-col"><KzCode lines={styleWrap(lines)} cls="kz-code-sm" /></div>
+          <div className="kz-col">
+            <KzCode lines={styleWrap(lines)} cls="kz-code-sm" />
+            {files ? <FilesBar lit={files} names={[files]} /> : null}
+          </div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick)} rules={cssParse(css)} /></Br></div>
         </div>
       </Sheet>
     </StageB>
   );
+}
+const S8_STEPS = [
+  [['background-image', 'url("futbol.png")']],
+  [['background-image', 'url("futbol.png")'], ['background-repeat', 'no-repeat']]
+];
+function S8({ p }) {
+  const c = C.s8;
+  return <BgShow p={p} c={c} id="s8" steps={S8_STEPS} says={[c.sayOne]} asks={{ list: [c.askStart, c.askOne], done: c.askDone }} newOf={() => 1} />;
+}
+// =============================================================================
+// S8B. РАЗМЕР (показ) — большое небо одно (no-repeat), сбоку пусто → background-size: cover — небо на весь фон.
+// =============================================================================
+const S8B_STEPS = [
+  [['background-image', 'url("osmon.jpg")'], ['background-repeat', 'no-repeat']],
+  [['background-image', 'url("osmon.jpg")'], ['background-repeat', 'no-repeat'], ['background-size', 'cover']]
+];
+function S8B({ p }) {
+  const c = C.s8b;
+  return <BgShow p={p} c={c} id="s8b" steps={S8B_STEPS} says={[c.sayCover]} asks={{ list: [c.askBig, c.askCover], done: c.askDone }} newOf={() => 2} />;
 }
 
 // =============================================================================
@@ -664,12 +704,12 @@ function S9({ p }) {
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || T.okNow, spoken);
   const led = useIdleLed(canTap && !T.okNow && !ty.val, 0);
-  const v = T.okNow ? 'no-repeat' : ty.val.trim();
+  const v = T.okNow ? 'no-repeat' : noSemi(ty.val);
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const w = ty.val.trim().toLowerCase();
-    const issue = !w ? c.msgs.empty : /^no\s+repeat$/.test(w) ? c.msgs.space : w === 'repeat' ? c.msgs.repeat : w === 'no-repeat' ? null : c.msgs.other;
+    const w = noSemi(ty.val).toLowerCase();
+    const issue = cyrIn(ty.val) || (!w ? c.msgs.empty : /^no\s+repeat$/.test(w) ? c.msgs.space : w === 'repeat' ? c.msgs.repeat : w === 'no-repeat' ? null : c.msgs.other);
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: 's9', type: 'write-no-repeat', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -692,6 +732,56 @@ function S9({ p }) {
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick)} rules={cssParse(css)} /></Br></div>
         </div>
         {!T.okNow ? <KeyRow keys={['-']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 5} /> : null}
+      </Sheet>
+    </StageB>
+  );
+}
+
+// =============================================================================
+// S9B. НЕБО НА ВЕСЬ ФОН (Fill in the Blanks) — «background-size: ▢;» → cover. contain — честно: небо целиком, но
+// с пустым местом; чужое слово браузер выбрасывает.
+// =============================================================================
+function S9B({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.s9b;
+  const [rec, put] = useRec('s9b');
+  const solved = !!(rec && rec.done);
+  const ty = useTagTyping({ max: 16 });
+  const T = useTypeTask('s9b', solved);
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'explain' }]);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(solved || T.okNow, spoken);
+  const led = useIdleLed(canTap && !T.okNow && !ty.val, 0);
+  const v = T.okNow ? 'cover' : noSemi(ty.val);
+  const check = () => {
+    if (!canTap || T.okNow) return;
+    T.st.current.tries += 1;
+    const w = noSemi(ty.val).toLowerCase();
+    const issue = cyrIn(ty.val) || (!w ? c.msgs.empty : w === 'cover' ? null : w === 'contain' ? c.msgs.contain : !cssOk('background-size', w) ? c.msgs.bad : c.msgs.other);
+    if (!issue) {
+      sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
+      log({ screenId: 's9b', type: 'write-cover', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
+      sayNow(c.ok, 'cheer');
+      return;
+    }
+    T.st.current.misses += 1;
+    sfx('soft', true); T.setMsg(issue); sayNow(issue, 'think');
+    if (T.st.current.misses >= 2) T.lad.bump();
+  };
+  const field = T.okNow ? V(v) : [<span key="g" className={'kz-gap c4-slot c4-slot-col' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={16} /></span>];
+  const lines = blockL('b', 'body', [{ prop: 'background-image', val: V('url("osmon.jpg")'), cls: '' }, { prop: 'background-repeat', val: V('no-repeat'), cls: '' },
+    { prop: 'background-size', val: field, cls: T.okNow ? 'is-new' : 'is-hl' }], '');
+  const css = 'body { background-image: url("osmon.jpg"); background-repeat: no-repeat;' + (v ? ' background-size: ' + v + ';' : '') + ' }';
+  return (
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, T.lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="c4-sheet">
+        <KzAsk text={T.okNow ? c.ok : c.ask} hint={T.okNow ? null : (T.msg || hintAt(T.lad.lv, c.hints))} err={!!T.msg} />
+        <div className="kz-scene c4-s5 c4-pair">
+          <div className="kz-col"><KzCode lines={styleWrap(lines)} cls="kz-code-sm" /></div>
+          <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick)} rules={cssParse(css)} /></Br></div>
+        </div>
+        {!T.okNow ? <KeyRow keys={[]} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 2} /> : null}
       </Sheet>
     </StageB>
   );
@@ -791,11 +881,12 @@ function S11({ p }) {
   const lines = blockL('b', 'body', dec.map(([pr, v]) => ({ prop: pr, val: V(v, live && pr === 'background-image' && (n === 1 || n === 2) ? 'c4-bad' : ''), key: pr + v,
     cls: live && ((n < 3 && n > 0 && pr === 'background-image') || (n === 3 && pr === 'background-color')) ? 'is-new is-read' : '' })), '');
   const css = 'body { ' + dec.map(([pr, v]) => pr + ': ' + v + ';').join(' ') + ' }';
-  const askText = solved || demo.done ? c.askDone : n === 3 ? c.askBackup : n === 2 ? c.askTypo : n === 1 ? c.askNoUrl : c.askDone;
+  const askText = solved || demo.done ? c.askDone : n === 3 ? c.askBackup : n === 2 ? c.askTypo : n === 1 ? c.askNoUrl : c.askStart;
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c4-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c4-s5 c4-pair">
           <div className="kz-col">
             <KzCode lines={styleWrap(lines)} cls="kz-code-sm" />
@@ -829,7 +920,7 @@ function S12({ p }) {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
     const x = ty.val.replace(/\s+/g, '');
-    const issue = !x ? c.msgs.empty : /^url$/i.test(x) ? c.msgs.paren : /^url\($/i.test(x) && cssOk('background-image', x + '"maydon.jpg")') ? null : c.msgs.other;
+    const issue = cyrIn(ty.val) || (!x ? c.msgs.empty : /^url$/i.test(x) ? c.msgs.paren : /^url\(["'“”«]$/i.test(x) ? c.msgs.quote : /^url\($/i.test(x) && cssOk('background-image', x + '"maydon.jpg")') ? null : c.msgs.other);
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: 's12', type: 'fix-url', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -851,7 +942,7 @@ function S12({ p }) {
           <div className="kz-col"><KzCode lines={styleWrap(lines)} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(C.site.title)} short cls={T.okNow ? '' : 'c4-broken'}><CssPage els={site(pick)} rules={cssParse('body { background-image: ' + value + '; background-size: cover; }')} /></Br></div>
         </div>
-        {!T.okNow ? <KeyRow keys={['url(', '(', '"']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 0} /> : null}
+        {!T.okNow ? <KeyRow keys={['url(', '(']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 0} /> : null}
       </Sheet>
     </StageB>
   );
@@ -906,7 +997,7 @@ function S13({ p }) {
     k: 'l' + j + (found && j === R.bad ? 'f' : ''), d: 0, parts: cssTokens(r),
     cls: 'c4-cssline c4-hline' + (found && j === R.bad ? ' is-new' : '') + (off.indexOf(j) >= 0 ? ' is-off' : ''),
     onTap: found ? null : () => tap(j), disabled: !canTap || found || off.indexOf(j) >= 0,
-    led: !found && ((led && off.length === 0 && j === 0) || (lit && j === R.bad))
+    led: !found && ((led && off.length === 0) || (lit && j === R.bad))
   }));
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
@@ -930,7 +1021,7 @@ function S13({ p }) {
 // =============================================================================
 const W1_FILE = 'yulduz.png';
 function ruleIssue(t, msgs) {
-  const s = String(t || '').trim();
+  const s = String(t || '').trim().replace(/[“”«»„]/g, '"');
   if (!s) return msgs.empty;
   const m = /^([^{]*)\{([^}]*)\}\s*$/.exec(s);
   if (!m) return msgs.braces;
@@ -961,11 +1052,11 @@ function W1({ p }) {
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || T.okNow, spoken);
   const led = useIdleLed(canTap && !T.okNow && !ty.val, 0);
-  const css = T.okNow ? 'body { background-image: url("' + W1_FILE + '"); }' : ty.val;
+  const css = T.okNow ? 'body { background-image: url("' + W1_FILE + '"); }' : ty.val.replace(/[“”«»„]/g, '"');
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const issue = ruleIssue(ty.val, c.msgs);
+    const issue = cyrIn(ty.val) || (ruleIssue(ty.val, c.msgs));
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: 'w1', type: 'write-rule', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -981,10 +1072,10 @@ function W1({ p }) {
       <Sheet cls="c4-sheet">
         <KzAsk text={T.okNow ? c.ok : c.ask} hint={T.okNow ? null : (T.msg || hintAt(T.lad.lv, c.hints))} err={!!T.msg} />
         <div className="kz-scene c4-s5 c4-pair">
-          <div className="kz-col"><KzCode lines={styleWrap(T.okNow ? blockOf('b', css, 'is-new') : [ruleLine('r', [<span key="g" className={'kz-gap c4-slot c4-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={60} /></span>], 'is-hl')])} cls="kz-code-sm" /></div>
+          <div className="kz-col"><KzCode lines={styleWrap(T.okNow ? blockOf('b', css, 'is-new') : [ruleLine('r', [<span key="g" className={'kz-gap c4-slot c4-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={60} /></span>], 'is-hl')])} cls="kz-code-sm" />{!T.okNow && T.lad.lv >= 3 ? <HelpCode code={'body { background-image: url("' + W1_FILE + '"); }'} /> : null}</div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick)} rules={cssParse(css)} /></Br></div>
         </div>
-        {!T.okNow ? <KeyRow keys={['{', '}', ':', ';', '(', ')', '"']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 10} /> : null}
+        {!T.okNow ? <KeyRow keys={['{', '}', ':', ';', 'url(', ')', '"']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 10} /> : null}
       </Sheet>
     </StageB>
   );
@@ -1013,7 +1104,7 @@ function S14({ p }) {
   const ready = !!(va && vb);
   const confirm = () => {
     if (!canTap || !ready || solved) return;
-    const issue = !FILES[va] ? fillL(c.msgs.noFile, { w: va }) : !cssOk('color', vb) ? fillL(c.msgs.notColor, { w: vb }) : null;
+    const issue = cyrIn(va, vb) || (!FILES[va] ? fillL(c.msgs.noFile, { w: va }) : !cssOk('color', vb) ? fillL(c.msgs.notColor, { w: vb }) : null);
     if (issue) { sfx('soft', true); setMsg(issue); sayNow(issue, 'think'); if (lad.lv < 1) lad.bump(); return; }
     sfx('win', true); setMsg(null);
     store.set('myImg', va); store.set('myHeadBg', vb); put({ done: true });
@@ -1165,7 +1256,8 @@ const SCREENS = [
   { id: 's1', code: 'HOOK', Comp: S1 },
   { id: 's2', code: 'SHOW', Comp: S2 }, { id: 's3', code: 'LEVEL-1', Comp: S3 }, { id: 's4', code: 'CHECK-1', Comp: S4 },
   { id: 's5', code: 'SHOW', Comp: S5 }, { id: 's6', code: 'LEVEL-2', Comp: S6 }, { id: 's7', code: 'CHECK-2', Comp: S7 },
-  { id: 's8', code: 'SHOW', Comp: S8 }, { id: 's9', code: 'LEVEL-3', Comp: S9 }, { id: 's10', code: 'CHECK-3', Comp: S10 },
+  { id: 's8', code: 'SHOW', Comp: S8 }, { id: 's9', code: 'LEVEL-3', Comp: S9 },
+  { id: 's8b', code: 'SHOW', Comp: S8B }, { id: 's9b', code: 'LEVEL-3B', Comp: S9B }, { id: 's10', code: 'CHECK-3', Comp: S10 },
   { id: 's11', code: 'SHOW', Comp: S11 }, { id: 's12', code: 'LEVEL-4', Comp: S12 }, { id: 's13', code: 'CHECK-4', Comp: S13 },
   { id: 'w1', code: 'LEVEL-W', Comp: W1 },
   { id: 's14', code: 'LEVEL-5', Comp: S14 },
@@ -1174,7 +1266,7 @@ const SCREENS = [
 ];
 // «Повторить» стирает только экран; свой фон ученика (myImg, myHeadBg) остаётся.
 const SCREEN_RESET = { s1: ['s1'], s2: ['s2'], s3: ['s3'], s4: ['s4'], s5: ['s5'], s6: ['s6'], s7: ['s7'], s8: ['s8'], s9: ['s9'],
-  s10: ['s10'], s11: ['s11'], s12: ['s12'], s13: ['s13'], w1: ['w1'], s14: ['s14'], q1: ['q1'] };
+  s8b: ['s8b'], s9b: ['s9b'], s10: ['s10'], s11: ['s11'], s12: ['s12'], s13: ['s13'], w1: ['w1'], s14: ['s14'], q1: ['q1'] };
 
 // Артефакт урока — своя страница ученика со своим фоном.
 function lessonCss4Artifact(store) {

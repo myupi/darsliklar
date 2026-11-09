@@ -1,8 +1,9 @@
-// Сценарий проверки урока 4 курса CSS lessons/css/04-fon.jsx («Фон», облик «Редактор», 05.11.2026).
-// Основной путь: все 17 экранов действиями ученика; честная страница (фон — по вычисленному стилю окна и элементов);
+// Сценарий проверки урока 4 курса CSS lessons/css/04-fon.jsx («Фон», облик «Редактор», 05.11.2026; упрощён 09.11.2026:
+// повтор и размер — отдельные показы, задание на cover). Основной путь: все 19 экранов действиями ученика; честная страница (фон — по вычисленному стилю окна и элементов);
 // свой фон (s14), onFinished один раз, артефакт со своим фоном.
 // Ветки: другой цвет (s3); не то место (s4); src= (s6); «no repeat» с пробелом (s9); «url» без скобки (s12); верная
-// строка в «найди ошибку» (s13); без url и чужое имя файла (w1); имени нет среди файлов (s14); неверный ответ (q1).
+// строка в «найди ошибку» (s13); без url и чужое имя файла (w1); имени нет среди файлов (s14); неверный ответ (q1);
+// contain вместо cover (s9b); помощь 1-2-3 на объяснении (s8b).
 // Функции шагов выполняются в странице — помощники объявлены внутри каждого шага.
 
 const STEPS = [
@@ -70,12 +71,12 @@ const STEPS = [
     }
     await qa.waitFor(() => qa.platform.nextEnabled(), 30000, 'засчитано');
   } },
-  { name: 's8: повтор и размер (показ)', shot: 's8-done', run: async (qa) => {
+  { name: 's8: повтор (показ)', shot: 's8-done', run: async (qa) => {
     const cs = (e, p) => (e ? e.ownerDocument.defaultView.getComputedStyle(e)[p || 'color'] : '');
     await qa.platform.next();
     await qa.platform.ready(30000);
     await qa.waitFor(() => qa.platform.nextEnabled(), 90000, 'показ закончен');
-    qa.expect(cs(qa.q('.kz-br-body'), 'backgroundSize') === 'cover' && cs(qa.q('.kz-br-body'), 'backgroundRepeat') === 'no-repeat', 'в конце — cover и no-repeat');
+    qa.expect(cs(qa.q('.kz-br-body'), 'backgroundRepeat') === 'no-repeat', 'в конце — no-repeat, мяч один');
   } },
   { name: 's9: вписать no-repeat', shot: 's9-done', run: async (qa) => {
     const cs = (e, p) => (e ? e.ownerDocument.defaultView.getComputedStyle(e)[p || 'color'] : '');
@@ -84,6 +85,23 @@ const STEPS = [
     qa.type('.c4-slot textarea', 'no-repeat', 'значение');
     await qa.sleep(600);
     qa.expect(cs(qa.q('.kz-br-body'), 'backgroundRepeat') === 'no-repeat', 'честно: мяч один');
+    await qa.click('.key-go', 'Проверить');
+    await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано');
+  } },
+  { name: 's8b: размер (показ)', shot: 's8b-done', run: async (qa) => {
+    const cs = (e, p) => (e ? e.ownerDocument.defaultView.getComputedStyle(e)[p || 'color'] : '');
+    await qa.platform.next();
+    await qa.platform.ready(30000);
+    await qa.waitFor(() => qa.platform.nextEnabled(), 90000, 'показ закончен');
+    qa.expect(cs(qa.q('.kz-br-body'), 'backgroundSize') === 'cover' && cs(qa.q('.kz-br-body'), 'backgroundRepeat') === 'no-repeat', 'в конце — cover и no-repeat');
+  } },
+  { name: 's9b: вписать cover', shot: 's9b-done', run: async (qa) => {
+    const cs = (e, p) => (e ? e.ownerDocument.defaultView.getComputedStyle(e)[p || 'color'] : '');
+    await qa.platform.next();
+    await qa.platform.ready();
+    qa.type('.c4-slot textarea', 'cover', 'значение');
+    await qa.sleep(600);
+    qa.expect(cs(qa.q('.kz-br-body'), 'backgroundSize') === 'cover', 'честно: небо на весь фон');
     await qa.click('.key-go', 'Проверить');
     await qa.waitFor(() => qa.platform.nextEnabled(), 25000, 'засчитано');
   } },
@@ -178,8 +196,8 @@ export default {
   langs: ['ru'],
   size: process.env.QA_SIZE || '1280x720',
   voice: 'fast',
-  screens: 17,
-  inputScreens: [3, 9, 12, 14, 15],
+  screens: 19,
+  inputScreens: [3, 9, 11, 14, 16, 17],
   expectFinish: true,
   data: {
     ru: { endS2: 'заголовка или абзаца' },
@@ -217,20 +235,20 @@ export default {
       await qa.click('.key-go', 'Проверить');
       await qa.waitFor(() => !!qa.q('.b-sheet.is-hint') && /дефис/i.test(qa.text('.b-sheet.is-hint')), 3000, 'причина про дефис');
     } }] },
-    { name: 's12: url без скобки → причина', start: 11, langs: ['ru'], steps: [{ name: 'url', run: async (qa) => {
+    { name: 's12: url без скобки → причина', start: 13, langs: ['ru'], steps: [{ name: 'url', run: async (qa) => {
       await qa.platform.ready();
       qa.type('.c4-slot textarea', 'url', 'без скобки');
       await qa.click('.key-go', 'Проверить');
       await qa.waitFor(() => !!qa.q('.b-sheet.is-hint') && /скобк/i.test(qa.text('.b-sheet.is-hint')), 3000, 'причина про скобку');
       qa.expect(!qa.platform.nextEnabled(), '«Дальше» закрыта');
     } }] },
-    { name: 's13: верная строка → «работает»', start: 12, langs: ['ru'], steps: [{ name: 'вторая строка', run: async (qa) => {
+    { name: 's13: верная строка → «работает»', start: 14, langs: ['ru'], steps: [{ name: 'вторая строка', run: async (qa) => {
       await qa.platform.ready();
       await qa.clickNth('.kz-code .kz-line.kz-tap', 1, 'верная строка');
       await qa.waitFor(() => qa.q('.b-sheet.is-hint'), 3000, 'причина в панели');
       qa.expect(qa.qa('.kz-code .kz-line.is-off').length === 1 && !qa.platform.nextEnabled(), 'строка погасла');
     } }] },
-    { name: 'w1: без url и чужое имя → причины', start: 13, langs: ['ru'], steps: [{ name: '"yulduz.png", yulduz.jpg', run: async (qa) => {
+    { name: 'w1: без url и чужое имя → причины', start: 15, langs: ['ru'], steps: [{ name: '"yulduz.png", yulduz.jpg', run: async (qa) => {
       const cs = (e, p) => (e ? e.ownerDocument.defaultView.getComputedStyle(e)[p || 'color'] : '');
       await qa.platform.ready();
       qa.type('.c4-slot-rule textarea', 'body { background-image: "yulduz.png"; }', 'без url');
@@ -243,7 +261,7 @@ export default {
       await qa.click('.key-go', 'Проверить');
       await qa.waitFor(() => !!qa.q('.b-sheet.is-hint') && /нет такого имени/i.test(qa.text('.b-sheet.is-hint')), 3000, 'причина: нет такого файла');
     } }] },
-    { name: 's14: имени нет среди файлов → причина', start: 14, langs: ['ru'], steps: [{ name: 'osmon.png', run: async (qa) => {
+    { name: 's14: имени нет среди файлов → причина', start: 16, langs: ['ru'], steps: [{ name: 'osmon.png', run: async (qa) => {
       await qa.platform.ready();
       const f = qa.qa('.c4-slot textarea');
       qa.type(f[0], 'osmon.png', 'чужое имя'); qa.type(f[1], 'gold', 'цвет');
@@ -251,12 +269,27 @@ export default {
       await qa.waitFor(() => !!qa.q('.b-sheet.is-hint') && /osmon\.png/.test(qa.text('.b-sheet.is-hint')), 3000, 'причина называет имя');
       qa.expect(!qa.platform.nextEnabled(), '«Дальше» закрыта');
     } }] },
-    { name: 'q1: неверный ответ → объяснение', start: 15, langs: ['ru'], steps: [{ name: '«Неверно» про url', run: async (qa) => {
+    { name: 'q1: неверный ответ → объяснение', start: 17, langs: ['ru'], steps: [{ name: '«Неверно» про url', run: async (qa) => {
       await qa.platform.ready();
       await qa.waitFor(() => qa.q('.c4-tf:not(:disabled)'), 30000, 'кнопки нажимаются');
       await qa.clickNth('.c4-tf', 1, 'Неверно');
       await qa.waitFor(() => qa.q('.b-sheet.is-hint'), 3000, 'объяснение в панели');
       qa.expect(qa.qa('.c4-tf.is-off').length === 1 && !qa.platform.nextEnabled(), 'кнопка погасла');
+    } }] },
+    { name: 's9b: contain → причина', start: 10, langs: ['ru'], steps: [{ name: 'contain', run: async (qa) => {
+      const hintIs = (qa, re) => !!qa.q('.b-sheet.is-hint') && re.test(qa.text('.b-sheet.is-hint'));
+      await qa.platform.ready();
+      qa.type('.c4-slot textarea', 'contain', 'contain');
+      await qa.click('.key-go', 'Проверить');
+      await qa.waitFor(() => hintIs(qa, /contain/i), 3000, 'причина про contain');
+      qa.expect(!qa.platform.nextEnabled(), '«Дальше» закрыта');
+    } }] },
+    { name: 's8b: помощь 1-2-3 на объяснении', start: 9, langs: ['ru'], steps: [{ name: 'лампочка три раза', run: async (qa) => {
+      await qa.platform.ready(30000);
+      for (let k = 1; k <= 3; k++) {
+        await qa.click('.ctl-hint', 'лампочка');
+        await qa.waitFor(() => new RegExp('^' + k + '/3').test(qa.text('.b-sheet.is-hint p')), 3000, 'ступень ' + k + '/3');
+      }
     } }] }
   ]
 };

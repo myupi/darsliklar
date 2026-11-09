@@ -6664,20 +6664,22 @@ const CANON_SCREEN_CSS = CANON_SCREEN_CSS_BASE + CANON_MECH_CSS + CANON_DZ_CSS +
 // =============================================================================
 // ===== УРОК 4 · «Фон» · модуль css-m1-osnovy =====
 //
-// ЗАМЫСЕЛ (05.11.2026). Уроки 1–3: правило, style в head, селекторы тег / .class / #id, цвета именем, hex, rgb, hsl.
+// ЗАМЫСЕЛ (05.11.2026). Уроки 1–3: правило, style в head, селекторы тег / .class / #id, цвета именем, hex, rgb (hsl только назван).
 // Сайт футбольного клуба Коди — белый и скучный; Коди хочет, чтобы он был похож на стадион: сзади поле, текст
 // на белых полосах. Ученик узнаёт: background-color красит фон любого элемента (не только body); background-image
 // ставит картинку url("файл"); маленькая картинка сама повторяется плиткой; background-repeat: no-repeat — одна;
 // background-size: cover — на весь фон; файл не нашёлся — виден цвет фона (запасной).
 // Загадка (без имён): Коди написал «background-image: "maydon.jpg";» без url( ) и уверен, что картинка появится.
 //
-// ДУГА (17 экранов; минимум 17 — заказчик, 05.11.2026). Типы заданий — по разделу 3а навыка:
+// ДУГА (19 экранов; упрощён 09.11.2026 по просьбе заказчика: всё оставить, но проще — повтор и размер разнесены,
+// задание на cover отдельно; на объяснениях лампочка даёт помощь 1-2-3). Типы заданий — по разделу 3а навыка:
 //   s1 крючок (белый сайт → поле за страницей, белые полосы под текстом; HTML не тронут; загадка)
 //   фон элемента:  s2 показ (body → h1 → p) · s3 вписать белый фон заголовка (Fill) · s4 что покрасило правило (Visual Code Mapping)
 //   картинка:      s5 показ (url, кавычки, плитка) · s6 собрать url("osmon.jpg") (Code Builder) · s7 какой код у страницы (выбор)
-//   повтор/размер: s8 показ (плитка → no-repeat → большая картинка → cover) · s9 вписать no-repeat (Fill) · s10 плиткой или одна (Sort)
+//   повтор:        s8 показ (плитка → no-repeat) · s9 вписать no-repeat (Fill)
+//   размер:        s8b показ (большое небо с пустым местом → cover) · s9b вписать cover (Fill) · s10 плиткой или одна (Sort)
 //   поломки:       s11 показ (без url, опечатка в имени файла, запасной цвет) · s12 вписать url( (Debug & Fix) · s13 найти сломанное правило (Error Detective)
-//   w1 правило целиком (перенос) · s14 свой фон (Live, «Готово»)
+//   w1 правило целиком (перенос, кнопка url() · s14 свой фон (Live, «Готово»)
 //   итог: q1 верно или нет · s15 вывод с разгадкой.
 //
 // ОСОБЫЕ ПРАВИЛА УРОКА
@@ -6778,6 +6780,11 @@ const C = {
   },
   s2: {
     eyebrow: L3('Element foni', 'Фон элемента', 'An element’s background'),
+    help: [
+      L3("Kodda har safar yangi qator qo'shiladi. Sahifada o'sha qator bo'yagan joyga qarang.", 'В коде каждый раз добавляется новая строка. Посмотри на странице, что она покрасила.', 'Each time a new line is added to the code. Look at what it painted on the page.'),
+      L3("Selektor nimani bo'yashni aytadi: body butun sahifa, h1 sarlavha, p abzas. background-color esa ularning orqasini bo'yaydi.", 'Селектор говорит, что красить: body — всю страницу, h1 — заголовок, p — абзац. background-color — их фон.', 'The selector says what to paint: body is the whole page, h1 the heading, p a paragraph. background-color is what’s behind them.'),
+      L3("Xuddi daftarga marker bilan belgi qo'yishga o'xshaydi: harflar o'sha-o'sha, orqasi esa rangli bo'ladi.", 'Как выделить текст маркером в тетради: буквы те же, а под ними появляется цвет.', 'It’s like a highlighter in a notebook: the letters stay the same, but color appears behind them.')
+    ],
     say: L3("Fon rangini siz allaqachon bilasiz: body uchun background-color butun sahifani bo'yaydi. Lekin fonni istalgan elementga berish mumkin. Qarang.",
       'Цвет фона ты уже знаешь: background-color для body красит всю страницу. Но фон можно дать любому элементу. Смотри.',
       'You already know background colors: background-color on body paints the whole page. But you can give a background to any element. Watch.'),
@@ -6829,6 +6836,11 @@ const C = {
   },
   s5: {
     eyebrow: L3('Fon rasmi', 'Картинка на фоне', 'A background picture'),
+    help: [
+      L3("Pastdagi fayllarga qarang. Koddagi nom ulardan birining nomi bilan bir xil.", 'Посмотри на файлы внизу. Имя в коде — то же, что у одного из них.', 'Look at the files below. The name in the code matches one of them.'),
+      L3("url brauzerga faylni qayerdan olishni aytadi. Fayl nomi qavs ichida, qo'shtirnoqda yoziladi.", 'url говорит браузеру, откуда взять файл. Имя файла пишется в скобках и в кавычках.', 'url tells the browser where to get the file. The file name goes in brackets and quotes.'),
+      L3("Xuddi do'stingizga «stoldagi ko'k papkani olib kel» deyishga o'xshaydi: aniq nomini aytsangiz, u topadi.", 'Как попросить друга: «принеси синюю папку со стола». Назовёшь точно — он найдёт.', 'It’s like asking a friend to bring the blue folder from the desk: name it exactly and they’ll find it.')
+    ],
     say: L3("Endi eng qiziqi: fonga rasm qo'yamiz. Buning uchun background-image xususiyati bor, ya'ni fon rasmi degani. Pastda fayllar turibdi, ulardan birini olamiz.",
       'А теперь самое интересное: поставим на фон картинку. Для этого есть свойство background-image, то есть картинка фона. Внизу лежат файлы, возьмём один из них.',
       'Now the most interesting part: we put a picture on the background. There’s a property for that, background-image, meaning the background picture. The files are below; we’ll take one of them.'),
@@ -6879,17 +6891,32 @@ const C = {
     ok: L3("Hammasi to'g'ri! Siz fon kodini o'qiy olasiz.", 'Всё верно! Ты умеешь читать код фона.', 'All correct! You can read background code.')
   },
   s8: {
-    eyebrow: L3("Takrorlash va o'lcham", 'Повтор и размер', 'Repeat and size'),
-    say: L3("Rasm har doim ham takrorlanishi kerak emas. Buni ikki xususiyat boshqaradi. Hozir to'p rasmi butun fonni to'ldirib turibdi.", 'Картинке не всегда нужно повторяться. Этим управляют два свойства. Сейчас мячи заполнили весь фон.', 'A picture doesn’t always need to repeat. Two properties control that. Right now the balls fill the whole background.'),
-    sayOne: L3("background-repeat: no-repeat, ya'ni takrorlanmasin degani. Endi to'p faqat bitta, chap yuqori burchakda.", 'background-repeat: no-repeat — значит «не повторять». Теперь мяч только один, в левом верхнем углу.', 'background-repeat: no-repeat means “don’t repeat”. Now there’s only one ball, in the top left corner.'),
-    sayBig: L3("Endi katta osmon rasmini qo'yamiz. U bitta, lekin sahifani to'liq qoplamayapti: yon tomonda bo'sh joy qoldi.", 'Теперь поставим большую картинку неба. Она одна, но не закрывает страницу целиком: сбоку осталось пустое место.', 'Now we put the big sky picture. There’s one, but it doesn’t cover the whole page: there’s empty space at the side.'),
-    sayCover: L3("background-size: cover rasmni kattalashtirib, butun fonni qoplaydi. Endi osmon hamma joyda.", 'background-size: cover растягивает картинку на весь фон. Теперь небо везде.', 'background-size: cover stretches the picture over the whole background. Now the sky is everywhere.'),
-    done: L3("Demak, no-repeat rasmni bitta qoldiradi, cover esa uni butun fonga yoyadi.", 'Значит, no-repeat оставляет одну картинку, а cover растягивает её на весь фон.', 'So no-repeat leaves just one picture, and cover stretches it over the whole background.'),
+    eyebrow: L3("Takrorlanmasin", 'Без повтора', 'No repeat'),
+    say: L3("Kichik rasm o'zi takrorlanadi, buni ko'rdingiz. Lekin har doim ham bu kerak emas. Hozir to'p rasmi butun fonni to'ldirib turibdi.", 'Маленькая картинка сама повторяется — это уже было. Но так нужно не всегда. Сейчас мячи заполнили весь фон.', 'You’ve seen that a small picture repeats by itself. But you don’t always want that. Right now the balls fill the whole background.'),
+    sayOne: L3("Yangi qator qo'shamiz: background-repeat: no-repeat, ya'ni takrorlanmasin degani. Endi to'p faqat bitta, chap yuqori burchakda.", 'Добавляем строку background-repeat: no-repeat, то есть «не повторять». Теперь мяч только один, в левом верхнем углу.', 'We add a line, background-repeat: no-repeat, that is, “don’t repeat”. Now there’s only one ball, in the top left corner.'),
+    done: L3("Demak, no-repeat rasmni bitta qoldiradi. Usiz kichik rasm butun fonni to'ldiradi.", 'Значит, no-repeat оставляет одну картинку. Без него маленькая картинка заполняет весь фон.', 'So no-repeat leaves just one picture. Without it a small picture fills the whole background.'),
     askStart: L3("Qarang: rasm takrorlanadi", 'Смотри: картинка повторяется', 'Watch: the picture repeats'),
-    askOne: L3("Qarang: no-repeat, rasm bitta", 'Смотри: no-repeat, картинка одна', 'Watch: no-repeat, one picture'),
-    askBig: L3("Qarang: katta rasm bitta", 'Смотри: большая картинка одна', 'Watch: one big picture'),
-    askCover: L3("Qarang: cover, butun fonga", 'Смотри: cover, на весь фон', 'Watch: cover, the whole background'),
-    askDone: L3("no-repeat bitta, cover butun fonga", 'no-repeat — одна, cover — на весь фон', 'no-repeat for one, cover for the whole')
+    askOne: L3("no-repeat — rasm bitta", 'no-repeat — картинка одна', 'no-repeat: one picture'),
+    askDone: L3("no-repeat — takrorlanmasin", 'no-repeat — не повторять', 'no-repeat: don’t repeat'),
+    help: [
+      L3("Kodda bitta qator qo'shildi: background-repeat. Sahifada to'plar soniga qarang.", 'В коде добавилась одна строка — background-repeat. Посмотри, сколько мячей на странице.', 'One line was added to the code: background-repeat. Look at how many balls are on the page.'),
+      L3("repeat takrorlash degani, no-repeat esa takrorlamaslik. no va repeat o'rtasida chiziqcha.", 'repeat значит «повторять», а no-repeat — «не повторять». Между no и repeat дефис.', 'repeat means repeat, and no-repeat means don’t. There’s a hyphen between no and repeat.'),
+      L3("Xuddi devorga stiker yopishtirishga o'xshaydi: butun devorni stikerlar bilan qoplash mumkin yoki bittasini yopishtirish.", 'Как наклейки на стене: можно обклеить ими всю стену, а можно наклеить одну.', 'It’s like stickers on a wall: you can cover the whole wall with them, or stick just one.')
+    ]
+  },
+  s8b: {
+    eyebrow: L3("Butun fonga", 'На весь фон', 'The whole background'),
+    say: L3("Endi katta osmon rasmi. U bitta, lekin sahifani to'liq qoplamayapti: yon tomonda va pastda bo'sh joy qoldi. Buni tuzatamiz.", 'Теперь большая картинка неба. Она одна, но не закрывает страницу целиком: сбоку и снизу осталось пустое место. Исправим.', 'Now a big sky picture. There’s one, but it doesn’t cover the whole page: there’s empty space at the side and below. Let’s fix it.'),
+    sayCover: L3("background-size: cover qo'shamiz. cover ya'ni qoplasin degani. Rasm kattalashib, butun fonni qopladi. Endi osmon hamma joyda.", 'Добавляем background-size: cover. cover значит «накрыть». Картинка выросла и накрыла весь фон. Теперь небо везде.', 'We add background-size: cover. cover means “cover it”. The picture grew and covered the whole background. Now the sky is everywhere.'),
+    done: L3("Demak, cover rasmni butun fonga yoyadi, bo'sh joy qolmaydi.", 'Значит, cover растягивает картинку на весь фон, пустого места не остаётся.', 'So cover stretches the picture over the whole background, with no empty space left.'),
+    askBig: L3("Qarang: bo'sh joy qoldi", 'Смотри: осталось пустое место', 'Watch: empty space is left'),
+    askCover: L3("cover — butun fonga", 'cover — на весь фон', 'cover: the whole background'),
+    askDone: L3("cover — butun fonni qoplaydi", 'cover — накрывает весь фон', 'cover covers the whole background'),
+    help: [
+      L3("Sahifaning o'ng tomoni va pastiga qarang: oldin u yerda bo'sh joy bor edi.", 'Посмотри на правый край и низ страницы: сначала там было пустое место.', 'Look at the right side and the bottom of the page: at first there was empty space there.'),
+      L3("background-size rasm o'lchamini beradi. cover bo'lsa, rasm butun fonni qoplaguncha kattalashadi.", 'background-size задаёт размер картинки. cover — картинка растёт, пока не накроет весь фон.', 'background-size sets the picture’s size. cover makes it grow until it covers the whole background.'),
+      L3("Xuddi stolga dasturxon yozishga o'xshaydi: dasturxon katta bo'lsa, stol to'liq yopiladi.", 'Как скатерть на столе: если она большая, стол закрыт целиком.', 'It’s like a tablecloth: when it’s big enough, the whole table is covered.')
+    ]
   },
   s9: {
     eyebrow: L3("Bitta to'p", 'Один мяч', 'Just one ball'),
@@ -6908,13 +6935,30 @@ const C = {
     ok: L3("Zo'r! Endi fonda bitta to'p qoldi.", 'Огонь! Теперь на фоне один мяч.', 'Awesome! Now there’s one ball on the background.'),
     ask: L3("Bitta to'p uchun qiymatni yozing", 'Впиши значение для одного мяча', 'Type the value for one ball')
   },
+  s9b: {
+    eyebrow: L3("Osmon hamma joyda", 'Небо везде', 'Sky everywhere'),
+    say: L3("Endi siz qiling. Osmon rasmi sahifani to'liq qoplamayapti. background-size uchun shunday qiymat yozingki, rasm butun fonni qoplasin.", 'Теперь ты. Картинка неба не закрывает страницу целиком. Впиши такое значение для background-size, чтобы картинка накрыла весь фон.', 'Your turn. The sky picture doesn’t cover the whole page. Type a value for background-size so the picture covers the whole background.'),
+    msgs: {
+      empty: L3("background-size uchun qiymat yozing.", 'Впиши значение для background-size.', 'Type a value for background-size.'),
+      contain: L3("contain ham bor, lekin u rasmni butunligicha sig'diradi va bo'sh joy qoladi. Qoplasin degan so'z kerak.", 'contain тоже бывает, но он вмещает картинку целиком, и пустое место остаётся. Нужно слово «накрыть».', 'contain exists too, but it fits the whole picture in and leaves empty space. You need the word for “cover”.'),
+      bad: L3("Brauzer bu qiymatni tanimadi. Butun fonni qoplash inglizchada cover.", 'Браузер не узнал это значение. «Накрыть весь фон» по-английски — cover.', 'The browser didn’t recognize that value. Covering the whole background is cover.'),
+      other: L3("Rasm o'zgardi, lekin fon to'liq qoplanmadi. Qoplasin degan so'z kerak.", 'Картинка изменилась, но фон накрыт не весь. Нужно слово «накрыть».', 'The picture changed, but the background isn’t fully covered. You need the word for “cover”.')
+    },
+    hints: [
+      L3("Rasm butun fonni qoplashi uchun qaysi so'z kerak edi?", 'Какое слово нужно, чтобы картинка накрыла весь фон?', 'Which word makes the picture cover the whole background?'),
+      L3("Bu so'z inglizchada qoplamoq degani, besh harf, c bilan boshlanadi.", 'Это английское слово «накрыть», пять букв, начинается на c.', 'It’s the English word for that, five letters, starting with c.'),
+      L3("cover deb yozing va Tekshirishni bosing.", 'Впиши cover и нажми «Проверить».', 'Type cover and tap Check.')
+    ],
+    ok: L3("Ajoyib! Osmon butun fonni qopladi.", 'Отлично! Небо накрыло весь фон.', 'Great! The sky covers the whole background.'),
+    ask: L3("Rasm butun fonni qoplasin", 'Пусть картинка накроет весь фон', 'Make the picture cover the whole background')
+  },
   s10: {
     eyebrow: L3('Takrorlanadimi?', 'Плиткой или одна?', 'Tiled or one?'),
     say: L3("Endi o'zingizni sinab ko'ring. Men kodni ko'rsataman, siz esa rasm takrorlanadimi yoki bitta bo'ladimi, shuni tanlang.", 'Теперь проверь себя. Я покажу код, а ты выбери: картинка будет плиткой или одна?', 'Now check yourself. I’ll show some code, and you choose: will the picture be tiled or just one?'),
     ask: L3("Rasm takrorlanadimi yoki bittami?", 'Картинка будет плиткой или одна?', 'Will the picture be tiled or just one?'),
     card: L3('body uchun kod', 'Код для body', 'Code for body'),
     hint1: L3("Kodda background-repeat yoki background-size bormi?", 'Есть ли в коде background-repeat или background-size?', 'Does the code have background-repeat or background-size?'),
-    hint2: L3("Hech narsa yozilmasa, kichik rasm o'zi takrorlanadi. no-repeat bitta qoldiradi, cover bitta rasmni butun fonga yoyadi.", 'Если ничего не написано, маленькая картинка сама повторяется. no-repeat оставляет одну, cover растягивает одну на весь фон.', 'If nothing is written, a small picture repeats by itself. no-repeat leaves one, and cover stretches one over the whole background.'),
+    hint2: L3("Hech narsa yozilmasa yoki repeat yozilsa, kichik rasm kafel kabi takrorlanadi. no-repeat bitta qoldiradi, cover bitta rasmni butun fonga yoyadi.", "Если ничего не написано или написано repeat, маленькая картинка повторяется плиткой. no-repeat оставляет одну, cover растягивает одну на весь фон.", "If nothing is written, or repeat is written, a small picture repeats like tiles. no-repeat leaves one, and cover stretches one over the whole background."),
     items: [
       { code: 'background-image: url("yulduz.png");', right: 'tile', why: L3("Takrorlash haqida hech narsa yozilmagan, shuning uchun kichik rasm o'zi takrorlanadi.", 'Про повтор ничего не написано, поэтому маленькая картинка повторяется сама.', 'Nothing is written about repeating, so the small picture repeats by itself.') },
       { code: 'background-image: url("futbol.png");\nbackground-repeat: no-repeat;', right: 'one', why: L3("no-repeat takrorlanmasin degani, demak rasm bitta.", 'no-repeat значит «не повторять», значит, картинка одна.', 'no-repeat means “don’t repeat”, so there’s one picture.') },
@@ -6926,6 +6970,11 @@ const C = {
   },
   s11: {
     eyebrow: L3('Rasm chiqmasa', 'Когда картинки нет', 'When the picture is missing'),
+    help: [
+      L3("Har safar koddagi bitta narsa o'zgaradi. Qizil bilan belgilangan joyga va pastdagi fayllarga qarang.", 'Каждый раз в коде меняется одна вещь. Посмотри на отмеченное красным и на файлы внизу.', 'Each time one thing changes in the code. Look at what’s marked in red and at the files below.'),
+      L3("Brauzer xato qiymatni tashlab yuboradi, topilmagan fayl o'rniga esa hech narsa chizmaydi. Shunda background-color ko'rinadi.", 'Ошибочное значение браузер выбрасывает, а вместо ненайденного файла ничего не рисует. Тогда виден background-color.', 'The browser throws out a wrong value, and draws nothing for a missing file. Then background-color shows.'),
+      L3("Xuddi devorga rasm osishga o'xshaydi: rasm tushib qolsa ham, devor bo'yog'i ko'rinib turadi.", 'Как картина на стене: даже если картина упала, видна краска стены.', 'It’s like a painting on a wall: even if the painting falls, you still see the wall’s paint.')
+    ],
     say: L3("Ba'zan rasm chiqmay qoladi. Brauzer xato kodni tashlab yuboradi yoki faylni topa olmaydi. Keling, ikkita sababni va bitta yordamchini ko'ramiz.", 'Бывает, картинка не появляется. Браузер выбрасывает ошибочный код или не находит файл. Давай посмотрим на две причины и одного помощника.', 'Sometimes the picture doesn’t show. The browser throws away bad code or can’t find the file. Let’s look at two reasons and one helper.'),
     sayNoUrl: L3("Birinchisi: url yo'q, faqat qo'shtirnoqda fayl nomi. Brauzer buni rasm deb tanimadi, fon bo'sh qoldi.", 'Первая: нет url, только имя файла в кавычках. Браузер не узнал в этом картинку, фон пустой.', 'The first: there’s no url, only the file name in quotes. The browser didn’t recognize it as a picture, so the background is empty.'),
     sayTypo: L3("Ikkinchisi: fayl nomida bitta harf yo'q. Fayllar orasida bunday nom yo'q, shuning uchun rasm yana chiqmadi.", 'Вторая: в имени файла пропала буква. Среди файлов такого имени нет, поэтому картинки снова нет.', 'The second: a letter is missing from the file name. There’s no file with that name, so again there’s no picture.'),
@@ -6934,7 +6983,8 @@ const C = {
     askNoUrl: L3("Qarang: url yo'q", 'Смотри: нет url', 'Watch: no url'),
     askTypo: L3("Qarang: fayl nomida xato", 'Смотри: ошибка в имени файла', 'Watch: a typo in the file name'),
     askBackup: L3("Qarang: zaxira rang", 'Смотри: запасной цвет', 'Watch: a backup color'),
-    askDone: L3("url, to'g'ri nom va zaxira rang", 'url, верное имя и запасной цвет', 'url, the right name and a backup color')
+    askDone: L3("url, to'g'ri nom va zaxira rang", 'url, верное имя и запасной цвет', 'url, the right name and a backup color'),
+    askStart: L3("Qarang: hammasi ishlayapti, maydon joyida", "Смотри: всё работает, поле на месте", "Watch: everything works, the field is there")
   },
   s12: {
     eyebrow: L3("url ni qo'ying", 'Поставь url', 'Add url'),
@@ -6942,7 +6992,8 @@ const C = {
     msgs: {
       empty: L3("Fayl nomi oldiga so'z va qavs yozing.", 'Впиши перед именем файла слово и скобку.', 'Type a word and a bracket before the file name.'),
       paren: L3("So'z to'g'ri, lekin uning yonida ochuvchi qavs bo'lishi kerak.", 'Слово верное, но рядом с ним нужна открывающая скобка.', 'The word is right, but it needs an opening bracket next to it.'),
-      other: L3("Bu ishlamaydi. Fayl nomi oldida url so'zi va ochuvchi qavs turadi.", 'Так не работает. Перед именем файла стоят слово url и открывающая скобка.', 'That doesn’t work. The file name comes after the word url and an opening bracket.')
+      other: L3("Bu ishlamaydi. Fayl nomi oldida url so'zi va ochuvchi qavs turadi.", 'Так не работает. Перед именем файла стоят слово url и открывающая скобка.', 'That doesn’t work. The file name comes after the word url and an opening bracket.'),
+      quote: L3("Qo'shtirnoq fayl nomi oldida allaqachon turibdi. Faqat url so'zini va qavsni yozing.", "Кавычка уже стоит перед именем файла. Впиши только url и скобку.", "The quote is already before the file name. Type only url and the bracket.")
     },
     hints: [
       L3("Rasm qiymati qaysi so'z bilan boshlanardi?", 'С какого слова начинается значение картинки?', 'Which word does a picture value start with?'),
@@ -6959,8 +7010,8 @@ const C = {
     ask: L3('Ishlamayotgan qoidani bosing', 'Нажми правило, которое не работает', 'Tap the rule that doesn’t work'),
     fine: L3("Bu qoida ishlayapti: uning natijasi sahifada ko'rinib turibdi. Nima chiqmay qoldi?", 'Это правило работает: его результат виден на странице. Что не появилось?', 'This rule works: you can see its result on the page. What didn’t show up?'),
     found: {
-      file: L3("Topdingiz! Faylning nomi osmon.jpg, kodda esa osmon.jpeg deb yozilgan.", 'Нашёл! Файл называется osmon.jpg, а в коде написано osmon.jpeg.', 'Found it! The file is called osmon.jpg, but the code says osmon.jpeg.'),
-      space: L3("Topdingiz! no va repeat o'rtasida bo'sh joy bor, chiziqcha bo'lishi kerak edi.", 'Нашёл! Между no и repeat пробел, а нужен дефис.', 'Found it! There’s a space between no and repeat, but it should be a hyphen.')
+      file: L3("Topdingiz! Faylning nomi osmon.jpg, kodda esa osmon.jpeg deb yozilgan.", 'Есть! Файл называется osmon.jpg, а в коде написано osmon.jpeg.', 'Found it! The file is called osmon.jpg, but the code says osmon.jpeg.'),
+      space: L3("Topdingiz! no va repeat o'rtasida bo'sh joy bor, chiziqcha bo'lishi kerak edi.", 'Есть! Между no и repeat пробел, а нужен дефис.', 'Found it! There’s a space between no and repeat, but it should be a hyphen.')
     },
     hint1: L3("Sahifaga qarang: nima kutilganidek chiqmadi?", 'Посмотри на страницу: что вышло не так, как ждали?', 'Look at the page: what didn’t come out as expected?'),
     hint2: {
@@ -6975,7 +7026,7 @@ const C = {
   },
   w1: {
     eyebrow: L3("Qoidani o'zingiz yozing", 'Напиши правило сам', 'Write the rule yourself'),
-    say: L3("Endi qoidani boshidan oxirigacha o'zingiz yozing. Sahifa foniga yulduzchalar qo'ying: fayl nomi yulduz.png. body uchun background-image xususiyatini yozing.", 'Теперь напиши правило целиком сам. Поставь на фон страницы звёздочки: файл yulduz.png. Напиши для body свойство background-image.', 'Now write the whole rule yourself. Put stars on the page background: the file is yulduz.png. Write the background-image property for body.'),
+    say: L3("Endi qoidani boshidan oxirigacha o'zingiz yozing. Butun sahifa foniga yulduzchalar qo'ying, ular yulduz.png faylida.", "Теперь напиши правило целиком сам. Поставь на фон всей страницы звёздочки из файла yulduz.png.", "Now write the whole rule yourself. Put stars from the file yulduz.png on the whole page background."),
     msgs: {
       empty: L3("Qoidani yozing: oldin selektor, keyin jingalak qavslar ichida xususiyat va qiymat.", 'Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.', 'Write the rule: first the selector, then the property and value in curly braces.'),
       braces: L3("Qoidaga jingalak qavslar kerak: ochuvchi va yopuvchi.", 'Правилу нужны фигурные скобки: открывающая и закрывающая.', 'The rule needs curly braces: an opening one and a closing one.'),
@@ -6990,16 +7041,16 @@ const C = {
     hints: [
       L3("Butun sahifa qaysi selektor bilan tanlanardi? Fon rasmi uchun qaysi xususiyat kerak?", 'Каким селектором выбирают всю страницу? Какое свойство нужно для картинки фона?', 'Which selector picks the whole page? Which property is for the background picture?'),
       L3("Selektor body, xususiyat background-image, qiymat esa url, qavs ichida qo'shtirnoqda yulduz.png.", 'Селектор body, свойство background-image, а значение — url и в скобках yulduz.png в кавычках.', 'The selector is body, the property background-image, and the value url with yulduz.png in quotes inside brackets.'),
-      L3("Shunday yozing: body, jingalak qavs, background-image, ikki nuqta, url, qavs, qo'shtirnoqda yulduz.png, qavs, nuqtali vergul va yopuvchi jingalak qavs.", 'Напиши так: body, фигурная скобка, background-image, двоеточие, url, скобка, yulduz.png в кавычках, скобка, точка с запятой и закрывающая фигурная скобка.', 'Write: body, a curly brace, background-image, a colon, url, a bracket, yulduz.png in quotes, a bracket, a semicolon and a closing curly brace.')
+      L3("Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", "Образец появился под кодом. Перепиши его в поле и нажми «Проверить».", "An example appeared under the code. Copy it into the field and tap Check.")
     ],
-    ok: L3("Ajoyib! Sahifa yulduzlarga to'ldi. Qoidani o'zingiz yozdingiz.", 'Отлично! Страница в звёздах. Ты сам написал правило.', 'Great! The page is full of stars. You wrote the rule yourself.'),
+    ok: L3("Ajoyib! Sahifa yulduzlarga to'ldi. Qoidani o'zingiz yozdingiz.", 'Отлично! Страница в звёздах. Всё правило — целиком твоё.', 'Great! The page is full of stars. You wrote the rule yourself.'),
     ask: L3("Fonga yulduz.png qo'yadigan qoidani yozing", 'Напиши правило, которое поставит на фон yulduz.png', 'Write a rule that puts yulduz.png on the background')
   },
   s14: {
     eyebrow: L3("O'z foningiz", 'Свой фон', 'Your own background'),
     say: L3("Endi o'z sahifangizni bezang. Fayllardan sahifa foni uchun bitta rasm tanlang va uning nomini yozing. Sarlavha orqasi uchun esa istalgan rangni yozing. Keyin «Tayyor»ni bosing.", 'Теперь укрась свою страницу. Выбери из файлов картинку для фона страницы и впиши её имя. А для фона заголовка впиши любой цвет. Потом нажми «Готово».', 'Now decorate your own page. Pick a picture from the files for the page background and type its name. Then type any color for the heading’s background. Then tap “Done”.'),
     msgs: {
-      noFile: L3("Fayllar orasida {w} degan nom yo'q. Fayllardan birining nomini yozing.", 'Среди файлов нет имени {w}. Впиши имя одного из файлов.', 'There’s no file called {w}. Type the name of one of the files.'),
+      noFile: L3("Fayllar orasida {w} degan nom yo'q. Fayl nomini nuqta va oxiri bilan to'liq yozing, masalan osmon.jpg.", "Среди файлов нет имени {w}. Перепиши имя файла целиком, с точкой и окончанием, например osmon.jpg.", "There’s no file called {w}. Copy the whole file name, with the dot and the ending, for example osmon.jpg."),
       notColor: L3("Brauzer {w} ni rang deb tanimadi. Rang nomini yoki kodini tekshiring.", 'Браузер не узнал цвет в {w}. Проверь имя или код цвета.', 'The browser didn’t recognize {w} as a color. Check the color’s name or code.')
     },
     hints: [
@@ -7038,7 +7089,7 @@ const C = {
       { text: L3("Endi topishmoqqa qaytamiz. Esingizdami, men background-image dan keyin faqat qo'shtirnoqda fayl nomini yozgan edim? Afsuski, men adashibman. Rasm uchun url so'zi va qavslar kerak. Usiz brauzer bu yozuvni tashlab yuboradi va fon bo'sh qoladi.",
         'Вернёмся к загадке. Помнишь, после background-image я написал только имя файла в кавычках? Увы, я ошибся. Для картинки нужны слово url и скобки. Без них браузер выбрасывает эту запись, и фон остаётся пустым.',
         'Back to our riddle. Remember, after background-image I wrote only the file name in quotes? Sadly, I was wrong. A picture needs the word url and brackets. Without them the browser throws the line away, and the background stays empty.'), k: 'riddle' },
-      { text: L3("Qarang, bu sizning sahifangiz, o'zingiz tanlagan fon bilan!", 'Смотри, это твоя страница с фоном, который ты выбрал сам!', 'Look, this is your page with the background you picked yourself!'), k: null },
+      { text: L3("Qarang, bu sizning sahifangiz, o'zingiz tanlagan fon bilan!", 'Смотри, это твоя страница с твоим собственным фоном!', 'Look, this is your page with the background you picked yourself!'), k: null },
       { text: L3("background-color istalgan elementning orqasini bo'yaydi.", 'background-color красит фон любого элемента.', 'background-color paints the background of any element.'), k: 'color' },
       { text: L3("background-image url bilan fonga rasm qo'yadi.", 'background-image ставит на фон картинку через url.', 'background-image puts a picture on the background with url.'), k: 'image' },
       { text: L3("background-repeat rasm takrorlanadimi yoki yo'qmi, shuni hal qiladi.", 'background-repeat решает, повторяется картинка или нет.', 'background-repeat decides whether the picture repeats or not.'), k: 'repeat' },
@@ -7760,7 +7811,7 @@ function GoalCard({ goal, n, total, done, doneText }) {
 }
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayH1: 1, sayP: 1, sayUrl: 1, sayTile: 1, sayOne: 1, sayBig: 1,
+Object.assign(SPOKEN, { help: 1, hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayH1: 1, sayP: 1, sayUrl: 1, sayTile: 1, sayOne: 1, sayBig: 1,
   sayCover: 1, sayNoUrl: 1, sayTypo: 1, sayBackup: 1, miss: 1, say2: 1, fine: 1, found: 1, items: 1, right: 1, got: 1, rounds: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1 } });
 
@@ -9261,6 +9312,21 @@ const cssOk = (p, v) => {
   if (CSS_PROPS.indexOf(p) < 0 || !v) return false;
   try { return typeof CSS === 'undefined' || !CSS.supports ? true : CSS.supports(p, v); } catch (e) { return false; }
 };
+// Русские (кириллические) буквы вместо латинских (09.11.2026, проход «слабого ученика»): «рх», «р» выглядят как px, p —
+// своя причина раньше любой проверки, иначе ученик видит «верный» ответ и не понимает отказа.
+const CYR_MSG = L3("Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.",
+  'Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.',
+  'Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.');
+const cyrIn = (...vs) => (vs.some((x) => /[\u0400-\u04FF]/.test(String(x == null ? '' : x))) ? CYR_MSG : null);
+// Лишняя «;» в конце значения (ученик помнит, что правило кончается ею) — не ошибка: значение без неё.
+const noSemi = (s) => String(s || '').trim().replace(/;+\s*$/, '').trim();
+// Образец на третьей ступени помощи (09.11.2026, проход «слабого ученика»): третья подсказка звучит словами — без
+// символов, а на экране под кодом печатью стоит готовый ответ; ученик переписывает его сам и жмёт «Проверить».
+const HELP_CODE = L3('Namuna', 'Образец', 'Example');
+function HelpCode({ code }) {
+  const pick = usePick();
+  return <div className="kz-helpcode" translate="no"><span>{pick(HELP_CODE)}</span><code>{code}</code></div>;
+}
 // Селектор: тег, .class или #id (ровно один простой селектор, как в уроке); иное — ничего не выбирает.
 function selOf(raw) {
   const s = String(raw || '').trim();
@@ -9436,6 +9502,14 @@ function useTypeTask(id, solved) {
   const st = useRef({ tries: 0, misses: 0 });
   return { msg, setMsg, okNow, setOkNow, lad, st };
 }
+// Помощь на экране-объяснении (09.11.2026): ступени 1-2-3 по лампочке — 1 на что смотреть, 2 что это значит, 3 пример
+// из жизни. now — открытая ступень с номером «2/3» для панели, next — текст следующей ступени: его читает лампочка.
+function useShowHelp(help) {
+  const lad = useKzLadder(!!(help && help.length));
+  const num = (k) => { const o = {}; LANGS.forEach((l) => { o[l] = k + '/' + help.length + ' · ' + (help[k - 1][l] !== undefined ? help[k - 1][l] : help[k - 1].ru); }); return o; };
+  if (!help || !help.length) return { now: null, next: null };
+  return { now: lad.lv > 0 ? num(Math.min(lad.lv, help.length)) : null, next: help[Math.min(lad.lv, help.length - 1)] };
+}
 
 
 // ── ФАЙЛЫ УРОКА: картинки фона (свои SVG, имена — как у файлов сайта) ───────
@@ -9552,10 +9626,11 @@ function S2({ p }) {
   const css = S2_CSS.slice(0, n + 1);
   const askText = solved || demo.done ? c.askDone : n === 2 ? c.askP : n === 1 ? c.askH1 : c.askStart;
   const els = site(pick).map((el) => Object.assign({}, el, { hl: live && ((n === 1 && el.t === 'h1') || (n === 2 && el.t === 'p')) }));
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c4-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c4-s5 c4-pair">
           <div className="kz-col"><KzCode lines={styleWrap(css.map((r, i) => cssL('r' + i, 1, r, { cls: live && i === n && n > 0 ? 'is-new is-read' : i === n && n > 0 ? 'is-new' : '' })))} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={els} rules={cssParse(css.join(' '))} /></Br></div>
@@ -9580,12 +9655,12 @@ function S3({ p }) {
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || T.okNow, spoken);
   const led = useIdleLed(canTap && !T.okNow && !ty.val, 0);
-  const v = T.okNow ? 'white' : ty.val.trim();
+  const v = T.okNow ? 'white' : noSemi(ty.val);
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const w = ty.val.trim();
-    const issue = !w ? c.msgs.empty : !cssOk('color', w) ? c.msgs.notColor : colorKey(w) === colorKey('white') ? null : c.msgs.other;
+    const w = noSemi(ty.val);
+    const issue = cyrIn(ty.val) || (!w ? c.msgs.empty : !cssOk('color', w) ? c.msgs.notColor : colorKey(w) === colorKey('white') ? null : c.msgs.other);
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: 's3', type: 'write-bg-color', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv, value: w });
@@ -9700,10 +9775,11 @@ function S5({ p }) {
   const css = 'body { background-image: url("yulduz.png"); }';
   const askText = solved || demo.done ? c.askDone : n === 2 ? c.askTile : n === 1 ? c.askUrl : c.askStart;
   const lines = n ? blockOf('b', css, live && n === 1 ? 'is-new is-read' : 'is-new', live && n === 1 ? 0 : null) : [codeLine('e', [P('e', 'c4-raw', ' ')], { d: 1 })];
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c4-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c4-s5 c4-pair">
           <div className="kz-col">
             <KzCode lines={styleWrap(lines)} cls="kz-code-sm" />
@@ -9836,6 +9912,7 @@ function S7({ p }) {
         <div className="kz-scene kz-scene-col kz-q2" key={'i' + ii}>
           <div className="kz-col">
             <div className="c4-card c4-thumb-card kz-a-drop"><div className="c4-thumb" style={thumbStyle(it.want)}><b>{pick(C.site.title)}</b></div></div>
+            <FilesBar />
             <div className="kz-pick c4-opts">
               {it.opts.map((v) => (
                 <button key={v} type="button" disabled={!canTap || ok || off.indexOf(v) >= 0} onClick={() => choose(v)} data-v={v}
@@ -9852,46 +9929,60 @@ function S7({ p }) {
 }
 
 // =============================================================================
-// S8. ПОВТОР И РАЗМЕР (показ) — мячи плиткой → no-repeat (один в углу) → большое небо одно (сбоку пусто) → cover.
+// S8. ПОВТОР (показ) — мячи плиткой → background-repeat: no-repeat (один мяч в углу). Упрощено 09.11.2026: размер —
+// отдельный экран S8B.
 // =============================================================================
-const S8_STEPS = [
-  [['background-image', 'url("futbol.png")']],
-  [['background-image', 'url("futbol.png")'], ['background-repeat', 'no-repeat']],
-  [['background-image', 'url("osmon.jpg")'], ['background-repeat', 'no-repeat']],
-  [['background-image', 'url("osmon.jpg")'], ['background-repeat', 'no-repeat'], ['background-size', 'cover']]
-];
-function S8({ p }) {
+// Общий показ фона body: steps — объявления по шагам, says/asks — реплики и строки задания, newOf(n) — номер
+// объявления, которое горит на шаге n.
+function BgShow({ p, c, id, steps, says, asks, newOf, files }) {
   const pick = usePick();
-  const c = C.s8;
-  const [rec, put] = useRec('s8');
+  const [rec, put] = useRec(id);
   const solved = !!(rec && rec.done);
-  const [n, setN] = useState(solved ? 3 : 0);
+  const last = steps.length - 1;
+  const [n, setN] = useState(solved ? last : 0);
   const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
-  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
-    { act: () => { sfx('pop', true); setN(1); } }, { say: [{ text: c.sayOne, pose: 'point' }] },
-    { act: () => { sfx('ok', true); setN(2); } }, { say: [{ text: c.sayBig, pose: 'think' }] },
-    { act: () => { sfx('ok', true); setN(3); } }, { say: [{ text: c.sayCover, pose: 'wonder' }] },
-    { say: [{ text: c.done, pose: 'smile' }] },
-    { act: () => put({ done: true }) }
-  ] });
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [].concat(...says.map((t, i) => [{ act: () => { sfx('ok', true); setN(i + 1); } }, { say: [{ text: t, pose: i % 2 ? 'wonder' : 'point' }] }]),
+    [{ say: [{ text: c.done, pose: 'smile' }] }, { act: () => put({ done: true }) }]) });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
   const live = !solved && !demo.done;
-  const dec = S8_STEPS[n];
-  const changed = (i) => live && ((n === 1 && i === 1) || (n === 2 && i === 0) || (n === 3 && i === 2));
-  const lines = blockL('b', 'body', dec.map(([pr, v], i) => ({ prop: pr, val: V(v), key: pr + v, cls: changed(i) ? 'is-new is-read' : '' })), '');
+  const dec = steps[n];
+  const lines = blockL('b', 'body', dec.map(([pr, v], i) => ({ prop: pr, val: V(v), key: pr + v, cls: live && n > 0 && newOf(n) === i ? 'is-new is-read' : '' })), '');
   const css = 'body { ' + dec.map(([pr, v]) => pr + ': ' + v + ';').join(' ') + ' }';
-  const askText = solved || demo.done ? c.askDone : n === 3 ? c.askCover : n === 2 ? c.askBig : n === 1 ? c.askOne : c.askStart;
+  const askText = solved || demo.done ? asks.done : asks.list[n];
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c4-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c4-s5 c4-pair">
-          <div className="kz-col"><KzCode lines={styleWrap(lines)} cls="kz-code-sm" /></div>
+          <div className="kz-col">
+            <KzCode lines={styleWrap(lines)} cls="kz-code-sm" />
+            {files ? <FilesBar lit={files} names={[files]} /> : null}
+          </div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick)} rules={cssParse(css)} /></Br></div>
         </div>
       </Sheet>
     </StageB>
   );
+}
+const S8_STEPS = [
+  [['background-image', 'url("futbol.png")']],
+  [['background-image', 'url("futbol.png")'], ['background-repeat', 'no-repeat']]
+];
+function S8({ p }) {
+  const c = C.s8;
+  return <BgShow p={p} c={c} id="s8" steps={S8_STEPS} says={[c.sayOne]} asks={{ list: [c.askStart, c.askOne], done: c.askDone }} newOf={() => 1} />;
+}
+// =============================================================================
+// S8B. РАЗМЕР (показ) — большое небо одно (no-repeat), сбоку пусто → background-size: cover — небо на весь фон.
+// =============================================================================
+const S8B_STEPS = [
+  [['background-image', 'url("osmon.jpg")'], ['background-repeat', 'no-repeat']],
+  [['background-image', 'url("osmon.jpg")'], ['background-repeat', 'no-repeat'], ['background-size', 'cover']]
+];
+function S8B({ p }) {
+  const c = C.s8b;
+  return <BgShow p={p} c={c} id="s8b" steps={S8B_STEPS} says={[c.sayCover]} asks={{ list: [c.askBig, c.askCover], done: c.askDone }} newOf={() => 2} />;
 }
 
 // =============================================================================
@@ -9910,12 +10001,12 @@ function S9({ p }) {
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || T.okNow, spoken);
   const led = useIdleLed(canTap && !T.okNow && !ty.val, 0);
-  const v = T.okNow ? 'no-repeat' : ty.val.trim();
+  const v = T.okNow ? 'no-repeat' : noSemi(ty.val);
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const w = ty.val.trim().toLowerCase();
-    const issue = !w ? c.msgs.empty : /^no\s+repeat$/.test(w) ? c.msgs.space : w === 'repeat' ? c.msgs.repeat : w === 'no-repeat' ? null : c.msgs.other;
+    const w = noSemi(ty.val).toLowerCase();
+    const issue = cyrIn(ty.val) || (!w ? c.msgs.empty : /^no\s+repeat$/.test(w) ? c.msgs.space : w === 'repeat' ? c.msgs.repeat : w === 'no-repeat' ? null : c.msgs.other);
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: 's9', type: 'write-no-repeat', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -9938,6 +10029,56 @@ function S9({ p }) {
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick)} rules={cssParse(css)} /></Br></div>
         </div>
         {!T.okNow ? <KeyRow keys={['-']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 5} /> : null}
+      </Sheet>
+    </StageB>
+  );
+}
+
+// =============================================================================
+// S9B. НЕБО НА ВЕСЬ ФОН (Fill in the Blanks) — «background-size: ▢;» → cover. contain — честно: небо целиком, но
+// с пустым местом; чужое слово браузер выбрасывает.
+// =============================================================================
+function S9B({ p }) {
+  const pick = usePick();
+  const log = useLog();
+  const c = C.s9b;
+  const [rec, put] = useRec('s9b');
+  const solved = !!(rec && rec.done);
+  const ty = useTagTyping({ max: 16 });
+  const T = useTypeTask('s9b', solved);
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'explain' }]);
+  const canTap = useCanAnswer(spoken);
+  const canGo = useAdvanceGate(solved || T.okNow, spoken);
+  const led = useIdleLed(canTap && !T.okNow && !ty.val, 0);
+  const v = T.okNow ? 'cover' : noSemi(ty.val);
+  const check = () => {
+    if (!canTap || T.okNow) return;
+    T.st.current.tries += 1;
+    const w = noSemi(ty.val).toLowerCase();
+    const issue = cyrIn(ty.val) || (!w ? c.msgs.empty : w === 'cover' ? null : w === 'contain' ? c.msgs.contain : !cssOk('background-size', w) ? c.msgs.bad : c.msgs.other);
+    if (!issue) {
+      sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
+      log({ screenId: 's9b', type: 'write-cover', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
+      sayNow(c.ok, 'cheer');
+      return;
+    }
+    T.st.current.misses += 1;
+    sfx('soft', true); T.setMsg(issue); sayNow(issue, 'think');
+    if (T.st.current.misses >= 2) T.lad.bump();
+  };
+  const field = T.okNow ? V(v) : [<span key="g" className={'kz-gap c4-slot c4-slot-col' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={16} /></span>];
+  const lines = blockL('b', 'body', [{ prop: 'background-image', val: V('url("osmon.jpg")'), cls: '' }, { prop: 'background-repeat', val: V('no-repeat'), cls: '' },
+    { prop: 'background-size', val: field, cls: T.okNow ? 'is-new' : 'is-hl' }], '');
+  const css = 'body { background-image: url("osmon.jpg"); background-repeat: no-repeat;' + (v ? ' background-size: ' + v + ';' : '') + ' }';
+  return (
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, T.lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
+      <Sheet cls="c4-sheet">
+        <KzAsk text={T.okNow ? c.ok : c.ask} hint={T.okNow ? null : (T.msg || hintAt(T.lad.lv, c.hints))} err={!!T.msg} />
+        <div className="kz-scene c4-s5 c4-pair">
+          <div className="kz-col"><KzCode lines={styleWrap(lines)} cls="kz-code-sm" /></div>
+          <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick)} rules={cssParse(css)} /></Br></div>
+        </div>
+        {!T.okNow ? <KeyRow keys={[]} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 2} /> : null}
       </Sheet>
     </StageB>
   );
@@ -10037,11 +10178,12 @@ function S11({ p }) {
   const lines = blockL('b', 'body', dec.map(([pr, v]) => ({ prop: pr, val: V(v, live && pr === 'background-image' && (n === 1 || n === 2) ? 'c4-bad' : ''), key: pr + v,
     cls: live && ((n < 3 && n > 0 && pr === 'background-image') || (n === 3 && pr === 'background-color')) ? 'is-new is-read' : '' })), '');
   const css = 'body { ' + dec.map(([pr, v]) => pr + ': ' + v + ';').join(' ') + ' }';
-  const askText = solved || demo.done ? c.askDone : n === 3 ? c.askBackup : n === 2 ? c.askTypo : n === 1 ? c.askNoUrl : c.askDone;
+  const askText = solved || demo.done ? c.askDone : n === 3 ? c.askBackup : n === 2 ? c.askTypo : n === 1 ? c.askNoUrl : c.askStart;
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c4-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c4-s5 c4-pair">
           <div className="kz-col">
             <KzCode lines={styleWrap(lines)} cls="kz-code-sm" />
@@ -10075,7 +10217,7 @@ function S12({ p }) {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
     const x = ty.val.replace(/\s+/g, '');
-    const issue = !x ? c.msgs.empty : /^url$/i.test(x) ? c.msgs.paren : /^url\($/i.test(x) && cssOk('background-image', x + '"maydon.jpg")') ? null : c.msgs.other;
+    const issue = cyrIn(ty.val) || (!x ? c.msgs.empty : /^url$/i.test(x) ? c.msgs.paren : /^url\(["'“”«]$/i.test(x) ? c.msgs.quote : /^url\($/i.test(x) && cssOk('background-image', x + '"maydon.jpg")') ? null : c.msgs.other);
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: 's12', type: 'fix-url', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -10097,7 +10239,7 @@ function S12({ p }) {
           <div className="kz-col"><KzCode lines={styleWrap(lines)} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(C.site.title)} short cls={T.okNow ? '' : 'c4-broken'}><CssPage els={site(pick)} rules={cssParse('body { background-image: ' + value + '; background-size: cover; }')} /></Br></div>
         </div>
-        {!T.okNow ? <KeyRow keys={['url(', '(', '"']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 0} /> : null}
+        {!T.okNow ? <KeyRow keys={['url(', '(']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 0} /> : null}
       </Sheet>
     </StageB>
   );
@@ -10152,7 +10294,7 @@ function S13({ p }) {
     k: 'l' + j + (found && j === R.bad ? 'f' : ''), d: 0, parts: cssTokens(r),
     cls: 'c4-cssline c4-hline' + (found && j === R.bad ? ' is-new' : '') + (off.indexOf(j) >= 0 ? ' is-off' : ''),
     onTap: found ? null : () => tap(j), disabled: !canTap || found || off.indexOf(j) >= 0,
-    led: !found && ((led && off.length === 0 && j === 0) || (lit && j === R.bad))
+    led: !found && ((led && off.length === 0) || (lit && j === R.bad))
   }));
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
@@ -10176,7 +10318,7 @@ function S13({ p }) {
 // =============================================================================
 const W1_FILE = 'yulduz.png';
 function ruleIssue(t, msgs) {
-  const s = String(t || '').trim();
+  const s = String(t || '').trim().replace(/[“”«»„]/g, '"');
   if (!s) return msgs.empty;
   const m = /^([^{]*)\{([^}]*)\}\s*$/.exec(s);
   if (!m) return msgs.braces;
@@ -10207,11 +10349,11 @@ function W1({ p }) {
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || T.okNow, spoken);
   const led = useIdleLed(canTap && !T.okNow && !ty.val, 0);
-  const css = T.okNow ? 'body { background-image: url("' + W1_FILE + '"); }' : ty.val;
+  const css = T.okNow ? 'body { background-image: url("' + W1_FILE + '"); }' : ty.val.replace(/[“”«»„]/g, '"');
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const issue = ruleIssue(ty.val, c.msgs);
+    const issue = cyrIn(ty.val) || (ruleIssue(ty.val, c.msgs));
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: 'w1', type: 'write-rule', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -10227,10 +10369,10 @@ function W1({ p }) {
       <Sheet cls="c4-sheet">
         <KzAsk text={T.okNow ? c.ok : c.ask} hint={T.okNow ? null : (T.msg || hintAt(T.lad.lv, c.hints))} err={!!T.msg} />
         <div className="kz-scene c4-s5 c4-pair">
-          <div className="kz-col"><KzCode lines={styleWrap(T.okNow ? blockOf('b', css, 'is-new') : [ruleLine('r', [<span key="g" className={'kz-gap c4-slot c4-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={60} /></span>], 'is-hl')])} cls="kz-code-sm" /></div>
+          <div className="kz-col"><KzCode lines={styleWrap(T.okNow ? blockOf('b', css, 'is-new') : [ruleLine('r', [<span key="g" className={'kz-gap c4-slot c4-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={60} /></span>], 'is-hl')])} cls="kz-code-sm" />{!T.okNow && T.lad.lv >= 3 ? <HelpCode code={'body { background-image: url("' + W1_FILE + '"); }'} /> : null}</div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick)} rules={cssParse(css)} /></Br></div>
         </div>
-        {!T.okNow ? <KeyRow keys={['{', '}', ':', ';', '(', ')', '"']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 10} /> : null}
+        {!T.okNow ? <KeyRow keys={['{', '}', ':', ';', 'url(', ')', '"']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 10} /> : null}
       </Sheet>
     </StageB>
   );
@@ -10259,7 +10401,7 @@ function S14({ p }) {
   const ready = !!(va && vb);
   const confirm = () => {
     if (!canTap || !ready || solved) return;
-    const issue = !FILES[va] ? fillL(c.msgs.noFile, { w: va }) : !cssOk('color', vb) ? fillL(c.msgs.notColor, { w: vb }) : null;
+    const issue = cyrIn(va, vb) || (!FILES[va] ? fillL(c.msgs.noFile, { w: va }) : !cssOk('color', vb) ? fillL(c.msgs.notColor, { w: vb }) : null);
     if (issue) { sfx('soft', true); setMsg(issue); sayNow(issue, 'think'); if (lad.lv < 1) lad.bump(); return; }
     sfx('win', true); setMsg(null);
     store.set('myImg', va); store.set('myHeadBg', vb); put({ done: true });
@@ -10411,7 +10553,8 @@ const SCREENS = [
   { id: 's1', code: 'HOOK', Comp: S1 },
   { id: 's2', code: 'SHOW', Comp: S2 }, { id: 's3', code: 'LEVEL-1', Comp: S3 }, { id: 's4', code: 'CHECK-1', Comp: S4 },
   { id: 's5', code: 'SHOW', Comp: S5 }, { id: 's6', code: 'LEVEL-2', Comp: S6 }, { id: 's7', code: 'CHECK-2', Comp: S7 },
-  { id: 's8', code: 'SHOW', Comp: S8 }, { id: 's9', code: 'LEVEL-3', Comp: S9 }, { id: 's10', code: 'CHECK-3', Comp: S10 },
+  { id: 's8', code: 'SHOW', Comp: S8 }, { id: 's9', code: 'LEVEL-3', Comp: S9 },
+  { id: 's8b', code: 'SHOW', Comp: S8B }, { id: 's9b', code: 'LEVEL-3B', Comp: S9B }, { id: 's10', code: 'CHECK-3', Comp: S10 },
   { id: 's11', code: 'SHOW', Comp: S11 }, { id: 's12', code: 'LEVEL-4', Comp: S12 }, { id: 's13', code: 'CHECK-4', Comp: S13 },
   { id: 'w1', code: 'LEVEL-W', Comp: W1 },
   { id: 's14', code: 'LEVEL-5', Comp: S14 },
@@ -10420,7 +10563,7 @@ const SCREENS = [
 ];
 // «Повторить» стирает только экран; свой фон ученика (myImg, myHeadBg) остаётся.
 const SCREEN_RESET = { s1: ['s1'], s2: ['s2'], s3: ['s3'], s4: ['s4'], s5: ['s5'], s6: ['s6'], s7: ['s7'], s8: ['s8'], s9: ['s9'],
-  s10: ['s10'], s11: ['s11'], s12: ['s12'], s13: ['s13'], w1: ['w1'], s14: ['s14'], q1: ['q1'] };
+  s8b: ['s8b'], s9b: ['s9b'], s10: ['s10'], s11: ['s11'], s12: ['s12'], s13: ['s13'], w1: ['w1'], s14: ['s14'], q1: ['q1'] };
 
 // Артефакт урока — своя страница ученика со своим фоном.
 function lessonCss4Artifact(store) {
@@ -14239,4 +14382,11 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
    код, кнопки и палитры видны (как в уроках 6–11; проверено 06.11.2026 снимками с панелью ошибки). */
 @media (max-width: 759px) and (min-height: 700px) { .b-stage.has-sheet .r28 .c4-sheet .kz-br.c4-br, .b-stage.has-sheet.r28 .c4-sheet .kz-br.c4-br, .r28 .b-stage.has-sheet .c4-sheet .kz-br.c4-br { --brh: 19dvh !important; max-height: 19dvh !important; } }
 @media (max-width: 759px) and (max-height: 699px) { .b-stage.has-sheet .r28 .c4-sheet .kz-br.c4-br, .b-stage.has-sheet.r28 .c4-sheet .kz-br.c4-br, .r28 .b-stage.has-sheet .c4-sheet .kz-br.c4-br { --brh: 15dvh !important; max-height: 15dvh !important; } }
+
+/* Образец на третьей ступени помощи (09.11.2026). */
+.r28 .kz-helpcode { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; align-self: stretch; padding: 6px 10px; border-radius: 10px; background: #FFF8E1; box-shadow: inset 0 0 0 1.5px #F5C451; animation: kzHelpIn .3s ease-out both; }
+.r28 .kz-helpcode span { font: 600 12px var(--r-font); color: #8A6100; }
+.r28 .kz-helpcode code { font: 600 14px var(--r-mono); color: var(--r-ink); white-space: pre-wrap; word-break: break-word; }
+@keyframes kzHelpIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .r28 .kz-helpcode { animation: none; } }
 `;

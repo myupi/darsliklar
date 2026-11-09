@@ -6664,28 +6664,29 @@ const CANON_SCREEN_CSS = CANON_SCREEN_CSS_BASE + CANON_MECH_CSS + CANON_DZ_CSS +
 // =============================================================================
 // ===== УРОК 3 · «Цвета» · модуль css-m1-osnovy =====
 //
-// ЗАМЫСЕЛ (05.11.2026). Уроки 1–2: правило, style в head, селекторы тег / .class / #id, цвет по имени. Коди
-// хочет заголовок ровно цвета своего логотипа, но среди имён цветов такого нет: orange, tomato, orangered —
-// всё не то. Ученик узнаёт три способа задать любой цвет: hex («#» и шесть знаков — красный, зелёный, синий),
-// rgb (сколько красного, зелёного и синего света, 0–255) и hsl (место на круге цветов, насыщенность, светлота).
-// Загадка (без имён): Коди написал цвет логотипа как FA4F28 без «#» и уверен, что сработает; в выводе признаёт.
+// ЗАМЫСЕЛ (05.11.2026; упрощён 09.11.2026 по просьбе заказчика: «урок Цвета очень сложный»). Уроки 1–2: правило,
+// style в head, селекторы, цвет по имени. Коди хочет заголовок ровно цвета своего логотипа, но среди имён такого нет.
+// Ученик узнаёт три способа записать цвет: название (red, lightblue, darkblue), hex-код из палитры («#» и шесть
+// знаков — код не учат наизусть, его берут из палитры) и rgb (три луча: 0 — выключен, 255 — на полную). hsl только
+// назван в выводе. Загадка (без имён): Коди записал код логотипа маленькими буквами и думает, что цвет сломается;
+// в выводе — «Совпадает!», регистр в hex неважен.
 //
-// ДУГА (17 экранов; минимум 17 — заказчик, 05.11.2026). Типы заданий — по разделу 3а навыка:
-//   s1 крючок (имена цветов не попадают в цвет логотипа → hex попадает; загадка)
-//   hex:   s2 показ (# и три пары: красный, зелёный, синий) · s3 вписать синий hex (Fill) · s4 hex ↔ цвет (Matching)
-//   rgb:   s5 показ (три числа света; красный + зелёный = жёлтый; 0 — чёрный, 255 — белый) · s6 три числа для жёлтого (Fill) · s7 какой rgb у цвета (выбор)
-//   hsl:   s8 показ (круг цветов, светлота) · s9 вписать место на круге для зелёного (Fill) · s10 светлый или тёмный (Sort)
-//   поломки: s11 показ (нет «#», пять знаков, hsl без «%») · s12 поставить «#» (Debug & Fix) · s13 найти сломанное правило (Error Detective)
-//   w1 правило целиком с hex для фона (перенос) · s14 свои цвета в любом формате (Live, «Готово»)
+// ДУГА (17 экранов). Типы заданий — по разделу 3а навыка:
+//   s1 крючок (имена не попадают в цвет логотипа → код попадает; загадка)
+//   названия: s2 показ (red, blue, lightblue, darkblue) · s3 вписать green (Fill) · s4 пятно → название (выбор)
+//   hex:      s5 показ (палитра: код под квадратиком) · s6 переписать код фиолетового из палитры (Fill) · s7 код верный или сломан (Sort)
+//   rgb:      s8 показ (три луча, жёлтый, чёрный и белый) · s9 зелёный луч на полную — 255 (Fill) · s10 rgb → цвет (выбор)
+//   поломки:  s11 показ (нет «#», пять знаков, gren) · s12 поставить «#» (Debug & Fix) · s13 найти сломанное правило
+//   w1 правило целиком: абзац синий через rgb (перенос) · s14 свои цвета любым способом (Live, «Готово»)
 //   итог: q1 верно или нет · s15 вывод с разгадкой.
+//   На объяснениях (s2, s5, s8, s11) лампочка даёт помощь 1-2-3: на что смотреть, что это значит, пример из жизни.
 //
 // ОСОБЫЕ ПРАВИЛА УРОКА
-//   · Честный браузер: принимает ли браузер цвет — решает сам Chrome (CSS.supports); проверено 05.11.2026:
-//     FA4F28 без «#», #FA4F2, #GG0000, hsl(120, 100, 40) — не принимаются; #F00, rgb(255, 0, 0), hsl(…%) — да.
-//   · Узбекский — по /uzbekcha; в речи нет символов и кодов знаками: «panjara belgisi», «foiz».
+//   · Честный браузер: принимает ли браузер цвет — решает сам Chrome (CSS.supports): FA4F28 без «#», #FA4F2, gren —
+//     не принимаются; #fa4f28 — тот же цвет, что #FA4F28.
+//   · Узбекский — по /uzbekcha; в речи нет символов: «panjara belgisi», числа словами.
 //
-// СИСТЕМА СЛОВ: hex kod — шестнадцатеричный код (draft); rang doirasi — круг цветов (draft); to'yinganlik —
-// насыщенность (draft); yorug'lik — светлота (draft); nur — свет. В речи hex, rgb, hsl — по-английски.
+// СИСТЕМА СЛОВ: hex kod — шестнадцатеричный код (draft); palitra — палитра; nur — луч света.
 //
 // ОБРАЩЕНИЕ: UZ — Siz, RU — «ты» без рода, EN — «you».
 // =============================================================================
@@ -6766,240 +6767,276 @@ const C = {
       'Привет! У меня есть логотип, и цвет у него очень красивый. Хочу, чтобы заголовок на сайте был точно такого же цвета. Я попробовал имена цветов: orange, tomato, orangered. Но смотри, ни один не тот самый. Нажми «Превратить».',
       'Hi! I have a logo, and its color is really nice. I want the heading on my site to be exactly the same color. I tried color names: orange, tomato, orangered. But look, none of them is exactly it. Tap “Transform”.'),
     magic: L3("Mana! Endi sarlavha logotip bilan aynan bir xil rangda.", 'Вот! Теперь заголовок точно такого же цвета, как логотип.', 'There! Now the heading is exactly the logo’s color.'),
-    magicP: L3("Rang nomi o'rniga men maxsus kod yozdim. U bilan dunyodagi istalgan rangni aniq berish mumkin.", 'Вместо имени цвета я написал особый код. С ним можно точно задать любой цвет на свете.', 'Instead of a color name I wrote a special code. With it you can give any color in the world exactly.'),
-    done: L3("Bugun istalgan rangni aniq yozishni o'rganasiz: hex, rgb va hsl bilan. Lekin oldin kichik topishmoq. Men logotip rangini yozganda kodni FA4F28 deb yozdim, oldiga hech narsa qo'ymadim. Menimcha, bu ham ishlaydi. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.",
-      'Сегодня ты научишься точно записывать любой цвет: через hex, rgb и hsl. Но сначала маленькая загадка. Когда я записывал цвет логотипа, я написал код FA4F28 и ничего перед ним не поставил. По-моему, это тоже сработает. Как думаешь, я прав? Ответ найдём вместе в конце урока.',
-      'Today you’ll learn to write any color exactly: with hex, rgb and hsl. But first, a little riddle. When I wrote the logo color, I wrote the code FA4F28 and put nothing in front of it. I think that works too. What do you think, am I right? We’ll find the answer together at the end of the lesson.'),
+    magicP: L3("Rang nomi o'rniga men rang kodini yozdim. Kod bilan istalgan rangni aniq berish mumkin.", 'Вместо имени цвета я написал код цвета. Кодом можно точно задать любой цвет.', 'Instead of a color name I wrote a color code. With a code you can give any color exactly.'),
+    done: L3("Bugun rangni uch xil yozishni o'rganasiz: nomi bilan, hex kod bilan va rgb bilan. Lekin oldin kichik topishmoq. Men bir marta logotip kodini kichik harflar bilan yozib qo'ydim. Menimcha, endi rang boshqacha chiqadi yoki umuman ishlamaydi. Siz nima deb o'ylaysiz? Javobni dars oxirida birga topamiz.",
+      'Сегодня ты научишься записывать цвет тремя способами: названием, hex-кодом и через rgb. Но сначала маленькая загадка. Однажды я записал код логотипа маленькими буквами. По-моему, теперь цвет получится другой или вообще не сработает. Как думаешь? Ответ найдём вместе в конце урока.',
+      'Today you’ll learn three ways to write a color: by name, with a hex code and with rgb. But first, a little riddle. Once I wrote the logo code in small letters. I think now the color will come out different, or not work at all. What do you think? We’ll find the answer together at the end of the lesson.'),
     ask: L3('«Aylantirish» tugmasini bosing', 'Нажми «Превратить»', 'Tap “Transform”'),
     askDone: L3("Kod bilan rang aynan tushdi", 'Кодом цвет попал точно', 'The code hit the color exactly')
   },
   s2: {
-    eyebrow: L3('hex kod', 'hex-код', 'The hex code'),
-    say: L3("Keling, kodni bo'laklarga ajratamiz. Har bir rang uch xil nurdan yig'iladi: qizil, yashil va ko'k. hex kod shu uchta nurni yozadi.", 'Давай разберём код по частям. Каждый цвет собирается из трёх лучей света: красного, зелёного и синего. Hex-код записывает эти три луча.', 'Let’s take the code apart. Every color is made of three kinds of light: red, green and blue. A hex code writes those three.'),
-    sayParts: L3("Boshida panjara belgisi turadi, keyin oltita belgi: ikkitasi qizil uchun, ikkitasi yashil uchun, ikkitasi ko'k uchun. Nol nol degani nur umuman yo'q, FF esa to'liq. Bu yerda qizil to'liq, qolganlari yo'q, shuning uchun sarlavha qizil.",
-      'В начале стоит решётка, потом шесть знаков: два для красного, два для зелёного, два для синего. Ноль-ноль значит света нет совсем, а FF — на полную. Здесь красный на полную, остальных нет, поэтому заголовок красный.',
-      'First comes the hash sign, then six symbols: two for red, two for green, two for blue. Zero zero means no light at all, and FF means full. Here red is full and the others are off, so the heading is red.'),
-    sayGreen: L3("Endi FF ni o'rtadagi juftga ko'chiramiz. Yashil to'liq, sarlavha yashil bo'ldi.", 'Теперь переносим FF в среднюю пару. Зелёный на полную — заголовок зелёный.', 'Now we move FF to the middle pair. Green is full, so the heading is green.'),
-    sayBlue: L3("Oxirgi juftda FF bo'lsa, ko'k to'liq bo'ladi.", 'FF в последней паре — синий на полную.', 'FF in the last pair makes blue full.'),
-    done: L3("Demak, hex kod panjara belgisi va oltita belgi: qizil, yashil va ko'k uchun ikkitadan. Belgilar 0 dan 9 gacha raqamlar va A dan F gacha harflar bo'ladi.", 'Значит, hex-код — это решётка и шесть знаков: по два на красный, зелёный и синий. Знаки — цифры от 0 до 9 и буквы от A до F.', 'So a hex code is a hash sign and six symbols: two each for red, green and blue. The symbols are digits 0 to 9 and letters A to F.'),
-    askStart: L3("Qarang: rang uch nurdan", 'Смотри: цвет из трёх лучей', 'Watch: a color from three lights'),
-    askParts: L3("Qarang: qizil, yashil, ko'k juftlari", 'Смотри: пары красного, зелёного, синего', 'Watch: the red, green and blue pairs'),
-    askDone: L3("hex: panjara va oltita belgi", 'hex: решётка и шесть знаков', 'hex: a hash sign and six symbols')
+    eyebrow: L3('Rang nomlari', 'Названия цветов', 'Color names'),
+    say: L3("Eng oson usuldan boshlaymiz: rangning nomi. color xususiyatiga inglizcha nom yozamiz. Hozir sarlavhada red, ya'ni qizil degani.",
+      'Начнём с самого простого способа: названия цвета. В свойство color пишем название по-английски. Сейчас у заголовка red, то есть красный.',
+      'Let’s start with the easiest way: the color’s name. We write an English name into the color property. Right now the heading has red.'),
+    sayBlue: L3("Nomni blue ga almashtiramiz. Brauzer bu so'zni taniydi va sarlavhani ko'k qiladi.", 'Меняем название на blue. Браузер знает это слово и красит заголовок в синий.', 'We change the name to blue. The browser knows this word and paints the heading blue.'),
+    sayLight: L3("Oldiga light so'zini qo'shsak, lightblue bo'ladi: och ko'k.", 'Добавим впереди light — получится lightblue, светло-синий.', 'Add light in front and we get lightblue, a light blue.'),
+    sayDark: L3("dark so'zi esa rangni to'q qiladi: darkblue, to'q ko'k.", 'А слово dark делает цвет тёмным: darkblue, тёмно-синий.', 'And the word dark makes it dark: darkblue.'),
+    done: L3("Demak, rangni nomi bilan yozish mumkin: red, blue, green. Brauzer yuzdan ortiq nomni biladi. Faqat nom inglizcha va bitta so'z bo'lib, bo'sh joysiz yoziladi.",
+      'Значит, цвет можно записать названием: red, blue, green. Браузер знает больше ста названий. Только название пишется по-английски и одним словом, без пробелов.',
+      'So a color can be written by name: red, blue, green. The browser knows more than a hundred names. The name is just in English and written as one word, without spaces.'),
+    askStart: L3("Qarang: red — qizil", 'Смотри: red — красный', 'Watch: red'),
+    askBlue: L3("blue — ko'k", 'blue — синий', 'blue'),
+    askLight: L3("lightblue — och ko'k", 'lightblue — светло-синий', 'lightblue — light blue'),
+    askDark: L3("darkblue — to'q ko'k", 'darkblue — тёмно-синий', 'darkblue — dark blue'),
+    askDone: L3("Rangni nomi bilan yozsa bo'ladi", 'Цвет можно записать названием', 'A color can be written by name'),
+    help: [
+      L3("Kodda faqat bitta so'z o'zgaradi: color dan keyingi rang nomi. Sarlavha shu so'z bilan birga o'zgaradi.", 'В коде меняется только одно слово — название цвета после color. Заголовок меняется вместе с ним.', 'Only one word changes in the code: the color name after color. The heading changes with it.'),
+      L3("Nom inglizcha bo'ladi. light — och, dark — to'q degani. Ular rang nomiga qo'shilib, bitta so'z bo'ladi.", 'Название — английское. light значит «светлый», dark — «тёмный». Они пишутся слитно с цветом, одним словом.', 'The name is English. light means pale, dark means deep. They join the color name as one word.'),
+      L3("Xuddi qalamlar qutisiga o'xshaydi: har bir qalamda rang nomi yozilgan. Nomni aytsangiz, brauzer o'sha qalamni oladi.", 'Это как коробка карандашей: на каждом написано название цвета. Называешь название — браузер берёт этот карандаш.', 'It’s like a box of pencils with a color name on each one. Say the name, and the browser takes that pencil.')
+    ]
   },
   s3: {
-    eyebrow: L3('hex kodni yozing', 'Впиши hex-код', 'Type the hex code'),
-    say: L3("Endi navbat sizga. Sarlavhani ko'k qiling. Panjara belgisi tayyor, uning yoniga oltita belgini yozing: qizil yo'q, yashil yo'q, ko'k to'liq.", 'Теперь твоя очередь. Сделай заголовок синим. Решётка уже стоит, впиши рядом шесть знаков: красного нет, зелёного нет, синий на полную.', 'Now it’s your turn. Make the heading blue. The hash sign is ready; type six symbols next to it: no red, no green, full blue.'),
+    eyebrow: L3('Rang nomini yozing', 'Впиши название цвета', 'Type the color name'),
+    say: L3("Endi navbat sizga. Sarlavhani yashil qiling. Yashil rang inglizchada green bo'ladi. Uni maydonga yozing va «Tekshirish»ni bosing.",
+      'Теперь твоя очередь. Сделай заголовок зелёным. Зелёный по-английски — green. Впиши его в поле и нажми «Проверить».',
+      'Now it’s your turn. Make the heading green. Type green into the field and tap “Check”.'),
+    ask: L3("Sarlavhani yashil qiling", 'Сделай заголовок зелёным', 'Make the heading green'),
     msgs: {
-      empty: L3("Panjara belgisidan keyin oltita belgi yozing.", 'Впиши после решётки шесть знаков.', 'Type six symbols after the hash sign.'),
-      hash: L3("Panjara belgisi allaqachon turibdi, uni yana yozish kerak emas.", 'Решётка уже стоит, второй раз её писать не нужно.', 'The hash sign is already there; you don’t need it again.'),
-      len: L3("hex kodda oltita belgi bo'ladi: har bir rang uchun ikkitadan.", 'В hex-коде шесть знаков: по два на каждый цвет.', 'A hex code has six symbols: two for each color.'),
-      chars: L3("hex kodda faqat 0 dan 9 gacha raqamlar va A dan F gacha harflar bo'ladi.", 'В hex-коде только цифры от 0 до 9 и буквы от A до F.', 'A hex code has only digits 0 to 9 and letters A to F.'),
-      other: L3("Bu boshqa rang chiqdi. Ko'k uchun oxirgi juft FF, qolgan ikki juft nol nol bo'ladi.", 'Получился другой цвет. Для синего последняя пара FF, а две другие — ноль-ноль.', 'That’s a different color. For blue the last pair is FF and the other two are zero zero.')
+      empty: L3("Maydon bo'sh. Rang nomini inglizcha yozing.", 'Поле пустое. Впиши название цвета по-английски.', 'The field is empty. Type the color name in English.'),
+      notColor: L3("Brauzer bunday rangni bilmaydi. Nomni inglizcha va xatosiz yozing.", 'Браузер не знает такого цвета. Напиши название по-английски и без ошибок.', 'The browser doesn’t know that color. Write the name in English, without typos.'),
+      other: L3("Brauzer rangni tanidi, lekin bu yashil emas. Yashil inglizchada green.", 'Браузер узнал цвет, но это не зелёный. Зелёный по-английски — green.', 'The browser knew the color, but it isn’t green. Green is green in English.')
     },
     hints: [
-      L3("Qaysi juft ko'k uchun edi: birinchimi, o'rtadagimi yoki oxirgisi?", 'Какая пара отвечает за синий: первая, средняя или последняя?', 'Which pair is for blue: the first, the middle or the last?'),
-      L3("Qizil va yashil kerak emas, ularning jufti nol nol. Ko'k to'liq, uning jufti FF.", 'Красный и зелёный не нужны — их пары ноль-ноль. Синий на полную — его пара FF.', 'No red or green, so their pairs are zero zero. Blue is full, so its pair is FF.'),
-      L3("To'rtta nol yozing, keyin FF.", 'Напиши четыре нуля, потом FF.', 'Type four zeros, then FF.')
+      L3("Sarlavha qaysi rangda bo'lishi kerak? Shu rangning inglizcha nomi kerak.", 'Каким должен стать заголовок? Нужно английское название этого цвета.', 'What color should the heading be? You need that color’s English name.'),
+      L3("Yashil inglizchada besh harfli so'z: g harfi bilan boshlanadi.", 'Зелёный по-английски — слово из пяти букв, начинается на g.', 'Green in English is a five-letter word starting with g.'),
+      L3("Maydonga green deb yozing va «Tekshirish»ni bosing.", 'Впиши в поле green и нажми «Проверить».', 'Type green into the field and tap “Check”.')
     ],
-    ok: L3("Zo'r! Sarlavha ko'k bo'ldi. Siz birinchi hex kodingizni yozdingiz.", 'Огонь! Заголовок синий. Ты написал свой первый hex-код.', 'Awesome! The heading is blue. You wrote your first hex code.'),
-    ask: L3("Panjara belgisidan keyin ko'k rangning kodini yozing", 'Впиши после решётки код синего цвета', 'Type the code for blue after the hash sign')
+    ok: L3("Zo'r! Sarlavha yashil bo'ldi. Siz rangni nomi bilan yozdingiz.", 'Здорово! Заголовок стал зелёным. Цвет записан названием.', 'Great! The heading turned green. You wrote a color by its name.')
   },
   s4: {
-    eyebrow: L3('Juftini toping', 'Найди пару', 'Find the pair'),
-    say: L3("Endi kodlarni ranglari bilan juftlang. Chapdan kodni, o'ngdan uning rangini bosing.", 'Теперь соедини коды с их цветами. Нажми код слева, потом его цвет справа.', 'Now match the codes with their colors. Tap a code on the left, then its color on the right.'),
-    why: {
-      red: L3("Bu kodda birinchi juft FF, qolganlari nol. Demak, faqat qizil nur bor.", 'В этом коде первая пара FF, остальные нули. Значит, есть только красный свет.', 'This code has FF in the first pair and zeros elsewhere. So there’s only red light.'),
-      green: L3("Bu kodda o'rtadagi juft FF. Demak, faqat yashil nur bor.", 'В этом коде средняя пара FF. Значит, есть только зелёный свет.', 'This code has FF in the middle pair. So there’s only green light.'),
-      black: L3("Bu kodda hamma juftlar nol. Nur umuman yo'q, demak qora.", 'В этом коде все пары — нули. Света нет совсем, значит, чёрный.', 'All the pairs are zeros. No light at all, so it’s black.')
-    },
-    pairOk: {
-      red: L3("To'g'ri, bu qizil.", 'Верно, это красный.', 'Right, that’s red.'),
-      green: L3("To'g'ri, bu yashil.", 'Верно, это зелёный.', 'Right, that’s green.'),
-      black: L3("To'g'ri, nur yo'q, demak qora.", 'Верно, света нет — значит, чёрный.', 'Right, no light means black.')
-    },
-    pickFirst: L3("Oldin chapdan kodni tanlang.", 'Сначала выбери код слева.', 'First pick a code on the left.'),
-    hints: [
-      L3("Har bir kodda FF qaysi juftda turibdi?", 'В какой паре стоит FF в каждом коде?', 'In which pair is FF in each code?'),
-      L3("Birinchi juft qizil, o'rtadagisi yashil, oxirgisi ko'k. Hammasi nol bo'lsa, qora.", 'Первая пара — красный, средняя — зелёный, последняя — синий. Все нули — чёрный.', 'The first pair is red, the middle is green, the last is blue. All zeros is black.'),
-      L3("Yonib turgan juftlikni bosing.", 'Нажми горящую пару.', 'Tap the glowing pair.')
+    eyebrow: L3('Qaysi nom?', 'Какое название?', 'Which name?'),
+    say: L3("Endi aksincha. Men rangni ko'rsataman, siz uning nomini tanlang.", 'Теперь наоборот. Я показываю цвет, а ты выбери его название.', 'Now the other way round. I show a color, and you pick its name.'),
+    ask: L3("Bu rangning nomini tanlang", 'Выбери название этого цвета', 'Pick this color’s name'),
+    right: L3("To'g'ri!", 'Точно!', 'Right!'),
+    hint1: L3("Rangga yaxshilab qarang: u qanday rang, och yoki to'qmi?", 'Посмотри на цвет: какой он, светлый или тёмный?', 'Look at the color: what is it, light or dark?'),
+    hint2: L3("Esingizdami: light — och, dark — to'q.", 'Вспомни: light — светлый, dark — тёмный.', 'Remember: light means pale, dark means deep.'),
+    rounds: [
+      { right: 'green', opts: ['red', 'green', 'blue'], why: L3("Bu yashil, inglizchada green.", 'Это зелёный, по-английски green.', 'This is green.') },
+      { right: 'lightblue', opts: ['blue', 'lightblue', 'darkblue'], why: L3("Bu och ko'k: oldida light bor.", 'Это светло-синий: впереди light.', 'This is a light blue: light in front.') },
+      { right: 'darkblue', opts: ['lightblue', 'darkblue', 'black'], why: L3("Bu to'q ko'k: oldida dark bor.", 'Это тёмно-синий: впереди dark.', 'This is a dark blue: dark in front.') }
     ],
-    ok: L3("Ajoyib! Endi hex kodni ko'rib, rangini topa olasiz.", 'Отлично! Теперь по hex-коду ты угадываешь цвет.', 'Great! Now you can tell a color from its hex code.'),
-    ask: L3("Kodni, keyin uning rangini bosing", 'Нажми код, потом его цвет', 'Tap a code, then its color'),
-    askPlace: L3("Endi uning rangini bosing", 'Теперь нажми его цвет', 'Now tap its color')
+    ok: L3("Barakalla! Rang nomlarini yaxshi bilasiz.", 'Молодец! Названия цветов ты знаешь.', 'Well done! You know the color names.')
   },
   s5: {
-    eyebrow: L3('rgb', 'rgb', 'rgb'),
-    say: L3("Rangni yozishning yana bir yo'li bor: rgb. Bu yerda ham uchta nur bor, lekin ular oddiy sonlar bilan yoziladi: noldan ikki yuz ellik beshgacha.", 'Есть ещё один способ записать цвет: rgb. Здесь тоже три луча, но их пишут обычными числами: от нуля до двухсот пятидесяти пяти.', 'There’s another way to write a color: rgb. It also has three lights, but they’re written as ordinary numbers: from zero to two hundred fifty-five.'),
-    sayParts: L3("Birinchi son qizil, ikkinchisi yashil, uchinchisi ko'k. Ikki yuz ellik besh degani to'liq. Bu yerda qizil to'liq, sarlavha qizil.", 'Первое число — красный, второе — зелёный, третье — синий. Двести пятьдесят пять значит на полную. Здесь красный на полную, заголовок красный.', 'The first number is red, the second green, the third blue. Two hundred fifty-five means full. Here red is full, so the heading is red.'),
-    sayMix: L3("Endi qiziq narsa: qizil va yashil nurni birga to'liq qilamiz. Qarang, sariq rang chiqdi! Nurlar qo'shilib, yangi rang beradi.", 'А теперь интересное: включим на полную и красный, и зелёный. Смотри, получился жёлтый! Лучи складываются и дают новый цвет.', 'Now something cool: we turn red and green both to full. Look, it’s yellow! The lights add up into a new color.'),
-    sayBlack: L3("Hamma son nol bo'lsa, nur yo'q va rang qora. Hammasi ikki yuz ellik besh bo'lsa, oq bo'ladi.", 'Все числа ноль — света нет, цвет чёрный. Все двести пятьдесят пять — белый.', 'All zeros means no light, so black. All two hundred fifty-five makes white.'),
-    done: L3("Demak, rgb uchta son: qizil, yashil va ko'k, har biri noldan ikki yuz ellik beshgacha.", 'Значит, rgb — это три числа: красный, зелёный и синий, каждое от нуля до двухсот пятидесяти пяти.', 'So rgb is three numbers: red, green and blue, each from zero to two hundred fifty-five.'),
-    askStart: L3('Qarang: rgb — uchta son', 'Смотри: rgb — три числа', 'Watch: rgb is three numbers'),
-    askParts: L3("Qarang: qizil, yashil, ko'k", 'Смотри: красный, зелёный, синий', 'Watch: red, green, blue'),
-    askMix: L3("Qarang: qizil va yashil — sariq", 'Смотри: красный и зелёный — жёлтый', 'Watch: red plus green is yellow'),
-    askBlack: L3("Qarang: nol — qora, to'liq — oq", 'Смотри: ноль — чёрный, полный — белый', 'Watch: zero is black, full is white'),
-    askDone: L3("rgb: uchta son, 0 dan 255 gacha", 'rgb: три числа от 0 до 255', 'rgb: three numbers from 0 to 255')
+    eyebrow: L3('Palitradan kod', 'Код из палитры', 'A code from the palette'),
+    say: L3("Nomlar qulay, lekin hamma rangning nomi yo'q. Mana orange: logotipdagidan boshqacha. Rasm chizish dasturlarida palitra bo'ladi: har bir rang ostida uning kodi yozilgan.",
+      'Названия удобны, но не у каждого цвета есть название. Вот orange: не такой, как на логотипе. В программах для рисования есть палитра: под каждым цветом написан его код.',
+      'Names are handy, but not every color has a name. Here’s orange: not like the logo. Drawing programs have a palette: each color has its code written under it.'),
+    sayLogo: L3("Palitradan logotip rangini olamiz va kodini qoidaga qo'yamiz. Qarang, sarlavha logotip bilan aynan bir xil!", 'Берём из палитры цвет логотипа и ставим его код в правило. Смотри, заголовок совпал с логотипом!', 'We take the logo color from the palette and put its code in the rule. Look, the heading matches the logo exactly!'),
+    sayBlue: L3("Boshqa kvadratcha, ko'k. Uning kodini olamiz, sarlavha ko'k bo'ldi.", 'Другой квадратик, синий. Берём его код — заголовок синий.', 'Another square, blue. We take its code, and the heading is blue.'),
+    sayParts: L3("Hamma kodlar bir xil tuzilgan: oldin panjara belgisi, keyin oltita belgi. Belgilar raqamlar va A dan F gacha harflar. Bunday kod hex kod, ya'ni rangning aniq raqami degani.",
+      'Все коды устроены одинаково: сначала решётка, потом шесть знаков. Знаки — цифры и буквы от A до F. Такой код называется hex-код, то есть точный номер цвета.',
+      'All the codes are built the same way: first a hash sign, then six symbols. The symbols are digits and letters A to F. Such a code is called a hex code, that is, the color’s exact number.'),
+    done: L3("Demak, aniq rang kerak bo'lsa, kodini palitradan olamiz: panjara belgisi va oltita belgi. Uni yod olish shart emas, faqat to'g'ri ko'chirish kerak.",
+      'Значит, если нужен точный цвет, берём его код из палитры: решётка и шесть знаков. Учить наизусть не нужно — нужно только правильно переписать.',
+      'So when you need an exact color, take its code from the palette: a hash sign and six symbols. No need to learn it by heart, just copy it correctly.'),
+    askStart: L3("Qarang: orange — boshqacha", 'Смотри: orange — не тот', 'Watch: orange is different'),
+    askLogo: L3("Palitradan — logotip rangi", 'Из палитры — цвет логотипа', 'From the palette: the logo color'),
+    askBlue: L3("Palitradan — ko'k", 'Из палитры — синий', 'From the palette: blue'),
+    askParts: L3("hex kod: # va 6 belgi", 'hex-код: # и 6 знаков', 'Hex code: # and 6 symbols'),
+    askDone: L3("Aniq rang — palitradagi hex kod", 'Точный цвет — hex-код из палитры', 'An exact color is a hex code from the palette'),
+    help: [
+      L3("Palitrani qarang: har bir kvadratcha ostida kod bor. Qoidaga aynan shu kod tushadi.", 'Посмотри на палитру: под каждым квадратиком есть код. В правило попадает именно он.', 'Look at the palette: there’s a code under each square. That code goes into the rule.'),
+      L3("Kod har doim panjara belgisi va oltita belgidan iborat. Bitta belgi ham tushib qolmasligi kerak.", 'Код — всегда решётка и шесть знаков. Нельзя потерять ни одного знака.', 'A code is always a hash sign and six symbols. Not a single symbol can be lost.'),
+      L3("Xuddi telefon raqamiga o'xshaydi: bitta raqam xato bo'lsa, boshqa odamga tushasiz. Kod ham aniq bo'lsa, rang aniq bo'ladi.", 'Как номер телефона: одна неверная цифра — и попадёшь к другому человеку. Точный код — точный цвет.', 'It’s like a phone number: one wrong digit and you reach someone else. An exact code gives an exact color.')
+    ]
   },
   s6: {
-    eyebrow: L3("Sariq rang yasang", 'Собери жёлтый', 'Make yellow'),
-    say: L3("Endi o'zingiz rang yasang. Fonni sariq qiling. Esingizdami, sariq rang qizil va yashil nurdan chiqadi, ko'k esa kerak emas. Uchta sonni yozing.", 'Теперь собери цвет сам. Сделай фон жёлтым. Помнишь, жёлтый получается из красного и зелёного, а синий не нужен. Впиши три числа.', 'Now make a color yourself. Make the background yellow. Remember, yellow comes from red and green light, and blue isn’t needed. Type three numbers.'),
+    eyebrow: L3('Koddan rang', 'Цвет по коду', 'Color by code'),
+    say: L3("Endi siz palitradan rang oling. Sarlavhani binafsha qiling. Binafsha kvadratcha ostidagi kodni topib, maydonga ko'chiring. Panjara belgisi tugmasi pastda bor.",
+      'Теперь возьми цвет из палитры сам. Сделай заголовок фиолетовым. Найди код под фиолетовым квадратиком и перепиши его в поле. Кнопка с решёткой есть внизу.',
+      'Now take a color from the palette yourself. Make the heading purple. Find the code under the purple square and copy it into the field. There’s a hash sign button below.'),
+    ask: L3("Palitradan binafsha kodni yozing", 'Впиши код фиолетового из палитры', 'Type the purple code from the palette'),
     msgs: {
-      empty: L3("Uchala songa ham qiymat yozing.", 'Впиши все три числа.', 'Type all three numbers.'),
-      range: L3("Har bir son noldan ikki yuz ellik beshgacha bo'ladi.", 'Каждое число — от нуля до двухсот пятидесяти пяти.', 'Each number is from zero to two hundred fifty-five.'),
-      red: L3("Qizil nur yetarli emas. Uni to'liq qiling: ikki yuz ellik besh.", 'Красного не хватает. Сделай его на полную: двести пятьдесят пять.', 'Not enough red. Make it full: two hundred fifty-five.'),
-      green: L3("Yashil nur yetarli emas. Uni ham to'liq qiling.", 'Зелёного не хватает. Его тоже на полную.', 'Not enough green. Make it full too.'),
-      blue: L3("Ko'k nur bor. Sariq rangda ko'k bo'lmaydi, uni nol qiling.", 'Есть синий свет. В жёлтом синего нет, сделай его нулём.', 'There’s blue light. Yellow has no blue, so make it zero.')
+      empty: L3("Maydon bo'sh. Binafsha kvadratcha ostidagi kodni ko'chiring.", 'Поле пустое. Перепиши код под фиолетовым квадратиком.', 'The field is empty. Copy the code under the purple square.'),
+      noHash: L3("Kod oldida panjara belgisi yo'q. Usiz brauzer rangni tanimaydi.", 'Перед кодом нет решётки. Без неё браузер не узнаёт цвет.', 'There’s no hash sign before the code. Without it the browser doesn’t know the color.'),
+      badHex: L3("Kodda nimadir tushib qoldi. Palitradagi bilan belgima-belgi solishtiring: oltita bo'lishi kerak.", 'В коде что-то потерялось. Сверь с палитрой знак за знаком: их должно быть шесть.', 'Something got lost in the code. Compare it with the palette symbol by symbol: there should be six.'),
+      notColor: L3("Brauzer buni rang deb tanimadi. Palitradagi kodni ko'chiring.", 'Браузер не узнал в этом цвет. Перепиши код из палитры.', 'The browser didn’t recognize this as a color. Copy the code from the palette.'),
+      other: L3("Rang chiqdi, lekin bu binafsha emas. Aynan binafsha kvadratcha ostidagi kodni oling.", 'Цвет получился, но это не фиолетовый. Возьми код именно под фиолетовым квадратиком.', 'You got a color, but not purple. Take the code under the purple square.'),
+      near: L3("Oz qoldi! Lekin bitta belgi palitradagidan farq qiladi. Kodni belgima-belgi solishtiring.", "Почти! Но один знак отличается от палитры. Сверь код знак за знаком.", "Almost! But one symbol differs from the palette. Compare the code symbol by symbol.")
     },
     hints: [
-      L3("Sariq rang qaysi ikki nurdan chiqadi?", 'Из каких двух лучей получается жёлтый?', 'Which two lights make yellow?'),
-      L3("Qizil va yashil to'liq, ko'k esa yo'q.", 'Красный и зелёный на полную, синего нет.', 'Red and green full, no blue.'),
-      L3("Birinchi va ikkinchi songa ikki yuz ellik besh, uchinchisiga nol yozing.", 'В первое и второе число впиши двести пятьдесят пять, в третье — ноль.', 'Type two hundred fifty-five in the first and second number, and zero in the third.')
+      L3("Palitrada to'rtta kvadratcha bor. Qaysi biri binafsha?", 'В палитре четыре квадратика. Какой из них фиолетовый?', 'There are four squares in the palette. Which one is purple?'),
+      L3("Binafsha oxirgisi. Uning ostidagi kodni panjara belgisi bilan birga ko'chiring.", 'Фиолетовый — последний. Перепиши код под ним вместе с решёткой.', 'Purple is the last one. Copy the code under it, hash sign included.'),
+      L3("Panjara tugmasini bosing, keyin 8E44AD deb yozing.", 'Нажми кнопку с решёткой, потом впиши 8E44AD.', 'Tap the hash sign button, then type 8E44AD.')
     ],
-    ok: L3("Zo'r! Fon sariq bo'ldi. Siz nurlardan rang yasadingiz!", 'Огонь! Фон стал жёлтым. Ты собрал цвет из лучей!', 'Awesome! The background is yellow. You made a color out of light!'),
-    ask: L3("Sariq fon uchun uchta sonni yozing", 'Впиши три числа для жёлтого фона', 'Type three numbers for a yellow background')
+    ok: L3("Ajoyib! Sarlavha binafsha bo'ldi. Kodni aniq ko'chirdingiz.", 'Отлично! Заголовок стал фиолетовым. Код переписан точно.', 'Great! The heading turned purple. You copied the code exactly.')
   },
   s7: {
-    eyebrow: L3('Qaysi kod?', 'Какой код?', 'Which code?'),
-    say: L3("Endi o'zingizni sinab ko'ring. Men rangni ko'rsataman, siz esa unga mos rgb kodni tanlang.", 'Теперь проверь себя. Я покажу цвет, а ты выбери для него подходящий rgb-код.', 'Now check yourself. I’ll show a color, and you pick the rgb code that makes it.'),
-    ask: L3("Bu rangni qaysi kod beradi?", 'Какой код даёт этот цвет?', 'Which code makes this color?'),
-    hint1: L3("Rangga qarang: unda qaysi nurlar bor?", 'Посмотри на цвет: какие в нём лучи?', 'Look at the color: which lights are in it?'),
-    hint2: L3("Birinchi son qizil, ikkinchisi yashil, uchinchisi ko'k. Ikki yuz ellik besh to'liq, nol yo'q degani.", 'Первое число — красный, второе — зелёный, третье — синий. Двести пятьдесят пять — на полную, ноль — нет.', 'The first number is red, the second green, the third blue. Two hundred fifty-five is full, zero is none.'),
-    rounds: [
-      { want: 'rgb(255, 255, 0)', opts: ['rgb(0, 0, 255)', 'rgb(255, 255, 0)', 'rgb(255, 0, 0)'], name: 'yellow',
-        why: L3("Sariqda qizil va yashil to'liq, ko'k yo'q.", 'В жёлтом красный и зелёный на полную, синего нет.', 'Yellow has full red and green, and no blue.') },
-      { want: 'rgb(0, 0, 0)', opts: ['rgb(255, 255, 255)', 'rgb(128, 128, 128)', 'rgb(0, 0, 0)'], name: 'black',
-        why: L3("Qora rangda nur umuman yo'q, hamma son nol.", 'В чёрном света нет совсем, все числа — ноль.', 'Black has no light at all; all the numbers are zero.') },
-      { want: 'rgb(128, 0, 128)', opts: ['rgb(128, 0, 128)', 'rgb(0, 128, 0)', 'rgb(255, 255, 0)'], name: 'purple',
-        why: L3("Binafsha rangda qizil va ko'k yarimta, yashil yo'q.", 'В фиолетовом красный и синий наполовину, зелёного нет.', 'Purple has half red and half blue, and no green.') }
+    eyebrow: L3("Kod to'g'rimi?", 'Код верный?', 'Is the code right?'),
+    say: L3("Endi kodlarni tekshiramiz. Har bir qoidaga qarang: hex kod to'g'ri yozilganmi yoki buzilganmi?", 'Теперь проверим коды. Посмотри на каждое правило: hex-код записан верно или сломан?', 'Now let’s check codes. Look at each rule: is the hex code written right, or is it broken?'),
+    ask: L3("Kod to'g'rimi yoki buzilganmi?", 'Код верный или сломан?', 'Is the code right or broken?'),
+    opts: { ok: L3("To'g'ri", 'Верный', 'Right'), bad: L3('Buzilgan', 'Сломан', 'Broken') },
+    right: L3("To'g'ri!", 'Точно!', 'Right!'),
+    hint1: L3("Kodning boshiga qarang, keyin belgilarni sanang.", 'Посмотри на начало кода, потом посчитай знаки.', 'Look at the start of the code, then count the symbols.'),
+    hint2: L3("To'g'ri hex kod: panjara belgisi va oltita belgi.", 'Верный hex-код — решётка и шесть знаков.', 'A right hex code is a hash sign and six symbols.'),
+    items: [
+      { code: '#2ECC71', right: 'ok', why: L3("Panjara bor, belgilar oltita. Hammasi joyida.", 'Решётка есть, знаков шесть. Всё на месте.', 'There’s a hash sign and six symbols. All good.') },
+      { code: '2ECC71', right: 'bad', why: L3("Boshida panjara belgisi yo'q.", 'В начале нет решётки.', 'There’s no hash sign at the start.') },
+      { code: '#8E44A', right: 'bad', why: L3("Belgilar beshta, bittasi tushib qolgan.", 'Знаков пять, один потерялся.', 'Only five symbols; one got lost.') },
+      { code: '#FFFFFF', right: 'ok', why: L3("Panjara va oltita belgi. Bu oq rang.", 'Решётка и шесть знаков. Это белый.', 'A hash sign and six symbols. This is white.') }
     ],
-    right: L3('Barakalla!', 'Точно!', 'Exactly!'),
-    ok: L3("Hammasi to'g'ri! Siz rgb kodni o'qiy olasiz.", 'Всё верно! Ты умеешь читать rgb-код.', 'All correct! You can read an rgb code.')
+    ok: L3("Zo'r! Endi buzilgan kodni darrov ko'rasiz.", 'Здорово! Теперь сломанный код ты видишь сразу.', 'Great! Now you spot a broken code right away.')
   },
   s8: {
-    eyebrow: L3('hsl', 'hsl', 'hsl'),
-    say: L3("Uchinchi usul hsl. U rangni boshqacha yozadi: rang doirasidagi joy, ya'ni qaysi rang degani, keyin uning kuchi va yorug'ligi.", 'Третий способ — hsl. Он записывает цвет по-другому: место на круге цветов, то есть какой это цвет, потом его насыщенность и светлота.', 'The third way is hsl. It writes a color differently: a spot on the color wheel, meaning which color it is, then its saturation and lightness.'),
-    sayHue: L3("Birinchi son rang doirasidagi joy, noldan uch yuz oltmishgacha. Nol qizil, bir yuz yigirma yashil, ikki yuz qirq ko'k. Qarang, son o'zgarsa, rang doira bo'ylab yuradi.", 'Первое число — место на круге цветов, от нуля до трёхсот шестидесяти. Ноль — красный, сто двадцать — зелёный, двести сорок — синий. Смотри, число меняется — и цвет идёт по кругу.', 'The first number is the spot on the color wheel, from zero to three hundred sixty. Zero is red, one hundred twenty is green, two hundred forty is blue. Look, as the number changes, the color moves around the wheel.'),
-    sayLight: L3("Oxirgi son yorug'lik, foizda. Uni katta qilsak, rang ochroq bo'ladi.", 'Последнее число — светлота в процентах. Сделаем его больше — цвет станет светлее.', 'The last number is lightness, in percent. Make it bigger and the color gets lighter.'),
-    sayDark: L3("Kichik qilsak, rang to'qroq bo'ladi. O'rtadagi son esa rang kuchi: yuz foiz eng yorqin.", 'Сделаем меньше — цвет темнее. А среднее число — насыщенность: сто процентов — самый яркий.', 'Make it smaller and the color gets darker. The middle number is saturation: a hundred percent is the brightest.'),
-    done: L3("Demak, hsl: rang doirasidagi joy, rang kuchi va yorug'lik. Ikkinchi va uchinchi son foiz bilan yoziladi.", 'Значит, hsl: место на круге, насыщенность и светлота. Второе и третье число пишут с процентами.', 'So hsl is the spot on the wheel, saturation and lightness. The second and third numbers are written with percent signs.'),
-    askStart: L3("Qarang: hsl — rang doirasi", 'Смотри: hsl — круг цветов', 'Watch: hsl is the color wheel'),
-    askHue: L3("Qarang: doiradagi joy", 'Смотри: место на круге', 'Watch: the spot on the wheel'),
-    askLight: L3("Qarang: yorug'lik — ochroq", 'Смотри: светлота — светлее', 'Watch: lightness, lighter'),
-    askDark: L3("Qarang: yorug'lik — to'qroq", 'Смотри: светлота — темнее', 'Watch: lightness, darker'),
-    askDone: L3("hsl: joy, kuch, yorug'lik", 'hsl: место, насыщенность, светлота', 'hsl: spot, saturation, lightness')
+    eyebrow: L3('rgb — uchta nur', 'rgb — три луча', 'rgb: three lights'),
+    say: L3("Rangni yana bir usulda yozish mumkin. Ekran har bir rangni uchta nurdan yig'adi: qizil, yashil va ko'k. rgb da shu uch nurning har biri qancha ekanini son bilan yozamiz. Nol bo'lsa nur yo'q, ikki yuz ellik besh bo'lsa to'liq. Hozir faqat qizil to'liq yonib turibdi.",
+      'Цвет можно записать ещё одним способом. Экран собирает каждый цвет из трёх лучей: красного, зелёного и синего. В rgb мы пишем числом, сколько каждого луча. Ноль — луча нет, двести пятьдесят пять — на полную. Сейчас на полную горит только красный.',
+      'There’s one more way to write a color. A screen builds every color from three lights: red, green and blue. In rgb we write how much of each light, as a number. Zero means no light, two hundred fifty-five means full. Right now only red is on full.'),
+    sayBlue: L3("Qizilni o'chirib, ko'kni to'liq yoqamiz. Sarlavha ko'k bo'ldi.", 'Гасим красный и зажигаем синий на полную. Заголовок синий.', 'We switch red off and blue on full. The heading is blue.'),
+    sayYellow: L3("Endi qizil va yashilni birga yoqamiz. Qiziq, ular qo'shilib sariq rang berdi!", 'Теперь зажжём вместе красный и зелёный. Интересно: вместе они дали жёлтый!', 'Now let’s turn on red and green together. Interesting: together they make yellow!'),
+    sayBlack: L3("Hamma nur nol bo'lsa, ekran qorong'i, ya'ni qora degani. Hammasi to'liq bo'lsa, oq bo'ladi.", 'Если все лучи на нуле, экран тёмный, то есть чёрный. А если все на полную — белый.', 'If every light is at zero, the screen is dark, that is, black. If all are full, it’s white.'),
+    done: L3("Demak, rgb bu qavs ichida uchta son: qizil, yashil va ko'k nur. Har biri noldan ikki yuz ellik beshgacha.", 'Значит, rgb — это три числа в скобках: красный, зелёный и синий свет. Каждое — от нуля до двухсот пятидесяти пяти.', 'So rgb is three numbers in brackets: red, green and blue light. Each goes from zero to two hundred fifty-five.'),
+    askStart: L3("Qarang: qizil to'liq", 'Смотри: красный на полную', 'Watch: full red'),
+    askBlue: L3("Ko'k to'liq", 'Синий на полную', 'Full blue'),
+    askYellow: L3("Qizil va yashil — sariq", 'Красный и зелёный — жёлтый', 'Red and green make yellow'),
+    askBlack: L3("Hammasi 0 — qora", 'Все 0 — чёрный', 'All 0 is black'),
+    askDone: L3("rgb: uchta son, 0 dan 255 gacha", 'rgb: три числа от 0 до 255', 'rgb: three numbers from 0 to 255'),
+    help: [
+      L3("Kodda uchta son bor va ostida uchta polosa. Birinchi son qizil polosa, ikkinchisi yashil, uchinchisi ko'k.", 'В коде три числа, а под ним три полосы. Первое число — красная полоса, второе — зелёная, третье — синяя.', 'The code has three numbers, and there are three bars below. The first number is the red bar, the second green, the third blue.'),
+      L3("Son nur kuchi: nol bo'lsa nur o'chgan, ikki yuz ellik besh bo'lsa to'liq yongan.", 'Число — это сила луча: ноль — луч выключен, двести пятьдесят пять — включён на полную.', 'The number is the light’s strength: zero is off, two hundred fifty-five is full on.'),
+      L3("Xuddi uchta chiroqli sahnaga o'xshaydi: qizil, yashil va ko'k chiroqni qancha yoqsangiz, sahna shunday rangga kiradi.", 'Это как сцена с тремя прожекторами: красным, зелёным и синим. Как их включишь, такого цвета и будет сцена.', 'It’s like a stage with three spotlights, red, green and blue. However you switch them on, that’s the stage’s color.')
+    ]
   },
   s9: {
-    eyebrow: L3('Doiradagi joy', 'Место на круге', 'The spot on the wheel'),
-    say: L3("Sarlavhani yashil qiling. hsl kodda faqat birinchi son bo'sh, ya'ni rang doirasidagi joy degani. Yashil qaysi joyda edi?", 'Сделай заголовок зелёным. В hsl-коде пусто только первое число — место на круге цветов. Где был зелёный?', 'Make the heading green. In the hsl code only the first number is empty: the spot on the color wheel. Where was green?'),
+    eyebrow: L3('Yashil nurni yoqing', 'Зажги зелёный луч', 'Turn on green light'),
+    say: L3("Endi nurni o'zingiz boshqaring. Qizil va ko'k o'chiq. Sarlavha yorqin yashil bo'lishi uchun yashil nurni to'liq yoqing: o'rtadagi bo'sh joyga nur uchun eng katta sonni yozing.", "Теперь управляй лучом сам. Красный и синий выключены. Чтобы заголовок стал ярко-зелёным, зажги зелёный луч на полную: в пустое место посередине впиши самое большое число для луча.", "Now you control the light. Red and blue are off. To make the heading bright green, turn green light on full: type the biggest number for a light into the empty spot in the middle."),
+    ask: L3("Yashil nurni to'liq yoqing", 'Зажги зелёный на полную', 'Turn green on full'),
     msgs: {
-      empty: L3("Birinchi songa rang doirasidagi joyni yozing.", 'Впиши в первое число место на круге.', 'Type the spot on the wheel in the first number.'),
-      num: L3("Bu yerda faqat son bo'ladi, foiz belgisi kerak emas.", 'Здесь только число, без знака процента.', 'Just a number here, no percent sign.'),
-      other: L3("Bu boshqa rang chiqdi. Doirada yashil qizildan keyin, bir yuz yigirmada turadi.", 'Получился другой цвет. На круге зелёный стоит после красного, на ста двадцати.', 'That’s a different color. On the wheel green comes after red, at one hundred twenty.')
+      empty: L3("Maydon bo'sh. Yashil nur uchun son yozing.", 'Поле пустое. Впиши число для зелёного луча.', 'The field is empty. Type a number for green light.'),
+      notNum: L3("Bu yerga faqat son kerak, harf va belgilarsiz.", 'Здесь нужно только число, без букв и знаков.', 'Only a number goes here, no letters or signs.'),
+      big: L3("Bunday katta son bo'lmaydi: nur ikki yuz ellik beshdan ko'p yonmaydi.", 'Такого большого числа не бывает: луч не горит сильнее двухсот пятидесяти пяти.', 'No number that big: light can’t go above two hundred fifty-five.'),
+      small: L3("Yashil yondi, lekin to'liq emas. Polosaga qarang: u oxirigacha to'lsin.", 'Зелёный горит, но не на полную. Посмотри на полосу: пусть она заполнится до конца.', 'Green is on, but not full. Look at the bar: let it fill all the way.')
     },
     hints: [
-      L3("Rang doirasiga qarang: yashil qayerda?", 'Посмотри на круг цветов: где зелёный?', 'Look at the color wheel: where is green?'),
-      L3("Nol qizil, ikki yuz qirq ko'k. Yashil ularning o'rtasida.", 'Ноль — красный, двести сорок — синий. Зелёный между ними.', 'Zero is red, two hundred forty is blue. Green is in between.'),
-      L3("Yashil bir yuz yigirmada. Birinchi songa 120 yozing.", 'Зелёный — на ста двадцати. Впиши в первое число 120.', 'Green is at one hundred twenty. Type 120 as the first number.')
+      L3("Yashil polosaga qarang. U oxirigacha to'lishi kerak.", 'Посмотри на зелёную полосу. Она должна заполниться до конца.', 'Look at the green bar. It should fill all the way.'),
+      L3("To'liq nur — rgb dagi eng katta son. U ikki yuz ellik besh.", 'Полный луч — самое большое число в rgb. Это двести пятьдесят пять.', 'Full light is the biggest number in rgb: two hundred fifty-five.'),
+      L3("Maydonga 255 deb yozing.", 'Впиши в поле 255.', 'Type 255 into the field.')
     ],
-    ok: L3("Zo'r! Sarlavha yashil bo'ldi.", 'Огонь! Заголовок стал зелёным.', 'Awesome! The heading turned green.'),
-    ask: L3("Yashil uchun doiradagi joyni yozing", 'Впиши место на круге для зелёного', 'Type the wheel spot for green')
+    ok: L3("Ura! Sarlavha yorqin yashil. Siz nurni to'liq yoqdingiz.", 'Ура! Заголовок ярко-зелёный. Луч горит на полную.', 'Hooray! The heading is bright green. You turned the light on full.')
   },
   s10: {
-    eyebrow: L3("Och yoki to'q?", 'Светлый или тёмный?', 'Light or dark?'),
-    say: L3("Endi o'zingizni sinab ko'ring. Men hsl kodni ko'rsataman, siz esa rang och chiqadimi yoki to'q, shuni tanlang.", 'Теперь проверь себя. Я покажу hsl-код, а ты выбери: цвет будет светлым или тёмным?', 'Now check yourself. I’ll show an hsl code, and you choose: will the color be light or dark?'),
-    ask: L3("Rang och bo'ladimi yoki to'q?", 'Цвет будет светлым или тёмным?', 'Will the color be light or dark?'),
-    card: L3('hsl kod', 'hsl-код', 'hsl code'),
-    hint1: L3("Oxirgi songa qarang: u yorug'lik.", 'Посмотри на последнее число: это светлота.', 'Look at the last number: it’s the lightness.'),
-    hint2: L3("Yorug'lik katta bo'lsa rang och, kichik bo'lsa to'q bo'ladi.", 'Большая светлота — цвет светлый, маленькая — тёмный.', 'High lightness makes a light color, low lightness a dark one.'),
+    eyebrow: L3('Qaysi rang?', 'Какой цвет?', 'Which color?'),
+    say: L3("Endi kodni o'qiymiz. rgb dagi sonlarga qarang va qaysi rang chiqishini tanlang.", 'Теперь прочитаем код. Посмотри на числа в rgb и выбери, какой получится цвет.', 'Now let’s read codes. Look at the numbers in rgb and pick which color comes out.'),
+    ask: L3("Bu kod qaysi rangni beradi?", 'Какой цвет даст этот код?', 'Which color does this code give?'),
+    right: L3("To'g'ri!", 'Точно!', 'Right!'),
+    hint1: L3("Qaysi nur yonib turibdi? Qaysi son ikki yuz ellik besh?", 'Какой луч горит? Какое число — двести пятьдесят пять?', 'Which light is on? Which number is two hundred fifty-five?'),
+    hint2: L3("Tartib doim bir xil: qizil, yashil, ko'k. Hammasi nol — qora, hammasi to'liq — oq.", 'Порядок всегда один: красный, зелёный, синий. Все нули — чёрный, все на полную — белый.', 'The order is always red, green, blue. All zero is black, all full is white.'),
     items: [
-      { code: 'hsl(210, 100%, 85%)', right: 'light', why: L3("Yorug'lik sakson besh foiz, bu katta. Rang och.", 'Светлота восемьдесят пять процентов — это много. Цвет светлый.', 'Lightness is eighty-five percent, which is high. The color is light.') },
-      { code: 'hsl(210, 100%, 25%)', right: 'dark', why: L3("Yorug'lik yigirma besh foiz, bu kam. Rang to'q.", 'Светлота двадцать пять процентов — это мало. Цвет тёмный.', 'Lightness is twenty-five percent, which is low. The color is dark.') },
-      { code: 'hsl(0, 100%, 90%)', right: 'light', why: L3("To'qson foiz yorug'lik. Qizil juda och, pushti bo'lib qoldi.", 'Светлота девяносто процентов. Красный очень светлый, почти розовый.', 'Ninety percent lightness. The red is very light, almost pink.') },
-      { code: 'hsl(120, 100%, 20%)', right: 'dark', why: L3("Yigirma foiz yorug'lik. Yashil juda to'q.", 'Двадцать процентов светлоты. Зелёный очень тёмный.', 'Twenty percent lightness. The green is very dark.') }
+      { code: 'rgb(255, 0, 0)', right: 'red', why: L3("Faqat birinchi nur, qizil, to'liq.", 'Горит только первый луч, красный.', 'Only the first light, red, is on.') },
+      { code: 'rgb(0, 0, 0)', right: 'black', why: L3("Hamma nur nol, demak qora.", 'Все лучи на нуле — значит, чёрный.', 'Every light is zero, so it’s black.') },
+      { code: 'rgb(0, 0, 255)', right: 'blue', why: L3("Faqat oxirgi nur, ko'k, to'liq.", 'Горит только последний луч, синий.', 'Only the last light, blue, is on.') },
+      { code: 'rgb(255, 255, 255)', right: 'white', why: L3("Hamma nur to'liq, demak oq.", 'Все лучи на полную — значит, белый.', 'Every light is full, so it’s white.') }
     ],
-    right: L3('Barakalla!', 'Точно!', 'Exactly!'),
-    ok: L3("Hammasi to'g'ri! Yorug'lik sonini o'qiy olasiz.", 'Всё верно! Ты читаешь число светлоты.', 'All correct! You can read the lightness number.')
+    ok: L3("Barakalla! rgb kodni o'qishni bilasiz.", 'Молодец! Ты умеешь читать rgb-код.', 'Well done! You can read rgb codes.')
   },
   s11: {
-    eyebrow: L3('Rang buzilsa', 'Когда цвет ломается', 'When a color breaks'),
-    say: L3("Rang kodlari juda aniq bo'lishi kerak. Bitta belgi xato bo'lsa, brauzer rangni tashlab yuboradi. Keling, uchta xatoni ko'ramiz.", 'Коды цветов должны быть точными. Ошибся в одном знаке — и браузер выбрасывает цвет. Посмотрим на три ошибки.', 'Color codes must be exact. One wrong symbol and the browser throws the color away. Let’s look at three mistakes.'),
-    sayNoHash: L3("Birinchisi: hex kod oldida panjara belgisi yo'q. Brauzer uni rang deb tanimadi, sarlavha qora qoldi.", 'Первая: перед hex-кодом нет решётки. Браузер не узнал в нём цвет, заголовок остался чёрным.', 'The first: there’s no hash sign before the hex code. The browser didn’t recognize it as a color, so the heading stayed black.'),
-    sayFive: L3("Ikkinchisi: kodda bitta belgi yetishmayapti, beshta qolgan. Bu ham ishlamaydi.", 'Вторая: в коде не хватает одного знака, осталось пять. Тоже не работает.', 'The second: the code is missing a symbol; only five are left. That doesn’t work either.'),
-    sayPct: L3("Uchinchisi: hsl kodda foiz belgilari unutilgan. Ikkinchi va uchinchi son foiz bilan bo'lishi kerak.", 'Третья: в hsl-коде забыли знаки процента. Второе и третье число должны быть с процентами.', 'The third: the percent signs were forgotten in the hsl code. The second and third numbers need them.'),
-    done: L3("Demak, hex kodga panjara va oltita belgi, hsl ga esa foiz belgilari kerak.", 'Значит, hex-коду нужны решётка и шесть знаков, а hsl — знаки процента.', 'So a hex code needs a hash sign and six symbols, and hsl needs percent signs.'),
-    askNoHash: L3("Qarang: panjara belgisi yo'q", 'Смотри: нет решётки', 'Watch: no hash sign'),
-    askFive: L3("Qarang: beshta belgi", 'Смотри: пять знаков', 'Watch: five symbols'),
-    askPct: L3("Qarang: foiz belgisi yo'q", 'Смотри: нет процентов', 'Watch: no percent signs'),
-    askDone: L3("Panjara, oltita belgi, foiz", 'Решётка, шесть знаков, проценты', 'Hash sign, six symbols, percent')
+    eyebrow: L3('Rang qachon buziladi', 'Когда цвет ломается', 'When a color breaks'),
+    say: L3("Kod juda aniq narsa. Bitta belgi xato bo'lsa, brauzer rangni tanimaydi va qoidani tashlab yuboradi. Hozir hammasi joyida: sarlavha logotip bilan bir xil. Keling, ataylab buzib ko'ramiz.",
+      'Код — вещь очень точная. Одна ошибка в знаке — и браузер не узнаёт цвет и выбрасывает правило. Сейчас всё на месте: заголовок совпадает с логотипом. Давай нарочно сломаем.',
+      'A code is a very exact thing. One wrong symbol and the browser doesn’t know the color and throws the rule away. Right now all is well: the heading matches the logo. Let’s break it on purpose.'),
+    sayHash: L3("Panjara belgisini olib tashlaymiz. Sarlavha qora bo'ldi: brauzer bu oltita belgini rang deb tanimadi.", 'Убираем решётку. Заголовок стал чёрным: браузер не узнал в шести знаках цвет.', 'We remove the hash sign. The heading went black: the browser didn’t see a color in the six symbols.'),
+    sayFive: L3("Panjara qaytdi, lekin bitta belgi tushib qoldi, beshta qoldi. Yana ishlamadi.", 'Решётка вернулась, но один знак потерялся, осталось пять. Опять не работает.', 'The hash sign is back, but one symbol got lost; five are left. It fails again.'),
+    sayTypo: L3("Nom bilan ham shunday. gren deb bitta harf kam yozsak, brauzer bunday rangni bilmaydi.", 'С названием так же. Напишем gren без одной буквы — браузер такого цвета не знает.', 'Same with names. Write gren with one letter missing, and the browser doesn’t know that color.'),
+    done: L3("Demak, rang ishlamasa, uchta narsani tekshiramiz: panjara belgisi bormi, belgilar oltitami, nom xatosiz yozilganmi.", 'Значит, если цвет не работает, проверяем три вещи: есть ли решётка, шесть ли знаков, без ошибок ли название.', 'So when a color doesn’t work, check three things: is there a hash sign, are there six symbols, is the name spelled right.'),
+    askStart: L3("Hozir hammasi joyida", 'Сейчас всё на месте', 'All is well now'),
+    askHash: L3("# yo'q — ishlamadi", 'Нет # — не работает', 'No #: it fails'),
+    askFive: L3("5 ta belgi — ishlamadi", '5 знаков — не работает', '5 symbols: it fails'),
+    askTypo: L3("gren — xato nom", 'gren — ошибка в названии', 'gren: a misspelled name'),
+    askDone: L3("Tekshiring: #, 6 belgi, nom", 'Проверь: #, 6 знаков, название', 'Check: #, 6 symbols, the name'),
+    help: [
+      L3("Logotip yonidagi yozuvga qarang: «Bir xil» yoki «Boshqacha». Har safar kodda bitta narsa o'zgaradi.", 'Смотри на надпись у логотипа: «Совпадает» или «Не тот». Каждый раз в коде меняется что-то одно.', 'Look at the label by the logo: “A match” or “Different”. Each time one thing changes in the code.'),
+      L3("Brauzer tanimagan rangni tashlab yuboradi. Shunda sarlavha oddiy, qora rangda qoladi.", 'Цвет, который браузер не узнал, он выбрасывает. Тогда заголовок остаётся обычным, чёрным.', 'The browser throws away a color it doesn’t know. Then the heading stays plain black.'),
+      L3("Xuddi manzilga o'xshaydi: uy raqamida bitta raqam tushib qolsa, pochtachi uyni topa olmaydi.", 'Как адрес на письме: пропала одна цифра в номере дома — и почтальон не найдёт дом.', 'It’s like an address on a letter: miss one digit of the house number and the mail carrier can’t find the house.')
+    ]
   },
   s12: {
-    eyebrow: L3("Belgini qo'ying", 'Поставь знак', 'Add the sign'),
-    say: L3("Voy, men logotip rangini yana panjara belgisisiz yozibman! Sarlavha bo'yalmayapti. Kod oldidagi bo'sh joyga kerakli belgini yozing.", 'Ой, я опять написал цвет логотипа без решётки! Заголовок не красится. Впиши нужный знак в пустое место перед кодом.', 'Oops, I wrote the logo color without the hash sign again! The heading won’t color. Type the right sign in the empty spot before the code.'),
+    eyebrow: L3('Tuzating', 'Исправь', 'Fix it'),
+    say: L3("Voy, bu mening kodim. Sarlavha logotip rangida bo'lishi kerak edi, lekin qora chiqdi. Kodni tuzating, keyin «Tekshirish»ni bosing.",
+      'Ой, это мой код. Заголовок должен был быть цвета логотипа, а получился чёрным. Исправь код и нажми «Проверить».',
+      'Oops, this is my code. The heading should be the logo color, but it came out black. Fix the code and tap “Check”.'),
+    ask: L3("Kodni tuzating", 'Исправь код', 'Fix the code'),
     msgs: {
-      empty: L3("Kod oldiga bitta belgi yozing.", 'Впиши один знак перед кодом.', 'Type one sign before the code.'),
-      dot: L3("Nuqta class uchun edi. hex kod oldida panjara belgisi turadi.", 'Точка была для класса. Перед hex-кодом стоит решётка.', 'The dot was for a class. A hex code starts with a hash sign.'),
-      other: L3("Bu belgi to'g'ri emas. hex kod panjara belgisi bilan boshlanadi.", 'Этот знак не подходит. Hex-код начинается с решётки.', 'That sign doesn’t fit. A hex code starts with a hash sign.')
+      empty: L3("Maydon bo'sh. Logotip kodi FA4F28: panjara belgisini va shu kodni yozing.", "Поле пустое. Код логотипа — FA4F28: впиши решётку и этот код.", "The field is empty. The logo code is FA4F28: type the hash sign and this code."),
+      noHash: L3("Hali ham kod oldida panjara belgisi yo'q.", 'Перед кодом всё ещё нет решётки.', 'There’s still no hash sign before the code.'),
+      bad: L3("Brauzer buni rang deb tanimadi. Oltita belgini o'zgartirmang, faqat oldiga panjara qo'ying.", 'Браузер не узнал цвет. Шесть знаков не меняй, только поставь перед ними решётку.', 'The browser didn’t recognize a color. Don’t change the six symbols, just put a hash sign in front.'),
+      other: L3("Rang ishladi, lekin logotipdagidan boshqacha. Belgilarni o'zgartirmang.", 'Цвет заработал, но не как на логотипе. Знаки не меняй.', 'The color works, but it isn’t the logo’s. Don’t change the symbols.')
     },
     hints: [
-      L3("hex kod qaysi belgi bilan boshlanardi?", 'С какого знака начинается hex-код?', 'Which sign does a hex code start with?'),
-      L3("Bu belgi id selektorida ham ishlatiladi.", 'Этот знак есть и в селекторе id.', 'The same sign is used in an id selector.'),
-      L3("Pastdagi panjara tugmasini bosing, keyin Tekshirishni bosing.", 'Нажми кнопку с решёткой внизу, потом «Проверить».', 'Tap the hash button below, then Check.')
+      L3("Kodning boshiga qarang. U yerda nimadir yetishmayapti.", 'Посмотри на начало кода. Там чего-то не хватает.', 'Look at the start of the code. Something is missing there.'),
+      L3("hex kod har doim panjara belgisi bilan boshlanadi.", 'Hex-код всегда начинается с решётки.', 'A hex code always starts with a hash sign.'),
+      L3("Kod boshida panjara belgisi bo'lishi kerak. Namuna kod ostida: uni ko'chirib yozing va Tekshirishni bosing.", "В начале кода должна стоять решётка. Образец под кодом: перепиши его и нажми «Проверить».", "The code must start with a hash sign. The example is under the code: copy it and tap Check.")
     ],
-    ok: L3("Ajoyib! Sarlavha logotip rangida.", 'Отлично! Заголовок цвета логотипа.', 'Great! The heading is the logo color.'),
-    ask: L3("Kod oldiga kerakli belgini yozing", 'Впиши перед кодом нужный знак', 'Type the right sign before the code')
+    ok: L3("Rahmat! Sarlavha yana logotip bilan bir xil. Bitta belgi hammasini hal qildi.", 'Спасибо! Заголовок снова совпал с логотипом. Один знак всё решил.', 'Thanks! The heading matches the logo again. One symbol fixed it all.')
   },
   s13: {
     eyebrow: L3('Xatoni toping', 'Найди ошибку', 'Find the bug'),
-    say: L3("Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasining rangi ishlamayapti. Sahifaga qarang va xato qoidani bosing.", 'Теперь проверь себя. В коде три правила, но цвет одного не работает. Посмотри на страницу и нажми сломанное правило.', 'Now check yourself. There are three rules, but one color doesn’t work. Look at the page and tap the broken rule.'),
+    say: L3("Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasining rangi ishlamayapti. Sahifaga qarang va xato qoidani bosing.", 'Теперь проверь себя. В коде три правила, но цвет одного не работает. Посмотри на страницу и нажми сломанное правило.', 'Now check yourself. There are three rules in the code, but one color doesn’t work. Look at the page and tap the broken rule.'),
     say2: L3("Zo'r, birinchi xato topildi! Endi boshqa rang buzildi. Qaysi biri?", 'Класс, первая ошибка найдена! Теперь сломался другой цвет. Какой?', 'Great, the first bug is found! Now another color broke. Which one?'),
     ask: L3('Ishlamayotgan qoidani bosing', 'Нажми правило, которое не работает', 'Tap the rule that doesn’t work'),
     fine: L3("Bu qoida ishlayapti: uning rangi sahifada ko'rinib turibdi. Qaysi narsa bo'yalmadi?", 'Это правило работает: его цвет виден на странице. Что не покрасилось?', 'This rule works: its color shows on the page. What didn’t get colored?'),
     found: {
-      letter: L3("Topdingiz! hex kodda G harfi bor. hex da faqat A dan F gacha harflar bo'ladi.", 'Нашёл! В hex-коде буква G. В hex бывают только буквы от A до F.', 'Found it! There’s a G in the hex code. Hex only uses letters A to F.'),
-      pct: L3("Topdingiz! hsl kodda foiz belgilari yo'q edi.", 'Нашёл! В hsl-коде не было знаков процента.', 'Found it! The hsl code had no percent signs.')
+      typo: L3("Topdingiz! gren da bitta harf tushib qolgan. To'g'risi green.", 'Есть! В gren потерялась буква. Правильно — green.', 'Found it! gren is missing a letter. It should be green.'),
+      five: L3("Topdingiz! hex kodda beshta belgi bor edi, oltita bo'lishi kerak.", 'Есть! В hex-коде было пять знаков, а нужно шесть.', 'Found it! The hex code had five symbols, but it needs six.')
     },
     hint1: L3("Sahifaga qarang: nima bo'yalmay qoldi?", 'Посмотри на страницу: что осталось не покрашенным?', 'Look at the page: what stayed uncolored?'),
     hint2: {
-      letter: L3("Sarlavha qora qoldi. Uning hex kodidagi harflarni tekshiring: hammasi A dan F gachami?", 'Заголовок остался чёрным. Проверь буквы в его hex-коде: все от A до F?', 'The heading stayed black. Check the letters in its hex code: are they all A to F?'),
-      pct: L3("Fon oq qoldi. body qoidasidagi hsl kodda foiz belgilari bormi?", 'Фон остался белым. Есть ли проценты в hsl-коде правила body?', 'The background stayed white. Does the hsl code in the body rule have percent signs?')
+      typo: L3("Abzas oddiy qora qoldi. p qoidasidagi rang nomini harfma-harf o'qing.", 'Абзац остался обычным, чёрным. Прочитай по буквам название цвета в правиле p.', 'The paragraph stayed plain black. Read the color name in the p rule letter by letter.'),
+      five: L3("Sarlavha qora qoldi. h1 qoidasidagi hex kodning belgilarini sanang.", 'Заголовок остался чёрным. Посчитай знаки в hex-коде правила h1.', 'The heading stayed black. Count the symbols in the h1 rule’s hex code.')
     },
     hint3: {
-      letter: L3("Xato h1 qoidasida: G harfi. O'sha qatorni bosing.", 'Ошибка в правиле h1: буква G. Нажми эту строку.', 'The bug is in the h1 rule: the letter G. Tap that line.'),
-      pct: L3("Xato body qoidasida: foiz yo'q. O'sha qatorni bosing.", 'Ошибка в правиле body: нет процентов. Нажми эту строку.', 'The bug is in the body rule: no percent signs. Tap that line.')
+      typo: L3("Xato p qoidasida: gren. O'sha qatorni bosing.", 'Ошибка в правиле p: gren. Нажми эту строку.', 'The bug is in the p rule: gren. Tap that line.'),
+      five: L3("Xato h1 qoidasida: belgilar beshta. O'sha qatorni bosing.", 'Ошибка в правиле h1: пять знаков. Нажми эту строку.', 'The bug is in the h1 rule: five symbols. Tap that line.')
     },
     ok: L3("Super! Ikkala xato ham topildi. Siz ranglarni haqiqiy dizayner kabi tekshiryapsiz.", 'Супер! Обе ошибки найдены. Ты проверяешь цвета как настоящий дизайнер.', 'Super! Both bugs are found. You check colors like a real designer.')
   },
   w1: {
     eyebrow: L3("Qoidani o'zingiz yozing", 'Напиши правило сам', 'Write the rule yourself'),
-    say: L3("Endi qoidani boshidan oxirigacha o'zingiz yozing. Sahifaning fonini och shaftoli rangga bo'yang, kodi FFE0B2. body uchun background-color xususiyatini yozing.", 'Теперь напиши правило целиком сам. Сделай фон страницы светло-персиковым, его код FFE0B2. Напиши для body свойство background-color.', 'Now write the whole rule yourself. Make the page background a light peach, code FFE0B2. Write the background-color property for body.'),
+    say: L3("Endi qoidani boshidan oxirigacha o'zingiz yozing. Abzas matni ko'k bo'lsin, faqat bu safar rgb bilan. Esingizdami: ko'k uchun qizil va yashil nur o'chiq, ko'k esa to'liq. Abzas selektori p.",
+      'Теперь напиши правило целиком сам. Пусть текст абзаца будет синим, только на этот раз через rgb. Вспомни: для синего красный и зелёный лучи выключены, а синий на полную. Селектор абзаца — p.',
+      'Now write the whole rule yourself. Make the paragraph text blue, but this time with rgb. Remember: for blue, red and green light are off and blue is full. The paragraph selector is p.'),
     msgs: {
       empty: L3("Qoidani yozing: oldin selektor, keyin jingalak qavslar ichida xususiyat va qiymat.", 'Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.', 'Write the rule: first the selector, then the property and value in curly braces.'),
       braces: L3("Qoidaga jingalak qavslar kerak: ochuvchi va yopuvchi.", 'Правилу нужны фигурные скобки: открывающая и закрывающая.', 'The rule needs curly braces: an opening one and a closing one.'),
       colon: L3("Xususiyat va qiymat o'rtasida ikki nuqta yo'q.", 'Между свойством и значением нет двоеточия.', 'There’s no colon between the property and the value.'),
-      sel: L3("Butun sahifaning foni uchun body selektori kerak.", 'Для фона всей страницы нужен селектор body.', 'The whole page’s background needs the body selector.'),
-      prop: L3("Fon rangini background-color xususiyati beradi.", 'Цвет фона задаёт свойство background-color.', 'The background-color property sets the background color.'),
-      noHash: L3("Kod oldida panjara belgisi yo'q. Usiz brauzer rangni tanimaydi.", 'Перед кодом нет решётки. Без неё браузер не узнаёт цвет.', 'No hash sign before the code. Without it the browser doesn’t recognize the color.'),
-      notColor: L3("Brauzer bu kodni rang deb tanimadi. Panjara va oltita belgini tekshiring.", 'Браузер не узнал в этом коде цвет. Проверь решётку и шесть знаков.', 'The browser didn’t recognize this code as a color. Check the hash sign and the six symbols.'),
-      other: L3("Bu boshqa rang. Kod FFE0B2 bo'lishi kerak.", 'Это другой цвет. Код должен быть FFE0B2.', 'That’s a different color. The code should be FFE0B2.')
+      sel: L3("Abzasni tanlash uchun p selektori kerak.", 'Чтобы выбрать абзац, нужен селектор p.', 'To pick the paragraph you need the p selector.'),
+      prop: L3("Matn rangini color xususiyati beradi.", 'Цвет текста задаёт свойство color.', 'The color property sets the text color.'),
+      notRgb: L3("Abzas ko'k bo'ldi, lekin bu safar rgb bilan yozing: rgb va qavs ichida uchta son.", 'Абзац синий, но в этот раз запиши через rgb: rgb и три числа в скобках.', 'The paragraph is blue, but this time write it with rgb: rgb and three numbers in brackets.'),
+      rgbNeed: L3("Qiymatni rgb bilan yozing: rgb so'zi va qavs ichida uchta son.", 'Запиши значение через rgb: слово rgb и три числа в скобках.', 'Write the value with rgb: the word rgb and three numbers in brackets.'),
+      notColor: L3("Brauzer bu rgb ni tanimadi. Qavslar va sonlar orasidagi vergullarni tekshiring.", 'Браузер не узнал этот rgb. Проверь скобки и запятые между числами.', 'The browser didn’t recognize this rgb. Check the brackets and the commas between numbers.'),
+      other: L3("Rang chiqdi, lekin ko'k emas. Ko'k uchun faqat oxirgi son to'liq bo'ladi.", 'Цвет получился, но не синий. Для синего на полную только последнее число.', 'You got a color, but not blue. For blue only the last number is full.')
     },
     hints: [
-      L3("Butun sahifa qaysi selektor bilan tanlanardi? Fon uchun qaysi xususiyat kerak?", 'Каким селектором выбирают всю страницу? Какое свойство нужно для фона?', 'Which selector picks the whole page? Which property is for the background?'),
-      L3("Selektor body, xususiyat background-color, qiymat esa panjara va FFE0B2.", 'Селектор body, свойство background-color, а значение — решётка и FFE0B2.', 'The selector is body, the property background-color, and the value a hash sign and FFE0B2.'),
-      L3("Shunday yozing: body, jingalak qavs, background-color, ikki nuqta, panjara, FFE0B2, nuqtali vergul va yopuvchi qavs.", 'Напиши так: body, фигурная скобка, background-color, двоеточие, решётка, FFE0B2, точка с запятой и закрывающая скобка.', 'Write: body, a curly brace, background-color, a colon, a hash sign, FFE0B2, a semicolon and a closing brace.')
+      L3("Abzas qaysi selektor bilan tanlanadi? Matn rangi uchun qaysi xususiyat kerak?", 'Каким селектором выбирают абзац? Какое свойство нужно для цвета текста?', 'Which selector picks the paragraph? Which property sets the text color?'),
+      L3("Selektor p, xususiyat color. rgb da qizil nol, yashil nol, ko'k ikki yuz ellik besh.", 'Селектор p, свойство color. В rgb красный ноль, зелёный ноль, синий двести пятьдесят пять.', 'The selector is p, the property color. In rgb red is zero, green zero, blue two hundred fifty-five.'),
+      L3("Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", "Образец появился под кодом. Перепиши его в поле и нажми «Проверить».", "An example appeared under the code. Copy it into the field and tap Check.")
     ],
-    ok: L3("Ajoyib! Sahifa iliq rangga kirdi. Qoidani o'zingiz yozdingiz.", 'Отлично! Страница стала тёплой. Ты сам написал правило.', 'Great! The page got a warm color. You wrote the rule yourself.'),
-    ask: L3("Fonni FFE0B2 qiladigan qoidani yozing", 'Напиши правило, которое сделает фон FFE0B2', 'Write a rule that makes the background FFE0B2')
+    ok: L3("Ajoyib! Abzas ko'k bo'ldi. Qoidani to'liq o'zingiz yozdingiz.", 'Отлично! Абзац синий. Всё правило — целиком твоё.', 'Great! The paragraph is blue. You wrote the whole rule yourself.'),
+    ask: L3("Abzasni rgb bilan ko'k qiling", 'Сделай абзац синим через rgb', 'Make the paragraph blue with rgb')
   },
   s14: {
     eyebrow: L3("O'z ranglaringiz", 'Свои цвета', 'Your own colors'),
-    say: L3("Endi o'z sahifangizga ranglar tanlang. Istalgan usulda yozishingiz mumkin: nom, hex, rgb yoki hsl. Sarlavha uchun bitta rang, fon uchun boshqasini yozing. Keyin «Tayyor»ni bosing.", 'Теперь выбери цвета для своей страницы. Можно любым способом: имя, hex, rgb или hsl. Впиши один цвет для заголовка и другой для фона. Потом нажми «Готово».', 'Now pick colors for your own page. Any way works: a name, hex, rgb or hsl. Type one color for the heading and another for the background. Then tap “Done”.'),
+    say: L3("Endi o'z sahifangizga ranglar tanlang. Istalgan usulda yozing: nom, hex yoki rgb. Sarlavha uchun bitta rang, fon uchun boshqasini yozing. Keyin «Tayyor»ni bosing.",
+      'Теперь выбери цвета для своей страницы. Можно любым способом: название, hex или rgb. Впиши один цвет для заголовка и другой для фона. Потом нажми «Готово».',
+      'Now pick colors for your own page. Any way you like: a name, hex or rgb. Type one color for the heading and another for the background. Then tap “Done”.'),
     msgs: {
-      notColor: L3("Brauzer {w} ni rang deb tanimadi. Kodni tekshiring: hex uchun panjara va oltita belgi, hsl uchun foiz.", 'Браузер не узнал цвет в {w}. Проверь код: для hex — решётка и шесть знаков, для hsl — проценты.', 'The browser didn’t recognize {w} as a color. Check the code: a hash sign and six symbols for hex, percent signs for hsl.'),
+      notColor: L3("Brauzer «{w}» degan rangni bilmaydi. Nomni xatosiz yozing, hex uchun panjara va oltita belgi kerak.", "Браузер не знает цвета «{w}». Проверь название, а для hex — решётку и шесть знаков.", "The browser doesn’t know the color “{w}”. Check the name, and for hex a hash sign and six symbols."),
       same: L3("Sarlavha va fon bir xil rangda bo'lsa, sarlavha ko'rinmay qoladi. Boshqa-boshqa rang tanlang.", 'Если заголовок и фон одного цвета, заголовка не видно. Выбери разные цвета.', 'If the heading and the background are the same color, the heading disappears. Pick different colors.')
     },
     hints: [
       L3("Qaysi rang sizga yoqadi? Uni istalgan usulda yozing.", 'Какой цвет тебе нравится? Запиши его любым способом.', 'Which color do you like? Write it any way.'),
-      L3("Masalan, hex uchun panjara va oltita belgi, rgb uchun qavsda uchta son.", 'Например, для hex — решётка и шесть знаков, для rgb — три числа в скобках.', 'For example, a hash sign and six symbols for hex, three numbers in brackets for rgb.'),
+      L3("Masalan, nom bilan: red, gold. Yoki hex: panjara va oltita belgi.", 'Например, названием: red, gold. Или hex: решётка и шесть знаков.', 'For example, a name like red or gold. Or hex: a hash sign and six symbols.'),
       L3("Masalan, sarlavhaga purple, fonga esa lavender yozing. Keyin «Tayyor»ni bosing.", 'Например, впиши purple для заголовка и lavender для фона. Потом нажми «Готово».', 'For example, type purple for the heading and lavender for the background. Then tap “Done”.')
     ],
     ok: L3("Voy, qanday chiroyli! Bu sizning o'z ranglaringiz.", 'Ого, как красиво! Это твои собственные цвета.', 'Wow, how pretty! These are your very own colors.'),
@@ -7013,38 +7050,40 @@ const C = {
     yes: L3("To'g'ri", 'Верно', 'True'),
     no: L3("Noto'g'ri", 'Неверно', 'False'),
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
-    hint1: L3("Gapni bo'laklab o'qing: u hex, rgb yoki hsl haqidami?", 'Прочитай фразу по частям: она про hex, rgb или hsl?', 'Read the sentence piece by piece: is it about hex, rgb or hsl?'),
-    hint2: L3("Dars esingizdami: hex panjara va oltita belgi, rgb uchta son noldan ikki yuz ellik beshgacha, hsl da oxirgi son yorug'lik. Gap shunga mos keladimi?",
-      'Вспомни урок: hex — решётка и шесть знаков, rgb — три числа от нуля до двухсот пятидесяти пяти, в hsl последнее число — светлота. Фраза с этим совпадает?',
-      'Remember the lesson: hex is a hash sign and six symbols, rgb is three numbers from zero to two hundred fifty-five, and in hsl the last number is lightness. Does the sentence match that?'),
+    hint1: L3("Gapni bo'laklab o'qing: u rang nomi, hex yoki rgb haqidami?", 'Прочитай фразу по частям: она про название, hex или rgb?', 'Read the sentence piece by piece: is it about a name, hex or rgb?'),
+    hint2: L3("Dars esingizdami: nom inglizcha so'z, hex panjara va oltita belgi, rgb uchta nur: nol o'chiq degani, ikki yuz ellik besh to'liq degani. Gap shunga mos keladimi?",
+      'Вспомни урок: название — английское слово, hex — решётка и шесть знаков, rgb — три луча, ноль — выключен, двести пятьдесят пять — на полную. Фраза с этим совпадает?',
+      'Remember the lesson: a name is an English word, hex is a hash sign and six symbols, rgb is three lights, zero is off, two hundred fifty-five is full. Does the sentence match that?'),
     items: [
-      { t: L3("FF0000 kodi panjara belgisi bilan qizil rang beradi.", 'Код FF0000 с решёткой даёт красный.', 'The code FF0000 with a hash sign gives red.'), right: true, code: 'hex',
-        why: L3("To'g'ri: birinchi juft FF, ya'ni qizil to'liq degani, qolganlari esa nol.", 'Верно: первая пара FF, то есть красный на полную, остальные нули.', 'Right: the first pair is FF, full red, and the rest are zeros.') },
-      { t: L3("rgb dagi sonlar noldan yuzgacha bo'ladi.", 'Числа в rgb бывают от нуля до ста.', 'The numbers in rgb go from zero to a hundred.'), right: false,
-        why: L3("Aslida rgb dagi sonlar noldan ikki yuz ellik beshgacha bo'ladi.", 'На самом деле числа в rgb — от нуля до двухсот пятидесяти пяти.', 'Actually the numbers in rgb go from zero to two hundred fifty-five.') },
-      { t: L3("Qizil va yashil nur qo'shilsa, sariq rang chiqadi.", 'Красный и зелёный свет вместе дают жёлтый.', 'Red and green light together make yellow.'), right: true, code: 'rgb',
-        why: L3("Shunday: rgb da qizil va yashil to'liq, ko'k nol bo'lsa, sariq chiqadi.", 'Так и есть: в rgb красный и зелёный на полную, синий ноль — получается жёлтый.', 'That’s right: full red and green with zero blue in rgb makes yellow.') },
-      { t: L3("hsl da oxirgi son kattalashsa, rang to'qroq bo'ladi.", 'Если в hsl увеличить последнее число, цвет станет темнее.', 'If the last number in hsl gets bigger, the color gets darker.'), right: false, code: 'hsl',
-        why: L3("Aslida oxirgi son yorug'lik: u kattalashsa, rang ochroq bo'ladi.", 'На самом деле последнее число — светлота: больше — значит светлее.', 'Actually the last number is lightness: bigger means lighter.') }
+      { t: L3("red bu rang nomi, brauzer uni taniydi.", 'red — это название цвета, браузер его знает.', 'red is a color name, and the browser knows it.'), right: true,
+        why: L3("To'g'ri: red qizil rangning inglizcha nomi.", 'Верно: red — английское название красного.', 'Right: red is the English name for that color.') },
+      { t: L3("hex kod panjara belgisi bilan boshlanadi.", 'Hex-код начинается с решётки.', 'A hex code starts with a hash sign.'), right: true,
+        why: L3("Shunday: panjara belgisi, keyin oltita belgi.", 'Так и есть: решётка, потом шесть знаков.', 'That’s right: a hash sign, then six symbols.') },
+      { t: L3("rgb da uchala son nol bo'lsa, rang oq bo'ladi.", 'Если в rgb все три числа — ноль, цвет будет белым.', 'If all three numbers in rgb are zero, the color is white.'), right: false, code: 'rgb',
+        why: L3("Aslida hamma nur o'chiq bo'lsa, qora chiqadi.", 'На самом деле, если все лучи выключены, получается чёрный.', 'Actually, with every light off you get black.') },
+      { t: L3("Qizil va yashil nur birga yonsa, sariq chiqadi.", 'Если вместе зажечь красный и зелёный луч, выйдет жёлтый.', 'If red and green light shine together, you get yellow.'), right: true, code: 'yel',
+        why: L3("Shunday: rgb da qizil va yashil to'liq, ko'k nol bo'lsa, sariq chiqadi.", 'Так и есть: в rgb красный и зелёный на полную, синий ноль — получается жёлтый.', 'That’s right: full red and green with zero blue in rgb makes yellow.') }
     ],
     ok: L3("Hammasi to'g'ri! Siz ranglarni yaxshi bilasiz.", 'Всё верно! Ты отлично разбираешься в цветах.', 'All correct! You know colors really well.')
   },
   s15: {
     eyebrow: L3('Xulosa', 'Вывод', 'Summary'),
     say: [
-      { text: L3("Endi topishmoqqa qaytamiz. Esingizdami, men kodni FA4F28 deb, oldiga hech narsa qo'ymay yozgan edim? Afsuski, men adashibman. hex kod doim panjara belgisi bilan boshlanadi. Usiz brauzer bu oltita belgini rang deb tanimaydi.",
-        'Вернёмся к загадке. Помнишь, я написал код FA4F28 и ничего перед ним не поставил? Увы, я ошибся. Hex-код всегда начинается с решётки. Без неё браузер не узнаёт в шести знаках цвет.',
-        'Back to our riddle. Remember, I wrote the code FA4F28 with nothing in front of it? Sadly, I was wrong. A hex code always starts with a hash sign. Without it the browser doesn’t recognize the six symbols as a color.'), k: 'riddle' },
-      { text: L3("Qarang, bu sizning sahifangiz, o'zingiz tanlagan ranglar bilan!", 'Смотри, это твоя страница в цветах, которые ты выбрал сам!', 'Look, this is your page in the colors you picked yourself!'), k: null },
-      { text: L3("hex kod panjara belgisi va oltita belgidan iborat.", 'Hex-код — это решётка и шесть знаков.', 'A hex code is a hash sign and six symbols.'), k: 'hex' },
-      { text: L3("rgb uchta son: qizil, yashil va ko'k nur.", 'rgb — три числа: красный, зелёный и синий свет.', 'rgb is three numbers: red, green and blue light.'), k: 'rgb' },
-      { text: L3("hsl esa rang doirasidagi joy, rang kuchi va yorug'lik.", 'А hsl — место на круге цветов, насыщенность и светлота.', 'And hsl is the spot on the color wheel, saturation and lightness.'), k: 'hsl' },
-      { text: L3("Tabriklayman! Endi siz istalgan rangni aniq yoza olasiz. Keyingi darsda fon bilan ishlaymiz. Ko'rishguncha!", 'Ура! Теперь ты можешь точно записать любой цвет. На следующем уроке поработаем с фоном. До встречи!', 'Hooray! Now you can write any color exactly. Next time we’ll work with backgrounds. See you!'), k: null }
+      { text: L3("Endi topishmoqqa qaytamiz. Esingizdami, men logotip kodini kichik harflar bilan yozgan edim va rang buziladi deb o'ylagan edim? Qarang: «Bir xil!». Men adashibman. hex kodda katta yoki kichik harf farqi yo'q, rang o'sha-o'sha.",
+        'Вернёмся к загадке. Помнишь, я записал код логотипа маленькими буквами и думал, что цвет сломается? Смотри: «Совпадает!». Я ошибся. В hex-коде неважно, большие буквы или маленькие, цвет тот же самый.',
+        'Back to our riddle. Remember, I wrote the logo code in small letters and thought the color would break? Look: “A match!”. I was wrong. In a hex code big or small letters don’t matter; the color is the same.'), k: 'riddle' },
+      { text: L3("Qarang, bu sizning sahifangiz, o'zingiz tanlagan ranglar bilan!", 'Смотри, это твоя страница в твоих собственных цветах!', 'Look, this is your page in the colors you picked yourself!'), k: null },
+      { text: L3("Rangni nomi bilan yozish mumkin: red, blue, green.", 'Цвет можно записать названием: red, blue, green.', 'A color can be written by name: red, blue, green.'), k: 'name' },
+      { text: L3("Aniq rang uchun hex kod: panjara belgisi va oltita belgi.", 'Для точного цвета — hex-код: решётка и шесть знаков.', 'For an exact color, a hex code: a hash sign and six symbols.'), k: 'hex' },
+      { text: L3("rgb esa uchta nur: qizil, yashil va ko'k.", 'А rgb — три луча: красный, зелёный и синий.', 'And rgb is three lights: red, green and blue.'), k: 'rgb' },
+      { text: L3("Yana bir usul bor, hsl. U bilan keyinroq tanishasiz.", 'Есть ещё один способ, hsl. С ним познакомишься позже.', 'There’s one more way, hsl. You’ll meet it later.'), k: 'hsl' },
+      { text: L3("Tabriklayman! Endi siz istalgan rangni yoza olasiz. Keyingi darsda fon bilan ishlaymiz. Ko'rishguncha!", 'Ура! Теперь ты можешь записать любой цвет. На следующем уроке поработаем с фоном. До встречи!', 'Hooray! Now you can write any color. Next time we’ll work with backgrounds. See you!'), k: null }
     ],
     roles: {
+      name: L3('nom — red, blue', 'название — red, blue', 'name — red, blue'),
       hex: L3('hex — # va 6 belgi', 'hex — # и 6 знаков', 'hex — # and 6 symbols'),
-      rgb: L3('rgb — 3 ta son', 'rgb — 3 числа', 'rgb — 3 numbers'),
-      hsl: L3("hsl — joy, kuch, yorug'lik", 'hsl — место, насыщенность, светлота', 'hsl — spot, saturation, lightness')
+      rgb: L3('rgb — 3 ta nur', 'rgb — 3 луча', 'rgb — 3 lights'),
+      hsl: L3('hsl — keyinroq', 'hsl — позже', 'hsl — later')
     },
     ask: L3('Sahifangizga qarang', 'Посмотри на свою страницу', 'Look at your page')
   }
@@ -7756,9 +7795,9 @@ function GoalCard({ goal, n, total, done, doneText }) {
 }
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayParts: 1, sayGreen: 1, sayBlue: 1, sayMix: 1, sayBlack: 1,
-  sayHue: 1, sayLight: 1, sayDark: 1, sayNoHash: 1, sayFive: 1, sayPct: 1, miss: 1, say2: 1, fine: 1, found: 1, items: 1, right: 1, pairOk: 1, rounds: 1 });
-Object.assign(NOT_SPOKEN_IN, { items: { code: 1 } });
+Object.assign(SPOKEN, { help: 1, hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayBlue: 1, sayLight: 1, sayDark: 1,
+  sayLogo: 1, sayParts: 1, sayYellow: 1, sayBlack: 1, sayHash: 1, sayFive: 1, sayTypo: 1, say2: 1, fine: 1, found: 1, items: 1, right: 1, rounds: 1 });
+Object.assign(NOT_SPOKEN_IN, { items: { code: 1 }, rounds: { right: 1, opts: 1 } });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // РАМКА «B · O'YIN» (тестовый урок 16, 28.10.2026; заказчик: «оставив стилистику
@@ -9241,10 +9280,9 @@ function useKzTransition(screenKey) {
 }
 
 // =============================================================================
-// ЭКРАНЫ УРОКА 3 КУРСА CSS «Цвета» (облик «Редактор», 05.11.2026). Основа кода — урок 2 курса CSS (tools/css2/).
-// Типы заданий — по разделу 3а навыка: s3 вписать hex — s4 найти пару; s6 три числа rgb — s7 какой код;
-// s9 место на круге — s10 светлый или тёмный; s12 поставить «#» — s13 найти сломанное правило; w1 правило целиком;
-// s14 свои цвета; q1 верно или нет. Экрана плана нет.
+// ЭКРАНЫ УРОКА 3 КУРСА CSS «Цвета» (облик «Редактор», 05.11.2026; упрощён 09.11.2026: названия, hex из палитры, rgb).
+// Основа кода — урок 2 курса CSS (tools/css2/). Общие экраны: ShowScreen (показ с помощью 1-2-3 по лампочке),
+// FillScreen (впиши значение), RoundsScreen (выбор по одному). Экрана плана нет.
 // Честный браузер: принимает ли браузер цвет — решает сам Chrome (CSS.supports), один ли это цвет — canvas.
 // Бумаги нет нигде.
 // =============================================================================
@@ -9257,6 +9295,21 @@ const cssOk = (p, v) => {
   if (CSS_PROPS.indexOf(p) < 0 || !v) return false;
   try { return typeof CSS === 'undefined' || !CSS.supports ? true : CSS.supports(p, v); } catch (e) { return false; }
 };
+// Русские (кириллические) буквы вместо латинских (09.11.2026, проход «слабого ученика»): «рх», «р» выглядят как px, p —
+// своя причина раньше любой проверки, иначе ученик видит «верный» ответ и не понимает отказа.
+const CYR_MSG = L3("Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.",
+  'Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.',
+  'Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.');
+const cyrIn = (...vs) => (vs.some((x) => /[\u0400-\u04FF]/.test(String(x == null ? '' : x))) ? CYR_MSG : null);
+// Лишняя «;» в конце значения (ученик помнит, что правило кончается ею) — не ошибка: значение без неё.
+const noSemi = (s) => String(s || '').trim().replace(/;+\s*$/, '').trim();
+// Образец на третьей ступени помощи (09.11.2026, проход «слабого ученика»): третья подсказка звучит словами — без
+// символов, а на экране под кодом печатью стоит готовый ответ; ученик переписывает его сам и жмёт «Проверить».
+const HELP_CODE = L3('Namuna', 'Образец', 'Example');
+function HelpCode({ code }) {
+  const pick = usePick();
+  return <div className="kz-helpcode" translate="no"><span>{pick(HELP_CODE)}</span><code>{code}</code></div>;
+}
 // Селектор: тег, .class или #id (ровно один простой селектор, как в уроке); иное — ничего не выбирает.
 function selOf(raw) {
   const s = String(raw || '').trim();
@@ -9576,70 +9629,74 @@ function S1({ p }) {
   );
 }
 
+
 // =============================================================================
-// S2. hex (показ) — «#FF0000»: «#» и три пары; пары загораются цветами лучей; FF переезжает: зелёный, синий.
+// ОБЩИЕ ЭКРАНЫ (09.11.2026, урок упрощён по просьбе заказчика): показ с помощью 1-2-3, «впиши значение», выбор по одному.
 // =============================================================================
-function S2({ p }) {
+// Помощь на экране-объяснении: ступени 1-2-3 по лампочке (useKzLadder) — 1 на что смотреть, 2 что это значит,
+// 3 пример из жизни. now — открытая ступень с номером «2/3» для панели, next — текст следующей ступени без номера:
+// его читает вслух лампочка.
+function useShowHelp(help) {
+  const lad = useKzLadder(!!(help && help.length));
+  const num = (k) => { const o = {}; LANGS.forEach((l) => { o[l] = k + '/' + help.length + ' · ' + (help[k - 1][l] !== undefined ? help[k - 1][l] : help[k - 1].ru); }); return o; };
+  if (!help || !help.length) return { now: null, next: null };
+  return { now: lad.lv > 0 ? num(Math.min(lad.lv, help.length)) : null, next: help[Math.min(lad.lv, help.length - 1)] };
+}
+// Экран-показ: шаги по очереди; view(n) — { css, val, extra } для шага n: строка CSS, значение для правила и что
+// показать под кодом (полосы лучей, палитра). says — реплики после каждого шага.
+function ShowScreen({ p, c, id, n0, view, says, asks, pose, els }) {
   const pick = usePick();
-  const c = C.s2;
-  const [rec, put] = useRec('s2');
+  const [rec, put] = useRec(id);
   const solved = !!(rec && rec.done);
-  const [n, setN] = useState(solved ? 3 : 0);
-  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
-  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
-    { act: () => { sfx('pop', true); setN(1); } }, { say: [{ text: c.sayParts, pose: 'point' }] },
-    { act: () => { sfx('ok', true); setN(2); } }, { say: [{ text: c.sayGreen, pose: 'wonder' }] },
-    { act: () => { sfx('ok', true); setN(3); } }, { say: [{ text: c.sayBlue, pose: 'point' }] },
-    { say: [{ text: c.done, pose: 'smile' }] },
-    { act: () => put({ done: true }) }
-  ] });
+  const last = says.length;
+  const [n, setN] = useState(solved ? last : (n0 || 0));
+  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: pose || 'explain' }]);
+  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [].concat(...says.map((t, i) => [{ act: () => { sfx(i ? 'ok' : 'pop', true); setN(i + 1); } }, { say: [{ text: t, pose: i % 2 ? 'wonder' : 'point' }] }]),
+    [{ say: [{ text: c.done, pose: 'smile' }] }, { act: () => put({ done: true }) }]) });
   const canGo = useAdvanceGate(solved || demo.done, spoken);
-  const live = !solved && !demo.done;
-  const hex = n === 3 ? '0000FF' : n === 2 ? '00FF00' : 'FF0000';
-  const askText = solved || demo.done ? c.askDone : n >= 1 ? c.askParts : c.askStart;
-  const lit = n === 1 ? 'all' : n === 2 ? 'g' : n === 3 ? 'b' : null;
+  const v = view(n);
+  const askText = solved || demo.done ? asks.done : asks.list[n];
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c3-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c3-s5 c3-pair">
           <div className="kz-col">
-            <KzCode lines={styleWrap([ruleLine('r' + n, ruleParts('h1', 'color', hexVal(hex, n >= 1)), n >= 2 && live ? 'is-new is-read' : n >= 1 ? 'is-read' : '')])} cls="kz-code-sm" />
-            <Mixer rgb={rgbOf('#' + hex)} fmt="hex" lit={live ? lit : null} />
+            <KzCode lines={styleWrap([ruleLine('r' + n, v.parts || ruleParts(v.sel || 'h1', v.prop || 'color', [P('v', 'c3-val', v.val)]), 'is-new is-read')])} cls="kz-code-sm" />
+            {v.extra || null}
           </div>
-          <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { noLogo: true })} rules={cssParse('h1 { color: #' + hex + '; }')} /></Br></div>
+          <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={els || site(pick, { noLogo: true, short: true })} rules={cssParse(v.css)} /></Br></div>
         </div>
       </Sheet>
     </StageB>
   );
 }
-
-// =============================================================================
-// S3. ВПИШИ hex (Fill in the Blanks) — «h1 { color: #▢; }»: синий. Браузер красит то, что вписано;
-// короткая запись «00F» — тоже синий (честно).
-// =============================================================================
-function S3({ p }) {
-  const pick = usePick();
+const ruleTxt = (sel, prop, v) => sel + ' { ' + prop + ': ' + v + '; }';
+const norm = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+const Slot = ({ ty, led, onEnter, label, cls, max, onChange }) => (
+  <span key="g" className={'kz-gap c3-slot ' + (cls || 'c3-slot-col') + (led ? ' kz-gap-led' : '')}>
+    <InlineInput value={ty.val} onChange={onChange || ((x) => ty.setVal(x))} inputRef={ty.inputRef} onEnter={onEnter} placeholder={L3('…', '…', '…')} label={label} max={max || 24} />
+  </span>
+);
+// Задание «впиши значение»: одно поле, проверка issueOf(v) → msg | null.
+function useFill(id, c, issueOf, pose) {
   const log = useLog();
-  const c = C.s3;
-  const [rec, put] = useRec('s3');
+  const [rec, put] = useRec(id);
   const solved = !!(rec && rec.done);
-  const ty = useTagTyping({ max: 8 });
-  const T = useTypeTask('s3', solved);
-  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'explain' }]);
+  const ty = useTagTyping({ max: 24 });
+  const T = useTypeTask(id, solved);
+  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : (pose || 'explain') }]);
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || T.okNow, spoken);
   const led = useIdleLed(canTap && !T.okNow && !ty.val, 0);
-  const w = T.okNow ? '0000FF' : ty.val.replace(/\s+/g, '');
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const v = ty.val.replace(/\s+/g, '');
-    const issue = !v ? c.msgs.empty : /^#/.test(v) ? c.msgs.hash : /[^0-9a-f]/i.test(v) ? c.msgs.chars : v.length !== 6 && v.length !== 3 ? c.msgs.len
-      : colorKey('#' + v) === colorKey('#0000FF') ? null : c.msgs.other;
+    const issue = cyrIn(ty.val) || issueOf(noSemi(ty.val));
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
-      log({ screenId: 's3', type: 'write-hex', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
+      log({ screenId: id, type: 'write-value', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
       sayNow(c.ok, 'cheer');
       return;
     }
@@ -9647,228 +9704,60 @@ function S3({ p }) {
     sfx('soft', true); T.setMsg(issue); sayNow(issue, 'think');
     if (T.st.current.misses >= 2) T.lad.bump();
   };
-  const val = T.okNow ? hexVal('0000FF', true) : [<span key="m" className="c3-val c3-hex"><span className="c3-hx-m">#</span></span>,
-    <span key="g" className={'kz-gap c3-slot c3-slot-hex' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={8} /></span>];
+  return { ty, T, speaker, canTap, canGo, led, check, onChange: (x) => { ty.setVal(x); T.setMsg(null); } };
+}
+// Экран «впиши значение»: «h1 { color: [pre] ▢ [post]; }», страница честно (пустое поле — правила нет); extra — что под
+// кодом (палитра, полосы лучей); keys — кнопки знаков.
+function FillScreen({ p, c, F, want, pre, post, extra, keys, sel }) {
+  const pick = usePick();
+  const v = F.T.okNow ? want : noSemi(F.ty.val);
+  const full = (pre || '') + v + (post || '');
+  const css = v ? ruleTxt(sel || 'h1', 'color', full) : '';
+  const slot = F.T.okNow ? P('v', 'c3-val', want) : <Slot key="slot" ty={F.ty} led={F.led} onEnter={F.check} label={c.ask} onChange={F.onChange} />;
+  const val = [].concat(pre ? [P('pre', 'c3-val', pre)] : [], [slot], post ? [P('post', 'c3-val', post)] : []);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, T.lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
-      <Sheet cls="c3-sheet">
-        <KzAsk text={T.okNow ? c.ok : c.ask} hint={T.okNow ? null : (T.msg || hintAt(T.lad.lv, c.hints))} err={!!T.msg} />
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={F.speaker} done={F.canGo} hint={hintAt(Math.min(3, F.T.lad.lv + 1), c.hints) || c.ask} nav={navOf(p, F.canGo)}>
+      <Sheet cls="c3-sheet c3-fill">
+        <KzAsk text={F.T.okNow ? c.ok : c.ask} hint={F.T.okNow ? null : (F.T.msg || hintAt(F.T.lad.lv, c.hints))} err={!!F.T.msg} />
         <div className="kz-scene c3-s5 c3-pair">
           <div className="kz-col">
-            <KzCode lines={styleWrap([ruleLine('r', ruleParts('h1', 'color', val), T.okNow ? 'is-new' : 'is-hl')])} cls="kz-code-sm" />
-            <Mixer rgb={rgbOf('#' + w)} fmt="hex" lit={T.lad.lv >= 2 && !T.okNow ? 'b' : null} />
+            <KzCode lines={styleWrap([ruleLine('r', ruleParts(sel || 'h1', 'color', val), F.T.okNow ? 'is-new' : 'is-hl')])} cls="kz-code-sm" />{!F.T.okNow && F.T.lad.lv >= 3 ? <HelpCode code={want} /> : null}
+            {extra || null}
           </div>
-          <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { noLogo: true })} rules={cssParse('h1 { color: #' + w + '; }')} /></Br></div>
+          <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { noLogo: true, short: true, hl: !F.T.okNow })} rules={cssParse(css)} /></Br></div>
         </div>
-        {!T.okNow ? <KeyRow keys={['0', 'F']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length >= 6} /> : null}
+        {!F.T.okNow ? <KeyRow keys={keys || []} ty={F.ty} canTap={F.canTap} onCheck={F.check} ready={F.ty.val.trim().length > 1} /> : null}
       </Sheet>
     </StageB>
   );
 }
-
-// =============================================================================
-// S4. НАЙДИ ПАРУ (Matching Pairs) — #FF0000, #00FF00, #000000 ↔ пятна цвета.
-// =============================================================================
-const S4_CODES = ['red', 'green', 'black'];
-const S4_CARDS = ['black', 'red', 'green'];
-const S4_TXT = { red: '#FF0000', green: '#00FF00', black: '#000000' };
-function S4({ p }) {
-  const pick = usePick();
+// Выбор по одному (раунды): список, ключ ответа, объяснение, что сказать ответом.
+function useRounds(id, c, list, keyOf, whyOf, ansOf) {
   const log = useLog();
-  const c = C.s4;
-  const [rec, put] = useRec('s4');
+  const [rec, put] = useRec(id);
   const solved = !!(rec && rec.done);
-  const [paired, setPaired] = useState(solved ? S4_CODES.slice() : []);
-  const [sel, setSel] = useState(null);
-  const [msg, setMsg] = useState(null);
-  const [shake, setShake] = useState(null);
-  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'curious' }]);
-  const canTap = useCanAnswer(spoken);
-  const done = paired.length === 3;
-  const canGo = useAdvanceGate(solved || done, spoken);
-  const lad = useKzLadder(!done);
-  const st = useRef({ tries: 0, misses: 0 });
-  const led = useIdleLed(canTap && !done, paired.length * 10 + (sel ? 1 : 0));
-  const lit = lad.lv >= 3;
-  const nextT = S4_CODES.find((t) => paired.indexOf(t) < 0);
-  const pickCard = (card) => {
-    if (!canTap || done || paired.indexOf(card) >= 0) return;
-    if (!sel) { setMsg(c.pickFirst); return; }
-    st.current.tries += 1;
-    if (sel !== card) {
-      st.current.misses += 1;
-      sfx('soft', true); setShake(card); setTimeout(() => setShake(null), 520);
-      const m = c.why[sel];
-      setMsg(m); sayNow(m, 'think'); setSel(null);
-      if (st.current.misses >= 2) lad.bump();
-      return;
-    }
-    sfx('pop', true); setMsg(null);
-    const nx = paired.concat(card);
-    setPaired(nx); setSel(null);
-    if (nx.length === 3) {
-      put({ done: true });
-      log({ screenId: 's4', type: 'match-hex', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
-      sayNow(c.ok, 'cheer');
-    } else sayNow(c.pairOk[card], 'smile');
-  };
-  return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
-      <Sheet cls="c3-sheet">
-        <KzAsk text={done ? c.ok : sel ? c.askPlace : c.ask} hint={done ? null : (msg || hintAt(lad.lv, c.hints))} err={!!msg} n={done ? null : paired.length + '/3'} />
-        <div className="kz-scene c3-match">
-          <div className="c3-match-col">
-            {S4_CODES.map((t) => {
-              const ok = paired.indexOf(t) >= 0;
-              return (
-                <button key={t} type="button" disabled={!canTap || ok || done} data-t={t} onClick={() => { setSel(sel === t ? null : t); setMsg(null); sfx('tap', true); }}
-                  className={'kz-scrap kz-scrap-code c3-mtag' + (ok ? ' is-ok' : '') + (sel === t ? ' is-sel' : '') + (lit && t === nextT && !sel ? ' is-led' : '')}>
-                  <span translate="no">{S4_TXT[t]}</span><Led on={led && !sel && !ok} />
-                </button>
-              );
-            })}
-          </div>
-          <div className="c3-match-col">
-            {S4_CARDS.map((k) => {
-              const ok = paired.indexOf(k) >= 0;
-              return (
-                <button key={k} type="button" disabled={!canTap || ok || done} data-card={k} onClick={() => pickCard(k)}
-                  className={'c3-mcard c3-swcard' + (ok ? ' is-ok' : '') + (shake === k ? ' kz-a-shake' : '') + (sel && !ok ? ' is-call' : '') + (lit && sel === k ? ' is-led' : '')}>
-                  <span className="c3-sw" style={{ background: S4_TXT[k] }} />
-                  {ok ? <span className="c3-mcard-tag" translate="no">{S4_TXT[k]}</span> : null}
-                  <Led on={led && !!sel && !ok} />
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </Sheet>
-    </StageB>
-  );
-}
-
-// =============================================================================
-// S5. rgb (показ) — «rgb(255, 0, 0)»: три числа; красный + зелёный = жёлтый; все нули — чёрный, 255 — белый.
-// =============================================================================
-function S5({ p }) {
-  const pick = usePick();
-  const c = C.s5;
-  const [rec, put] = useRec('s5');
-  const solved = !!(rec && rec.done);
-  const [n, setN] = useState(solved ? 3 : 0);
-  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
-  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
-    { act: () => { sfx('pop', true); setN(1); } }, { say: [{ text: c.sayParts, pose: 'point' }] },
-    { act: () => { sfx('ok', true); setN(2); } }, { say: [{ text: c.sayMix, pose: 'wonder' }] },
-    { act: () => { sfx('ok', true); setN(3); } }, { say: [{ text: c.sayBlack, pose: 'point' }] },
-    { say: [{ text: c.done, pose: 'smile' }] },
-    { act: () => put({ done: true }) }
-  ] });
-  const canGo = useAdvanceGate(solved || demo.done, spoken);
-  const live = !solved && !demo.done;
-  const v = n === 3 ? [0, 0, 0] : n === 2 ? [255, 255, 0] : [255, 0, 0];
-  const askText = solved || demo.done ? c.askDone : n === 3 ? c.askBlack : n === 2 ? c.askMix : n === 1 ? c.askParts : c.askStart;
-  return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
-      <Sheet cls="c3-sheet">
-        <KzAsk text={askText} />
-        <div className="kz-scene c3-s5 c3-pair">
-          <div className="kz-col">
-            <KzCode lines={styleWrap([ruleLine('r' + n, ruleParts('h1', 'color', rgbVal(v, n >= 1)), n >= 2 && live ? 'is-new is-read' : n >= 1 ? 'is-read' : '')])} cls="kz-code-sm" />
-            <Mixer rgb={v} lit={!live ? null : n === 1 ? 'all' : n === 2 ? ['r', 'g'] : null} extremes={n === 3} />
-          </div>
-          <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { noLogo: true })} rules={cssParse('h1 { color: rgb(' + v.join(', ') + '); }')} /></Br></div>
-        </div>
-      </Sheet>
-    </StageB>
-  );
-}
-
-// =============================================================================
-// S6. СОБЕРИ ЖЁЛТЫЙ (Fill in the Blanks) — «body { background-color: rgb(▢, ▢, ▢); }»: 255, 255, 0. Фон
-// красится тем, что вписано (браузер сам решает, верная ли запись).
-// =============================================================================
-function S6({ p }) {
-  const pick = usePick();
-  const log = useLog();
-  const c = C.s6;
-  const [rec, put] = useRec('s6');
-  const solved = !!(rec && rec.done);
-  const [vals, setVals] = useState(solved ? ['255', '255', '0'] : ['', '', '']);
-  const T = useTypeTask('s6', solved);
-  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'explain' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved || T.okNow, spoken);
-  const led = useIdleLed(canTap && !T.okNow && !vals[0], 0);
-  const nums = vals.map((x) => x.trim());
-  const css = 'body { background-color: rgb(' + nums.join(', ') + '); }';
-  const check = () => {
-    if (!canTap || T.okNow) return;
-    T.st.current.tries += 1;
-    const n = nums.map(Number);
-    const issue = nums.some((x) => !x) ? c.msgs.empty : nums.some((x) => !/^\d+$/.test(x) || Number(x) > 255) ? c.msgs.range
-      : n[0] !== 255 ? c.msgs.red : n[1] !== 255 ? c.msgs.green : n[2] !== 0 ? c.msgs.blue : null;
-    if (!issue) {
-      sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
-      log({ screenId: 's6', type: 'write-rgb', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
-      sayNow(c.ok, 'cheer');
-      return;
-    }
-    T.st.current.misses += 1;
-    sfx('soft', true); T.setMsg(issue); sayNow(issue, 'think');
-    if (T.st.current.misses >= 2) T.lad.bump();
-  };
-  const field = (i) => (T.okNow ? <span key={'v' + i} className={'c3-hx c3-hx-' + 'rgb'[i]}>{nums[i]}</span>
-    : <span key={'f' + i} className={'kz-gap c3-slot c3-slot-num' + (led && i === 0 ? ' kz-gap-led' : '')} data-f={i}><InlineInput value={vals[i]} onChange={(x) => { const nx = vals.slice(); nx[i] = x; setVals(nx); T.setMsg(null); }} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={3} /></span>);
-  const val = [<span key="rg" className="c3-val c3-rgbv is-lit">rgb(</span>, field(0), P('c1', 'c3-val', ','), ' ', field(1), P('c2', 'c3-val', ','), ' ', field(2), P('c3', 'c3-val', ')')];
-  return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, T.lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
-      <Sheet cls="c3-sheet">
-        <KzAsk text={T.okNow ? c.ok : c.ask} hint={T.okNow ? null : (T.msg || hintAt(T.lad.lv, c.hints))} err={!!T.msg} />
-        <div className="kz-scene c3-s5 c3-pair">
-          <div className="kz-col">
-            <KzCode lines={styleWrap(ruleBlock('r', 'body', 'background-color', val, T.okNow ? 'is-new' : 'is-hl'))} cls="kz-code-sm" />
-            <Mixer rgb={cssOk('color', 'rgb(' + nums.join(', ') + ')') ? rgbOf('rgb(' + nums.join(', ') + ')') : null} />
-          </div>
-          <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { noLogo: true })} rules={cssParse(css)} /></Br></div>
-        </div>
-        {!T.okNow ? <CheckRow canTap={canTap} onCheck={check} ready={nums.every((x) => x)} /> : null}
-      </Sheet>
-    </StageB>
-  );
-}
-
-// =============================================================================
-// S7. КАКОЙ КОД? (выбор, по одному) — пятно цвета и три rgb-кода: жёлтый, чёрный, фиолетовый.
-// =============================================================================
-function S7({ p }) {
-  const pick = usePick();
-  const log = useLog();
-  const c = C.s7;
-  const [rec, put] = useRec('s7');
-  const solved = !!(rec && rec.done);
-  const [ii, setIi] = useState(solved ? c.rounds.length - 1 : 0);
+  const [ii, setIi] = useState(solved ? list.length - 1 : 0);
   const [ok, setOk] = useState(solved);
   const [off, setOff] = useState([]);
   const [next, setNext] = useState(false);
   const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.ok, pose: 'smile' }] : [{ text: c.say, pose: 'curious' }]);
   const canTap = useCanAnswer(spoken);
-  const done = ok && ii === c.rounds.length - 1;
+  const done = ok && ii === list.length - 1;
   const canGo = useAdvanceGate(solved || done, spoken);
   const st = useRef({ tries: 0, misses: 0 });
   const led = useIdleLed(canTap && !ok, ii * 10 + off.length);
-  const it = c.rounds[ii];
+  const it = list[ii];
   const ch = useChoiceHints(!ok, ii);
-  const hints = choiceHints(c.hint1, c.hint2, it.why, it.want);
+  const hints = choiceHints(c.hint1, c.hint2, whyOf(it), ansOf(it));
   const choose = (v) => {
     if (!canTap || ok || off.indexOf(v) >= 0) return;
     st.current.tries += 1;
-    if (v !== it.want) { st.current.misses += 1; sfx('soft', true); setOff(off.concat(v)); sayNow(ch.miss(it.why, hints), 'think'); return; }
+    if (v !== keyOf(it)) { st.current.misses += 1; sfx('soft', true); setOff(off.concat(v)); sayNow(ch.miss(whyOf(it), hints), 'think'); return; }
     sfx('ok', true); setOk(true); ch.clear();
-    const line = joinL(c.right, it.why);
-    if (ii === c.rounds.length - 1) {
+    const line = joinL(c.right, whyOf(it));
+    if (ii === list.length - 1) {
       put({ done: true });
-      log({ screenId: 's7', type: 'pick-rgb', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: ch.lad.asked.current, depth: ch.lad.lv });
+      log({ screenId: id, type: 'choose', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: ch.lad.asked.current, depth: ch.lad.lv });
       sayNow(joinL(line, c.ok), 'cheer');
     } else { sayNow(line, 'smile'); setNext(true); }
   };
@@ -9877,18 +9766,23 @@ function S7({ p }) {
     const t = setTimeout(() => { setNext(false); setIi((x) => x + 1); setOk(false); setOff([]); }, reduceMotion() ? 300 : 1100);
     return () => clearTimeout(t);
   }, [next, spoken]); // eslint-disable-line react-hooks/exhaustive-deps
+  return { it, ii, ok, off, done, canTap, canGo, led, ch, hints, choose, speaker };
+}
+// Кнопки выбора для useRounds: v — значения, label(v) — подпись.
+function RoundsScreen({ p, c, R, n, card, opts, label, cls, mono }) {
+  const pick = usePick();
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={R.speaker} done={R.canGo} hint={R.ch.next(R.hints) || c.ask} nav={navOf(p, R.canGo)}>
       <Sheet cls="c3-sheet">
-        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : ch.now(hints)} err={ch.err} n={(ii + 1) + '/' + c.rounds.length} />
-        <div className="kz-scene kz-scene-col kz-q2" key={'i' + ii}>
+        <KzAsk text={R.done ? c.ok : c.ask} hint={R.ok ? null : R.ch.now(R.hints)} err={R.ch.err} n={(R.ii + 1) + '/' + n} />
+        <div className="kz-scene kz-scene-col kz-q2" key={'i' + R.ii}>
           <div className="kz-col">
-            <div className="c3-card c3-swatch-card kz-a-drop"><span className="c3-swatch" style={{ background: it.want }} /></div>
-            <div className="kz-pick c3-opts">
-              {it.opts.map((v) => (
-                <button key={v} type="button" disabled={!canTap || ok || off.indexOf(v) >= 0} onClick={() => choose(v)} data-v={v}
-                  className={'kz-btn c3-tf c3-opt ' + (ok && v === it.want ? 'is-ok' : off.indexOf(v) >= 0 ? 'is-off' : 'is-ghost') + (ch.lad.lv >= 3 && !ok && v === it.want ? ' is-led' : '')}>
-                  <span translate="no">{v}</span><Led on={led && !ok && off.length === 0} />
+            {card}
+            <div className={'kz-pick c3-opts ' + (cls || '')}>
+              {opts.map((v) => (
+                <button key={v} type="button" disabled={!R.canTap || R.ok || R.off.indexOf(v) >= 0} onClick={() => R.choose(v)} data-v={v}
+                  className={'kz-btn c3-tf c3-opt' + (mono ? ' is-mono' : '') + ' ' + (R.ok && v === R.it.right ? 'is-ok' : R.off.indexOf(v) >= 0 ? 'is-off' : 'is-ghost')}>
+                  <span translate="no">{label ? pick(label(v)) : v}</span><Led on={R.led && !R.ok && R.off.length === 0} />
                 </button>
               ))}
             </div>
@@ -9899,265 +9793,139 @@ function S7({ p }) {
   );
 }
 
+// Палитра, как в программе для рисования: квадратики цвета, под каждым — его код. lit — горит код.
+const PAL = ['#FA4F28', '#1E90FF', '#2ECC71', '#8E44AD'];
+const Palette = ({ lit }) => (
+  <div className="c3-pal" aria-hidden="true">
+    {PAL.map((h) => (
+      <span key={h} className={'c3-pal-i' + (lit === h ? ' is-on' : '')}><i style={{ background: h }} /><b translate="no">{h}</b></span>
+    ))}
+  </div>
+);
+// Большое пятно цвета (задания на выбор).
+const Swatch = ({ color }) => <div className="c3-card c3-swatch-card kz-a-drop"><span className="c3-swatch" style={{ background: color }} /></div>;
+const CodeCard = ({ code }) => <KzCode lines={[cssL('c', 0, code, { cls: 'is-hl' })]} cls="kz-code-sm c3-big" />;
+
 // =============================================================================
-// S8. hsl (показ) — круг цветов: место 0 → 120 → 240; светлота 85% — светлее, 25% — темнее.
+// S2. НАЗВАНИЯ ЦВЕТОВ (показ) — red → blue → lightblue (светлый) → darkblue (тёмный).
 // =============================================================================
+const S2_V = ['red', 'blue', 'lightblue', 'darkblue'];
+function S2({ p }) {
+  const c = C.s2;
+  return <ShowScreen p={p} c={c} id="s2" view={(n) => ({ val: S2_V[n], css: ruleTxt('h1', 'color', S2_V[n]) })}
+    says={[c.sayBlue, c.sayLight, c.sayDark]} asks={{ list: [c.askStart, c.askBlue, c.askLight, c.askDark], done: c.askDone }} />;
+}
+// S3. ЗЕЛЁНЫЙ ЗАГОЛОВОК — «h1 { color: ▢; }» → green.
+function S3({ p }) {
+  const c = C.s3;
+  const Fl = useFill('s3', c, (w) => {
+    const v = norm(w);
+    if (!v) return c.msgs.empty;
+    if (!cssOk('color', v)) return c.msgs.notColor;
+    return colorKey(v) === colorKey('green') ? null : c.msgs.other;
+  });
+  return <FillScreen p={p} c={c} F={Fl} want="green" />;
+}
+// S4. КАКОЕ НАЗВАНИЕ? (выбор по одному) — пятно цвета → его название.
+function S4({ p }) {
+  const c = C.s4;
+  const R = useRounds('s4', c, c.rounds, (it) => it.right, (it) => it.why, (it) => it.right);
+  return <RoundsScreen p={p} c={c} R={R} n={c.rounds.length} card={<Swatch color={R.it.right} />} opts={R.it.opts} mono />;
+}
+
+// S5. КОД ИЗ ПАЛИТРЫ (показ) — названий мало; точный оттенок — код из палитры: «#» и шесть знаков.
+// orange (не тот оттенок) → #FA4F28 (как логотип) → #1E90FF → из чего код.
+const S5_V = ['orange', '#FA4F28', '#1E90FF', '#1E90FF'];
+function S5({ p }) {
+  const c = C.s5;
+  return <ShowScreen p={p} c={c} id="s5" els={null}
+    view={(n) => ({ val: S5_V[n], css: ruleTxt('h1', 'color', S5_V[n]), extra: <>{n <= 1 ? <LogoMatch color={S5_V[n]} /> : null}<Palette lit={n >= 1 ? S5_V[n] : null} />{n === 3 ? <div className="c3-hexparts c3-a-in" translate="no"><b>#</b><span>1E90FF</span></div> : null}</> })}
+    says={[c.sayLogo, c.sayBlue, c.sayParts]} asks={{ list: [c.askStart, c.askLogo, c.askBlue, c.askParts], done: c.askDone }} />;
+}
+// S6. ЦВЕТ ИЗ ПАЛИТРЫ — фиолетовый: «h1 { color: ▢; }» → #8E44AD (код под квадратиком).
+function S6({ p }) {
+  const c = C.s6;
+  const Fl = useFill('s6', c, (w) => {
+    const v = w.replace(/\s+/g, '');
+    if (!v) return c.msgs.empty;
+    if (/^[0-9a-f]{6}$/i.test(v)) return c.msgs.noHash;
+    if (!cssOk('color', v)) return /^#/.test(v) ? c.msgs.badHex : c.msgs.notColor;
+    if (colorKey(v) === colorKey('#8E44AD')) return null;
+    return /^#[0-9a-f]{6}$/i.test(v) ? c.msgs.near : c.msgs.other;
+  });
+  return <FillScreen p={p} c={c} F={Fl} want="#8E44AD" extra={<Palette />} keys={['#']} />;
+}
+// S7. ВЕРНЫЙ КОД? (Sort по одному) — запись hex: верная или сломана.
+function S7({ p }) {
+  const c = C.s7;
+  const R = useRounds('s7', c, c.items, (it) => it.right, (it) => it.why, (it) => c.opts[it.right]);
+  return <RoundsScreen p={p} c={c} R={R} n={c.items.length} card={<CodeCard code={'h1 { color: ' + R.it.code + '; }'} />} opts={['ok', 'bad']} label={(v) => c.opts[v]} />;
+}
+
+// S8. rgb (показ) — сколько красного, зелёного и синего света: 255 — много, 0 — нет. Красный → синий → жёлтый
+// (красный + зелёный) → чёрный (всё 0) и белый (всё 255).
+const S8_V = [[255, 0, 0], [0, 0, 255], [255, 255, 0], [0, 0, 0]];
 function S8({ p }) {
-  const pick = usePick();
   const c = C.s8;
-  const [rec, put] = useRec('s8');
-  const solved = !!(rec && rec.done);
-  const [n, setN] = useState(solved ? 3 : 0);
-  const [hue, setHue] = useState(solved ? 240 : 0);
-  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'explain' }]);
-  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
-    { act: () => { sfx('pop', true); setN(1); } }, { say: [{ text: c.sayHue, pose: 'point' }] },
-    { act: () => { sfx('ok', true); setN(2); setHue(240); } }, { say: [{ text: c.sayLight, pose: 'wonder' }] },
-    { act: () => { sfx('ok', true); setN(3); } }, { say: [{ text: c.sayDark, pose: 'point' }] },
-    { say: [{ text: c.done, pose: 'smile' }] },
-    { act: () => put({ done: true }) }
-  ] });
-  useEffect(() => {
-    if (n !== 1) return undefined;
-    const ts = [setTimeout(() => setHue(120), 2600), setTimeout(() => setHue(240), 5200)];
-    return () => ts.forEach(clearTimeout);
-  }, [n]);
-  const canGo = useAdvanceGate(solved || demo.done, spoken);
-  const live = !solved && !demo.done;
-  const light = n === 3 ? 25 : n === 2 ? 85 : 50;
-  const askText = solved || demo.done ? c.askDone : n === 3 ? c.askDark : n === 2 ? c.askLight : n === 1 ? c.askHue : c.askStart;
-  const lit = !live ? null : n === 1 ? 'h' : n >= 2 ? 'l' : null;
-  return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
-      <Sheet cls="c3-sheet">
-        <KzAsk text={askText} />
-        <div className="kz-scene c3-s5 c3-pair">
-          <div className="kz-col">
-            <KzCode lines={styleWrap(ruleBlock('r', 'h1', 'color', hslVal(hue, '100%', light + '%', lit), live && n >= 1 ? 'is-read' : ''))} cls="kz-code-sm" />
-            <Wheel hue={hue} light={light} showLight={n >= 2} />
-          </div>
-          <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { noLogo: true })} rules={cssParse('h1 { color: hsl(' + hue + ', 100%, ' + light + '%); }')} /></Br></div>
-        </div>
-      </Sheet>
-    </StageB>
-  );
+  return <ShowScreen p={p} c={c} id="s8"
+    view={(n) => ({ parts: ruleParts('h1', 'color', rgbVal(S8_V[n])), css: ruleTxt('h1', 'color', 'rgb(' + S8_V[n].join(', ') + ')'), extra: <Mixer rgb={S8_V[n]} lit="all" extremes={n === 3} /> })}
+    says={[c.sayBlue, c.sayYellow, c.sayBlack]} asks={{ list: [c.askStart, c.askBlue, c.askYellow, c.askBlack], done: c.askDone }} />;
 }
-
-// =============================================================================
-// S9. МЕСТО НА КРУГЕ (Fill in the Blanks) — «h1 { color: hsl(▢, 100%, 40%); }»: 120 — зелёный.
-// Метка на круге идёт за вписанным числом.
-// =============================================================================
+// S9. ЯРКО-ЗЕЛЁНЫЙ — «h1 { color: rgb(0, ▢, 0); }» → 255. Полосы лучей идут за числом.
 function S9({ p }) {
-  const pick = usePick();
-  const log = useLog();
   const c = C.s9;
-  const [rec, put] = useRec('s9');
-  const solved = !!(rec && rec.done);
-  const ty = useTagTyping({ max: 4 });
-  const T = useTypeTask('s9', solved);
-  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'explain' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved || T.okNow, spoken);
-  const led = useIdleLed(canTap && !T.okNow && !ty.val, 0);
-  const w = T.okNow ? '120' : ty.val.trim();
-  const hue = /^\d{1,3}$/.test(w) ? Number(w) : null;
-  const check = () => {
-    if (!canTap || T.okNow) return;
-    T.st.current.tries += 1;
-    const v = ty.val.trim();
-    const issue = !v ? c.msgs.empty : /%/.test(v) || !/^\d+$/.test(v) ? c.msgs.num : Number(v) === 120 ? null : c.msgs.other;
-    if (!issue) {
-      sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
-      log({ screenId: 's9', type: 'write-hue', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
-      sayNow(c.ok, 'cheer');
-      return;
-    }
-    T.st.current.misses += 1;
-    sfx('soft', true); T.setMsg(issue); sayNow(issue, 'think');
-    if (T.st.current.misses >= 2) T.lad.bump();
-  };
-  const val = [<span key="o" className="c3-val c3-hslv">hsl(</span>,
-    T.okNow ? <span key="v" className="c3-hs is-cur">120</span> : <span key="g" className={'kz-gap c3-slot c3-slot-num' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={4} /></span>,
-    P('tl', 'c3-val', ', 100%, 40%)')];
-  return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, T.lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
-      <Sheet cls="c3-sheet">
-        <KzAsk text={T.okNow ? c.ok : c.ask} hint={T.okNow ? null : (T.msg || hintAt(T.lad.lv, c.hints))} err={!!T.msg} />
-        <div className="kz-scene c3-s5 c3-pair">
-          <div className="kz-col">
-            <KzCode lines={styleWrap(ruleBlock('r', 'h1', 'color', val, T.okNow ? 'is-new' : 'is-hl'))} cls="kz-code-sm" />
-            <Wheel hue={hue} light={40} />
-          </div>
-          <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { noLogo: true })} rules={cssParse('h1 { color: hsl(' + w + ', 100%, 40%); }')} /></Br></div>
-        </div>
-        {!T.okNow ? <KeyRow keys={[]} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 0} /> : null}
-      </Sheet>
-    </StageB>
-  );
+  const Fl = useFill('s9', c, (w) => {
+    const v = w.replace(/\s+/g, '');
+    if (!v) return c.msgs.empty;
+    if (!/^\d+$/.test(v)) return c.msgs.notNum;
+    const n = parseInt(v, 10);
+    if (n > 255) return c.msgs.big;
+    return n === 255 ? null : c.msgs.small;
+  });
+  const g = Math.max(0, Math.min(255, parseInt(Fl.T.okNow ? '255' : Fl.ty.val, 10) || 0));
+  return <FillScreen p={p} c={c} F={Fl} want="255" pre="rgb(0, " post=", 0)" extra={<Mixer rgb={[0, g, 0]} lit="g" />} />;
 }
-
-// =============================================================================
-// S10. СВЕТЛЫЙ ИЛИ ТЁМНЫЙ (Sort по одному) — hsl-код без пятна; после ответа пятно показывает цвет.
-// =============================================================================
+// S10. КАКОЙ ЦВЕТ? (выбор по одному) — rgb-код → название цвета.
 function S10({ p }) {
-  const pick = usePick();
-  const log = useLog();
   const c = C.s10;
-  const [rec, put] = useRec('s10');
-  const solved = !!(rec && rec.done);
-  const [ii, setIi] = useState(solved ? c.items.length - 1 : 0);
-  const [ok, setOk] = useState(solved);
-  const [off, setOff] = useState(null);
-  const [next, setNext] = useState(false);
-  const [speaker, , spoken, sayNow] = useVoice(solved ? [{ text: c.ok, pose: 'smile' }] : [{ text: c.say, pose: 'curious' }]);
-  const canTap = useCanAnswer(spoken);
-  const done = ok && ii === c.items.length - 1;
-  const canGo = useAdvanceGate(solved || done, spoken);
-  const st = useRef({ tries: 0, misses: 0 });
-  const led = useIdleLed(canTap && !ok, ii * 10 + (off === null ? 0 : 1));
-  const it = c.items[ii];
-  const ch = useChoiceHints(!ok, ii);
-  const hints = choiceHints(c.hint1, c.hint2, it.why, C.site[it.right]);
-  const choose = (v) => {
-    if (!canTap || ok || off === v) return;
-    st.current.tries += 1;
-    if (v !== it.right) { st.current.misses += 1; sfx('soft', true); setOff(v); sayNow(ch.miss(it.why, hints), 'think'); return; }
-    sfx('ok', true); setOk(true); ch.clear();
-    const line = joinL(c.right, it.why);
-    if (ii === c.items.length - 1) {
-      put({ done: true });
-      log({ screenId: 's10', type: 'sort-light', correct: true, firstTry: st.current.misses === 0, attempts: st.current.tries, hints: ch.lad.asked.current, depth: ch.lad.lv });
-      sayNow(joinL(line, c.ok), 'cheer');
-    } else { sayNow(line, 'smile'); setNext(true); }
-  };
-  useEffect(() => {
-    if (!next || !spoken) return undefined;
-    const t = setTimeout(() => { setNext(false); setIi((x) => x + 1); setOk(false); setOff(null); }, reduceMotion() ? 300 : 1100);
-    return () => clearTimeout(t);
-  }, [next, spoken]); // eslint-disable-line react-hooks/exhaustive-deps
-  const btn = (v) => (
-    <button key={v} type="button" disabled={!canTap || ok || off === v} onClick={() => choose(v)} data-v={v}
-      className={'kz-btn c3-tf c3-where ' + (ok && v === it.right ? 'is-ok' : off === v ? 'is-off' : 'is-ghost')}>
-      <i className={'c3-ld c3-ld-' + v} aria-hidden="true" />{pick(C.site[v])}<Led on={led && !ok && off === null} />
-    </button>
-  );
-  return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
-      <Sheet cls="c3-sheet">
-        <KzAsk text={done ? c.ok : c.ask} hint={ok ? null : ch.now(hints)} err={ch.err} n={(ii + 1) + '/' + c.items.length} />
-        <div className="kz-scene kz-scene-col kz-q2" key={'i' + ii}>
-          <div className="kz-col">
-            <div className="c3-card c3-tf-card c3-hslcard kz-a-drop">
-              <span className="c3-card-h">{pick(c.card)}</span>
-              <p className="c3-tf-t c3-code-t" translate="no">{it.code}</p>
-              <span className={'c3-swatch c3-swatch-sm' + (ok ? ' is-on' : '')} style={{ background: ok ? it.code : 'transparent' }} />
-            </div>
-            <div className="kz-pick c3-tf-pick">{btn('light')}{btn('dark')}</div>
-          </div>
-        </div>
-      </Sheet>
-    </StageB>
-  );
+  const R = useRounds('s10', c, c.items, (it) => it.right, (it) => it.why, (it) => it.right);
+  return <RoundsScreen p={p} c={c} R={R} n={c.items.length} card={<CodeCard code={'h1 { color: ' + R.it.code + '; }'} />} opts={['red', 'blue', 'black', 'white']} mono
+    label={(v) => ({ uz: v + ' · ' + C.site.names.uz[v], ru: v + ' · ' + C.site.names.ru[v], en: v })} />;
 }
 
-// =============================================================================
-// S11. КОГДА ЦВЕТ ЛОМАЕТСЯ (показ) — «FA4F28» без «#», «#FA4F2» (пять знаков), «hsl(11, 95, 57)» без «%»:
-// каждый раз браузер выбрасывает цвет, заголовок остаётся чёрным (сравнение — «Не тот»).
-// =============================================================================
-const S11_RULES = ['#FA4F28', 'FA4F28', '#FA4F2', 'hsl(11, 95, 57)'];
+// S11. КОГДА ЦВЕТ ЛОМАЕТСЯ (показ) — «FA4F28» без «#», «#FA4F2» (пять знаков), «gren» (опечатка): каждый раз «Не тот».
+const S11_V = ['#FA4F28', 'FA4F28', '#FA4F2', 'gren'];
 function S11({ p }) {
-  const pick = usePick();
   const c = C.s11;
-  const [rec, put] = useRec('s11');
-  const solved = !!(rec && rec.done);
-  const [n, setN] = useState(solved ? 3 : 0);
-  const [speaker, say, spoken, sayNow] = useVoice(solved ? [{ text: c.done, pose: 'smile' }] : [{ text: c.say, pose: 'curious' }]);
-  const demo = useKzDemo({ run: !solved, spoken, sayNow, say, steps: [
-    { act: () => { sfx('soft', true); setN(1); } }, { say: [{ text: c.sayNoHash, pose: 'think' }] },
-    { act: () => { sfx('soft', true); setN(2); } }, { say: [{ text: c.sayFive, pose: 'wonder' }] },
-    { act: () => { sfx('soft', true); setN(3); } }, { say: [{ text: c.sayPct, pose: 'think' }] },
-    { say: [{ text: c.done, pose: 'smile' }] },
-    { act: () => put({ done: true }) }
-  ] });
-  const canGo = useAdvanceGate(solved || demo.done, spoken);
-  const live = !solved && !demo.done;
-  const v = S11_RULES[n];
-  const css = 'h1 { color: ' + v + '; }';
-  const askText = solved || demo.done ? c.askDone : n === 3 ? c.askPct : n === 2 ? c.askFive : n === 1 ? c.askNoHash : c.askDone;
-  return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
-      <Sheet cls="c3-sheet">
-        <KzAsk text={askText} />
-        <div className="kz-scene c3-s5 c3-pair">
-          <div className="kz-col">
-            <KzCode lines={styleWrap([ruleLine('r' + n, ruleParts('h1', 'color', [P('v', 'c3-val' + (n && live ? ' c3-bad' : ''), v)]), n && live ? 'is-read' : '')])} cls="kz-code-sm" />
-            <LogoMatch color={cssOk('color', v) ? v : ''} />
-          </div>
-          <div className="kz-col"><Br title={pick(C.site.title)} short cls={n ? 'c3-broken' : ''}><CssPage els={site(pick, { hl: n > 0 })} rules={cssParse(css)} /></Br></div>
-        </div>
-      </Sheet>
-    </StageB>
-  );
-}
-
-// =============================================================================
-// S12. ПОСТАВЬ ЗНАК (Debug & Fix) — «h1 { color: ▢FA4F28; }»: ученик пишет «#» (кнопки # и .).
-// =============================================================================
-function S12({ p }) {
   const pick = usePick();
-  const log = useLog();
-  const c = C.s12;
-  const [rec, put] = useRec('s12');
-  const solved = !!(rec && rec.done);
-  const ty = useTagTyping({ max: 3 });
-  const T = useTypeTask('s12', solved);
-  const [speaker, , spoken, sayNow] = useVoice([{ text: solved ? c.ok : c.say, pose: solved ? 'smile' : 'embarrassed' }]);
-  const canTap = useCanAnswer(spoken);
-  const canGo = useAdvanceGate(solved || T.okNow, spoken);
-  const led = useIdleLed(canTap && !T.okNow && !ty.val, 0);
-  const sign = T.okNow ? '#' : ty.val.replace(/\s+/g, '');
-  const check = () => {
-    if (!canTap || T.okNow) return;
-    T.st.current.tries += 1;
-    const w = ty.val.replace(/\s+/g, '');
-    const issue = w === '#' ? null : !w ? c.msgs.empty : w === '.' ? c.msgs.dot : c.msgs.other;
-    if (!issue) {
-      sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
-      log({ screenId: 's12', type: 'fix-hash', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
-      sayNow(c.ok, 'cheer');
-      return;
-    }
-    T.st.current.misses += 1;
-    sfx('soft', true); T.setMsg(issue); sayNow(issue, 'think');
-    if (T.st.current.misses >= 2) T.lad.bump();
-  };
-  const color = sign + 'FA4F28';
-  const val = T.okNow ? hexVal('FA4F28', false) : [<span key="g" className={'kz-gap c3-slot c3-slot-sign' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={3} /></span>,
-    P('v', 'c3-val', 'FA4F28')];
-  return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={hintAt(Math.min(3, T.lad.lv + 1), c.hints) || c.ask} nav={navOf(p, canGo)}>
-      <Sheet cls="c3-sheet">
-        <KzAsk text={T.okNow ? c.ok : c.ask} hint={T.okNow ? null : (T.msg || hintAt(T.lad.lv, c.hints))} err={!!T.msg} />
-        <div className="kz-scene c3-s5 c3-pair">
-          <div className="kz-col">
-            <KzCode lines={styleWrap([ruleLine('r', ruleParts('h1', 'color', val), T.okNow ? 'is-new' : 'is-hl')])} cls="kz-code-sm" />
-            <LogoMatch color={cssOk('color', color) ? color : ''} />
-          </div>
-          <div className="kz-col"><Br title={pick(C.site.title)} short cls={T.okNow ? '' : 'c3-broken'}><CssPage els={site(pick, { hl: !T.okNow })} rules={cssParse('h1 { color: ' + color + '; }')} /></Br></div>
-        </div>
-        {!T.okNow ? <KeyRow keys={['#', '.']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 0} /> : null}
-      </Sheet>
-    </StageB>
-  );
+  return <ShowScreen p={p} c={c} id="s11" pose="curious" els={site(pick, { hl: false, short: true })}
+    view={(n) => ({ val: S11_V[n], css: ruleTxt('h1', 'color', S11_V[n]), extra: <LogoMatch color={S11_V[n]} /> })}
+    says={[c.sayHash, c.sayFive, c.sayTypo]} asks={{ list: [c.askStart, c.askHash, c.askFive, c.askTypo], done: c.askDone }} />;
 }
-
+// S12. ИСПРАВЬ (Debug & Fix) — в поле «FA4F28» без «#»: цвет логотипа не совпал. Ученик ставит «#» (кнопка #).
+function S12({ p }) {
+  const c = C.s12;
+  const Fl = useFill('s12', c, (w) => {
+    const v = w.replace(/\s+/g, '');
+    if (!v) return c.msgs.empty;
+    if (/^[0-9a-f]{6}$/i.test(v)) return c.msgs.noHash;
+    if (!cssOk('color', v)) return c.msgs.bad;
+    return colorKey(v) === colorKey(LOGO) ? null : c.msgs.other;
+  }, 'embarrassed');
+  const set0 = useRef(false);
+  useEffect(() => { if (!set0.current && !Fl.T.okNow && !Fl.ty.val) { set0.current = true; Fl.ty.setVal('FA4F28');
+    // Курсор — в начало: решётку ставят перед кодом, кнопка «#» вставляет знак туда, где курсор (09.11.2026).
+    requestAnimationFrame(() => { const el = Fl.ty.inputRef && Fl.ty.inputRef.current; if (el && el.setSelectionRange) { try { el.setSelectionRange(0, 0); } catch (e) { /* поле без выделения */ } } }); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const shown = Fl.T.okNow ? LOGO : Fl.ty.val.trim();
+  return <FillScreen p={p} c={c} F={Fl} want={LOGO} extra={<LogoMatch color={shown} />} keys={['#']} />;
+}
 // =============================================================================
-// S13. НАЙДИ ОШИБКУ (Error Detective) — три правила. Раунд 1: «#GG0000» (буква G) — заголовок чёрный;
-// раунд 2: «hsl(30, 100, 88)» без «%» — фон белый. Ученик нажимает сломанную строку.
+// S13. НАЙДИ ОШИБКУ (Error Detective) — три правила. Раунд 1: «gren» (опечатка в названии) — абзац не зелёный;
+// раунд 2: «#1E90F» (пять знаков) — заголовок не синий. Ученик нажимает сломанную строку.
 // =============================================================================
 const S13_ROUNDS = [
-  { kind: 'letter', bad: 0, rules: ['h1 { color: #GG0000; }', 'p { color: rgb(0, 128, 0); }', 'body { background-color: #FFE0B2; }'], fixed: 'h1 { color: #CC0000; }' },
-  { kind: 'pct', bad: 2, rules: ['h1 { color: #7C3AED; }', 'p { color: rgb(0, 0, 255); }', 'body { background-color: hsl(30, 100, 88); }'], fixed: 'body { background-color: hsl(30, 100%, 88%); }' }
+  { kind: 'typo', bad: 1, rules: ['h1 { color: #FA4F28; }', 'p { color: gren; }', 'body { background-color: lightyellow; }'], fixed: 'p { color: green; }' },
+  { kind: 'five', bad: 0, rules: ['h1 { color: #1E90F; }', 'p { color: rgb(255, 0, 0); }', 'body { background-color: lavender; }'], fixed: 'h1 { color: #1E90FF; }' }
 ];
 function S13({ p }) {
   const pick = usePick();
@@ -10200,7 +9968,7 @@ function S13({ p }) {
     k: 'l' + j + (found && j === R.bad ? 'f' : ''), d: 0, parts: cssTokens(r),
     cls: 'c3-cssline c3-hline' + (found && j === R.bad ? ' is-new' : '') + (off.indexOf(j) >= 0 ? ' is-off' : ''),
     onTap: found ? null : () => tap(j), disabled: !canTap || found || off.indexOf(j) >= 0,
-    led: !found && ((led && off.length === 0 && j === 0) || (lit && j === R.bad))
+    led: !found && ((led && off.length === 0) || (lit && j === R.bad))
   }));
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
@@ -10216,10 +9984,10 @@ function S13({ p }) {
 }
 
 // =============================================================================
-// W1. ПРАВИЛО ЦЕЛИКОМ (перенос) — «body { background-color: #FFE0B2; }». Браузер честно применяет написанное;
-// проверка называет одну, самую полезную проблему.
+// W1. ПРАВИЛО ЦЕЛИКОМ (перенос) — «p { color: rgb(0, 0, 255); }»: абзац синий через rgb. Браузер честно применяет
+// написанное; проверка называет одну, самую полезную проблему.
 // =============================================================================
-const W1_BG = '#FFE0B2';
+const W1_CSS = 'p { color: rgb(0, 0, 255); }';
 function ruleIssue(t, msgs) {
   const s = String(t || '').trim();
   if (!s) return msgs.empty;
@@ -10227,14 +9995,14 @@ function ruleIssue(t, msgs) {
   if (!m) return msgs.braces;
   const inner = m[2];
   if (inner.indexOf(':') < 0) return msgs.colon;
-  if (m[1].trim().toLowerCase() !== 'body') return msgs.sel;
+  if (m[1].trim().toLowerCase() !== 'p') return msgs.sel;
   const d = inner.split(';').map((x) => x.trim()).filter(Boolean)[0] || '';
   const i = d.indexOf(':');
   const prop = d.slice(0, i).trim().toLowerCase(), val = d.slice(i + 1).trim();
-  if (prop !== 'background-color') return msgs.prop;
-  if (/^[0-9a-f]{6}$/i.test(val)) return msgs.noHash;
+  if (prop !== 'color') return msgs.prop;
+  if (!/^rgb\s*\(/i.test(val)) return cssOk('color', val) && colorKey(val) === colorKey('blue') ? msgs.notRgb : msgs.rgbNeed;
   if (!cssOk(prop, val)) return msgs.notColor;
-  if (colorKey(val) !== colorKey(W1_BG)) return msgs.other;
+  if (colorKey(val) !== colorKey('blue')) return msgs.other;
   return null;
 }
 function W1({ p }) {
@@ -10249,11 +10017,11 @@ function W1({ p }) {
   const canTap = useCanAnswer(spoken);
   const canGo = useAdvanceGate(solved || T.okNow, spoken);
   const led = useIdleLed(canTap && !T.okNow && !ty.val, 0);
-  const css = T.okNow ? 'body { background-color: ' + W1_BG + '; }' : ty.val;
+  const css = T.okNow ? W1_CSS : ty.val;
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const issue = ruleIssue(ty.val, c.msgs);
+    const issue = cyrIn(ty.val) || (ruleIssue(ty.val, c.msgs));
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: 'w1', type: 'write-rule', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -10269,10 +10037,10 @@ function W1({ p }) {
       <Sheet cls="c3-sheet">
         <KzAsk text={T.okNow ? c.ok : c.ask} hint={T.okNow ? null : (T.msg || hintAt(T.lad.lv, c.hints))} err={!!T.msg} />
         <div className="kz-scene c3-s5 c3-pair">
-          <div className="kz-col"><KzCode lines={styleWrap([T.okNow ? cssL('r', 1, css, { cls: 'is-new' }) : ruleLine('r', [<span key="g" className={'kz-gap c3-slot c3-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={48} /></span>], 'is-hl')])} cls="kz-code-sm" /></div>
+          <div className="kz-col"><KzCode lines={styleWrap([T.okNow ? cssL('r', 1, css, { cls: 'is-new' }) : ruleLine('r', [<span key="g" className={'kz-gap c3-slot c3-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={48} /></span>], 'is-hl')])} cls="kz-code-sm" />{!T.okNow && T.lad.lv >= 3 ? <HelpCode code={W1_CSS} /> : null}</div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { noLogo: true })} rules={cssParse(css)} /></Br></div>
         </div>
-        {!T.okNow ? <KeyRow keys={['#', '{', '}', ':', ';']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 8} /> : null}
+        {!T.okNow ? <KeyRow keys={['{', '}', ':', ';', '(', ')', ',']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 8} /> : null}
       </Sheet>
     </StageB>
   );
@@ -10302,7 +10070,7 @@ function S14({ p }) {
   const confirm = () => {
     if (!canTap || !ready || solved) return;
     const bad = !cssOk('color', va) ? va : !cssOk('color', vb) ? vb : null;
-    const issue = bad ? fillL(c.msgs.notColor, { w: bad }) : colorKey(va) === colorKey(vb) ? c.msgs.same : null;
+    const issue = cyrIn(va, vb) || (bad ? fillL(c.msgs.notColor, { w: bad }) : colorKey(va) === colorKey(vb) ? c.msgs.same : null);
     if (issue) { sfx('soft', true); setMsg(issue); sayNow(issue, 'think'); if (lad.lv < 1) lad.bump(); return; }
     sfx('win', true); setMsg(null);
     store.set('myColor', va); store.set('myBg', vb); put({ done: true });
@@ -10379,9 +10147,8 @@ function Q1({ p }) {
     </button>
   );
   const codes = {
-    hex: [cssL('c', 0, 'h1 { color: #FF0000; }')],
-    rgb: [cssL('c', 0, 'h1 { color: rgb(255, 255, 0); }')],
-    hsl: [cssL('c1', 0, 'h1 { color: hsl(210, 100%, 25%); }'), cssL('c2', 0, 'h1 { color: hsl(210, 100%, 85%); }')]
+    rgb: [cssL('c', 0, 'h1 { color: rgb(0, 0, 0); }')],
+    yel: [cssL('c', 0, 'h1 { color: rgb(255, 255, 0); }')]
   };
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
@@ -10403,8 +10170,8 @@ function Q1({ p }) {
 }
 
 // =============================================================================
-// S15. ВЫВОД — разгадка: «FA4F28» без «#» — цвет не узнан, заголовок не тот; своя страница ученика в своих
-// цветах; роли hex / rgb / hsl загораются, пока Коди их называет.
+// S15. ВЫВОД — разгадка: «#fa4f28» маленькими буквами — тот же цвет, «Совпадает!»; своя страница ученика в своих
+// цветах; роли: название, hex, rgb (и hsl — только упомянут), загораются, пока Коди их называет.
 // =============================================================================
 function S15({ p }) {
   const pick = usePick();
@@ -10416,9 +10183,9 @@ function S15({ p }) {
   useEffect(() => { const t = setTimeout(() => celebrate(), 900); return () => clearTimeout(t); }, []);
   const curK = (c.say.find((x) => x.text === speaker.text) || {}).k || null;
   const riddle = curK === 'riddle';
-  const rows = riddle ? ['h1 { color: FA4F28; }'] : ['h1 { color: ' + mc + '; }', 'body { background-color: ' + mb + '; }'];
+  const rows = riddle ? ['h1 { color: #fa4f28; }'] : ['h1 { color: ' + mc + '; }', 'body { background-color: ' + mb + '; }'];
   const els = riddle ? site(pick, { hl: true, short: true }) : [{ t: 'h1', text: pick(UI.mySite), k: 'h' }, { t: 'p', text: pick(C.site.hello), k: 'p1' }];
-  const ex = { hex: '#FA4F28', rgb: 'rgb(250, 79, 40)', hsl: 'hsl(11, 95%, 57%)' };
+  const ex = { name: 'orange', hex: '#FA4F28', rgb: 'rgb(250, 79, 40)', hsl: 'hsl(…)' };
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={c.ask}
       nav={<><BackBtn onPrev={p.prev} /><NextBtn disabled={!canGo} onClick={p.finish} label={UI.finish} /></>}>
@@ -10430,9 +10197,10 @@ function S15({ p }) {
           </div>
           <div className="kz-col kz-s15-side">
             <KzCode lines={rows.map((r, i) => cssL('r' + i, 0, r, { cls: riddle ? 'is-read' : '' }))} cls="kz-code-sm" />
+            {riddle ? <LogoMatch color="#fa4f28" /> : null}
             <div className="kz-roles">
-              {['hex', 'rgb', 'hsl'].map((k) => (
-                <span key={k} className={'kz-role' + (curK === k || (riddle && k === 'hex') ? ' is-on' : '')} style={{ '--c': k === 'hex' ? '#FA4F28' : k === 'rgb' ? '#7C5CFA' : '#0FA38E' }}>
+              {['name', 'hex', 'rgb', 'hsl'].map((k) => (
+                <span key={k} className={'kz-role' + (curK === k || (riddle && k === 'hex') ? ' is-on' : '') + (k === 'hsl' ? ' is-dim' : '')} style={{ '--c': k === 'name' ? '#0FA38E' : k === 'hex' ? '#FA4F28' : k === 'rgb' ? '#7C5CFA' : '#94A3B8' }}>
                   <i aria-hidden="true" />{pick(c.roles[k])}{curK === k ? <code className="c3-role-ex" translate="no">{ex[k]}</code> : null}
                 </span>
               ))}
@@ -14228,4 +13996,38 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
    прячется, пока панель открыта; после «Попробовать ещё» оно возвращается (как в уроке 2). */
 @media (max-width: 759px) and (max-height: 699px) { .b-stage.has-sheet .r28 .c3-sheet .kz-br.c3-br, .r28 .b-stage.has-sheet .c3-sheet .kz-br.c3-br, .b-stage.has-sheet.r28 .c3-sheet .kz-br.c3-br { display: none !important; } }
 @media (max-width: 759px) and (min-height: 700px) { .b-stage.has-sheet .r28 .c3-sheet .kz-br.c3-br, .r28 .b-stage.has-sheet .c3-sheet .kz-br.c3-br, .b-stage.has-sheet.r28 .c3-sheet .kz-br.c3-br { --brh: 13dvh !important; max-height: 13dvh !important; } }
+/* Упрощённый урок (09.11.2026). Палитра, как в программе для рисования: квадратик цвета, под ним — его код. */
+.r28 .c3-pal { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; align-self: stretch; padding: 8px 10px; border-radius: 10px; background: #fff; box-shadow: inset 0 0 0 1px var(--r-edge); }
+.r28 .c3-pal-i { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 6px; border-radius: 8px; transition: background-color .3s, box-shadow .3s; }
+.r28 .c3-pal-i i { display: block; width: 40px; height: 28px; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .15); }
+.r28 .c3-pal-i b { font: 600 12px var(--r-mono); color: var(--r-ink); letter-spacing: .02em; }
+.r28 .c3-pal-i.is-on { background: #FFF4F0; box-shadow: 0 0 0 2px var(--r-pri); }
+/* «#» и шесть знаков — две части hex-кода. */
+.r28 .c3-hexparts { display: inline-flex; align-self: center; align-items: stretch; gap: 6px; font: 700 18px var(--r-mono); }
+.r28 .c3-hexparts b, .r28 .c3-hexparts span { padding: 4px 10px; border-radius: 8px; }
+.r28 .c3-hexparts b { background: #FFE4DC; color: #C2410C; }
+.r28 .c3-hexparts span { background: #EEF2FF; color: #3730A3; }
+.r28 .c3-a-in { animation: c3In .35s ease-out both; }
+@keyframes c3In { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+/* Пятно цвета в выборе названия. */
+.r28 .c3-card.c3-swatch-card { align-self: center; width: min(100%, 320px); }
+.r28 .kz-btn.c3-opt.is-mono span { font-family: var(--r-mono); }
+.r28 .kz-pick.c3-opts:has(> :nth-child(2):last-child), .r28 .kz-pick.c3-opts:has(> :nth-child(4)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.r28 .kz-role.is-dim { opacity: .55; }
+@media (max-width: 640px) {
+  .r28 .kz-pick.c3-opts:has(> :nth-child(4)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .r28 .c3-pal { gap: 4px; padding: 6px; }
+  .r28 .c3-pal-i { padding: 3px 4px; }
+  .r28 .c3-pal-i i { width: 32px; height: 22px; }
+  .r28 .c3-pal-i b { font-size: 11px; }
+  .r28 .c3-swatch { height: clamp(56px, 11dvh, 100px); }
+}
+@media (prefers-reduced-motion: reduce) { .r28 .c3-a-in { animation: none; } }
+
+/* Образец на третьей ступени помощи (09.11.2026). */
+.r28 .kz-helpcode { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; align-self: stretch; padding: 6px 10px; border-radius: 10px; background: #FFF8E1; box-shadow: inset 0 0 0 1.5px #F5C451; animation: kzHelpIn .3s ease-out both; }
+.r28 .kz-helpcode span { font: 600 12px var(--r-font); color: #8A6100; }
+.r28 .kz-helpcode code { font: 600 14px var(--r-mono); color: var(--r-ink); white-space: pre-wrap; word-break: break-word; }
+@keyframes kzHelpIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .r28 .kz-helpcode { animation: none; } }
 `;

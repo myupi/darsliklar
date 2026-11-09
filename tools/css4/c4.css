@@ -686,3 +686,10 @@
    код, кнопки и палитры видны (как в уроках 6–11; проверено 06.11.2026 снимками с панелью ошибки). */
 @media (max-width: 759px) and (min-height: 700px) { .b-stage.has-sheet .r28 .c4-sheet .kz-br.c4-br, .b-stage.has-sheet.r28 .c4-sheet .kz-br.c4-br, .r28 .b-stage.has-sheet .c4-sheet .kz-br.c4-br { --brh: 19dvh !important; max-height: 19dvh !important; } }
 @media (max-width: 759px) and (max-height: 699px) { .b-stage.has-sheet .r28 .c4-sheet .kz-br.c4-br, .b-stage.has-sheet.r28 .c4-sheet .kz-br.c4-br, .r28 .b-stage.has-sheet .c4-sheet .kz-br.c4-br { --brh: 15dvh !important; max-height: 15dvh !important; } }
+
+/* Образец на третьей ступени помощи (09.11.2026). */
+.r28 .kz-helpcode { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; align-self: stretch; padding: 6px 10px; border-radius: 10px; background: #FFF8E1; box-shadow: inset 0 0 0 1.5px #F5C451; animation: kzHelpIn .3s ease-out both; }
+.r28 .kz-helpcode span { font: 600 12px var(--r-font); color: #8A6100; }
+.r28 .kz-helpcode code { font: 600 14px var(--r-mono); color: var(--r-ink); white-space: pre-wrap; word-break: break-word; }
+@keyframes kzHelpIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .r28 .kz-helpcode { animation: none; } }

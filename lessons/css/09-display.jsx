@@ -6774,13 +6774,18 @@ const C = {
   },
   s2: {
     eyebrow: L3("Blok va qator", 'Блок и строка', 'Block and inline'),
+    help: [
+      L3('Inspektorda div va span teglariga qarang: div butun qatorni egallaydi, span esa faqat matn kengligida.', 'Посмотри на div и span в Инспекторе: div занимает всю строку, а span — только ширину своего текста.', 'Look at div and span in the Inspector: div takes the whole line, span only the width of its text.'),
+      L3("Blok elementlar bir-birining ostida turadi, eni kichik bo'lsa ham. Qator elementlari esa yonma-yon turadi, xuddi matndagi so'zlardek.", 'Блочные элементы стоят друг под другом, даже если они узкие. А строчные стоят рядом, как слова в тексте.', 'Block elements stack one under another, even when they’re narrow. Inline elements sit side by side, like words in text.'),
+      L3("Javondagi qutilar ustma-ust turadi, gapdagi so'zlar esa yonma-yon. div quti kabi, span esa so'z kabi.", 'Коробки на полке стоят друг на друге, а слова в предложении — рядом. div — как коробка, span — как слово.', 'Boxes on a shelf stack on top of each other, while words in a sentence sit side by side. div is like a box, span is like a word.')
+    ],
     say: L3("Bu sahifada ikkita yangi teg bor. div, ya'ni bo'sh quti degani: uning ichiga istalgan narsani solish mumkin. span esa matn bo'lagi. Qarang: div teglari butun qatorni egallab, biri ostida biri turibdi. Ular block elementlar. span teglari esa faqat matnicha joy oladi va yonma-yon turadi. Ular inline elementlar.",
       'На этой странице два новых тега. div, то есть пустая коробка: в неё можно положить что угодно. А span — кусочек текста. Смотри: div занимают всю строку и стоят друг под другом. Это блочные элементы, block. А span занимают место только по своему тексту и стоят рядом. Это строчные элементы, inline.',
       'This page has two new tags. div, meaning an empty box: you can put anything inside it. And span is a piece of text. Look: the divs take the whole line and stand one under another. They’re block elements. The spans take only as much room as their text and stand side by side. They’re inline elements.'),
     sayDiv: L3("Endi div tegiga width bir yuz ellik piksel beramiz. Qarang, div torroq bo'ldi, lekin baribir o'z qatorida turibdi: ikkinchisi yoniga chiqmadi. block element doim yangi qatordan boshlanadi.",
       'Теперь дадим div width сто пятьдесят пикселей. Смотри, div стал уже, но всё равно стоит на своей строке: второй не встал рядом. Блочный элемент всегда начинается с новой строки.',
       'Now let’s give the div width one hundred fifty pixels. Look, the div got narrower, but it still stands on its own line: the second one didn’t move next to it. A block element always starts on a new line.'),
-    done: L3("Demak, block elementlar ustma-ust, inline elementlar esa matn kabi yonma-yon turadi.", 'Значит, блочные элементы стоят друг под другом, а строчные — рядом, как текст.', 'So block elements stack one under another, and inline elements sit side by side, like text.'),
+    done: L3("Demak, block elementlar ustma-ust turadi: div, p abzasi va h1 sarlavhasi shunday. inline elementlar esa matndagi so'zlar kabi yonma-yon turadi: span va a havolasi shunday.", "Значит, блочные элементы стоят друг под другом: так стоят div, абзац p и заголовок h1. А строчные стоят рядом, как слова в тексте: так стоят span и ссылка a.", "So block elements stack one under another: that’s div, the paragraph p and the heading h1. And inline elements sit side by side, like words in a text: that’s span and the link a."),
     askStart: L3("Qarang: div — block, span — inline", 'Смотри: div — block, span — inline', 'Watch: div is block, span is inline'),
     askDiv: L3("Qarang: tor div ham o'z qatorida", 'Смотри: узкий div тоже на своей строке', 'Watch: a narrow div is still on its own line'),
     askDone: L3("block — ustma-ust, inline — yonma-yon", 'block — друг под другом, inline — рядом', 'block stacks, inline sits side by side')
@@ -6792,7 +6797,7 @@ const C = {
       'Now it’s your turn. The apple and the pear stand side by side. Let each one stand on its own line, like a box: type the display value for span.'),
     msgs: {
       empty: L3("Qiymatni yozing: bitta so'z.", 'Впиши значение: одно слово.', 'Type the value: one word.'),
-      dash: L3("Ikki so'z chiziqcha bilan, bo'sh joysiz yoziladi: inline, chiziqcha, block.", 'Два слова пишутся через чёрточку, без пробела: inline, чёрточка, block.', 'Two words are joined by a dash, with no space: inline, dash, block.'),
+      dash: L3("inline-block ularni yonma-yon qoldiradi. Bu yerda quti kabi bitta so'z kerak.", "inline-block оставит их рядом. Здесь нужно одно слово — как у коробки div.", "inline-block would keep them side by side. Here you need one word, like the div box."),
       bad: L3("Brauzer bu so'zni tanimadi. display uchun so'zni tekshiring.", 'Браузер не узнал это слово. Проверь слово для display.', 'The browser didn’t recognize that word. Check the word for display.'),
       inline: L3("inline bilan ular hozirgidek yonma-yon qoladi. Har biri yangi qatorda bo'lishi kerak.", 'С inline они так и останутся рядом. А нужно каждый с новой строки.', 'With inline they stay side by side. Each one should be on a new line.'),
       'inline-block': L3("inline-block bilan ham ular yonma-yon qoladi. Quti kabi kerak.", 'С inline-block они тоже остаются рядом. Нужно как у коробки.', 'With inline-block they still sit side by side. We need them like a box.'),
@@ -6814,7 +6819,7 @@ const C = {
       'Now check yourself. I’ll show a tag, and you pick how it normally stands on a page: block or inline?'),
     ask: L3("Bu teg block mi yoki inline mi?", 'Этот тег block или inline?', 'Is this tag block or inline?'),
     card: L3('Teg', 'Тег', 'Tag'),
-    hint1: L3("Bu teg sahifada butun qatorni egallaydimi yoki matn ichida turadimi?", 'Этот тег занимает всю строку или стоит внутри текста?', 'Does this tag take the whole line, or sit inside the text?'),
+    hint1: L3("Eslang: abzas va sarlavha butun qatorni egallaydi, havola va span esa matn ichida turadi.", "Вспомни: абзац и заголовок занимают всю строку, а ссылка и span стоят внутри текста.", "Remember: a paragraph and a heading take the whole line, while a link and span sit inside the text."),
     hint2: L3("Abzas va sarlavhalar butun qatorni egallaydi. span va havola esa matn ichida turadi.", 'Абзац и заголовки занимают всю строку. А span и ссылка стоят внутри текста.', 'Paragraphs and headings take the whole line. span and links sit inside the text.'),
     items: [
       { tag: 'p', right: 'block', why: L3("Abzas butun qatorni egallaydi: block.", 'Абзац занимает всю строку: block.', 'A paragraph takes the whole line: block.') },
@@ -6827,6 +6832,11 @@ const C = {
   },
   s5: {
     eyebrow: L3("display", 'display', 'display'),
+    help: [
+      L3("display qiymatiga va elementlar joylashuviga qarang: qiymat o'zgarsa, ular yonma-yon yoki ustma-ust bo'ladi.", 'Посмотри на значение display и на то, как стоят элементы: меняется значение — они встают рядом или друг под другом.', 'Look at the display value and how the elements are placed: when it changes, they go side by side or one under another.'),
+      L3("display element qanday turishini aytadi: block ustma-ust, inline yonma-yon, none bo'lsa umuman ko'rinmaydi.", 'display говорит, как стоит элемент: block — друг под другом, inline — рядом, none — его совсем не видно.', 'display says how an element sits: block one under another, inline side by side, none means you can’t see it at all.'),
+      L3("Kitoblarni javonga tik qo'yish yoki ustma-ust taxlash mumkin. display ham elementlarni qanday joylashtirishni tanlaydi.", 'Книги можно поставить на полку в ряд или сложить стопкой. display так же выбирает, как разместить элементы.', 'You can stand books in a row on a shelf or stack them in a pile. display chooses how to place elements the same way.')
+    ],
     say: L3("Elementning odatdagi xulqini display xususiyati bilan o'zgartirish mumkin. Qiymatlari: block, inline va none. Keling, ko'ramiz.",
       'Обычное поведение элемента можно поменять свойством display. Значения: block, inline и none. Давай посмотрим.',
       'You can change an element’s normal behavior with the display property. The values are block, inline and none. Let’s see.'),
@@ -6884,6 +6894,11 @@ const C = {
   },
   s8: {
     eyebrow: L3("inline-block", 'inline-block', 'inline-block'),
+    help: [
+      L3("Inspektordagi havolalar o'lchamiga qarang: width yozilganda o'zgarmaydi, inline-block dan keyin esa o'zgaradi.", 'Посмотри на размеры ссылок в Инспекторе: от width они не меняются, а после inline-block меняются.', 'Look at the link sizes in the Inspector: width doesn’t change them, but after inline-block it does.'),
+      L3("Qator elementlari width va height ni olmaydi. inline-block bilan esa element yonma-yon turadi va o'lchamni ham oladi.", 'Строчные элементы не принимают width и height. А с inline-block элемент стоит рядом и принимает размеры.', 'Inline elements don’t accept width and height. With inline-block, an element sits side by side and accepts sizes too.'),
+      L3("Klaviaturadagi tugmalarni eslang: ular yonma-yon turadi, lekin har birining o'z o'lchami bor. inline-block tugmalari ham shunday.", 'Вспомни клавиши на клавиатуре: они стоят рядом, но у каждой свой размер. Кнопки с inline-block — такие же.', 'Think of keyboard keys: they sit side by side, but each has its own size. inline-block buttons are like that.')
+    ],
     say: L3("Endi menyuga qaytamiz. Havolalar inline elementlar. Ularning bir siri bor: inline elementlar width va height ni qabul qilmaydi.",
       'Вернёмся к меню. Ссылки — строчные элементы. У них есть секрет: строчные элементы не принимают width и height.',
       'Back to the menu. Links are inline elements. They have a secret: inline elements don’t accept width and height.'),
@@ -6937,6 +6952,11 @@ const C = {
   },
   s11: {
     eyebrow: L3("Qachon ishlamaydi", 'Когда не работает', 'When it doesn’t work'),
+    help: [
+      L3("Har safar kodga qarang: so'z to'g'ri yozilganmi? Keyin mevalar qanday turganiga qarang.", 'Каждый раз смотри на код: слово написано верно? Потом смотри, как стоят фрукты.', 'Each time, look at the code: is the word spelled right? Then see how the fruits are placed.'),
+      L3("display so'zlari harfma-harf to'g'ri yozilishi kerak. Qator elementiga esa width ishlamaydi, qoida to'g'ri bo'lsa ham.", 'Слова display пишутся буква в букву. А на строчный элемент width не действует, даже если правило верное.', 'display words must be spelled letter for letter. And width doesn’t work on an inline element, even when the rule is correct.'),
+      L3("Parolda bitta harf xato bo'lsa, eshik ochilmaydi. CSS so'zlari ham xuddi shunday aniq yozilishi kerak.", 'Если в пароле ошибиться на одну букву, дверь не откроется. Слова CSS тоже надо писать так же точно.', 'If one letter in a password is wrong, the door won’t open. CSS words must be just as exact.')
+    ],
     say: L3("display da ham xatolar bo'ladi. Keling, uchtasini ko'ramiz. Hozir span teglari block, har biri o'z qatorida.",
       'И с display бывают ошибки. Давай посмотрим на три. Сейчас span — block, каждый на своей строке.',
       'display has mistakes too. Let’s look at three. Right now the spans are block, each on its own line.'),
@@ -7014,7 +7034,7 @@ const C = {
     hints: [
       L3("Qaysi selektor havolalarni tanlaydi? Qaysi qiymat har birini yangi qatordan boshlaydi?", 'Какой селектор выбирает ссылки? Какое значение начинает каждую с новой строки?', 'Which selector picks the links? Which value starts each one on a new line?'),
       L3("Selektor a, xususiyat display, qiymat block.", 'Селектор a, свойство display, значение block.', 'Selector a, property display, value block.'),
-      L3("Shunday yozing: a, figurali qavs, display, ikki nuqta, block, nuqtali vergul va yopuvchi figurali qavs.", 'Напиши так: a, фигурная скобка, display, двоеточие, block, точка с запятой и закрывающая фигурная скобка.', 'Write it like this: a, curly brace, display, colon, block, semicolon and the closing curly brace.')
+      L3("Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", "Образец появился под кодом. Перепиши его в поле и нажми «Проверить».", "An example appeared under the code. Copy it into the field and tap Check.")
     ],
     ok: L3("Ajoyib! Menyu ustma-ust, xuddi telefondagidek. Qoidani o'zingiz yozdingiz.", 'Отлично! Меню стоит столбиком, как на телефоне. Правило написано тобой целиком.', 'Great! The menu stands in a column, just like on a phone. You wrote the whole rule yourself.'),
     ask: L3("Havolalar ustma-ust tursin", 'Поставь ссылки столбиком', 'Stack the links in a column')
@@ -7793,7 +7813,7 @@ function GoalCard({ goal, n, total, done, doneText }) {
 }
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayDiv: 1, sayInline: 1, sayBlock: 1, sayNone: 1,
+Object.assign(SPOKEN, { help: 1, hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayDiv: 1, sayInline: 1, sayBlock: 1, sayNone: 1,
   sayWidth: 1, sayIB: 1, sayHeight: 1, sayTypo: 1, sayDash: 1, okInline: 1, miss: 1, say2: 1, fine: 1, found: 1, items: 1, right: 1, rounds: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1, css: 1, right: 1, tag: 1 }, rounds: { want: 1, opts: 1 } });
 
@@ -9294,6 +9314,21 @@ const cssOk = (p, v) => {
   if (CSS_PROPS.indexOf(p) < 0 || !v) return false;
   try { return typeof CSS === 'undefined' || !CSS.supports ? true : CSS.supports(p, v); } catch (e) { return false; }
 };
+// Русские (кириллические) буквы вместо латинских (09.11.2026, проход «слабого ученика»): «рх», «р» выглядят как px, p —
+// своя причина раньше любой проверки, иначе ученик видит «верный» ответ и не понимает отказа.
+const CYR_MSG = L3("Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.",
+  'Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.',
+  'Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.');
+const cyrIn = (...vs) => (vs.some((x) => /[\u0400-\u04FF]/.test(String(x == null ? '' : x))) ? CYR_MSG : null);
+// Лишняя «;» в конце значения (ученик помнит, что правило кончается ею) — не ошибка: значение без неё.
+const noSemi = (s) => String(s || '').replace(/[“”«»„]/g, '"').trim().replace(/;+\s*$/, '').trim();
+// Образец на третьей ступени помощи (09.11.2026, проход «слабого ученика»): третья подсказка звучит словами — без
+// символов, а на экране под кодом печатью стоит готовый ответ; ученик переписывает его сам и жмёт «Проверить».
+const HELP_CODE = L3('Namuna', 'Образец', 'Example');
+function HelpCode({ code }) {
+  const pick = usePick();
+  return <div className="kz-helpcode" translate="no"><span>{pick(HELP_CODE)}</span><code>{code}</code></div>;
+}
 // Селектор: тег, .class или #id (ровно один простой селектор, как в уроке); иное — ничего не выбирает.
 function selOf(raw) {
   const s = String(raw || '').trim();
@@ -9536,7 +9571,7 @@ function useFill(id, c, issueOf, pose) {
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const issue = issueOf(ty.val.trim());
+    const issue = cyrIn(ty.val) || issueOf(noSemi(ty.val));
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: id, type: 'write-value', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -9557,7 +9592,7 @@ const withBase = (list, page) => cssParse(BASES[page || 'site'].concat(list || [
 // Экран «впиши значение»: правило sel { prop: [pre] ▢ [post]; } (и готовые правила given), страница честно.
 function FillScreen({ p, c, F, sel, prop, want, given, hl, pre, post, propSlot, fixed, page }) {
   const pick = usePick();
-  const v = F.T.okNow ? want : F.ty.val.trim();
+  const v = F.T.okNow ? want : noSemi(F.ty.val);
   const full = [pre, v, post].filter(Boolean).join(' ');
   const rules = (given || []).concat([ruleTxt(sel, [propSlot ? [v || 'x', fixed] : [prop, full]])]);
   const slot = F.T.okNow ? [P('v', propSlot ? 'c9-prop' : 'c9-val', want)] : [<Slot key="slot" ty={F.ty} led={F.led} onEnter={F.check} label={c.ask} onChange={F.onChange} />];
@@ -9569,7 +9604,7 @@ function FillScreen({ p, c, F, sel, prop, want, given, hl, pre, post, propSlot, 
       <Sheet cls="c9-sheet">
         <KzAsk text={F.T.okNow ? c.ok : c.ask} hint={F.T.okNow ? null : (F.T.msg || hintAt(F.T.lad.lv, c.hints))} err={!!F.T.msg} />
         <div className="kz-scene c9-s5 c9-pair">
-          <div className="kz-col"><KzCode lines={styleWrap(baseL(page).concat((given || []).map((r, i) => cssL('g' + i, 1, r, { cls: 'c9-dim' })), [ruleLine('r', partsOf(), F.T.okNow ? 'is-new' : 'is-hl')]))} cls="kz-code-sm" /></div>
+          <div className="kz-col"><KzCode lines={styleWrap(baseL(page).concat((given || []).map((r, i) => cssL('g' + i, 1, r, { cls: 'c9-dim' })), [ruleLine('r', partsOf(), F.T.okNow ? 'is-new' : 'is-hl')]))} cls="kz-code-sm" />{!F.T.okNow && F.T.lad.lv >= 3 ? <HelpCode code={want} /> : null}</div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { hl: hl, page })} rules={withBase(rules, page)} /></Br></div>
         </div>
         {!F.T.okNow ? <KeyRow keys={[]} ty={F.ty} canTap={F.canTap} onCheck={F.check} ready={F.ty.val.trim().length > 1} /> : null}
@@ -9578,6 +9613,15 @@ function FillScreen({ p, c, F, sel, prop, want, given, hl, pre, post, propSlot, 
   );
 }
 // Экран-показ: шаги правил по очереди; steps[n] — список правил, hl[n] — подсвеченный элемент.
+// Помощь на экране-объяснении (заказчик, 09.11.2026): ступени 1-2-3 по лампочке (useKzLadder) — 1 на что смотреть,
+// 2 что это значит, 3 пример из жизни. now — открытая ступень с номером «2/3» для панели, next — текст следующей
+// ступени без номера: его читает вслух лампочка.
+function useShowHelp(help) {
+  const lad = useKzLadder(!!(help && help.length));
+  const num = (k) => { const o = {}; LANGS.forEach((l) => { o[l] = k + '/' + help.length + ' · ' + (help[k - 1][l] !== undefined ? help[k - 1][l] : help[k - 1].ru); }); return o; };
+  if (!help || !help.length) return { now: null, next: null };
+  return { now: lad.lv > 0 ? num(Math.min(lad.lv, help.length)) : null, next: help[Math.min(lad.lv, help.length - 1)] };
+}
 function ShowScreen({ p, c, id, steps, says, asks, pose, hl, page }) {
   const pick = usePick();
   const [rec, put] = useRec(id);
@@ -9592,10 +9636,11 @@ function ShowScreen({ p, c, id, steps, says, asks, pose, hl, page }) {
   const rules = steps[n];
   const askText = solved || demo.done ? asks.done : asks.list[n];
   const prev = n > 0 ? steps[n - 1] : [];
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c9-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c9-s5 c9-pair">
           <div className="kz-col"><KzCode lines={styleWrap(baseL(page).concat(rules.map((r, i) => cssL('r' + i + r, 1, r, { cls: live && prev.indexOf(r) < 0 ? 'is-new is-read' : '' }))))} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { hl: hl ? hl[Math.min(n, hl.length - 1)] : null, page })} rules={withBase(rules, page)} /></Br></div>
@@ -9860,7 +9905,7 @@ function S12({ p }) {
 
 // S13. НАЙДИ ОШИБКУ (Error Detective) — раунд 1: «inlineblock»; раунд 2: width у строчного span (не действует).
 const S13_ROUNDS = [
-  { kind: 'dash', bad: 1, page: 'site', rules: ['h1 { display: none; }', 'a { display: inlineblock; }', 'p { padding: 8px; }'], fixed: 'a { display: inline-block; }' },
+  { kind: 'dash', bad: 1, page: 'site', rules: ['h1 { color: orange; }', 'a { display: inlineblock; }', 'p { padding: 8px; }'], fixed: 'a { display: inline-block; }' },
   { kind: 'inline', bad: 2, page: 'box', rules: ['div { display: inline; }', 'div { padding: 8px; }', 'span { width: 120px; }'], fixed: 'span { display: inline-block; width: 120px; }' }
 ];
 function S13({ p }) {
@@ -9904,7 +9949,7 @@ function S13({ p }) {
     k: 'l' + ri + j + (found && j === R.bad ? 'f' : ''), d: 0, parts: cssTokens(r),
     cls: 'c9-cssline c9-hline' + (found && j === R.bad ? ' is-new' : '') + (off.indexOf(j) >= 0 ? ' is-off' : ''),
     onTap: found ? null : () => tap(j), disabled: !canTap || found || off.indexOf(j) >= 0,
-    led: !found && ((led && off.length === 0 && j === 0) || (lit && j === R.bad))
+    led: !found && ((led && off.length === 0) || (lit && j === R.bad))
   }));
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
@@ -9954,7 +9999,7 @@ function W1({ p }) {
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const issue = ruleIssue(ty.val, c.msgs);
+    const issue = cyrIn(ty.val) || (ruleIssue(ty.val, c.msgs));
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: 'w1', type: 'write-rule', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -9970,7 +10015,7 @@ function W1({ p }) {
       <Sheet cls="c9-sheet c9-w1">
         <KzAsk text={T.okNow ? c.ok : c.ask} hint={T.okNow ? null : (T.msg || hintAt(T.lad.lv, c.hints))} err={!!T.msg} />
         <div className="kz-scene c9-s5 c9-pair">
-          <div className="kz-col"><KzCode lines={styleWrap(baseL().concat([T.okNow ? cssL('r', 1, css, { cls: 'is-new' }) : ruleLine('r', [<span key="g" className={'kz-gap c9-slot c9-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={48} /></span>], 'is-hl')]))} cls="kz-code-sm" /></div>
+          <div className="kz-col"><KzCode lines={styleWrap(baseL().concat([T.okNow ? cssL('r', 1, css, { cls: 'is-new' }) : ruleLine('r', [<span key="g" className={'kz-gap c9-slot c9-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={48} /></span>], 'is-hl')]))} cls="kz-code-sm" />{!T.okNow && T.lad.lv >= 3 ? <HelpCode code={'a { display: block; }'} /> : null}</div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { hl: T.okNow ? null : 'a', noP: true })} rules={withBase([css])} /></Br></div>
         </div>
         {!T.okNow ? <KeyRow keys={['{', '}', ':', ';', '-']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 8} /> : null}
@@ -10006,7 +10051,7 @@ function S14({ p }) {
   };
   const confirm = () => {
     if (!canTap || !ready || solved) return;
-    const issue = issueOf();
+    const issue = cyrIn([].concat(v).join(" ")) || issueOf();
     if (issue) { sfx('soft', true); setMsg(issue); sayNow(issue, 'think'); if (lad.lv < 1) lad.bump(); return; }
     sfx('win', true); setMsg(null);
     OWN.forEach((o, i) => store.set(o.k, v[i])); put({ done: true });
@@ -14127,4 +14172,11 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .r28 .c9-doc .c9-ilist i { font: 600 11px/1.2 var(--r-mono, ui-monospace, monospace); font-style: normal; color: #fff; background: #FA4F28; padding: 2px 5px; border-radius: 3px; }
 /* Урок 9: без масштаба страницы (zoom из урока 7) — «Инспектор» меряет настоящие пиксели, рамки ложатся точно на теги. */
 .r28 .c9-sort .kz-br-page > .c9-doc { zoom: 1 !important; }
+
+/* Образец на третьей ступени помощи (09.11.2026). */
+.r28 .kz-helpcode { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; align-self: stretch; padding: 6px 10px; border-radius: 10px; background: #FFF8E1; box-shadow: inset 0 0 0 1.5px #F5C451; animation: kzHelpIn .3s ease-out both; }
+.r28 .kz-helpcode span { font: 600 12px var(--r-font); color: #8A6100; }
+.r28 .kz-helpcode code { font: 600 14px var(--r-mono); color: var(--r-ink); white-space: pre-wrap; word-break: break-word; }
+@keyframes kzHelpIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .r28 .kz-helpcode { animation: none; } }
 `;

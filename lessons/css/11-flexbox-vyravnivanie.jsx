@@ -6776,6 +6776,11 @@ const C = {
   },
   s2: {
     eyebrow: L3("Asosiy o'q bo'ylab", 'По главной оси', 'Along the main axis'),
+    help: [
+      L3("To'q sariq strelkaga va kartochkalarga qarang: ular strelka bo'ylab boshiga, o'rtasiga yoki oxiriga yig'iladi.", 'Посмотри на оранжевую стрелку и карточки: они собираются вдоль стрелки в начале, в середине или в конце.', 'Look at the orange arrow and the cards: they gather along the arrow at the start, the middle or the end.'),
+      L3("justify-content kartochkalarni asosiy o'q bo'ylab tekislaydi: flex-start boshiga, center o'rtaga, flex-end oxiriga, space-between esa oralarini teng bo'ladi.", 'justify-content выравнивает карточки по главной оси: flex-start — в начало, center — в середину, flex-end — в конец, space-between — делит место между ними поровну.', 'justify-content lines the cards up along the main axis: flex-start at the start, center in the middle, flex-end at the end, space-between shares the space evenly.'),
+      L3("Javonga kitob qo'yayotganda ularni chetga, o'rtaga yoki butun javon bo'ylab teng tarqatib qo'yasiz. justify-content ham shuni qiladi.", 'Ставя книги на полку, ты двигаешь их к краю, в середину или расставляешь ровно по всей полке. justify-content делает то же самое.', 'When you put books on a shelf, you push them to an end, the middle, or spread them evenly. justify-content does the same.')
+    ],
     say: L3("Birinchisi justify-content. U elementlarni asosiy o'q bo'ylab tekislaydi, ya'ni to'q sariq strelka yo'nalishida. Hozir ular odatdagidek boshida turibdi.",
       'Первое — justify-content. Оно выравнивает элементы по главной оси, то есть по оранжевой стрелке. Сейчас они, как обычно, стоят в начале.',
       'The first is justify-content. It aligns elements along the main axis, that is, along the orange arrow. Right now they stand at the start, as usual.'),
@@ -6839,6 +6844,11 @@ const C = {
   },
   s5: {
     eyebrow: L3("Ko'ndalang o'q bo'ylab", 'По поперечной оси', 'Along the cross axis'),
+    help: [
+      L3("Binafsha strelkaga qarang: kartochkalar uning bo'ylab tepaga, o'rtaga yoki pastga ko'chadi.", 'Посмотри на фиолетовую стрелку: карточки двигаются вдоль неё вверх, в середину или вниз.', 'Look at the purple arrow: the cards move along it to the top, the middle or the bottom.'),
+      L3("align-items ko'ndalang o'q bo'ylab tekislaydi. stretch cho'zadi, flex-start boshiga, center o'rtaga, flex-end oxiriga qo'yadi.", 'align-items выравнивает по поперечной оси. stretch растягивает, flex-start ставит в начало, center — в середину, flex-end — в конец.', 'align-items lines things up along the cross axis. stretch stretches, flex-start puts at the start, center in the middle, flex-end at the end.'),
+      L3("Rasmlarni devorga ilganda ularni bir chiziqqa tepadan, o'rtadan yoki pastdan tekislaysiz. align-items ham shunday tekislaydi.", 'Вешая картинки на стену, ты выравниваешь их по верху, по середине или по низу. align-items выравнивает так же.', 'When you hang pictures on a wall, you line them up by the top, the middle or the bottom. align-items lines up the same way.')
+    ],
     say: L3("Ikkinchisi align-items. U elementlarni ko'ndalang o'q bo'ylab tekislaydi, ya'ni binafsha strelka yo'nalishida. Odatda u stretch, ya'ni cho'zish: kartochkalar javonning butun balandligini egallaydi.",
       'Второе — align-items. Оно выравнивает элементы по поперечной оси, то есть по фиолетовой стрелке. Обычно это stretch, то есть растянуть: карточки занимают всю высоту полки.',
       'The second is align-items. It aligns elements along the cross axis, that is, along the purple arrow. By default it’s stretch: the cards take the full height of the shelf.'),
@@ -6860,7 +6870,7 @@ const C = {
     msgs: {
       empty: L3("Qiymatni yozing: ikki so'z, orasida chiziqcha.", 'Впиши значение: два слова через чёрточку.', 'Type the value: two words joined by a dash.'),
       bottom: L3("CSS da past bottom emas. Strelka oxiri kerak: flex va end.", 'В CSS низ — не bottom. Нужен конец стрелки: flex и end.', 'In CSS the bottom isn’t bottom. We need the end of the arrow: flex and end.'),
-      end: L3("Deyarli! Flexbox da oldiga flex va chiziqcha qo'shiladi.", 'Почти! Во Flexbox впереди добавляют flex и чёрточку.', 'Almost! In Flexbox you add flex and a dash in front.'),
+      end: L3("Deyarli! end ham kartochkalarni pastga tushiradi, lekin Flexbox da flex-end yozish qabul qilingan: oldiga flex va chiziqcha qo'shing.", "Почти! end тоже опустит карточки, но во Flexbox принято писать flex-end: допиши впереди flex и чёрточку.", "Almost! end also moves the cards down, but in Flexbox we write flex-end: add flex and a dash in front."),
       bad: L3("Brauzer bu so'zni tanimadi. Ikki so'z chiziqcha bilan, bo'sh joysiz yoziladi.", 'Браузер не узнал это слово. Два слова пишутся через чёрточку, без пробела.', 'The browser didn’t recognize that word. Two words are joined by a dash, with no space.'),
       'flex-start': L3("flex-start bilan ular tepaga chiqdi. Past kerak.", 'С flex-start они поднялись наверх. Нужен низ.', 'With flex-start they went to the top. We need the bottom.'),
       center: L3("center bilan ular o'rtada. Past kerak.", 'С center они посередине. Нужен низ.', 'With center they’re in the middle. We need the bottom.'),
@@ -6896,11 +6906,16 @@ const C = {
   },
   s8: {
     eyebrow: L3("Oraliq va yangi qator", 'Промежутки и перенос', 'Gaps and wrapping'),
+    help: [
+      L3("Kartochkalar orasiga qarang: oldin bo'sh joy paydo bo'ladi, keyin sig'maganlari yangi qatorga o'tadi.", 'Посмотри между карточками: сначала появляются промежутки, потом то, что не поместилось, переходит на новую строку.', 'Look between the cards: first gaps appear, then the ones that didn’t fit move to a new row.'),
+      L3("gap kartochkalar orasiga bir xil bo'sh joy qo'yadi. flex-wrap wrap sig'magan kartochkalarni yangi qatorga o'tkazadi.", 'gap ставит одинаковые промежутки между карточками. flex-wrap wrap переносит то, что не поместилось, на новую строку.', 'gap puts equal gaps between the cards. flex-wrap wrap moves what doesn’t fit onto a new row.'),
+      L3("Daftarda so'z qatorga sig'masa, keyingi qatorga yozasiz. flex-wrap ham kartochkalarni shunday keyingi qatorga o'tkazadi.", 'Если слово не помещается в строку тетради, ты пишешь его на следующей. flex-wrap переносит карточки так же.', 'If a word doesn’t fit on a notebook line, you write it on the next one. flex-wrap moves cards the same way.')
+    ],
     say: L3("Endi javonda oltita kartochka. Ular bir qatorga zo'rg'a sig'yapti va bir-biriga yopishgan.",
       'Теперь на полке шесть карточек. Они еле помещаются в ряд и слиплись.',
       'Now there are six cards on the shelf. They barely fit in a row and are stuck together.'),
     sayGap: L3("gap o'n ikki piksel: kartochkalar orasida teng bo'shliq paydo bo'ldi. gap ya'ni oraliq degani.", 'gap двенадцать пикселей: между карточками появились равные промежутки. gap — то есть промежуток.', 'gap twelve pixels: equal gaps appeared between the cards. gap means a gap.'),
-    sayWidth: L3("Har bir kartochkaga width to'qson piksel. Qarang: ular bir qatorga sig'maydi, shuning uchun flex ularni siqib qo'ydi. Inspektorda kengliklar kichrayib ketdi.", 'Каждой карточке width девяносто пикселей. Смотри: в один ряд они не помещаются, и flex их сжал. В Инспекторе ширины стали меньше.', 'Each card gets width ninety pixels. Look: they don’t fit in one row, so flex squeezed them. The widths in the Inspector got smaller.'),
+    sayWidth: L3("Har bir kartochkaga width to'qson piksel berdik. Lekin oltitasi bitta qatorga sig'maydi, shuning uchun flex ularni o'zi ingichkaroq qildi. Qarang: kartochkalar ingichkalashdi.", "Каждой карточке дали width девяносто пикселей. Но шесть таких в один ряд не влезают — и flex сам сделал их уже. Смотри: карточки стали тоньше.", "We gave each card width ninety pixels. But six of them don’t fit in one row, so flex made them narrower by itself. Look: the cards got thinner."),
     sayWrap: L3("flex-wrap wrap, ya'ni o'rash: sig'magan kartochkalar yangi qatorga o'tdi, siqilish yo'qoldi va kartochkalar yana to'liq kenglikda.", 'flex-wrap wrap, то есть перенос: не поместившиеся карточки перешли на новую строку, сжатие пропало, и карточки снова полной ширины.', 'flex-wrap wrap, meaning wrapping: the cards that didn’t fit moved to a new line, the squeezing is gone, and the cards are full width again.'),
     done: L3("Demak, gap oraliq qo'yadi, flex-wrap wrap esa sig'maganlarni yangi qatorga o'tkazadi.", 'Значит, gap ставит промежутки, а flex-wrap wrap переносит то, что не поместилось, на новую строку.', 'So gap adds gaps, and flex-wrap wrap moves what doesn’t fit to a new line.'),
     askStart: L3("Qarang: oltita kartochka", 'Смотри: шесть карточек', 'Watch: six cards'),
@@ -6952,11 +6967,14 @@ const C = {
   },
   s11: {
     eyebrow: L3("Qachon ishlamaydi", 'Когда не работает', 'When it doesn’t work'),
-    say: L3("Tekislashda ham xatolar bo'ladi. Keling, ikkitasini va bitta tuzoqni ko'ramiz. Hozir kartochkalar o'rtada.",
-      'И в выравнивании бывают ошибки. Давай посмотрим на две ошибки и одну ловушку. Сейчас карточки в середине.',
-      'Alignment has mistakes too. Let’s look at two mistakes and one trap. Right now the cards are in the middle.'),
-    sayCentre: L3("Birinchisi: center britancha yozilgan, oxiri re bilan. CSS faqat amerikacha yozuvni taniydi, kartochkalar boshiga qaytdi.", 'Первая: center написан по-британски, с re на конце. CSS знает только американское написание, карточки вернулись в начало.', 'The first: center is spelled the British way, ending in re. CSS only knows the American spelling, so the cards went back to the start.'),
-    sayMiddle: L3("Ikkinchisi: align-items uchun middle. Bunday qiymat yo'q, kartochkalar yana cho'zildi.", 'Вторая: для align-items написано middle. Такого значения нет, карточки снова растянулись.', 'The second: align-items says middle. There’s no such value, so the cards stretched again.'),
+    help: [
+      L3("Har safar kodga qarang: so'z to'g'ri yozilganmi? Keyin kartochkalar qayerda turganiga qarang.", 'Каждый раз смотри на код: слово написано верно? Потом смотри, где стоят карточки.', 'Each time, look at the code: is the word spelled right? Then see where the cards are.'),
+      L3("Qiymatlar aniq yozilishi kerak: center, flex-end. justify-content esa doim asosiy o'q bo'yicha ishlaydi, u qaysi tomonga qaramasin.", 'Значения пишутся точно: center, flex-end. А justify-content всегда работает по главной оси, куда бы она ни смотрела.', 'Values must be exact: center, flex-end. And justify-content always works along the main axis, whichever way it points.'),
+      L3("Navbatni burab qo'ysangiz ham, oldindagi odam oldinda qoladi. Asosiy o'q burilsa ham, justify-content unga ergashadi.", 'Если развернуть очередь, первый всё равно останется первым. Повернулась главная ось — justify-content следует за ней.', 'Turn a line around and the first person is still first. When the main axis turns, justify-content follows it.')
+    ],
+    say: L3("Tekislashda ham xatolar bo'ladi. Keling, ikkita xatoni va bitta tuzoqni ko'ramiz. Hozir kartochkalar o'rtada: chapdan o'ngga ham, tepadan pastga ham.", "И в выравнивании бывают ошибки. Давай посмотрим на две ошибки и одну ловушку. Сейчас карточки в середине — и слева направо, и сверху вниз.", "Alignment has mistakes too. Let’s look at two mistakes and one trap. Right now the cards are in the middle, both left to right and top to bottom."),
+    sayCentre: L3("Birinchisi: center britancha yozilgan, oxiri re bilan. CSS faqat amerikacha yozuvni taniydi, shuning uchun kartochkalar chap chetga ketdi.", "Первая: center написан по-британски, с re на конце. CSS знает только американское написание — карточки уехали к левому краю.", "The first: center is spelled the British way, ending in re. CSS only knows the American spelling, so the cards moved to the left edge."),
+    sayMiddle: L3("Ikkinchisi: align-items uchun middle yozilgan. Bunday qiymat yo'q, brauzer uni tashlab yubordi, kartochkalar yana butun balandlikka cho'zildi.", "Вторая: для align-items написано middle. Такого значения нет, браузер его выбросил — и карточки опять растянулись на всю высоту.", "The second: align-items says middle. There’s no such value, the browser threw it away, and the cards stretched to the full height again."),
     sayColumn: L3("Tuzoq: column da o'qlar almashadi. justify-content center endi kartochkalarni tepadan pastga o'rtaga qo'ydi, chunki asosiy o'q pastga qaraydi.", 'Ловушка: в column оси меняются. Теперь justify-content center ставит карточки посередине сверху вниз, ведь главная ось смотрит вниз.', 'The trap: in column the axes swap. Now justify-content center centers the cards top to bottom, because the main axis points down.'),
     done: L3("Demak, so'zlar aniq yoziladi: center va flex-end. justify esa doim asosiy o'q bo'ylab ishlaydi, o'q qayoqqa qaramasin.", 'Значит, слова пишутся точно: center и flex-end. А justify всегда работает по главной оси, куда бы она ни смотрела.', 'So the words must be exact: center and flex-end. And justify always works along the main axis, wherever it points.'),
     askStart: L3("Qarang: center", 'Смотри: center', 'Watch: center'),
@@ -7024,12 +7042,13 @@ const C = {
       noFlex: L3("Avval nav flex bo'lishi kerak: display flex.", 'Сначала nav должен быть flex: display flex.', 'First nav has to be flex: display flex.'),
       noJustify: L3("flex bor, havolalar esa hali chapda. Tekislashni ham yozing.", 'flex есть, а ссылки пока слева. Допиши и выравнивание.', 'flex is there, but the links are still on the left. Add the alignment too.'),
       other: L3("Tekislash boshqacha. Havolalar chetlarga tarqalsin, oralarida teng joy.", 'Выравнивание другое. Ссылки должны разойтись по краям с равными промежутками.', 'The alignment is different. The links should spread to the edges with equal space between.'),
-      bad: L3("Brauzer bu so'zni tanimadi. So'zlarni tekshiring.", 'Браузер не узнал это слово. Проверь слова.', 'The browser didn’t recognize that word. Check the words.')
+      bad: L3("Brauzer bu so'zni tanimadi. So'zlarni tekshiring.", 'Браузер не узнал это слово. Проверь слова.', 'The browser didn’t recognize that word. Check the words.'),
+      semi: L3("Ikki xususiyat o'rtasida nuqtali vergul kerak: flex dan keyin nuqtali vergul qo'ying.", "Между двумя свойствами нужна точка с запятой: поставь её после flex.", "Two properties need a semicolon between them: put one after flex.")
     },
     hints: [
       L3("Ikki xususiyat kerak: biri flex qiladi, ikkinchisi asosiy o'q bo'ylab tekislaydi.", 'Нужны два свойства: одно делает flex, второе выравнивает по главной оси.', 'Two properties are needed: one makes it flex, the other aligns along the main axis.'),
       L3("display flex va justify-content space-between.", 'display flex и justify-content space-between.', 'display flex and justify-content space-between.'),
-      L3("Shunday yozing: nav, figurali qavs, display ikki nuqta flex nuqtali vergul, justify-content ikki nuqta space-between nuqtali vergul, yopuvchi figurali qavs.", 'Напиши так: nav, фигурная скобка, display двоеточие flex точка с запятой, justify-content двоеточие space-between точка с запятой, закрывающая фигурная скобка.', 'Write it like this: nav, curly brace, display colon flex semicolon, justify-content colon space-between semicolon, closing curly brace.')
+      L3("Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", "Образец появился под кодом. Перепиши его в поле и нажми «Проверить».", "An example appeared under the code. Copy it into the field and tap Check.")
     ],
     ok: L3("Ajoyib! Menyu butun kenglikka tarqaldi, xuddi haqiqiy saytlardagidek. Qoidani o'zingiz yozdingiz.", 'Отлично! Меню разошлось на всю ширину, как на настоящих сайтах. Правило написано тобой целиком.', 'Great! The menu spreads across the full width, just like on real sites. You wrote the whole rule yourself.'),
     ask: L3("nav: flex va chetlarga tarqatish", 'nav: flex и разнести по краям', 'nav: flex and spread to the edges')
@@ -7806,7 +7825,7 @@ function GoalCard({ goal, n, total, done, doneText }) {
 }
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayCenter: 1, sayEnd: 1, sayBetween: 1,
+Object.assign(SPOKEN, { help: 1, hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayCenter: 1, sayEnd: 1, sayBetween: 1,
   sayStart: 1, sayGap: 1, sayWidth: 1, sayWrap: 1, sayCentre: 1, sayMiddle: 1, sayColumn: 1, miss: 1, say2: 1, fine: 1, found: 1, items: 1, right: 1,
   rounds: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1, css: 1, right: 1, tag: 1, dir: 1 }, rounds: { want: 1, opts: 1 } });
@@ -9307,6 +9326,21 @@ const cssOk = (p, v) => {
   if (CSS_PROPS.indexOf(p) < 0 || !v) return false;
   try { return typeof CSS === 'undefined' || !CSS.supports ? true : CSS.supports(p, v); } catch (e) { return false; }
 };
+// Русские (кириллические) буквы вместо латинских (09.11.2026, проход «слабого ученика»): «рх», «р» выглядят как px, p —
+// своя причина раньше любой проверки, иначе ученик видит «верный» ответ и не понимает отказа.
+const CYR_MSG = L3("Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.",
+  'Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.',
+  'Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.');
+const cyrIn = (...vs) => (vs.some((x) => /[\u0400-\u04FF]/.test(String(x == null ? '' : x))) ? CYR_MSG : null);
+// Лишняя «;» в конце значения (ученик помнит, что правило кончается ею) — не ошибка: значение без неё.
+const noSemi = (s) => String(s || '').replace(/[“”«»„]/g, '"').trim().replace(/;+\s*$/, '').trim();
+// Образец на третьей ступени помощи (09.11.2026, проход «слабого ученика»): третья подсказка звучит словами — без
+// символов, а на экране под кодом печатью стоит готовый ответ; ученик переписывает его сам и жмёт «Проверить».
+const HELP_CODE = L3('Namuna', 'Образец', 'Example');
+function HelpCode({ code }) {
+  const pick = usePick();
+  return <div className="kz-helpcode" translate="no"><span>{pick(HELP_CODE)}</span><code>{code}</code></div>;
+}
 // Селектор: тег, .class или #id (ровно один простой селектор, как в уроке); иное — ничего не выбирает.
 function selOf(raw) {
   const s = String(raw || '').trim();
@@ -9569,7 +9603,7 @@ function useFill(id, c, issueOf, pose) {
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const issue = issueOf(ty.val.trim());
+    const issue = cyrIn(ty.val) || issueOf(noSemi(ty.val));
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: id, type: 'write-value', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -9590,7 +9624,7 @@ const withBase = (list, page) => cssParse((BASES[page] || BASES.shelf).concat(li
 // Экран «впиши значение»: правило sel { prop: [pre] ▢ [post]; } (и готовые правила given), страница честно.
 function FillScreen({ p, c, F, sel, prop, want, given, hl, pre, post, propSlot, fixed, page }) {
   const pick = usePick();
-  const v = F.T.okNow ? want : F.ty.val.trim();
+  const v = F.T.okNow ? want : noSemi(F.ty.val);
   const full = [pre, v, post].filter(Boolean).join(' ');
   const rules = (given || []).concat([ruleTxt(sel, [propSlot ? [v || 'x', fixed] : [prop, full]])]);
   const slot = F.T.okNow ? [P('v', propSlot ? 'c11-prop' : 'c11-val', want)] : [<Slot key="slot" ty={F.ty} led={F.led} onEnter={F.check} label={c.ask} onChange={F.onChange} />];
@@ -9602,7 +9636,7 @@ function FillScreen({ p, c, F, sel, prop, want, given, hl, pre, post, propSlot, 
       <Sheet cls="c11-sheet">
         <KzAsk text={F.T.okNow ? c.ok : c.ask} hint={F.T.okNow ? null : (F.T.msg || hintAt(F.T.lad.lv, c.hints))} err={!!F.T.msg} />
         <div className="kz-scene c11-s5 c11-pair">
-          <div className="kz-col"><KzCode lines={styleWrap(baseL(page).concat((given || []).map((r, i) => cssL('g' + i, 1, r, { cls: 'c11-dim' })), [ruleLine('r', partsOf(), F.T.okNow ? 'is-new' : 'is-hl')]))} cls="kz-code-sm" /></div>
+          <div className="kz-col"><KzCode lines={styleWrap(baseL(page).concat((given || []).map((r, i) => cssL('g' + i, 1, r, { cls: 'c11-dim' })), [ruleLine('r', partsOf(), F.T.okNow ? 'is-new' : 'is-hl')]))} cls="kz-code-sm" />{!F.T.okNow && F.T.lad.lv >= 3 ? <HelpCode code={want} /> : null}</div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { hl: hl, page })} rules={withBase(rules, page)} /></Br></div>
         </div>
         {!F.T.okNow ? <KeyRow keys={[]} ty={F.ty} canTap={F.canTap} onCheck={F.check} ready={F.ty.val.trim().length > 1} /> : null}
@@ -9611,6 +9645,15 @@ function FillScreen({ p, c, F, sel, prop, want, given, hl, pre, post, propSlot, 
   );
 }
 // Экран-показ: шаги правил по очереди; steps[n] — список правил, hl[n] — подсвеченный элемент.
+// Помощь на экране-объяснении (заказчик, 09.11.2026): ступени 1-2-3 по лампочке (useKzLadder) — 1 на что смотреть,
+// 2 что это значит, 3 пример из жизни. now — открытая ступень с номером «2/3» для панели, next — текст следующей
+// ступени без номера: его читает вслух лампочка.
+function useShowHelp(help) {
+  const lad = useKzLadder(!!(help && help.length));
+  const num = (k) => { const o = {}; LANGS.forEach((l) => { o[l] = k + '/' + help.length + ' · ' + (help[k - 1][l] !== undefined ? help[k - 1][l] : help[k - 1].ru); }); return o; };
+  if (!help || !help.length) return { now: null, next: null };
+  return { now: lad.lv > 0 ? num(Math.min(lad.lv, help.length)) : null, next: help[Math.min(lad.lv, help.length - 1)] };
+}
 function ShowScreen({ p, c, id, steps, says, asks, pose, hl, page }) {
   const pick = usePick();
   const [rec, put] = useRec(id);
@@ -9625,10 +9668,11 @@ function ShowScreen({ p, c, id, steps, says, asks, pose, hl, page }) {
   const rules = steps[n];
   const askText = solved || demo.done ? asks.done : asks.list[n];
   const prev = n > 0 ? steps[n - 1] : [];
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c11-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c11-s5 c11-pair">
           <div className="kz-col"><KzCode lines={styleWrap(baseL(page).concat(rules.map((r, i) => cssL('r' + i + r, 1, r, { cls: live && prev.indexOf(r) < 0 ? 'is-new is-read' : '' }))))} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { hl: hl ? hl[Math.min(n, hl.length - 1)] : null, page })} rules={withBase(rules, page)} /></Br></div>
@@ -9931,7 +9975,7 @@ function S10({ p }) {
 function S11({ p }) {
   const c = C.s11;
   return <ShowScreen p={p} c={c} id="s11" pose="curious"
-    steps={[[J('center')], [J('centre')], [A('middle')], ['.javon { flex-direction: column; }', J('center')]]}
+    steps={[[J('center'), A('center')], [J('centre'), A('center')], [J('center'), A('middle')], ['.javon { flex-direction: column; }', J('center')]]}
     says={[c.sayCentre, c.sayMiddle, c.sayColumn]} hl={['javon']}
     asks={{ list: [c.askStart, c.askCentre, c.askMiddle, c.askColumn], done: c.askDone }} />;
 }
@@ -9948,7 +9992,7 @@ function S12({ p }) {
 // S13. НАЙДИ ОШИБКУ (Error Detective) — раунд 1: «centre»; раунд 2: «gap: 20» без px.
 const S13_ROUNDS = [
   { kind: 'centre', bad: 0, rules: [J('centre'), A('center'), 'h1 { color: orange; }'], fixed: J('center') },
-  { kind: 'unit', bad: 2, rules: [J('space-between'), A('flex-end'), '.javon { gap: 20; }'], fixed: '.javon { gap: 20px; }' }
+  { kind: 'unit', bad: 2, rules: [J('center'), A('flex-end'), '.javon { gap: 20; }'], fixed: '.javon { gap: 20px; }' }
 ];
 function S13({ p }) {
   const pick = usePick();
@@ -9991,7 +10035,7 @@ function S13({ p }) {
     k: 'l' + ri + j + (found && j === R.bad ? 'f' : ''), d: 0, parts: cssTokens(r),
     cls: 'c11-cssline c11-hline' + (found && j === R.bad ? ' is-new' : '') + (off.indexOf(j) >= 0 ? ' is-off' : ''),
     onTap: found ? null : () => tap(j), disabled: !canTap || found || off.indexOf(j) >= 0,
-    led: !found && ((led && off.length === 0 && j === 0) || (lit && j === R.bad))
+    led: !found && ((led && off.length === 0) || (lit && j === R.bad))
   }));
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
@@ -10014,6 +10058,10 @@ function ruleIssue(t, msgs) {
   if (!m) return msgs.braces;
   const inner = m[2];
   if (inner.indexOf(':') < 0) return msgs.colon;
+  // Два свойства без «;» между ними или кусок без двоеточия — своя причина (09.11.2026), а не «браузер не узнал слово».
+  const chunks = inner.split(';').map((x) => x.trim()).filter(Boolean);
+  if (chunks.some((d) => (d.match(/:/g) || []).length > 1)) return msgs.semi;
+  if (chunks.some((d) => d.indexOf(':') < 0)) return msgs.colon;
   if (m[1].trim().toLowerCase() !== 'nav') return msgs.sel;
   const decl = {};
   inner.split(';').map((x) => x.trim()).filter(Boolean).forEach((d) => {
@@ -10042,7 +10090,7 @@ function W1({ p }) {
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const issue = ruleIssue(ty.val, c.msgs);
+    const issue = cyrIn(ty.val) || (ruleIssue(ty.val, c.msgs));
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: 'w1', type: 'write-rule', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -10058,7 +10106,7 @@ function W1({ p }) {
       <Sheet cls="c11-sheet c11-w1">
         <KzAsk text={T.okNow ? c.ok : c.ask} hint={T.okNow ? null : (T.msg || hintAt(T.lad.lv, c.hints))} err={!!T.msg} />
         <div className="kz-scene c11-s5 c11-pair">
-          <div className="kz-col"><KzCode lines={styleWrap(baseL('menu').concat([T.okNow ? cssL('r', 1, css, { cls: 'is-new' }) : ruleLine('r', [<span key="g" className={'kz-gap c11-slot c11-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={64} /></span>], 'is-hl')]))} cls="kz-code-sm" /></div>
+          <div className="kz-col"><KzCode lines={styleWrap(baseL('menu').concat([T.okNow ? cssL('r', 1, css, { cls: 'is-new' }) : ruleLine('r', [<span key="g" className={'kz-gap c11-slot c11-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={64} /></span>], 'is-hl')]))} cls="kz-code-sm" />{!T.okNow && T.lad.lv >= 3 ? <HelpCode code={'nav { display: flex; justify-content: space-between; }'} /> : null}</div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { page: 'menu', hl: T.okNow ? null : 'nav' })} rules={withBase([css], 'menu')} /></Br></div>
         </div>
         {!T.okNow ? <KeyRow keys={['{', '}', ':', ';', '-']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 8} /> : null}
@@ -10093,7 +10141,7 @@ function S14({ p }) {
   };
   const confirm = () => {
     if (!canTap || !ready || solved) return;
-    const issue = issueOf();
+    const issue = cyrIn([].concat(v).join(" ")) || issueOf();
     if (issue) { sfx('soft', true); setMsg(issue); sayNow(issue, 'think'); if (lad.lv < 1) lad.bump(); return; }
     sfx('win', true); setMsg(null);
     OWN.forEach((o, i) => store.set(o.k, v[i])); put({ done: true });
@@ -14257,4 +14305,11 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .r28 .kz-s15 .kz-roles > * { padding-top: 4px; padding-bottom: 4px; min-height: 0; }
   .r28 .kz-s15 .kz-next { font-size: 13px; padding-top: 6px; padding-bottom: 6px; }
 }
+
+/* Образец на третьей ступени помощи (09.11.2026). */
+.r28 .kz-helpcode { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; align-self: stretch; padding: 6px 10px; border-radius: 10px; background: #FFF8E1; box-shadow: inset 0 0 0 1.5px #F5C451; animation: kzHelpIn .3s ease-out both; }
+.r28 .kz-helpcode span { font: 600 12px var(--r-font); color: #8A6100; }
+.r28 .kz-helpcode code { font: 600 14px var(--r-mono); color: var(--r-ink); white-space: pre-wrap; word-break: break-word; }
+@keyframes kzHelpIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .r28 .kz-helpcode { animation: none; } }
 `;

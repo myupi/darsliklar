@@ -8,28 +8,29 @@
 // =============================================================================
 // ===== УРОК 3 · «Цвета» · модуль css-m1-osnovy =====
 //
-// ЗАМЫСЕЛ (05.11.2026). Уроки 1–2: правило, style в head, селекторы тег / .class / #id, цвет по имени. Коди
-// хочет заголовок ровно цвета своего логотипа, но среди имён цветов такого нет: orange, tomato, orangered —
-// всё не то. Ученик узнаёт три способа задать любой цвет: hex («#» и шесть знаков — красный, зелёный, синий),
-// rgb (сколько красного, зелёного и синего света, 0–255) и hsl (место на круге цветов, насыщенность, светлота).
-// Загадка (без имён): Коди написал цвет логотипа как FA4F28 без «#» и уверен, что сработает; в выводе признаёт.
+// ЗАМЫСЕЛ (05.11.2026; упрощён 09.11.2026 по просьбе заказчика: «урок Цвета очень сложный»). Уроки 1–2: правило,
+// style в head, селекторы, цвет по имени. Коди хочет заголовок ровно цвета своего логотипа, но среди имён такого нет.
+// Ученик узнаёт три способа записать цвет: название (red, lightblue, darkblue), hex-код из палитры («#» и шесть
+// знаков — код не учат наизусть, его берут из палитры) и rgb (три луча: 0 — выключен, 255 — на полную). hsl только
+// назван в выводе. Загадка (без имён): Коди записал код логотипа маленькими буквами и думает, что цвет сломается;
+// в выводе — «Совпадает!», регистр в hex неважен.
 //
-// ДУГА (17 экранов; минимум 17 — заказчик, 05.11.2026). Типы заданий — по разделу 3а навыка:
-//   s1 крючок (имена цветов не попадают в цвет логотипа → hex попадает; загадка)
-//   hex:   s2 показ (# и три пары: красный, зелёный, синий) · s3 вписать синий hex (Fill) · s4 hex ↔ цвет (Matching)
-//   rgb:   s5 показ (три числа света; красный + зелёный = жёлтый; 0 — чёрный, 255 — белый) · s6 три числа для жёлтого (Fill) · s7 какой rgb у цвета (выбор)
-//   hsl:   s8 показ (круг цветов, светлота) · s9 вписать место на круге для зелёного (Fill) · s10 светлый или тёмный (Sort)
-//   поломки: s11 показ (нет «#», пять знаков, hsl без «%») · s12 поставить «#» (Debug & Fix) · s13 найти сломанное правило (Error Detective)
-//   w1 правило целиком с hex для фона (перенос) · s14 свои цвета в любом формате (Live, «Готово»)
+// ДУГА (17 экранов). Типы заданий — по разделу 3а навыка:
+//   s1 крючок (имена не попадают в цвет логотипа → код попадает; загадка)
+//   названия: s2 показ (red, blue, lightblue, darkblue) · s3 вписать green (Fill) · s4 пятно → название (выбор)
+//   hex:      s5 показ (палитра: код под квадратиком) · s6 переписать код фиолетового из палитры (Fill) · s7 код верный или сломан (Sort)
+//   rgb:      s8 показ (три луча, жёлтый, чёрный и белый) · s9 зелёный луч на полную — 255 (Fill) · s10 rgb → цвет (выбор)
+//   поломки:  s11 показ (нет «#», пять знаков, gren) · s12 поставить «#» (Debug & Fix) · s13 найти сломанное правило
+//   w1 правило целиком: абзац синий через rgb (перенос) · s14 свои цвета любым способом (Live, «Готово»)
 //   итог: q1 верно или нет · s15 вывод с разгадкой.
+//   На объяснениях (s2, s5, s8, s11) лампочка даёт помощь 1-2-3: на что смотреть, что это значит, пример из жизни.
 //
 // ОСОБЫЕ ПРАВИЛА УРОКА
-//   · Честный браузер: принимает ли браузер цвет — решает сам Chrome (CSS.supports); проверено 05.11.2026:
-//     FA4F28 без «#», #FA4F2, #GG0000, hsl(120, 100, 40) — не принимаются; #F00, rgb(255, 0, 0), hsl(…%) — да.
-//   · Узбекский — по /uzbekcha; в речи нет символов и кодов знаками: «panjara belgisi», «foiz».
+//   · Честный браузер: принимает ли браузер цвет — решает сам Chrome (CSS.supports): FA4F28 без «#», #FA4F2, gren —
+//     не принимаются; #fa4f28 — тот же цвет, что #FA4F28.
+//   · Узбекский — по /uzbekcha; в речи нет символов: «panjara belgisi», числа словами.
 //
-// СИСТЕМА СЛОВ: hex kod — шестнадцатеричный код (draft); rang doirasi — круг цветов (draft); to'yinganlik —
-// насыщенность (draft); yorug'lik — светлота (draft); nur — свет. В речи hex, rgb, hsl — по-английски.
+// СИСТЕМА СЛОВ: hex kod — шестнадцатеричный код (draft); palitra — палитра; nur — луч света.
 //
 // ОБРАЩЕНИЕ: UZ — Siz, RU — «ты» без рода, EN — «you».
 // =============================================================================
@@ -110,240 +111,276 @@ const C = {
       'Привет! У меня есть логотип, и цвет у него очень красивый. Хочу, чтобы заголовок на сайте был точно такого же цвета. Я попробовал имена цветов: orange, tomato, orangered. Но смотри, ни один не тот самый. Нажми «Превратить».',
       'Hi! I have a logo, and its color is really nice. I want the heading on my site to be exactly the same color. I tried color names: orange, tomato, orangered. But look, none of them is exactly it. Tap “Transform”.'),
     magic: L3("Mana! Endi sarlavha logotip bilan aynan bir xil rangda.", 'Вот! Теперь заголовок точно такого же цвета, как логотип.', 'There! Now the heading is exactly the logo’s color.'),
-    magicP: L3("Rang nomi o'rniga men maxsus kod yozdim. U bilan dunyodagi istalgan rangni aniq berish mumkin.", 'Вместо имени цвета я написал особый код. С ним можно точно задать любой цвет на свете.', 'Instead of a color name I wrote a special code. With it you can give any color in the world exactly.'),
-    done: L3("Bugun istalgan rangni aniq yozishni o'rganasiz: hex, rgb va hsl bilan. Lekin oldin kichik topishmoq. Men logotip rangini yozganda kodni FA4F28 deb yozdim, oldiga hech narsa qo'ymadim. Menimcha, bu ham ishlaydi. Siz nima deb o'ylaysiz, men haqmanmi? Javobni dars oxirida birga topamiz.",
-      'Сегодня ты научишься точно записывать любой цвет: через hex, rgb и hsl. Но сначала маленькая загадка. Когда я записывал цвет логотипа, я написал код FA4F28 и ничего перед ним не поставил. По-моему, это тоже сработает. Как думаешь, я прав? Ответ найдём вместе в конце урока.',
-      'Today you’ll learn to write any color exactly: with hex, rgb and hsl. But first, a little riddle. When I wrote the logo color, I wrote the code FA4F28 and put nothing in front of it. I think that works too. What do you think, am I right? We’ll find the answer together at the end of the lesson.'),
+    magicP: L3("Rang nomi o'rniga men rang kodini yozdim. Kod bilan istalgan rangni aniq berish mumkin.", 'Вместо имени цвета я написал код цвета. Кодом можно точно задать любой цвет.', 'Instead of a color name I wrote a color code. With a code you can give any color exactly.'),
+    done: L3("Bugun rangni uch xil yozishni o'rganasiz: nomi bilan, hex kod bilan va rgb bilan. Lekin oldin kichik topishmoq. Men bir marta logotip kodini kichik harflar bilan yozib qo'ydim. Menimcha, endi rang boshqacha chiqadi yoki umuman ishlamaydi. Siz nima deb o'ylaysiz? Javobni dars oxirida birga topamiz.",
+      'Сегодня ты научишься записывать цвет тремя способами: названием, hex-кодом и через rgb. Но сначала маленькая загадка. Однажды я записал код логотипа маленькими буквами. По-моему, теперь цвет получится другой или вообще не сработает. Как думаешь? Ответ найдём вместе в конце урока.',
+      'Today you’ll learn three ways to write a color: by name, with a hex code and with rgb. But first, a little riddle. Once I wrote the logo code in small letters. I think now the color will come out different, or not work at all. What do you think? We’ll find the answer together at the end of the lesson.'),
     ask: L3('«Aylantirish» tugmasini bosing', 'Нажми «Превратить»', 'Tap “Transform”'),
     askDone: L3("Kod bilan rang aynan tushdi", 'Кодом цвет попал точно', 'The code hit the color exactly')
   },
   s2: {
-    eyebrow: L3('hex kod', 'hex-код', 'The hex code'),
-    say: L3("Keling, kodni bo'laklarga ajratamiz. Har bir rang uch xil nurdan yig'iladi: qizil, yashil va ko'k. hex kod shu uchta nurni yozadi.", 'Давай разберём код по частям. Каждый цвет собирается из трёх лучей света: красного, зелёного и синего. Hex-код записывает эти три луча.', 'Let’s take the code apart. Every color is made of three kinds of light: red, green and blue. A hex code writes those three.'),
-    sayParts: L3("Boshida panjara belgisi turadi, keyin oltita belgi: ikkitasi qizil uchun, ikkitasi yashil uchun, ikkitasi ko'k uchun. Nol nol degani nur umuman yo'q, FF esa to'liq. Bu yerda qizil to'liq, qolganlari yo'q, shuning uchun sarlavha qizil.",
-      'В начале стоит решётка, потом шесть знаков: два для красного, два для зелёного, два для синего. Ноль-ноль значит света нет совсем, а FF — на полную. Здесь красный на полную, остальных нет, поэтому заголовок красный.',
-      'First comes the hash sign, then six symbols: two for red, two for green, two for blue. Zero zero means no light at all, and FF means full. Here red is full and the others are off, so the heading is red.'),
-    sayGreen: L3("Endi FF ni o'rtadagi juftga ko'chiramiz. Yashil to'liq, sarlavha yashil bo'ldi.", 'Теперь переносим FF в среднюю пару. Зелёный на полную — заголовок зелёный.', 'Now we move FF to the middle pair. Green is full, so the heading is green.'),
-    sayBlue: L3("Oxirgi juftda FF bo'lsa, ko'k to'liq bo'ladi.", 'FF в последней паре — синий на полную.', 'FF in the last pair makes blue full.'),
-    done: L3("Demak, hex kod panjara belgisi va oltita belgi: qizil, yashil va ko'k uchun ikkitadan. Belgilar 0 dan 9 gacha raqamlar va A dan F gacha harflar bo'ladi.", 'Значит, hex-код — это решётка и шесть знаков: по два на красный, зелёный и синий. Знаки — цифры от 0 до 9 и буквы от A до F.', 'So a hex code is a hash sign and six symbols: two each for red, green and blue. The symbols are digits 0 to 9 and letters A to F.'),
-    askStart: L3("Qarang: rang uch nurdan", 'Смотри: цвет из трёх лучей', 'Watch: a color from three lights'),
-    askParts: L3("Qarang: qizil, yashil, ko'k juftlari", 'Смотри: пары красного, зелёного, синего', 'Watch: the red, green and blue pairs'),
-    askDone: L3("hex: panjara va oltita belgi", 'hex: решётка и шесть знаков', 'hex: a hash sign and six symbols')
+    eyebrow: L3('Rang nomlari', 'Названия цветов', 'Color names'),
+    say: L3("Eng oson usuldan boshlaymiz: rangning nomi. color xususiyatiga inglizcha nom yozamiz. Hozir sarlavhada red, ya'ni qizil degani.",
+      'Начнём с самого простого способа: названия цвета. В свойство color пишем название по-английски. Сейчас у заголовка red, то есть красный.',
+      'Let’s start with the easiest way: the color’s name. We write an English name into the color property. Right now the heading has red.'),
+    sayBlue: L3("Nomni blue ga almashtiramiz. Brauzer bu so'zni taniydi va sarlavhani ko'k qiladi.", 'Меняем название на blue. Браузер знает это слово и красит заголовок в синий.', 'We change the name to blue. The browser knows this word and paints the heading blue.'),
+    sayLight: L3("Oldiga light so'zini qo'shsak, lightblue bo'ladi: och ko'k.", 'Добавим впереди light — получится lightblue, светло-синий.', 'Add light in front and we get lightblue, a light blue.'),
+    sayDark: L3("dark so'zi esa rangni to'q qiladi: darkblue, to'q ko'k.", 'А слово dark делает цвет тёмным: darkblue, тёмно-синий.', 'And the word dark makes it dark: darkblue.'),
+    done: L3("Demak, rangni nomi bilan yozish mumkin: red, blue, green. Brauzer yuzdan ortiq nomni biladi. Faqat nom inglizcha va bitta so'z bo'lib, bo'sh joysiz yoziladi.",
+      'Значит, цвет можно записать названием: red, blue, green. Браузер знает больше ста названий. Только название пишется по-английски и одним словом, без пробелов.',
+      'So a color can be written by name: red, blue, green. The browser knows more than a hundred names. The name is just in English and written as one word, without spaces.'),
+    askStart: L3("Qarang: red — qizil", 'Смотри: red — красный', 'Watch: red'),
+    askBlue: L3("blue — ko'k", 'blue — синий', 'blue'),
+    askLight: L3("lightblue — och ko'k", 'lightblue — светло-синий', 'lightblue — light blue'),
+    askDark: L3("darkblue — to'q ko'k", 'darkblue — тёмно-синий', 'darkblue — dark blue'),
+    askDone: L3("Rangni nomi bilan yozsa bo'ladi", 'Цвет можно записать названием', 'A color can be written by name'),
+    help: [
+      L3("Kodda faqat bitta so'z o'zgaradi: color dan keyingi rang nomi. Sarlavha shu so'z bilan birga o'zgaradi.", 'В коде меняется только одно слово — название цвета после color. Заголовок меняется вместе с ним.', 'Only one word changes in the code: the color name after color. The heading changes with it.'),
+      L3("Nom inglizcha bo'ladi. light — och, dark — to'q degani. Ular rang nomiga qo'shilib, bitta so'z bo'ladi.", 'Название — английское. light значит «светлый», dark — «тёмный». Они пишутся слитно с цветом, одним словом.', 'The name is English. light means pale, dark means deep. They join the color name as one word.'),
+      L3("Xuddi qalamlar qutisiga o'xshaydi: har bir qalamda rang nomi yozilgan. Nomni aytsangiz, brauzer o'sha qalamni oladi.", 'Это как коробка карандашей: на каждом написано название цвета. Называешь название — браузер берёт этот карандаш.', 'It’s like a box of pencils with a color name on each one. Say the name, and the browser takes that pencil.')
+    ]
   },
   s3: {
-    eyebrow: L3('hex kodni yozing', 'Впиши hex-код', 'Type the hex code'),
-    say: L3("Endi navbat sizga. Sarlavhani ko'k qiling. Panjara belgisi tayyor, uning yoniga oltita belgini yozing: qizil yo'q, yashil yo'q, ko'k to'liq.", 'Теперь твоя очередь. Сделай заголовок синим. Решётка уже стоит, впиши рядом шесть знаков: красного нет, зелёного нет, синий на полную.', 'Now it’s your turn. Make the heading blue. The hash sign is ready; type six symbols next to it: no red, no green, full blue.'),
+    eyebrow: L3('Rang nomini yozing', 'Впиши название цвета', 'Type the color name'),
+    say: L3("Endi navbat sizga. Sarlavhani yashil qiling. Yashil rang inglizchada green bo'ladi. Uni maydonga yozing va «Tekshirish»ni bosing.",
+      'Теперь твоя очередь. Сделай заголовок зелёным. Зелёный по-английски — green. Впиши его в поле и нажми «Проверить».',
+      'Now it’s your turn. Make the heading green. Type green into the field and tap “Check”.'),
+    ask: L3("Sarlavhani yashil qiling", 'Сделай заголовок зелёным', 'Make the heading green'),
     msgs: {
-      empty: L3("Panjara belgisidan keyin oltita belgi yozing.", 'Впиши после решётки шесть знаков.', 'Type six symbols after the hash sign.'),
-      hash: L3("Panjara belgisi allaqachon turibdi, uni yana yozish kerak emas.", 'Решётка уже стоит, второй раз её писать не нужно.', 'The hash sign is already there; you don’t need it again.'),
-      len: L3("hex kodda oltita belgi bo'ladi: har bir rang uchun ikkitadan.", 'В hex-коде шесть знаков: по два на каждый цвет.', 'A hex code has six symbols: two for each color.'),
-      chars: L3("hex kodda faqat 0 dan 9 gacha raqamlar va A dan F gacha harflar bo'ladi.", 'В hex-коде только цифры от 0 до 9 и буквы от A до F.', 'A hex code has only digits 0 to 9 and letters A to F.'),
-      other: L3("Bu boshqa rang chiqdi. Ko'k uchun oxirgi juft FF, qolgan ikki juft nol nol bo'ladi.", 'Получился другой цвет. Для синего последняя пара FF, а две другие — ноль-ноль.', 'That’s a different color. For blue the last pair is FF and the other two are zero zero.')
+      empty: L3("Maydon bo'sh. Rang nomini inglizcha yozing.", 'Поле пустое. Впиши название цвета по-английски.', 'The field is empty. Type the color name in English.'),
+      notColor: L3("Brauzer bunday rangni bilmaydi. Nomni inglizcha va xatosiz yozing.", 'Браузер не знает такого цвета. Напиши название по-английски и без ошибок.', 'The browser doesn’t know that color. Write the name in English, without typos.'),
+      other: L3("Brauzer rangni tanidi, lekin bu yashil emas. Yashil inglizchada green.", 'Браузер узнал цвет, но это не зелёный. Зелёный по-английски — green.', 'The browser knew the color, but it isn’t green. Green is green in English.')
     },
     hints: [
-      L3("Qaysi juft ko'k uchun edi: birinchimi, o'rtadagimi yoki oxirgisi?", 'Какая пара отвечает за синий: первая, средняя или последняя?', 'Which pair is for blue: the first, the middle or the last?'),
-      L3("Qizil va yashil kerak emas, ularning jufti nol nol. Ko'k to'liq, uning jufti FF.", 'Красный и зелёный не нужны — их пары ноль-ноль. Синий на полную — его пара FF.', 'No red or green, so their pairs are zero zero. Blue is full, so its pair is FF.'),
-      L3("To'rtta nol yozing, keyin FF.", 'Напиши четыре нуля, потом FF.', 'Type four zeros, then FF.')
+      L3("Sarlavha qaysi rangda bo'lishi kerak? Shu rangning inglizcha nomi kerak.", 'Каким должен стать заголовок? Нужно английское название этого цвета.', 'What color should the heading be? You need that color’s English name.'),
+      L3("Yashil inglizchada besh harfli so'z: g harfi bilan boshlanadi.", 'Зелёный по-английски — слово из пяти букв, начинается на g.', 'Green in English is a five-letter word starting with g.'),
+      L3("Maydonga green deb yozing va «Tekshirish»ni bosing.", 'Впиши в поле green и нажми «Проверить».', 'Type green into the field and tap “Check”.')
     ],
-    ok: L3("Zo'r! Sarlavha ko'k bo'ldi. Siz birinchi hex kodingizni yozdingiz.", 'Огонь! Заголовок синий. Ты написал свой первый hex-код.', 'Awesome! The heading is blue. You wrote your first hex code.'),
-    ask: L3("Panjara belgisidan keyin ko'k rangning kodini yozing", 'Впиши после решётки код синего цвета', 'Type the code for blue after the hash sign')
+    ok: L3("Zo'r! Sarlavha yashil bo'ldi. Siz rangni nomi bilan yozdingiz.", 'Здорово! Заголовок стал зелёным. Цвет записан названием.', 'Great! The heading turned green. You wrote a color by its name.')
   },
   s4: {
-    eyebrow: L3('Juftini toping', 'Найди пару', 'Find the pair'),
-    say: L3("Endi kodlarni ranglari bilan juftlang. Chapdan kodni, o'ngdan uning rangini bosing.", 'Теперь соедини коды с их цветами. Нажми код слева, потом его цвет справа.', 'Now match the codes with their colors. Tap a code on the left, then its color on the right.'),
-    why: {
-      red: L3("Bu kodda birinchi juft FF, qolganlari nol. Demak, faqat qizil nur bor.", 'В этом коде первая пара FF, остальные нули. Значит, есть только красный свет.', 'This code has FF in the first pair and zeros elsewhere. So there’s only red light.'),
-      green: L3("Bu kodda o'rtadagi juft FF. Demak, faqat yashil nur bor.", 'В этом коде средняя пара FF. Значит, есть только зелёный свет.', 'This code has FF in the middle pair. So there’s only green light.'),
-      black: L3("Bu kodda hamma juftlar nol. Nur umuman yo'q, demak qora.", 'В этом коде все пары — нули. Света нет совсем, значит, чёрный.', 'All the pairs are zeros. No light at all, so it’s black.')
-    },
-    pairOk: {
-      red: L3("To'g'ri, bu qizil.", 'Верно, это красный.', 'Right, that’s red.'),
-      green: L3("To'g'ri, bu yashil.", 'Верно, это зелёный.', 'Right, that’s green.'),
-      black: L3("To'g'ri, nur yo'q, demak qora.", 'Верно, света нет — значит, чёрный.', 'Right, no light means black.')
-    },
-    pickFirst: L3("Oldin chapdan kodni tanlang.", 'Сначала выбери код слева.', 'First pick a code on the left.'),
-    hints: [
-      L3("Har bir kodda FF qaysi juftda turibdi?", 'В какой паре стоит FF в каждом коде?', 'In which pair is FF in each code?'),
-      L3("Birinchi juft qizil, o'rtadagisi yashil, oxirgisi ko'k. Hammasi nol bo'lsa, qora.", 'Первая пара — красный, средняя — зелёный, последняя — синий. Все нули — чёрный.', 'The first pair is red, the middle is green, the last is blue. All zeros is black.'),
-      L3("Yonib turgan juftlikni bosing.", 'Нажми горящую пару.', 'Tap the glowing pair.')
+    eyebrow: L3('Qaysi nom?', 'Какое название?', 'Which name?'),
+    say: L3("Endi aksincha. Men rangni ko'rsataman, siz uning nomini tanlang.", 'Теперь наоборот. Я показываю цвет, а ты выбери его название.', 'Now the other way round. I show a color, and you pick its name.'),
+    ask: L3("Bu rangning nomini tanlang", 'Выбери название этого цвета', 'Pick this color’s name'),
+    right: L3("To'g'ri!", 'Точно!', 'Right!'),
+    hint1: L3("Rangga yaxshilab qarang: u qanday rang, och yoki to'qmi?", 'Посмотри на цвет: какой он, светлый или тёмный?', 'Look at the color: what is it, light or dark?'),
+    hint2: L3("Esingizdami: light — och, dark — to'q.", 'Вспомни: light — светлый, dark — тёмный.', 'Remember: light means pale, dark means deep.'),
+    rounds: [
+      { right: 'green', opts: ['red', 'green', 'blue'], why: L3("Bu yashil, inglizchada green.", 'Это зелёный, по-английски green.', 'This is green.') },
+      { right: 'lightblue', opts: ['blue', 'lightblue', 'darkblue'], why: L3("Bu och ko'k: oldida light bor.", 'Это светло-синий: впереди light.', 'This is a light blue: light in front.') },
+      { right: 'darkblue', opts: ['lightblue', 'darkblue', 'black'], why: L3("Bu to'q ko'k: oldida dark bor.", 'Это тёмно-синий: впереди dark.', 'This is a dark blue: dark in front.') }
     ],
-    ok: L3("Ajoyib! Endi hex kodni ko'rib, rangini topa olasiz.", 'Отлично! Теперь по hex-коду ты угадываешь цвет.', 'Great! Now you can tell a color from its hex code.'),
-    ask: L3("Kodni, keyin uning rangini bosing", 'Нажми код, потом его цвет', 'Tap a code, then its color'),
-    askPlace: L3("Endi uning rangini bosing", 'Теперь нажми его цвет', 'Now tap its color')
+    ok: L3("Barakalla! Rang nomlarini yaxshi bilasiz.", 'Молодец! Названия цветов ты знаешь.', 'Well done! You know the color names.')
   },
   s5: {
-    eyebrow: L3('rgb', 'rgb', 'rgb'),
-    say: L3("Rangni yozishning yana bir yo'li bor: rgb. Bu yerda ham uchta nur bor, lekin ular oddiy sonlar bilan yoziladi: noldan ikki yuz ellik beshgacha.", 'Есть ещё один способ записать цвет: rgb. Здесь тоже три луча, но их пишут обычными числами: от нуля до двухсот пятидесяти пяти.', 'There’s another way to write a color: rgb. It also has three lights, but they’re written as ordinary numbers: from zero to two hundred fifty-five.'),
-    sayParts: L3("Birinchi son qizil, ikkinchisi yashil, uchinchisi ko'k. Ikki yuz ellik besh degani to'liq. Bu yerda qizil to'liq, sarlavha qizil.", 'Первое число — красный, второе — зелёный, третье — синий. Двести пятьдесят пять значит на полную. Здесь красный на полную, заголовок красный.', 'The first number is red, the second green, the third blue. Two hundred fifty-five means full. Here red is full, so the heading is red.'),
-    sayMix: L3("Endi qiziq narsa: qizil va yashil nurni birga to'liq qilamiz. Qarang, sariq rang chiqdi! Nurlar qo'shilib, yangi rang beradi.", 'А теперь интересное: включим на полную и красный, и зелёный. Смотри, получился жёлтый! Лучи складываются и дают новый цвет.', 'Now something cool: we turn red and green both to full. Look, it’s yellow! The lights add up into a new color.'),
-    sayBlack: L3("Hamma son nol bo'lsa, nur yo'q va rang qora. Hammasi ikki yuz ellik besh bo'lsa, oq bo'ladi.", 'Все числа ноль — света нет, цвет чёрный. Все двести пятьдесят пять — белый.', 'All zeros means no light, so black. All two hundred fifty-five makes white.'),
-    done: L3("Demak, rgb uchta son: qizil, yashil va ko'k, har biri noldan ikki yuz ellik beshgacha.", 'Значит, rgb — это три числа: красный, зелёный и синий, каждое от нуля до двухсот пятидесяти пяти.', 'So rgb is three numbers: red, green and blue, each from zero to two hundred fifty-five.'),
-    askStart: L3('Qarang: rgb — uchta son', 'Смотри: rgb — три числа', 'Watch: rgb is three numbers'),
-    askParts: L3("Qarang: qizil, yashil, ko'k", 'Смотри: красный, зелёный, синий', 'Watch: red, green, blue'),
-    askMix: L3("Qarang: qizil va yashil — sariq", 'Смотри: красный и зелёный — жёлтый', 'Watch: red plus green is yellow'),
-    askBlack: L3("Qarang: nol — qora, to'liq — oq", 'Смотри: ноль — чёрный, полный — белый', 'Watch: zero is black, full is white'),
-    askDone: L3("rgb: uchta son, 0 dan 255 gacha", 'rgb: три числа от 0 до 255', 'rgb: three numbers from 0 to 255')
+    eyebrow: L3('Palitradan kod', 'Код из палитры', 'A code from the palette'),
+    say: L3("Nomlar qulay, lekin hamma rangning nomi yo'q. Mana orange: logotipdagidan boshqacha. Rasm chizish dasturlarida palitra bo'ladi: har bir rang ostida uning kodi yozilgan.",
+      'Названия удобны, но не у каждого цвета есть название. Вот orange: не такой, как на логотипе. В программах для рисования есть палитра: под каждым цветом написан его код.',
+      'Names are handy, but not every color has a name. Here’s orange: not like the logo. Drawing programs have a palette: each color has its code written under it.'),
+    sayLogo: L3("Palitradan logotip rangini olamiz va kodini qoidaga qo'yamiz. Qarang, sarlavha logotip bilan aynan bir xil!", 'Берём из палитры цвет логотипа и ставим его код в правило. Смотри, заголовок совпал с логотипом!', 'We take the logo color from the palette and put its code in the rule. Look, the heading matches the logo exactly!'),
+    sayBlue: L3("Boshqa kvadratcha, ko'k. Uning kodini olamiz, sarlavha ko'k bo'ldi.", 'Другой квадратик, синий. Берём его код — заголовок синий.', 'Another square, blue. We take its code, and the heading is blue.'),
+    sayParts: L3("Hamma kodlar bir xil tuzilgan: oldin panjara belgisi, keyin oltita belgi. Belgilar raqamlar va A dan F gacha harflar. Bunday kod hex kod, ya'ni rangning aniq raqami degani.",
+      'Все коды устроены одинаково: сначала решётка, потом шесть знаков. Знаки — цифры и буквы от A до F. Такой код называется hex-код, то есть точный номер цвета.',
+      'All the codes are built the same way: first a hash sign, then six symbols. The symbols are digits and letters A to F. Such a code is called a hex code, that is, the color’s exact number.'),
+    done: L3("Demak, aniq rang kerak bo'lsa, kodini palitradan olamiz: panjara belgisi va oltita belgi. Uni yod olish shart emas, faqat to'g'ri ko'chirish kerak.",
+      'Значит, если нужен точный цвет, берём его код из палитры: решётка и шесть знаков. Учить наизусть не нужно — нужно только правильно переписать.',
+      'So when you need an exact color, take its code from the palette: a hash sign and six symbols. No need to learn it by heart, just copy it correctly.'),
+    askStart: L3("Qarang: orange — boshqacha", 'Смотри: orange — не тот', 'Watch: orange is different'),
+    askLogo: L3("Palitradan — logotip rangi", 'Из палитры — цвет логотипа', 'From the palette: the logo color'),
+    askBlue: L3("Palitradan — ko'k", 'Из палитры — синий', 'From the palette: blue'),
+    askParts: L3("hex kod: # va 6 belgi", 'hex-код: # и 6 знаков', 'Hex code: # and 6 symbols'),
+    askDone: L3("Aniq rang — palitradagi hex kod", 'Точный цвет — hex-код из палитры', 'An exact color is a hex code from the palette'),
+    help: [
+      L3("Palitrani qarang: har bir kvadratcha ostida kod bor. Qoidaga aynan shu kod tushadi.", 'Посмотри на палитру: под каждым квадратиком есть код. В правило попадает именно он.', 'Look at the palette: there’s a code under each square. That code goes into the rule.'),
+      L3("Kod har doim panjara belgisi va oltita belgidan iborat. Bitta belgi ham tushib qolmasligi kerak.", 'Код — всегда решётка и шесть знаков. Нельзя потерять ни одного знака.', 'A code is always a hash sign and six symbols. Not a single symbol can be lost.'),
+      L3("Xuddi telefon raqamiga o'xshaydi: bitta raqam xato bo'lsa, boshqa odamga tushasiz. Kod ham aniq bo'lsa, rang aniq bo'ladi.", 'Как номер телефона: одна неверная цифра — и попадёшь к другому человеку. Точный код — точный цвет.', 'It’s like a phone number: one wrong digit and you reach someone else. An exact code gives an exact color.')
+    ]
   },
   s6: {
-    eyebrow: L3("Sariq rang yasang", 'Собери жёлтый', 'Make yellow'),
-    say: L3("Endi o'zingiz rang yasang. Fonni sariq qiling. Esingizdami, sariq rang qizil va yashil nurdan chiqadi, ko'k esa kerak emas. Uchta sonni yozing.", 'Теперь собери цвет сам. Сделай фон жёлтым. Помнишь, жёлтый получается из красного и зелёного, а синий не нужен. Впиши три числа.', 'Now make a color yourself. Make the background yellow. Remember, yellow comes from red and green light, and blue isn’t needed. Type three numbers.'),
+    eyebrow: L3('Koddan rang', 'Цвет по коду', 'Color by code'),
+    say: L3("Endi siz palitradan rang oling. Sarlavhani binafsha qiling. Binafsha kvadratcha ostidagi kodni topib, maydonga ko'chiring. Panjara belgisi tugmasi pastda bor.",
+      'Теперь возьми цвет из палитры сам. Сделай заголовок фиолетовым. Найди код под фиолетовым квадратиком и перепиши его в поле. Кнопка с решёткой есть внизу.',
+      'Now take a color from the palette yourself. Make the heading purple. Find the code under the purple square and copy it into the field. There’s a hash sign button below.'),
+    ask: L3("Palitradan binafsha kodni yozing", 'Впиши код фиолетового из палитры', 'Type the purple code from the palette'),
     msgs: {
-      empty: L3("Uchala songa ham qiymat yozing.", 'Впиши все три числа.', 'Type all three numbers.'),
-      range: L3("Har bir son noldan ikki yuz ellik beshgacha bo'ladi.", 'Каждое число — от нуля до двухсот пятидесяти пяти.', 'Each number is from zero to two hundred fifty-five.'),
-      red: L3("Qizil nur yetarli emas. Uni to'liq qiling: ikki yuz ellik besh.", 'Красного не хватает. Сделай его на полную: двести пятьдесят пять.', 'Not enough red. Make it full: two hundred fifty-five.'),
-      green: L3("Yashil nur yetarli emas. Uni ham to'liq qiling.", 'Зелёного не хватает. Его тоже на полную.', 'Not enough green. Make it full too.'),
-      blue: L3("Ko'k nur bor. Sariq rangda ko'k bo'lmaydi, uni nol qiling.", 'Есть синий свет. В жёлтом синего нет, сделай его нулём.', 'There’s blue light. Yellow has no blue, so make it zero.')
+      empty: L3("Maydon bo'sh. Binafsha kvadratcha ostidagi kodni ko'chiring.", 'Поле пустое. Перепиши код под фиолетовым квадратиком.', 'The field is empty. Copy the code under the purple square.'),
+      noHash: L3("Kod oldida panjara belgisi yo'q. Usiz brauzer rangni tanimaydi.", 'Перед кодом нет решётки. Без неё браузер не узнаёт цвет.', 'There’s no hash sign before the code. Without it the browser doesn’t know the color.'),
+      badHex: L3("Kodda nimadir tushib qoldi. Palitradagi bilan belgima-belgi solishtiring: oltita bo'lishi kerak.", 'В коде что-то потерялось. Сверь с палитрой знак за знаком: их должно быть шесть.', 'Something got lost in the code. Compare it with the palette symbol by symbol: there should be six.'),
+      notColor: L3("Brauzer buni rang deb tanimadi. Palitradagi kodni ko'chiring.", 'Браузер не узнал в этом цвет. Перепиши код из палитры.', 'The browser didn’t recognize this as a color. Copy the code from the palette.'),
+      other: L3("Rang chiqdi, lekin bu binafsha emas. Aynan binafsha kvadratcha ostidagi kodni oling.", 'Цвет получился, но это не фиолетовый. Возьми код именно под фиолетовым квадратиком.', 'You got a color, but not purple. Take the code under the purple square.'),
+      near: L3("Oz qoldi! Lekin bitta belgi palitradagidan farq qiladi. Kodni belgima-belgi solishtiring.", "Почти! Но один знак отличается от палитры. Сверь код знак за знаком.", "Almost! But one symbol differs from the palette. Compare the code symbol by symbol.")
     },
     hints: [
-      L3("Sariq rang qaysi ikki nurdan chiqadi?", 'Из каких двух лучей получается жёлтый?', 'Which two lights make yellow?'),
-      L3("Qizil va yashil to'liq, ko'k esa yo'q.", 'Красный и зелёный на полную, синего нет.', 'Red and green full, no blue.'),
-      L3("Birinchi va ikkinchi songa ikki yuz ellik besh, uchinchisiga nol yozing.", 'В первое и второе число впиши двести пятьдесят пять, в третье — ноль.', 'Type two hundred fifty-five in the first and second number, and zero in the third.')
+      L3("Palitrada to'rtta kvadratcha bor. Qaysi biri binafsha?", 'В палитре четыре квадратика. Какой из них фиолетовый?', 'There are four squares in the palette. Which one is purple?'),
+      L3("Binafsha oxirgisi. Uning ostidagi kodni panjara belgisi bilan birga ko'chiring.", 'Фиолетовый — последний. Перепиши код под ним вместе с решёткой.', 'Purple is the last one. Copy the code under it, hash sign included.'),
+      L3("Panjara tugmasini bosing, keyin 8E44AD deb yozing.", 'Нажми кнопку с решёткой, потом впиши 8E44AD.', 'Tap the hash sign button, then type 8E44AD.')
     ],
-    ok: L3("Zo'r! Fon sariq bo'ldi. Siz nurlardan rang yasadingiz!", 'Огонь! Фон стал жёлтым. Ты собрал цвет из лучей!', 'Awesome! The background is yellow. You made a color out of light!'),
-    ask: L3("Sariq fon uchun uchta sonni yozing", 'Впиши три числа для жёлтого фона', 'Type three numbers for a yellow background')
+    ok: L3("Ajoyib! Sarlavha binafsha bo'ldi. Kodni aniq ko'chirdingiz.", 'Отлично! Заголовок стал фиолетовым. Код переписан точно.', 'Great! The heading turned purple. You copied the code exactly.')
   },
   s7: {
-    eyebrow: L3('Qaysi kod?', 'Какой код?', 'Which code?'),
-    say: L3("Endi o'zingizni sinab ko'ring. Men rangni ko'rsataman, siz esa unga mos rgb kodni tanlang.", 'Теперь проверь себя. Я покажу цвет, а ты выбери для него подходящий rgb-код.', 'Now check yourself. I’ll show a color, and you pick the rgb code that makes it.'),
-    ask: L3("Bu rangni qaysi kod beradi?", 'Какой код даёт этот цвет?', 'Which code makes this color?'),
-    hint1: L3("Rangga qarang: unda qaysi nurlar bor?", 'Посмотри на цвет: какие в нём лучи?', 'Look at the color: which lights are in it?'),
-    hint2: L3("Birinchi son qizil, ikkinchisi yashil, uchinchisi ko'k. Ikki yuz ellik besh to'liq, nol yo'q degani.", 'Первое число — красный, второе — зелёный, третье — синий. Двести пятьдесят пять — на полную, ноль — нет.', 'The first number is red, the second green, the third blue. Two hundred fifty-five is full, zero is none.'),
-    rounds: [
-      { want: 'rgb(255, 255, 0)', opts: ['rgb(0, 0, 255)', 'rgb(255, 255, 0)', 'rgb(255, 0, 0)'], name: 'yellow',
-        why: L3("Sariqda qizil va yashil to'liq, ko'k yo'q.", 'В жёлтом красный и зелёный на полную, синего нет.', 'Yellow has full red and green, and no blue.') },
-      { want: 'rgb(0, 0, 0)', opts: ['rgb(255, 255, 255)', 'rgb(128, 128, 128)', 'rgb(0, 0, 0)'], name: 'black',
-        why: L3("Qora rangda nur umuman yo'q, hamma son nol.", 'В чёрном света нет совсем, все числа — ноль.', 'Black has no light at all; all the numbers are zero.') },
-      { want: 'rgb(128, 0, 128)', opts: ['rgb(128, 0, 128)', 'rgb(0, 128, 0)', 'rgb(255, 255, 0)'], name: 'purple',
-        why: L3("Binafsha rangda qizil va ko'k yarimta, yashil yo'q.", 'В фиолетовом красный и синий наполовину, зелёного нет.', 'Purple has half red and half blue, and no green.') }
+    eyebrow: L3("Kod to'g'rimi?", 'Код верный?', 'Is the code right?'),
+    say: L3("Endi kodlarni tekshiramiz. Har bir qoidaga qarang: hex kod to'g'ri yozilganmi yoki buzilganmi?", 'Теперь проверим коды. Посмотри на каждое правило: hex-код записан верно или сломан?', 'Now let’s check codes. Look at each rule: is the hex code written right, or is it broken?'),
+    ask: L3("Kod to'g'rimi yoki buzilganmi?", 'Код верный или сломан?', 'Is the code right or broken?'),
+    opts: { ok: L3("To'g'ri", 'Верный', 'Right'), bad: L3('Buzilgan', 'Сломан', 'Broken') },
+    right: L3("To'g'ri!", 'Точно!', 'Right!'),
+    hint1: L3("Kodning boshiga qarang, keyin belgilarni sanang.", 'Посмотри на начало кода, потом посчитай знаки.', 'Look at the start of the code, then count the symbols.'),
+    hint2: L3("To'g'ri hex kod: panjara belgisi va oltita belgi.", 'Верный hex-код — решётка и шесть знаков.', 'A right hex code is a hash sign and six symbols.'),
+    items: [
+      { code: '#2ECC71', right: 'ok', why: L3("Panjara bor, belgilar oltita. Hammasi joyida.", 'Решётка есть, знаков шесть. Всё на месте.', 'There’s a hash sign and six symbols. All good.') },
+      { code: '2ECC71', right: 'bad', why: L3("Boshida panjara belgisi yo'q.", 'В начале нет решётки.', 'There’s no hash sign at the start.') },
+      { code: '#8E44A', right: 'bad', why: L3("Belgilar beshta, bittasi tushib qolgan.", 'Знаков пять, один потерялся.', 'Only five symbols; one got lost.') },
+      { code: '#FFFFFF', right: 'ok', why: L3("Panjara va oltita belgi. Bu oq rang.", 'Решётка и шесть знаков. Это белый.', 'A hash sign and six symbols. This is white.') }
     ],
-    right: L3('Barakalla!', 'Точно!', 'Exactly!'),
-    ok: L3("Hammasi to'g'ri! Siz rgb kodni o'qiy olasiz.", 'Всё верно! Ты умеешь читать rgb-код.', 'All correct! You can read an rgb code.')
+    ok: L3("Zo'r! Endi buzilgan kodni darrov ko'rasiz.", 'Здорово! Теперь сломанный код ты видишь сразу.', 'Great! Now you spot a broken code right away.')
   },
   s8: {
-    eyebrow: L3('hsl', 'hsl', 'hsl'),
-    say: L3("Uchinchi usul hsl. U rangni boshqacha yozadi: rang doirasidagi joy, ya'ni qaysi rang degani, keyin uning kuchi va yorug'ligi.", 'Третий способ — hsl. Он записывает цвет по-другому: место на круге цветов, то есть какой это цвет, потом его насыщенность и светлота.', 'The third way is hsl. It writes a color differently: a spot on the color wheel, meaning which color it is, then its saturation and lightness.'),
-    sayHue: L3("Birinchi son rang doirasidagi joy, noldan uch yuz oltmishgacha. Nol qizil, bir yuz yigirma yashil, ikki yuz qirq ko'k. Qarang, son o'zgarsa, rang doira bo'ylab yuradi.", 'Первое число — место на круге цветов, от нуля до трёхсот шестидесяти. Ноль — красный, сто двадцать — зелёный, двести сорок — синий. Смотри, число меняется — и цвет идёт по кругу.', 'The first number is the spot on the color wheel, from zero to three hundred sixty. Zero is red, one hundred twenty is green, two hundred forty is blue. Look, as the number changes, the color moves around the wheel.'),
-    sayLight: L3("Oxirgi son yorug'lik, foizda. Uni katta qilsak, rang ochroq bo'ladi.", 'Последнее число — светлота в процентах. Сделаем его больше — цвет станет светлее.', 'The last number is lightness, in percent. Make it bigger and the color gets lighter.'),
-    sayDark: L3("Kichik qilsak, rang to'qroq bo'ladi. O'rtadagi son esa rang kuchi: yuz foiz eng yorqin.", 'Сделаем меньше — цвет темнее. А среднее число — насыщенность: сто процентов — самый яркий.', 'Make it smaller and the color gets darker. The middle number is saturation: a hundred percent is the brightest.'),
-    done: L3("Demak, hsl: rang doirasidagi joy, rang kuchi va yorug'lik. Ikkinchi va uchinchi son foiz bilan yoziladi.", 'Значит, hsl: место на круге, насыщенность и светлота. Второе и третье число пишут с процентами.', 'So hsl is the spot on the wheel, saturation and lightness. The second and third numbers are written with percent signs.'),
-    askStart: L3("Qarang: hsl — rang doirasi", 'Смотри: hsl — круг цветов', 'Watch: hsl is the color wheel'),
-    askHue: L3("Qarang: doiradagi joy", 'Смотри: место на круге', 'Watch: the spot on the wheel'),
-    askLight: L3("Qarang: yorug'lik — ochroq", 'Смотри: светлота — светлее', 'Watch: lightness, lighter'),
-    askDark: L3("Qarang: yorug'lik — to'qroq", 'Смотри: светлота — темнее', 'Watch: lightness, darker'),
-    askDone: L3("hsl: joy, kuch, yorug'lik", 'hsl: место, насыщенность, светлота', 'hsl: spot, saturation, lightness')
+    eyebrow: L3('rgb — uchta nur', 'rgb — три луча', 'rgb: three lights'),
+    say: L3("Rangni yana bir usulda yozish mumkin. Ekran har bir rangni uchta nurdan yig'adi: qizil, yashil va ko'k. rgb da shu uch nurning har biri qancha ekanini son bilan yozamiz. Nol bo'lsa nur yo'q, ikki yuz ellik besh bo'lsa to'liq. Hozir faqat qizil to'liq yonib turibdi.",
+      'Цвет можно записать ещё одним способом. Экран собирает каждый цвет из трёх лучей: красного, зелёного и синего. В rgb мы пишем числом, сколько каждого луча. Ноль — луча нет, двести пятьдесят пять — на полную. Сейчас на полную горит только красный.',
+      'There’s one more way to write a color. A screen builds every color from three lights: red, green and blue. In rgb we write how much of each light, as a number. Zero means no light, two hundred fifty-five means full. Right now only red is on full.'),
+    sayBlue: L3("Qizilni o'chirib, ko'kni to'liq yoqamiz. Sarlavha ko'k bo'ldi.", 'Гасим красный и зажигаем синий на полную. Заголовок синий.', 'We switch red off and blue on full. The heading is blue.'),
+    sayYellow: L3("Endi qizil va yashilni birga yoqamiz. Qiziq, ular qo'shilib sariq rang berdi!", 'Теперь зажжём вместе красный и зелёный. Интересно: вместе они дали жёлтый!', 'Now let’s turn on red and green together. Interesting: together they make yellow!'),
+    sayBlack: L3("Hamma nur nol bo'lsa, ekran qorong'i, ya'ni qora degani. Hammasi to'liq bo'lsa, oq bo'ladi.", 'Если все лучи на нуле, экран тёмный, то есть чёрный. А если все на полную — белый.', 'If every light is at zero, the screen is dark, that is, black. If all are full, it’s white.'),
+    done: L3("Demak, rgb bu qavs ichida uchta son: qizil, yashil va ko'k nur. Har biri noldan ikki yuz ellik beshgacha.", 'Значит, rgb — это три числа в скобках: красный, зелёный и синий свет. Каждое — от нуля до двухсот пятидесяти пяти.', 'So rgb is three numbers in brackets: red, green and blue light. Each goes from zero to two hundred fifty-five.'),
+    askStart: L3("Qarang: qizil to'liq", 'Смотри: красный на полную', 'Watch: full red'),
+    askBlue: L3("Ko'k to'liq", 'Синий на полную', 'Full blue'),
+    askYellow: L3("Qizil va yashil — sariq", 'Красный и зелёный — жёлтый', 'Red and green make yellow'),
+    askBlack: L3("Hammasi 0 — qora", 'Все 0 — чёрный', 'All 0 is black'),
+    askDone: L3("rgb: uchta son, 0 dan 255 gacha", 'rgb: три числа от 0 до 255', 'rgb: three numbers from 0 to 255'),
+    help: [
+      L3("Kodda uchta son bor va ostida uchta polosa. Birinchi son qizil polosa, ikkinchisi yashil, uchinchisi ko'k.", 'В коде три числа, а под ним три полосы. Первое число — красная полоса, второе — зелёная, третье — синяя.', 'The code has three numbers, and there are three bars below. The first number is the red bar, the second green, the third blue.'),
+      L3("Son nur kuchi: nol bo'lsa nur o'chgan, ikki yuz ellik besh bo'lsa to'liq yongan.", 'Число — это сила луча: ноль — луч выключен, двести пятьдесят пять — включён на полную.', 'The number is the light’s strength: zero is off, two hundred fifty-five is full on.'),
+      L3("Xuddi uchta chiroqli sahnaga o'xshaydi: qizil, yashil va ko'k chiroqni qancha yoqsangiz, sahna shunday rangga kiradi.", 'Это как сцена с тремя прожекторами: красным, зелёным и синим. Как их включишь, такого цвета и будет сцена.', 'It’s like a stage with three spotlights, red, green and blue. However you switch them on, that’s the stage’s color.')
+    ]
   },
   s9: {
-    eyebrow: L3('Doiradagi joy', 'Место на круге', 'The spot on the wheel'),
-    say: L3("Sarlavhani yashil qiling. hsl kodda faqat birinchi son bo'sh, ya'ni rang doirasidagi joy degani. Yashil qaysi joyda edi?", 'Сделай заголовок зелёным. В hsl-коде пусто только первое число — место на круге цветов. Где был зелёный?', 'Make the heading green. In the hsl code only the first number is empty: the spot on the color wheel. Where was green?'),
+    eyebrow: L3('Yashil nurni yoqing', 'Зажги зелёный луч', 'Turn on green light'),
+    say: L3("Endi nurni o'zingiz boshqaring. Qizil va ko'k o'chiq. Sarlavha yorqin yashil bo'lishi uchun yashil nurni to'liq yoqing: o'rtadagi bo'sh joyga nur uchun eng katta sonni yozing.", "Теперь управляй лучом сам. Красный и синий выключены. Чтобы заголовок стал ярко-зелёным, зажги зелёный луч на полную: в пустое место посередине впиши самое большое число для луча.", "Now you control the light. Red and blue are off. To make the heading bright green, turn green light on full: type the biggest number for a light into the empty spot in the middle."),
+    ask: L3("Yashil nurni to'liq yoqing", 'Зажги зелёный на полную', 'Turn green on full'),
     msgs: {
-      empty: L3("Birinchi songa rang doirasidagi joyni yozing.", 'Впиши в первое число место на круге.', 'Type the spot on the wheel in the first number.'),
-      num: L3("Bu yerda faqat son bo'ladi, foiz belgisi kerak emas.", 'Здесь только число, без знака процента.', 'Just a number here, no percent sign.'),
-      other: L3("Bu boshqa rang chiqdi. Doirada yashil qizildan keyin, bir yuz yigirmada turadi.", 'Получился другой цвет. На круге зелёный стоит после красного, на ста двадцати.', 'That’s a different color. On the wheel green comes after red, at one hundred twenty.')
+      empty: L3("Maydon bo'sh. Yashil nur uchun son yozing.", 'Поле пустое. Впиши число для зелёного луча.', 'The field is empty. Type a number for green light.'),
+      notNum: L3("Bu yerga faqat son kerak, harf va belgilarsiz.", 'Здесь нужно только число, без букв и знаков.', 'Only a number goes here, no letters or signs.'),
+      big: L3("Bunday katta son bo'lmaydi: nur ikki yuz ellik beshdan ko'p yonmaydi.", 'Такого большого числа не бывает: луч не горит сильнее двухсот пятидесяти пяти.', 'No number that big: light can’t go above two hundred fifty-five.'),
+      small: L3("Yashil yondi, lekin to'liq emas. Polosaga qarang: u oxirigacha to'lsin.", 'Зелёный горит, но не на полную. Посмотри на полосу: пусть она заполнится до конца.', 'Green is on, but not full. Look at the bar: let it fill all the way.')
     },
     hints: [
-      L3("Rang doirasiga qarang: yashil qayerda?", 'Посмотри на круг цветов: где зелёный?', 'Look at the color wheel: where is green?'),
-      L3("Nol qizil, ikki yuz qirq ko'k. Yashil ularning o'rtasida.", 'Ноль — красный, двести сорок — синий. Зелёный между ними.', 'Zero is red, two hundred forty is blue. Green is in between.'),
-      L3("Yashil bir yuz yigirmada. Birinchi songa 120 yozing.", 'Зелёный — на ста двадцати. Впиши в первое число 120.', 'Green is at one hundred twenty. Type 120 as the first number.')
+      L3("Yashil polosaga qarang. U oxirigacha to'lishi kerak.", 'Посмотри на зелёную полосу. Она должна заполниться до конца.', 'Look at the green bar. It should fill all the way.'),
+      L3("To'liq nur — rgb dagi eng katta son. U ikki yuz ellik besh.", 'Полный луч — самое большое число в rgb. Это двести пятьдесят пять.', 'Full light is the biggest number in rgb: two hundred fifty-five.'),
+      L3("Maydonga 255 deb yozing.", 'Впиши в поле 255.', 'Type 255 into the field.')
     ],
-    ok: L3("Zo'r! Sarlavha yashil bo'ldi.", 'Огонь! Заголовок стал зелёным.', 'Awesome! The heading turned green.'),
-    ask: L3("Yashil uchun doiradagi joyni yozing", 'Впиши место на круге для зелёного', 'Type the wheel spot for green')
+    ok: L3("Ura! Sarlavha yorqin yashil. Siz nurni to'liq yoqdingiz.", 'Ура! Заголовок ярко-зелёный. Луч горит на полную.', 'Hooray! The heading is bright green. You turned the light on full.')
   },
   s10: {
-    eyebrow: L3("Och yoki to'q?", 'Светлый или тёмный?', 'Light or dark?'),
-    say: L3("Endi o'zingizni sinab ko'ring. Men hsl kodni ko'rsataman, siz esa rang och chiqadimi yoki to'q, shuni tanlang.", 'Теперь проверь себя. Я покажу hsl-код, а ты выбери: цвет будет светлым или тёмным?', 'Now check yourself. I’ll show an hsl code, and you choose: will the color be light or dark?'),
-    ask: L3("Rang och bo'ladimi yoki to'q?", 'Цвет будет светлым или тёмным?', 'Will the color be light or dark?'),
-    card: L3('hsl kod', 'hsl-код', 'hsl code'),
-    hint1: L3("Oxirgi songa qarang: u yorug'lik.", 'Посмотри на последнее число: это светлота.', 'Look at the last number: it’s the lightness.'),
-    hint2: L3("Yorug'lik katta bo'lsa rang och, kichik bo'lsa to'q bo'ladi.", 'Большая светлота — цвет светлый, маленькая — тёмный.', 'High lightness makes a light color, low lightness a dark one.'),
+    eyebrow: L3('Qaysi rang?', 'Какой цвет?', 'Which color?'),
+    say: L3("Endi kodni o'qiymiz. rgb dagi sonlarga qarang va qaysi rang chiqishini tanlang.", 'Теперь прочитаем код. Посмотри на числа в rgb и выбери, какой получится цвет.', 'Now let’s read codes. Look at the numbers in rgb and pick which color comes out.'),
+    ask: L3("Bu kod qaysi rangni beradi?", 'Какой цвет даст этот код?', 'Which color does this code give?'),
+    right: L3("To'g'ri!", 'Точно!', 'Right!'),
+    hint1: L3("Qaysi nur yonib turibdi? Qaysi son ikki yuz ellik besh?", 'Какой луч горит? Какое число — двести пятьдесят пять?', 'Which light is on? Which number is two hundred fifty-five?'),
+    hint2: L3("Tartib doim bir xil: qizil, yashil, ko'k. Hammasi nol — qora, hammasi to'liq — oq.", 'Порядок всегда один: красный, зелёный, синий. Все нули — чёрный, все на полную — белый.', 'The order is always red, green, blue. All zero is black, all full is white.'),
     items: [
-      { code: 'hsl(210, 100%, 85%)', right: 'light', why: L3("Yorug'lik sakson besh foiz, bu katta. Rang och.", 'Светлота восемьдесят пять процентов — это много. Цвет светлый.', 'Lightness is eighty-five percent, which is high. The color is light.') },
-      { code: 'hsl(210, 100%, 25%)', right: 'dark', why: L3("Yorug'lik yigirma besh foiz, bu kam. Rang to'q.", 'Светлота двадцать пять процентов — это мало. Цвет тёмный.', 'Lightness is twenty-five percent, which is low. The color is dark.') },
-      { code: 'hsl(0, 100%, 90%)', right: 'light', why: L3("To'qson foiz yorug'lik. Qizil juda och, pushti bo'lib qoldi.", 'Светлота девяносто процентов. Красный очень светлый, почти розовый.', 'Ninety percent lightness. The red is very light, almost pink.') },
-      { code: 'hsl(120, 100%, 20%)', right: 'dark', why: L3("Yigirma foiz yorug'lik. Yashil juda to'q.", 'Двадцать процентов светлоты. Зелёный очень тёмный.', 'Twenty percent lightness. The green is very dark.') }
+      { code: 'rgb(255, 0, 0)', right: 'red', why: L3("Faqat birinchi nur, qizil, to'liq.", 'Горит только первый луч, красный.', 'Only the first light, red, is on.') },
+      { code: 'rgb(0, 0, 0)', right: 'black', why: L3("Hamma nur nol, demak qora.", 'Все лучи на нуле — значит, чёрный.', 'Every light is zero, so it’s black.') },
+      { code: 'rgb(0, 0, 255)', right: 'blue', why: L3("Faqat oxirgi nur, ko'k, to'liq.", 'Горит только последний луч, синий.', 'Only the last light, blue, is on.') },
+      { code: 'rgb(255, 255, 255)', right: 'white', why: L3("Hamma nur to'liq, demak oq.", 'Все лучи на полную — значит, белый.', 'Every light is full, so it’s white.') }
     ],
-    right: L3('Barakalla!', 'Точно!', 'Exactly!'),
-    ok: L3("Hammasi to'g'ri! Yorug'lik sonini o'qiy olasiz.", 'Всё верно! Ты читаешь число светлоты.', 'All correct! You can read the lightness number.')
+    ok: L3("Barakalla! rgb kodni o'qishni bilasiz.", 'Молодец! Ты умеешь читать rgb-код.', 'Well done! You can read rgb codes.')
   },
   s11: {
-    eyebrow: L3('Rang buzilsa', 'Когда цвет ломается', 'When a color breaks'),
-    say: L3("Rang kodlari juda aniq bo'lishi kerak. Bitta belgi xato bo'lsa, brauzer rangni tashlab yuboradi. Keling, uchta xatoni ko'ramiz.", 'Коды цветов должны быть точными. Ошибся в одном знаке — и браузер выбрасывает цвет. Посмотрим на три ошибки.', 'Color codes must be exact. One wrong symbol and the browser throws the color away. Let’s look at three mistakes.'),
-    sayNoHash: L3("Birinchisi: hex kod oldida panjara belgisi yo'q. Brauzer uni rang deb tanimadi, sarlavha qora qoldi.", 'Первая: перед hex-кодом нет решётки. Браузер не узнал в нём цвет, заголовок остался чёрным.', 'The first: there’s no hash sign before the hex code. The browser didn’t recognize it as a color, so the heading stayed black.'),
-    sayFive: L3("Ikkinchisi: kodda bitta belgi yetishmayapti, beshta qolgan. Bu ham ishlamaydi.", 'Вторая: в коде не хватает одного знака, осталось пять. Тоже не работает.', 'The second: the code is missing a symbol; only five are left. That doesn’t work either.'),
-    sayPct: L3("Uchinchisi: hsl kodda foiz belgilari unutilgan. Ikkinchi va uchinchi son foiz bilan bo'lishi kerak.", 'Третья: в hsl-коде забыли знаки процента. Второе и третье число должны быть с процентами.', 'The third: the percent signs were forgotten in the hsl code. The second and third numbers need them.'),
-    done: L3("Demak, hex kodga panjara va oltita belgi, hsl ga esa foiz belgilari kerak.", 'Значит, hex-коду нужны решётка и шесть знаков, а hsl — знаки процента.', 'So a hex code needs a hash sign and six symbols, and hsl needs percent signs.'),
-    askNoHash: L3("Qarang: panjara belgisi yo'q", 'Смотри: нет решётки', 'Watch: no hash sign'),
-    askFive: L3("Qarang: beshta belgi", 'Смотри: пять знаков', 'Watch: five symbols'),
-    askPct: L3("Qarang: foiz belgisi yo'q", 'Смотри: нет процентов', 'Watch: no percent signs'),
-    askDone: L3("Panjara, oltita belgi, foiz", 'Решётка, шесть знаков, проценты', 'Hash sign, six symbols, percent')
+    eyebrow: L3('Rang qachon buziladi', 'Когда цвет ломается', 'When a color breaks'),
+    say: L3("Kod juda aniq narsa. Bitta belgi xato bo'lsa, brauzer rangni tanimaydi va qoidani tashlab yuboradi. Hozir hammasi joyida: sarlavha logotip bilan bir xil. Keling, ataylab buzib ko'ramiz.",
+      'Код — вещь очень точная. Одна ошибка в знаке — и браузер не узнаёт цвет и выбрасывает правило. Сейчас всё на месте: заголовок совпадает с логотипом. Давай нарочно сломаем.',
+      'A code is a very exact thing. One wrong symbol and the browser doesn’t know the color and throws the rule away. Right now all is well: the heading matches the logo. Let’s break it on purpose.'),
+    sayHash: L3("Panjara belgisini olib tashlaymiz. Sarlavha qora bo'ldi: brauzer bu oltita belgini rang deb tanimadi.", 'Убираем решётку. Заголовок стал чёрным: браузер не узнал в шести знаках цвет.', 'We remove the hash sign. The heading went black: the browser didn’t see a color in the six symbols.'),
+    sayFive: L3("Panjara qaytdi, lekin bitta belgi tushib qoldi, beshta qoldi. Yana ishlamadi.", 'Решётка вернулась, но один знак потерялся, осталось пять. Опять не работает.', 'The hash sign is back, but one symbol got lost; five are left. It fails again.'),
+    sayTypo: L3("Nom bilan ham shunday. gren deb bitta harf kam yozsak, brauzer bunday rangni bilmaydi.", 'С названием так же. Напишем gren без одной буквы — браузер такого цвета не знает.', 'Same with names. Write gren with one letter missing, and the browser doesn’t know that color.'),
+    done: L3("Demak, rang ishlamasa, uchta narsani tekshiramiz: panjara belgisi bormi, belgilar oltitami, nom xatosiz yozilganmi.", 'Значит, если цвет не работает, проверяем три вещи: есть ли решётка, шесть ли знаков, без ошибок ли название.', 'So when a color doesn’t work, check three things: is there a hash sign, are there six symbols, is the name spelled right.'),
+    askStart: L3("Hozir hammasi joyida", 'Сейчас всё на месте', 'All is well now'),
+    askHash: L3("# yo'q — ishlamadi", 'Нет # — не работает', 'No #: it fails'),
+    askFive: L3("5 ta belgi — ishlamadi", '5 знаков — не работает', '5 symbols: it fails'),
+    askTypo: L3("gren — xato nom", 'gren — ошибка в названии', 'gren: a misspelled name'),
+    askDone: L3("Tekshiring: #, 6 belgi, nom", 'Проверь: #, 6 знаков, название', 'Check: #, 6 symbols, the name'),
+    help: [
+      L3("Logotip yonidagi yozuvga qarang: «Bir xil» yoki «Boshqacha». Har safar kodda bitta narsa o'zgaradi.", 'Смотри на надпись у логотипа: «Совпадает» или «Не тот». Каждый раз в коде меняется что-то одно.', 'Look at the label by the logo: “A match” or “Different”. Each time one thing changes in the code.'),
+      L3("Brauzer tanimagan rangni tashlab yuboradi. Shunda sarlavha oddiy, qora rangda qoladi.", 'Цвет, который браузер не узнал, он выбрасывает. Тогда заголовок остаётся обычным, чёрным.', 'The browser throws away a color it doesn’t know. Then the heading stays plain black.'),
+      L3("Xuddi manzilga o'xshaydi: uy raqamida bitta raqam tushib qolsa, pochtachi uyni topa olmaydi.", 'Как адрес на письме: пропала одна цифра в номере дома — и почтальон не найдёт дом.', 'It’s like an address on a letter: miss one digit of the house number and the mail carrier can’t find the house.')
+    ]
   },
   s12: {
-    eyebrow: L3("Belgini qo'ying", 'Поставь знак', 'Add the sign'),
-    say: L3("Voy, men logotip rangini yana panjara belgisisiz yozibman! Sarlavha bo'yalmayapti. Kod oldidagi bo'sh joyga kerakli belgini yozing.", 'Ой, я опять написал цвет логотипа без решётки! Заголовок не красится. Впиши нужный знак в пустое место перед кодом.', 'Oops, I wrote the logo color without the hash sign again! The heading won’t color. Type the right sign in the empty spot before the code.'),
+    eyebrow: L3('Tuzating', 'Исправь', 'Fix it'),
+    say: L3("Voy, bu mening kodim. Sarlavha logotip rangida bo'lishi kerak edi, lekin qora chiqdi. Kodni tuzating, keyin «Tekshirish»ni bosing.",
+      'Ой, это мой код. Заголовок должен был быть цвета логотипа, а получился чёрным. Исправь код и нажми «Проверить».',
+      'Oops, this is my code. The heading should be the logo color, but it came out black. Fix the code and tap “Check”.'),
+    ask: L3("Kodni tuzating", 'Исправь код', 'Fix the code'),
     msgs: {
-      empty: L3("Kod oldiga bitta belgi yozing.", 'Впиши один знак перед кодом.', 'Type one sign before the code.'),
-      dot: L3("Nuqta class uchun edi. hex kod oldida panjara belgisi turadi.", 'Точка была для класса. Перед hex-кодом стоит решётка.', 'The dot was for a class. A hex code starts with a hash sign.'),
-      other: L3("Bu belgi to'g'ri emas. hex kod panjara belgisi bilan boshlanadi.", 'Этот знак не подходит. Hex-код начинается с решётки.', 'That sign doesn’t fit. A hex code starts with a hash sign.')
+      empty: L3("Maydon bo'sh. Logotip kodi FA4F28: panjara belgisini va shu kodni yozing.", "Поле пустое. Код логотипа — FA4F28: впиши решётку и этот код.", "The field is empty. The logo code is FA4F28: type the hash sign and this code."),
+      noHash: L3("Hali ham kod oldida panjara belgisi yo'q.", 'Перед кодом всё ещё нет решётки.', 'There’s still no hash sign before the code.'),
+      bad: L3("Brauzer buni rang deb tanimadi. Oltita belgini o'zgartirmang, faqat oldiga panjara qo'ying.", 'Браузер не узнал цвет. Шесть знаков не меняй, только поставь перед ними решётку.', 'The browser didn’t recognize a color. Don’t change the six symbols, just put a hash sign in front.'),
+      other: L3("Rang ishladi, lekin logotipdagidan boshqacha. Belgilarni o'zgartirmang.", 'Цвет заработал, но не как на логотипе. Знаки не меняй.', 'The color works, but it isn’t the logo’s. Don’t change the symbols.')
     },
     hints: [
-      L3("hex kod qaysi belgi bilan boshlanardi?", 'С какого знака начинается hex-код?', 'Which sign does a hex code start with?'),
-      L3("Bu belgi id selektorida ham ishlatiladi.", 'Этот знак есть и в селекторе id.', 'The same sign is used in an id selector.'),
-      L3("Pastdagi panjara tugmasini bosing, keyin Tekshirishni bosing.", 'Нажми кнопку с решёткой внизу, потом «Проверить».', 'Tap the hash button below, then Check.')
+      L3("Kodning boshiga qarang. U yerda nimadir yetishmayapti.", 'Посмотри на начало кода. Там чего-то не хватает.', 'Look at the start of the code. Something is missing there.'),
+      L3("hex kod har doim panjara belgisi bilan boshlanadi.", 'Hex-код всегда начинается с решётки.', 'A hex code always starts with a hash sign.'),
+      L3("Kod boshida panjara belgisi bo'lishi kerak. Namuna kod ostida: uni ko'chirib yozing va Tekshirishni bosing.", "В начале кода должна стоять решётка. Образец под кодом: перепиши его и нажми «Проверить».", "The code must start with a hash sign. The example is under the code: copy it and tap Check.")
     ],
-    ok: L3("Ajoyib! Sarlavha logotip rangida.", 'Отлично! Заголовок цвета логотипа.', 'Great! The heading is the logo color.'),
-    ask: L3("Kod oldiga kerakli belgini yozing", 'Впиши перед кодом нужный знак', 'Type the right sign before the code')
+    ok: L3("Rahmat! Sarlavha yana logotip bilan bir xil. Bitta belgi hammasini hal qildi.", 'Спасибо! Заголовок снова совпал с логотипом. Один знак всё решил.', 'Thanks! The heading matches the logo again. One symbol fixed it all.')
   },
   s13: {
     eyebrow: L3('Xatoni toping', 'Найди ошибку', 'Find the bug'),
-    say: L3("Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasining rangi ishlamayapti. Sahifaga qarang va xato qoidani bosing.", 'Теперь проверь себя. В коде три правила, но цвет одного не работает. Посмотри на страницу и нажми сломанное правило.', 'Now check yourself. There are three rules, but one color doesn’t work. Look at the page and tap the broken rule.'),
+    say: L3("Endi o'zingizni sinab ko'ring. Kodda uchta qoida bor, lekin bittasining rangi ishlamayapti. Sahifaga qarang va xato qoidani bosing.", 'Теперь проверь себя. В коде три правила, но цвет одного не работает. Посмотри на страницу и нажми сломанное правило.', 'Now check yourself. There are three rules in the code, but one color doesn’t work. Look at the page and tap the broken rule.'),
     say2: L3("Zo'r, birinchi xato topildi! Endi boshqa rang buzildi. Qaysi biri?", 'Класс, первая ошибка найдена! Теперь сломался другой цвет. Какой?', 'Great, the first bug is found! Now another color broke. Which one?'),
     ask: L3('Ishlamayotgan qoidani bosing', 'Нажми правило, которое не работает', 'Tap the rule that doesn’t work'),
     fine: L3("Bu qoida ishlayapti: uning rangi sahifada ko'rinib turibdi. Qaysi narsa bo'yalmadi?", 'Это правило работает: его цвет виден на странице. Что не покрасилось?', 'This rule works: its color shows on the page. What didn’t get colored?'),
     found: {
-      letter: L3("Topdingiz! hex kodda G harfi bor. hex da faqat A dan F gacha harflar bo'ladi.", 'Нашёл! В hex-коде буква G. В hex бывают только буквы от A до F.', 'Found it! There’s a G in the hex code. Hex only uses letters A to F.'),
-      pct: L3("Topdingiz! hsl kodda foiz belgilari yo'q edi.", 'Нашёл! В hsl-коде не было знаков процента.', 'Found it! The hsl code had no percent signs.')
+      typo: L3("Topdingiz! gren da bitta harf tushib qolgan. To'g'risi green.", 'Есть! В gren потерялась буква. Правильно — green.', 'Found it! gren is missing a letter. It should be green.'),
+      five: L3("Topdingiz! hex kodda beshta belgi bor edi, oltita bo'lishi kerak.", 'Есть! В hex-коде было пять знаков, а нужно шесть.', 'Found it! The hex code had five symbols, but it needs six.')
     },
     hint1: L3("Sahifaga qarang: nima bo'yalmay qoldi?", 'Посмотри на страницу: что осталось не покрашенным?', 'Look at the page: what stayed uncolored?'),
     hint2: {
-      letter: L3("Sarlavha qora qoldi. Uning hex kodidagi harflarni tekshiring: hammasi A dan F gachami?", 'Заголовок остался чёрным. Проверь буквы в его hex-коде: все от A до F?', 'The heading stayed black. Check the letters in its hex code: are they all A to F?'),
-      pct: L3("Fon oq qoldi. body qoidasidagi hsl kodda foiz belgilari bormi?", 'Фон остался белым. Есть ли проценты в hsl-коде правила body?', 'The background stayed white. Does the hsl code in the body rule have percent signs?')
+      typo: L3("Abzas oddiy qora qoldi. p qoidasidagi rang nomini harfma-harf o'qing.", 'Абзац остался обычным, чёрным. Прочитай по буквам название цвета в правиле p.', 'The paragraph stayed plain black. Read the color name in the p rule letter by letter.'),
+      five: L3("Sarlavha qora qoldi. h1 qoidasidagi hex kodning belgilarini sanang.", 'Заголовок остался чёрным. Посчитай знаки в hex-коде правила h1.', 'The heading stayed black. Count the symbols in the h1 rule’s hex code.')
     },
     hint3: {
-      letter: L3("Xato h1 qoidasida: G harfi. O'sha qatorni bosing.", 'Ошибка в правиле h1: буква G. Нажми эту строку.', 'The bug is in the h1 rule: the letter G. Tap that line.'),
-      pct: L3("Xato body qoidasida: foiz yo'q. O'sha qatorni bosing.", 'Ошибка в правиле body: нет процентов. Нажми эту строку.', 'The bug is in the body rule: no percent signs. Tap that line.')
+      typo: L3("Xato p qoidasida: gren. O'sha qatorni bosing.", 'Ошибка в правиле p: gren. Нажми эту строку.', 'The bug is in the p rule: gren. Tap that line.'),
+      five: L3("Xato h1 qoidasida: belgilar beshta. O'sha qatorni bosing.", 'Ошибка в правиле h1: пять знаков. Нажми эту строку.', 'The bug is in the h1 rule: five symbols. Tap that line.')
     },
     ok: L3("Super! Ikkala xato ham topildi. Siz ranglarni haqiqiy dizayner kabi tekshiryapsiz.", 'Супер! Обе ошибки найдены. Ты проверяешь цвета как настоящий дизайнер.', 'Super! Both bugs are found. You check colors like a real designer.')
   },
   w1: {
     eyebrow: L3("Qoidani o'zingiz yozing", 'Напиши правило сам', 'Write the rule yourself'),
-    say: L3("Endi qoidani boshidan oxirigacha o'zingiz yozing. Sahifaning fonini och shaftoli rangga bo'yang, kodi FFE0B2. body uchun background-color xususiyatini yozing.", 'Теперь напиши правило целиком сам. Сделай фон страницы светло-персиковым, его код FFE0B2. Напиши для body свойство background-color.', 'Now write the whole rule yourself. Make the page background a light peach, code FFE0B2. Write the background-color property for body.'),
+    say: L3("Endi qoidani boshidan oxirigacha o'zingiz yozing. Abzas matni ko'k bo'lsin, faqat bu safar rgb bilan. Esingizdami: ko'k uchun qizil va yashil nur o'chiq, ko'k esa to'liq. Abzas selektori p.",
+      'Теперь напиши правило целиком сам. Пусть текст абзаца будет синим, только на этот раз через rgb. Вспомни: для синего красный и зелёный лучи выключены, а синий на полную. Селектор абзаца — p.',
+      'Now write the whole rule yourself. Make the paragraph text blue, but this time with rgb. Remember: for blue, red and green light are off and blue is full. The paragraph selector is p.'),
     msgs: {
       empty: L3("Qoidani yozing: oldin selektor, keyin jingalak qavslar ichida xususiyat va qiymat.", 'Напиши правило: сначала селектор, потом в фигурных скобках свойство и значение.', 'Write the rule: first the selector, then the property and value in curly braces.'),
       braces: L3("Qoidaga jingalak qavslar kerak: ochuvchi va yopuvchi.", 'Правилу нужны фигурные скобки: открывающая и закрывающая.', 'The rule needs curly braces: an opening one and a closing one.'),
       colon: L3("Xususiyat va qiymat o'rtasida ikki nuqta yo'q.", 'Между свойством и значением нет двоеточия.', 'There’s no colon between the property and the value.'),
-      sel: L3("Butun sahifaning foni uchun body selektori kerak.", 'Для фона всей страницы нужен селектор body.', 'The whole page’s background needs the body selector.'),
-      prop: L3("Fon rangini background-color xususiyati beradi.", 'Цвет фона задаёт свойство background-color.', 'The background-color property sets the background color.'),
-      noHash: L3("Kod oldida panjara belgisi yo'q. Usiz brauzer rangni tanimaydi.", 'Перед кодом нет решётки. Без неё браузер не узнаёт цвет.', 'No hash sign before the code. Without it the browser doesn’t recognize the color.'),
-      notColor: L3("Brauzer bu kodni rang deb tanimadi. Panjara va oltita belgini tekshiring.", 'Браузер не узнал в этом коде цвет. Проверь решётку и шесть знаков.', 'The browser didn’t recognize this code as a color. Check the hash sign and the six symbols.'),
-      other: L3("Bu boshqa rang. Kod FFE0B2 bo'lishi kerak.", 'Это другой цвет. Код должен быть FFE0B2.', 'That’s a different color. The code should be FFE0B2.')
+      sel: L3("Abzasni tanlash uchun p selektori kerak.", 'Чтобы выбрать абзац, нужен селектор p.', 'To pick the paragraph you need the p selector.'),
+      prop: L3("Matn rangini color xususiyati beradi.", 'Цвет текста задаёт свойство color.', 'The color property sets the text color.'),
+      notRgb: L3("Abzas ko'k bo'ldi, lekin bu safar rgb bilan yozing: rgb va qavs ichida uchta son.", 'Абзац синий, но в этот раз запиши через rgb: rgb и три числа в скобках.', 'The paragraph is blue, but this time write it with rgb: rgb and three numbers in brackets.'),
+      rgbNeed: L3("Qiymatni rgb bilan yozing: rgb so'zi va qavs ichida uchta son.", 'Запиши значение через rgb: слово rgb и три числа в скобках.', 'Write the value with rgb: the word rgb and three numbers in brackets.'),
+      notColor: L3("Brauzer bu rgb ni tanimadi. Qavslar va sonlar orasidagi vergullarni tekshiring.", 'Браузер не узнал этот rgb. Проверь скобки и запятые между числами.', 'The browser didn’t recognize this rgb. Check the brackets and the commas between numbers.'),
+      other: L3("Rang chiqdi, lekin ko'k emas. Ko'k uchun faqat oxirgi son to'liq bo'ladi.", 'Цвет получился, но не синий. Для синего на полную только последнее число.', 'You got a color, but not blue. For blue only the last number is full.')
     },
     hints: [
-      L3("Butun sahifa qaysi selektor bilan tanlanardi? Fon uchun qaysi xususiyat kerak?", 'Каким селектором выбирают всю страницу? Какое свойство нужно для фона?', 'Which selector picks the whole page? Which property is for the background?'),
-      L3("Selektor body, xususiyat background-color, qiymat esa panjara va FFE0B2.", 'Селектор body, свойство background-color, а значение — решётка и FFE0B2.', 'The selector is body, the property background-color, and the value a hash sign and FFE0B2.'),
-      L3("Shunday yozing: body, jingalak qavs, background-color, ikki nuqta, panjara, FFE0B2, nuqtali vergul va yopuvchi qavs.", 'Напиши так: body, фигурная скобка, background-color, двоеточие, решётка, FFE0B2, точка с запятой и закрывающая скобка.', 'Write: body, a curly brace, background-color, a colon, a hash sign, FFE0B2, a semicolon and a closing brace.')
+      L3("Abzas qaysi selektor bilan tanlanadi? Matn rangi uchun qaysi xususiyat kerak?", 'Каким селектором выбирают абзац? Какое свойство нужно для цвета текста?', 'Which selector picks the paragraph? Which property sets the text color?'),
+      L3("Selektor p, xususiyat color. rgb da qizil nol, yashil nol, ko'k ikki yuz ellik besh.", 'Селектор p, свойство color. В rgb красный ноль, зелёный ноль, синий двести пятьдесят пять.', 'The selector is p, the property color. In rgb red is zero, green zero, blue two hundred fifty-five.'),
+      L3("Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", "Образец появился под кодом. Перепиши его в поле и нажми «Проверить».", "An example appeared under the code. Copy it into the field and tap Check.")
     ],
-    ok: L3("Ajoyib! Sahifa iliq rangga kirdi. Qoidani o'zingiz yozdingiz.", 'Отлично! Страница стала тёплой. Ты сам написал правило.', 'Great! The page got a warm color. You wrote the rule yourself.'),
-    ask: L3("Fonni FFE0B2 qiladigan qoidani yozing", 'Напиши правило, которое сделает фон FFE0B2', 'Write a rule that makes the background FFE0B2')
+    ok: L3("Ajoyib! Abzas ko'k bo'ldi. Qoidani to'liq o'zingiz yozdingiz.", 'Отлично! Абзац синий. Всё правило — целиком твоё.', 'Great! The paragraph is blue. You wrote the whole rule yourself.'),
+    ask: L3("Abzasni rgb bilan ko'k qiling", 'Сделай абзац синим через rgb', 'Make the paragraph blue with rgb')
   },
   s14: {
     eyebrow: L3("O'z ranglaringiz", 'Свои цвета', 'Your own colors'),
-    say: L3("Endi o'z sahifangizga ranglar tanlang. Istalgan usulda yozishingiz mumkin: nom, hex, rgb yoki hsl. Sarlavha uchun bitta rang, fon uchun boshqasini yozing. Keyin «Tayyor»ni bosing.", 'Теперь выбери цвета для своей страницы. Можно любым способом: имя, hex, rgb или hsl. Впиши один цвет для заголовка и другой для фона. Потом нажми «Готово».', 'Now pick colors for your own page. Any way works: a name, hex, rgb or hsl. Type one color for the heading and another for the background. Then tap “Done”.'),
+    say: L3("Endi o'z sahifangizga ranglar tanlang. Istalgan usulda yozing: nom, hex yoki rgb. Sarlavha uchun bitta rang, fon uchun boshqasini yozing. Keyin «Tayyor»ni bosing.",
+      'Теперь выбери цвета для своей страницы. Можно любым способом: название, hex или rgb. Впиши один цвет для заголовка и другой для фона. Потом нажми «Готово».',
+      'Now pick colors for your own page. Any way you like: a name, hex or rgb. Type one color for the heading and another for the background. Then tap “Done”.'),
     msgs: {
-      notColor: L3("Brauzer {w} ni rang deb tanimadi. Kodni tekshiring: hex uchun panjara va oltita belgi, hsl uchun foiz.", 'Браузер не узнал цвет в {w}. Проверь код: для hex — решётка и шесть знаков, для hsl — проценты.', 'The browser didn’t recognize {w} as a color. Check the code: a hash sign and six symbols for hex, percent signs for hsl.'),
+      notColor: L3("Brauzer «{w}» degan rangni bilmaydi. Nomni xatosiz yozing, hex uchun panjara va oltita belgi kerak.", "Браузер не знает цвета «{w}». Проверь название, а для hex — решётку и шесть знаков.", "The browser doesn’t know the color “{w}”. Check the name, and for hex a hash sign and six symbols."),
       same: L3("Sarlavha va fon bir xil rangda bo'lsa, sarlavha ko'rinmay qoladi. Boshqa-boshqa rang tanlang.", 'Если заголовок и фон одного цвета, заголовка не видно. Выбери разные цвета.', 'If the heading and the background are the same color, the heading disappears. Pick different colors.')
     },
     hints: [
       L3("Qaysi rang sizga yoqadi? Uni istalgan usulda yozing.", 'Какой цвет тебе нравится? Запиши его любым способом.', 'Which color do you like? Write it any way.'),
-      L3("Masalan, hex uchun panjara va oltita belgi, rgb uchun qavsda uchta son.", 'Например, для hex — решётка и шесть знаков, для rgb — три числа в скобках.', 'For example, a hash sign and six symbols for hex, three numbers in brackets for rgb.'),
+      L3("Masalan, nom bilan: red, gold. Yoki hex: panjara va oltita belgi.", 'Например, названием: red, gold. Или hex: решётка и шесть знаков.', 'For example, a name like red or gold. Or hex: a hash sign and six symbols.'),
       L3("Masalan, sarlavhaga purple, fonga esa lavender yozing. Keyin «Tayyor»ni bosing.", 'Например, впиши purple для заголовка и lavender для фона. Потом нажми «Готово».', 'For example, type purple for the heading and lavender for the background. Then tap “Done”.')
     ],
     ok: L3("Voy, qanday chiroyli! Bu sizning o'z ranglaringiz.", 'Ого, как красиво! Это твои собственные цвета.', 'Wow, how pretty! These are your very own colors.'),
@@ -357,38 +394,40 @@ const C = {
     yes: L3("To'g'ri", 'Верно', 'True'),
     no: L3("Noto'g'ri", 'Неверно', 'False'),
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
-    hint1: L3("Gapni bo'laklab o'qing: u hex, rgb yoki hsl haqidami?", 'Прочитай фразу по частям: она про hex, rgb или hsl?', 'Read the sentence piece by piece: is it about hex, rgb or hsl?'),
-    hint2: L3("Dars esingizdami: hex panjara va oltita belgi, rgb uchta son noldan ikki yuz ellik beshgacha, hsl da oxirgi son yorug'lik. Gap shunga mos keladimi?",
-      'Вспомни урок: hex — решётка и шесть знаков, rgb — три числа от нуля до двухсот пятидесяти пяти, в hsl последнее число — светлота. Фраза с этим совпадает?',
-      'Remember the lesson: hex is a hash sign and six symbols, rgb is three numbers from zero to two hundred fifty-five, and in hsl the last number is lightness. Does the sentence match that?'),
+    hint1: L3("Gapni bo'laklab o'qing: u rang nomi, hex yoki rgb haqidami?", 'Прочитай фразу по частям: она про название, hex или rgb?', 'Read the sentence piece by piece: is it about a name, hex or rgb?'),
+    hint2: L3("Dars esingizdami: nom inglizcha so'z, hex panjara va oltita belgi, rgb uchta nur: nol o'chiq degani, ikki yuz ellik besh to'liq degani. Gap shunga mos keladimi?",
+      'Вспомни урок: название — английское слово, hex — решётка и шесть знаков, rgb — три луча, ноль — выключен, двести пятьдесят пять — на полную. Фраза с этим совпадает?',
+      'Remember the lesson: a name is an English word, hex is a hash sign and six symbols, rgb is three lights, zero is off, two hundred fifty-five is full. Does the sentence match that?'),
     items: [
-      { t: L3("FF0000 kodi panjara belgisi bilan qizil rang beradi.", 'Код FF0000 с решёткой даёт красный.', 'The code FF0000 with a hash sign gives red.'), right: true, code: 'hex',
-        why: L3("To'g'ri: birinchi juft FF, ya'ni qizil to'liq degani, qolganlari esa nol.", 'Верно: первая пара FF, то есть красный на полную, остальные нули.', 'Right: the first pair is FF, full red, and the rest are zeros.') },
-      { t: L3("rgb dagi sonlar noldan yuzgacha bo'ladi.", 'Числа в rgb бывают от нуля до ста.', 'The numbers in rgb go from zero to a hundred.'), right: false,
-        why: L3("Aslida rgb dagi sonlar noldan ikki yuz ellik beshgacha bo'ladi.", 'На самом деле числа в rgb — от нуля до двухсот пятидесяти пяти.', 'Actually the numbers in rgb go from zero to two hundred fifty-five.') },
-      { t: L3("Qizil va yashil nur qo'shilsa, sariq rang chiqadi.", 'Красный и зелёный свет вместе дают жёлтый.', 'Red and green light together make yellow.'), right: true, code: 'rgb',
-        why: L3("Shunday: rgb da qizil va yashil to'liq, ko'k nol bo'lsa, sariq chiqadi.", 'Так и есть: в rgb красный и зелёный на полную, синий ноль — получается жёлтый.', 'That’s right: full red and green with zero blue in rgb makes yellow.') },
-      { t: L3("hsl da oxirgi son kattalashsa, rang to'qroq bo'ladi.", 'Если в hsl увеличить последнее число, цвет станет темнее.', 'If the last number in hsl gets bigger, the color gets darker.'), right: false, code: 'hsl',
-        why: L3("Aslida oxirgi son yorug'lik: u kattalashsa, rang ochroq bo'ladi.", 'На самом деле последнее число — светлота: больше — значит светлее.', 'Actually the last number is lightness: bigger means lighter.') }
+      { t: L3("red bu rang nomi, brauzer uni taniydi.", 'red — это название цвета, браузер его знает.', 'red is a color name, and the browser knows it.'), right: true,
+        why: L3("To'g'ri: red qizil rangning inglizcha nomi.", 'Верно: red — английское название красного.', 'Right: red is the English name for that color.') },
+      { t: L3("hex kod panjara belgisi bilan boshlanadi.", 'Hex-код начинается с решётки.', 'A hex code starts with a hash sign.'), right: true,
+        why: L3("Shunday: panjara belgisi, keyin oltita belgi.", 'Так и есть: решётка, потом шесть знаков.', 'That’s right: a hash sign, then six symbols.') },
+      { t: L3("rgb da uchala son nol bo'lsa, rang oq bo'ladi.", 'Если в rgb все три числа — ноль, цвет будет белым.', 'If all three numbers in rgb are zero, the color is white.'), right: false, code: 'rgb',
+        why: L3("Aslida hamma nur o'chiq bo'lsa, qora chiqadi.", 'На самом деле, если все лучи выключены, получается чёрный.', 'Actually, with every light off you get black.') },
+      { t: L3("Qizil va yashil nur birga yonsa, sariq chiqadi.", 'Если вместе зажечь красный и зелёный луч, выйдет жёлтый.', 'If red and green light shine together, you get yellow.'), right: true, code: 'yel',
+        why: L3("Shunday: rgb da qizil va yashil to'liq, ko'k nol bo'lsa, sariq chiqadi.", 'Так и есть: в rgb красный и зелёный на полную, синий ноль — получается жёлтый.', 'That’s right: full red and green with zero blue in rgb makes yellow.') }
     ],
     ok: L3("Hammasi to'g'ri! Siz ranglarni yaxshi bilasiz.", 'Всё верно! Ты отлично разбираешься в цветах.', 'All correct! You know colors really well.')
   },
   s15: {
     eyebrow: L3('Xulosa', 'Вывод', 'Summary'),
     say: [
-      { text: L3("Endi topishmoqqa qaytamiz. Esingizdami, men kodni FA4F28 deb, oldiga hech narsa qo'ymay yozgan edim? Afsuski, men adashibman. hex kod doim panjara belgisi bilan boshlanadi. Usiz brauzer bu oltita belgini rang deb tanimaydi.",
-        'Вернёмся к загадке. Помнишь, я написал код FA4F28 и ничего перед ним не поставил? Увы, я ошибся. Hex-код всегда начинается с решётки. Без неё браузер не узнаёт в шести знаках цвет.',
-        'Back to our riddle. Remember, I wrote the code FA4F28 with nothing in front of it? Sadly, I was wrong. A hex code always starts with a hash sign. Without it the browser doesn’t recognize the six symbols as a color.'), k: 'riddle' },
-      { text: L3("Qarang, bu sizning sahifangiz, o'zingiz tanlagan ranglar bilan!", 'Смотри, это твоя страница в цветах, которые ты выбрал сам!', 'Look, this is your page in the colors you picked yourself!'), k: null },
-      { text: L3("hex kod panjara belgisi va oltita belgidan iborat.", 'Hex-код — это решётка и шесть знаков.', 'A hex code is a hash sign and six symbols.'), k: 'hex' },
-      { text: L3("rgb uchta son: qizil, yashil va ko'k nur.", 'rgb — три числа: красный, зелёный и синий свет.', 'rgb is three numbers: red, green and blue light.'), k: 'rgb' },
-      { text: L3("hsl esa rang doirasidagi joy, rang kuchi va yorug'lik.", 'А hsl — место на круге цветов, насыщенность и светлота.', 'And hsl is the spot on the color wheel, saturation and lightness.'), k: 'hsl' },
-      { text: L3("Tabriklayman! Endi siz istalgan rangni aniq yoza olasiz. Keyingi darsda fon bilan ishlaymiz. Ko'rishguncha!", 'Ура! Теперь ты можешь точно записать любой цвет. На следующем уроке поработаем с фоном. До встречи!', 'Hooray! Now you can write any color exactly. Next time we’ll work with backgrounds. See you!'), k: null }
+      { text: L3("Endi topishmoqqa qaytamiz. Esingizdami, men logotip kodini kichik harflar bilan yozgan edim va rang buziladi deb o'ylagan edim? Qarang: «Bir xil!». Men adashibman. hex kodda katta yoki kichik harf farqi yo'q, rang o'sha-o'sha.",
+        'Вернёмся к загадке. Помнишь, я записал код логотипа маленькими буквами и думал, что цвет сломается? Смотри: «Совпадает!». Я ошибся. В hex-коде неважно, большие буквы или маленькие, цвет тот же самый.',
+        'Back to our riddle. Remember, I wrote the logo code in small letters and thought the color would break? Look: “A match!”. I was wrong. In a hex code big or small letters don’t matter; the color is the same.'), k: 'riddle' },
+      { text: L3("Qarang, bu sizning sahifangiz, o'zingiz tanlagan ranglar bilan!", 'Смотри, это твоя страница в твоих собственных цветах!', 'Look, this is your page in the colors you picked yourself!'), k: null },
+      { text: L3("Rangni nomi bilan yozish mumkin: red, blue, green.", 'Цвет можно записать названием: red, blue, green.', 'A color can be written by name: red, blue, green.'), k: 'name' },
+      { text: L3("Aniq rang uchun hex kod: panjara belgisi va oltita belgi.", 'Для точного цвета — hex-код: решётка и шесть знаков.', 'For an exact color, a hex code: a hash sign and six symbols.'), k: 'hex' },
+      { text: L3("rgb esa uchta nur: qizil, yashil va ko'k.", 'А rgb — три луча: красный, зелёный и синий.', 'And rgb is three lights: red, green and blue.'), k: 'rgb' },
+      { text: L3("Yana bir usul bor, hsl. U bilan keyinroq tanishasiz.", 'Есть ещё один способ, hsl. С ним познакомишься позже.', 'There’s one more way, hsl. You’ll meet it later.'), k: 'hsl' },
+      { text: L3("Tabriklayman! Endi siz istalgan rangni yoza olasiz. Keyingi darsda fon bilan ishlaymiz. Ko'rishguncha!", 'Ура! Теперь ты можешь записать любой цвет. На следующем уроке поработаем с фоном. До встречи!', 'Hooray! Now you can write any color. Next time we’ll work with backgrounds. See you!'), k: null }
     ],
     roles: {
+      name: L3('nom — red, blue', 'название — red, blue', 'name — red, blue'),
       hex: L3('hex — # va 6 belgi', 'hex — # и 6 знаков', 'hex — # and 6 symbols'),
-      rgb: L3('rgb — 3 ta son', 'rgb — 3 числа', 'rgb — 3 numbers'),
-      hsl: L3("hsl — joy, kuch, yorug'lik", 'hsl — место, насыщенность, светлота', 'hsl — spot, saturation, lightness')
+      rgb: L3('rgb — 3 ta nur', 'rgb — 3 луча', 'rgb — 3 lights'),
+      hsl: L3('hsl — keyinroq', 'hsl — позже', 'hsl — later')
     },
     ask: L3('Sahifangizga qarang', 'Посмотри на свою страницу', 'Look at your page')
   }
@@ -397,9 +436,9 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayParts: 1, sayGreen: 1, sayBlue: 1, sayMix: 1, sayBlack: 1,
-  sayHue: 1, sayLight: 1, sayDark: 1, sayNoHash: 1, sayFive: 1, sayPct: 1, miss: 1, say2: 1, fine: 1, found: 1, items: 1, right: 1, pairOk: 1, rounds: 1 });
-Object.assign(NOT_SPOKEN_IN, { items: { code: 1 } });
+Object.assign(SPOKEN, { help: 1, hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayBlue: 1, sayLight: 1, sayDark: 1,
+  sayLogo: 1, sayParts: 1, sayYellow: 1, sayBlack: 1, sayHash: 1, sayFive: 1, sayTypo: 1, say2: 1, fine: 1, found: 1, items: 1, right: 1, rounds: 1 });
+Object.assign(NOT_SPOKEN_IN, { items: { code: 1 }, rounds: { right: 1, opts: 1 } });
 
 /*@FILE:gen/b16-chrome.jsx@*/
 

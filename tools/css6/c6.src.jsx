@@ -112,6 +112,11 @@ const C = {
   },
   s2: {
     eyebrow: L3("Kenglik", 'Ширина', 'Width'),
+    help: [
+      L3("Inspektorga qarang: har bir element yonida eni va bo'yi yozilgan. Kodda width soni o'zgarsa, Inspektordagi son ham o'zgaradi.", 'Посмотри на Инспектор: у каждого элемента написаны ширина и высота. Меняется число width в коде — меняется и число в Инспекторе.', 'Look at the Inspector: every element shows its width and height. When the width number changes in the code, the Inspector number changes too.'),
+      L3("width elementning enini beradi. Rasmga faqat width yozilsa, bo'yi o'zi moslashadi va rasm cho'zilmaydi.", 'width задаёт ширину элемента. Если у фото написать только width, высота подстроится сама, и фото не растянется.', 'width sets an element’s width. If a photo gets only width, its height adjusts by itself and the photo isn’t stretched.'),
+      L3('Telefonda rasmni ikki barmoq bilan kichraytirganingizni eslang: u buzilmasdan kichrayadi. width ham rasmni shunday kichraytiradi.', 'Вспомни, как на телефоне уменьшаешь фото двумя пальцами: оно уменьшается, не искажаясь. width уменьшает фото так же.', 'Remember shrinking a photo on a phone with two fingers: it gets smaller without distorting. width shrinks a photo the same way.')
+    ],
     say: L3("Inspektorga qarang: har bir elementning kengligi va balandligi yozilgan. Sarlavha odatda butun qatorni egallaydi. Uning kengligini width bilan o'zgartiramiz.",
       'Посмотри на Инспектор: у каждого элемента написаны ширина и высота. Заголовок обычно занимает всю строку. Его ширину меняют через width.',
       'Look at the Inspector: each element shows its width and height. A heading normally takes the whole line. We change its width with width.'),
@@ -130,7 +135,9 @@ const C = {
       empty: L3("Qiymat yozing: son va px.", 'Впиши значение: число и px.', 'Type the value: a number and px.'),
       noUnit: L3("Faqat son yozildi. Brauzer uni tashlab yuboradi: son yoniga px qo'shing.", 'Написано только число. Браузер его выбрасывает: добавь к числу px.', 'Only a number. The browser throws it away: add px to the number.'),
       bad: L3("Brauzer bu qiymatni tanimadi. Son va px yozing, orasida bo'sh joysiz.", 'Браузер не узнал это значение. Напиши число и px без пробела.', 'The browser didn’t recognize that value. Write a number and px with no space.'),
-      other: L3("Bu boshqa kenglik. Surat ikki yuz piksel bo'lishi kerak.", 'Это другая ширина. Фото должно быть двести пикселей.', 'That’s a different width. The photo should be two hundred pixels.')
+      other: L3("Bu boshqa kenglik. Surat ikki yuz piksel bo'lishi kerak.", 'Это другая ширина. Фото должно быть двести пикселей.', 'That’s a different width. The photo should be two hundred pixels.'),
+      pct: L3("Bu foiz. Bu yerda piksel kerak: son va px.", "Это проценты. Здесь нужны пиксели: число и px.", "That’s percent. Here you need pixels: a number and px."),
+      space: L3("Son va px o'rtasida bo'sh joy bo'lmaydi: qo'shib yozing.", "Между числом и px не нужен пробел: пиши слитно.", "No space between the number and px: write them together.")
     },
     hints: [
       L3("Qiymat son va o'lcham birligidan iborat.", 'Значение — число и единица.', 'The value is a number and a unit.'),
@@ -165,6 +172,11 @@ const C = {
   },
   s5: {
     eyebrow: L3("Foizlar", 'Проценты', 'Percent'),
+    help: [
+      L3("Abzas va sarlavhaga qarang, keyin oyna torayganda nima bo'lishini kuzating: kimdir torayadi, kimdir o'zgarmaydi.", 'Посмотри на абзац и заголовок, а потом следи, что будет, когда окно сузится: кто-то станет уже, а кто-то нет.', 'Look at the paragraph and the heading, then watch what happens when the window narrows: one gets narrower, one doesn’t.'),
+      L3('Foiz oynaning qancha qismini olishni aytadi: yuz foiz butun oyna, ellik foiz yarmi. Piksel esa doim bir xil.', 'Проценты говорят, какую часть окна занять: сто процентов — всё окно, пятьдесят — половина. А пиксели всегда одинаковые.', 'Percent says what part of the window to take: a hundred percent is the whole window, fifty is half. Pixels always stay the same.'),
+      L3("Pitsaning yarmi katta pitsada ham, kichik pitsada ham yarmi bo'ladi. Ellik foiz ham shunday: oyna qanday bo'lsa, uning yarmi.", 'Половина пиццы — это половина и большой, и маленькой пиццы. Пятьдесят процентов так же: половина того окна, какое есть.', 'Half a pizza is half of a big pizza and half of a small one. Fifty percent works the same: half of whatever window there is.')
+    ],
     say: L3("Kenglikni foizda ham yozish mumkin, ya'ni oynaning qancha qismi degani. Yuz foiz butun oyna, ellik foiz esa yarmi.", 'Ширину можно писать и в процентах, то есть какую часть окна занять. Сто процентов — всё окно, пятьдесят — половина.', 'You can also write width in percent, meaning how much of the window to take. A hundred percent is the whole window, fifty is half.'),
     sayHalf: L3("Abzasga width ellik foiz. Qarang, u oynaning yarmini egalladi.", 'Абзацу width пятьдесят процентов. Смотри, он занял половину окна.', 'Width fifty percent for the paragraph. Look, it took half the window.'),
     sayFix: L3("Sarlavhaga esa ikki yuz piksel beramiz, solishtirish uchun.", 'А заголовку дадим двести пикселей, для сравнения.', 'And we give the heading two hundred pixels, to compare.'),
@@ -184,7 +196,8 @@ const C = {
       noUnit: L3("Faqat son yozildi. Son yoniga foiz belgisini qo'shing.", 'Написано только число. Добавь к числу знак процента.', 'Only a number. Add the percent sign to the number.'),
       px: L3("Bu piksel. Oynaning yarmi uchun foiz kerak.", 'Это пиксели. Для половины окна нужны проценты.', 'That’s pixels. Half the window needs percent.'),
       bad: L3("Brauzer bu qiymatni tanimadi. Son va foiz belgisini bo'sh joysiz yozing.", 'Браузер не узнал это значение. Напиши число и знак процента без пробела.', 'The browser didn’t recognize that value. Write the number and the percent sign with no space.'),
-      other: L3("Bu boshqa qism. Yarmi degani ellik foiz.", 'Это другая часть. Половина — это пятьдесят процентов.', 'That’s a different part. Half is fifty percent.')
+      other: L3("Bu boshqa qism. Yarmi degani ellik foiz.", 'Это другая часть. Половина — это пятьдесят процентов.', 'That’s a different part. Half is fifty percent.'),
+      space: L3("Son va foiz belgisi o'rtasida bo'sh joy bo'lmaydi: qo'shib yozing.", "Между числом и знаком процента не нужен пробел: пиши слитно.", "No space between the number and the percent sign: write them together.")
     },
     hints: [
       L3("Butun oyna yuz foiz. Yarmi qancha?", 'Всё окно — сто процентов. Сколько половина?', 'The whole window is a hundred percent. What’s half?'),
@@ -212,6 +225,11 @@ const C = {
   },
   s8: {
     eyebrow: L3("Balandlik", 'Высота', 'Height'),
+    help: [
+      L3("Sarlavha va rasmga qarang: height qo'shilganda ular balandroq yoki pastroq bo'ladi. Oxirida rasm shakliga qarang.", 'Посмотри на заголовок и фото: с height они становятся выше или ниже. В конце посмотри на форму фото.', 'Look at the heading and the photo: with height they get taller or shorter. At the end, look at the photo’s shape.'),
+      L3("height elementning bo'yini beradi. Rasmga bittasini yozsangiz, ikkinchisi o'zi moslashadi. Ikkalasini yozsangiz, rasm cho'zilib qolishi mumkin.", 'height задаёт высоту элемента. Если у фото написать одно, второе подстроится само. Если написать оба, фото может растянуться.', 'height sets an element’s height. Give a photo just one and the other adjusts by itself. Give both, and the photo can get stretched.'),
+      L3("Rezinadek cho'zilgan suratni ko'rganmisiz? Rasmga ham eni, ham bo'yini o'zingiz yozsangiz, shunday bo'lishi mumkin.", 'Бывает, что фото растянуто, как резинка. Так случается, если самому задать фото и ширину, и высоту.', 'Ever seen a photo stretched like a rubber band? That can happen when you set both the width and the height yourself.')
+    ],
     say: L3("Kenglikdan tashqari balandlik ham bor: height. U ham piksellarda yoziladi.", 'Кроме ширины есть и высота: height. Её тоже пишут в пикселях.', 'Besides width there’s also height: height. It’s written in pixels too.'),
     sayTall: L3("Sarlavhaga height sakson piksel. Sarlavha balandroq bo'ldi, matn esa uning tepasida qoldi.", 'Заголовку height восемьдесят пикселей. Заголовок стал выше, а текст остался вверху.', 'Height eighty pixels for the heading. The heading got taller, and the text stayed at the top.'),
     sayImgH: L3("Suratga faqat height oltmish piksel. Surat kichraydi, kengligi esa o'zi moslashdi.", 'Фото — только height шестьдесят пикселей. Фото уменьшилось, а ширина подстроилась сама.', 'For the photo, only height sixty pixels. The photo got smaller, and the width adjusted by itself.'),
@@ -230,7 +248,9 @@ const C = {
       empty: L3("Qiymat yozing: son va px.", 'Впиши значение: число и px.', 'Type the value: a number and px.'),
       noUnit: L3("Faqat son yozildi. Son yoniga px qo'shing.", 'Написано только число. Добавь к числу px.', 'Only a number. Add px to the number.'),
       bad: L3("Brauzer bu qiymatni tanimadi. Son va px yozing.", 'Браузер не узнал это значение. Напиши число и px.', 'The browser didn’t recognize that value. Write a number and px.'),
-      other: L3("Bu boshqa balandlik. Sarlavha sakson piksel bo'lishi kerak.", 'Это другая высота. Заголовок должен быть восемьдесят пикселей.', 'That’s a different height. The heading should be eighty pixels.')
+      other: L3("Bu boshqa balandlik. Sarlavha sakson piksel bo'lishi kerak.", 'Это другая высота. Заголовок должен быть восемьдесят пикселей.', 'That’s a different height. The heading should be eighty pixels.'),
+      pct: L3("Bu foiz. Bu yerda piksel kerak: son va px.", "Это проценты. Здесь нужны пиксели: число и px.", "That’s percent. Here you need pixels: a number and px."),
+      space: L3("Son va px o'rtasida bo'sh joy bo'lmaydi: qo'shib yozing.", "Между числом и px не нужен пробел: пиши слитно.", "No space between the number and px: write them together.")
     },
     hints: [
       L3("Qiymat son va px dan iborat.", 'Значение — число и px.', 'The value is a number and px.'),
@@ -259,6 +279,11 @@ const C = {
   },
   s11: {
     eyebrow: L3("O'lcham buzilsa", 'Когда размер ломается', 'When a size breaks'),
+    help: [
+      L3("Har safar kodga qarang: son va uning yonida nima turibdi? Keyin rasmga qarang: o'zgardimi yoki yo'qmi.", 'Каждый раз смотри на код: что стоит рядом с числом? Потом на фото: изменилось оно или нет.', 'Each time, look at the code: what’s next to the number? Then look at the photo: did it change or not?'),
+      L3("Brauzer faqat to'g'ri yozuvni tushunadi: son va birlik bo'sh joysiz yoziladi. Birlik bo'lmasa yoki bo'sh joy bo'lsa, qoida tashlab yuboriladi.", 'Браузер понимает только верную запись: число и единица пишутся слитно. Нет единицы или есть пробел — правило выбрасывается.', 'The browser only understands the right spelling: the number and the unit go together. No unit or a space, and the rule is thrown away.'),
+      L3("Telefon raqamini terayotganda bitta raqamni tushirib qoldirsangiz, qo'ng'iroq bo'lmaydi. CSS da ham bitta belgi yetishmasa, qoida ishlamaydi.", 'Если при наборе номера телефона пропустить одну цифру, звонок не пройдёт. В CSS так же: не хватает одного знака — правило не работает.', 'If you miss one digit when dialing a phone number, the call won’t go through. In CSS too: miss one symbol and the rule doesn’t work.')
+    ],
     say: L3("O'lchamni yozishda ham xatolar bo'ladi. Keling, uchtasini ko'ramiz.", 'В размерах тоже бывают ошибки. Давай посмотрим на три.', 'Sizes can have mistakes too. Let’s look at three.'),
     sayNoUnit: L3("Birinchisi: ikki yuz sonidan keyin px yo'q. Brauzer qoidani tashlab yubordi, surat yana katta.", 'Первая: после двухсот нет px. Браузер выбросил правило, фото снова большое.', 'The first: there’s no px after two hundred. The browser threw the rule away, and the photo is big again.'),
     saySpace: L3("Ikkinchisi: son va foiz belgisi orasida bo'sh joy. Bu ham ishlamaydi.", 'Вторая: между числом и знаком процента пробел. Тоже не работает.', 'The second: a space between the number and the percent sign. That doesn’t work either.'),
@@ -275,13 +300,14 @@ const C = {
     msgs: {
       empty: L3("Qiymat yozing: son va px.", 'Впиши значение: число и px.', 'Type the value: a number and px.'),
       space: L3("Son va px orasida hali ham bo'sh joy bor. Uni olib tashlang.", 'Между числом и px всё ещё пробел. Убери его.', 'There’s still a space between the number and px. Remove it.'),
-      bad: L3("Brauzer bu qiymatni tanimadi. Son va px bo'sh joysiz bo'ladi.", 'Браузер не узнал это значение. Число и px пишутся без пробела.', 'The browser didn’t recognize that value. The number and px go together with no space.'),
-      other: L3("Kenglik o'zgarib ketdi. Bir yuz oltmish piksel qolsin, faqat bo'sh joyni olib tashlang.", 'Ширина поменялась. Пусть остаётся сто шестьдесят пикселей, просто убери пробел.', 'The width changed. Keep one hundred sixty pixels; just remove the space.')
+      bad: L3("Brauzer bu qiymatni tanimadi. Hammasini o'chirib, 160px deb qo'shib yozing.", "Браузер не узнал это значение. Сотри всё и впиши 160px слитно.", "The browser didn’t recognize that value. Erase everything and type 160px together."),
+      other: L3("Kenglik o'zgarib ketdi. Bir yuz oltmish piksel qolsin, faqat bo'sh joyni olib tashlang.", 'Ширина поменялась. Пусть остаётся сто шестьдесят пикселей, просто убери пробел.', 'The width changed. Keep one hundred sixty pixels; just remove the space.'),
+      noUnit: L3("px yo'qolib qoldi. 160px deb yozing.", "Пропал px. Впиши 160px.", "The px went missing. Type 160px.")
     },
     hints: [
       L3("Maydondagi qiymatni diqqat bilan o'qing: nima ortiqcha?", 'Внимательно прочитай значение в поле: что лишнее?', 'Read the value in the field carefully: what’s extra?'),
       L3("Son va px o'rtasida bo'sh joy bor. Brauzer buni tanimaydi.", 'Между числом и px пробел. Браузер такое не узнаёт.', 'There’s a space between the number and px. The browser doesn’t recognize that.'),
-      L3("160px deb yozing va Tekshirishni bosing.", 'Впиши 160px и нажми «Проверить».', 'Type 160px and tap Check.')
+      L3("Strelkali tugma bilan maydondagi hamma narsani o'chiring va 160px ni qo'shib yozing. Namuna kod ostida.", "Сотри всё в поле кнопкой со стрелкой и впиши 160px слитно, без пробела. Образец — под кодом.", "Erase everything in the field with the arrow button and type 160px together, with no space. The example is under the code.")
     ],
     ok: L3("Ura, ishladi! Surat bir yuz oltmish piksel.", 'Ура, заработало! Фото сто шестьдесят пикселей.', 'Yes, it works! The photo is one hundred sixty pixels.'),
     ask: L3("Qiymatni tuzating", 'Исправь значение', 'Fix the value')
@@ -322,7 +348,7 @@ const C = {
     hints: [
       L3("Surat qaysi selektor bilan tanlanadi? Butun oyna necha foiz?", 'Каким селектором выбирают фото? Сколько процентов всё окно?', 'Which selector picks the photo? How many percent is the whole window?'),
       L3("Selektor img, xususiyat width, qiymat yuz foiz.", 'Селектор img, свойство width, значение сто процентов.', 'The selector is img, the property width, the value a hundred percent.'),
-      L3("Shunday yozing: img, jingalak qavs, width, ikki nuqta, yuz va foiz belgisi, nuqtali vergul va yopuvchi jingalak qavs.", 'Напиши так: img, фигурная скобка, width, двоеточие, сто и знак процента, точка с запятой и закрывающая фигурная скобка.', 'Write: img, a curly brace, width, a colon, a hundred and the percent sign, a semicolon and a closing curly brace.')
+      L3("Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", "Образец появился под кодом. Перепиши его в поле и нажми «Проверить».", "An example appeared under the code. Copy it into the field and tap Check.")
     ],
     ok: L3("Ajoyib! Surat butun oyna kengligida. Qoidani o'zingiz yozdingiz.", 'Отлично! Фото во всю ширину окна. Ты сам написал правило.', 'Great! The photo fills the window width. You wrote the rule yourself.'),
     ask: L3("Suratni butun oyna kengligida qiladigan qoidani yozing", 'Напиши правило, которое растянет фото на всю ширину окна', 'Write a rule that makes the photo fill the window width')
@@ -387,7 +413,7 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayH1: 1, sayImg: 1, sayHalf: 1, sayFix: 1, sayNarrow: 1,
+Object.assign(SPOKEN, { help: 1, hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayH1: 1, sayImg: 1, sayHalf: 1, sayFix: 1, sayNarrow: 1,
   sayTall: 1, sayImgH: 1, sayBoth: 1, sayNoUnit: 1, saySpace: 1, sayStretch: 1, miss: 1, say2: 1, fine: 1, found: 1, items: 1, right: 1, rounds: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1, css: 1 }, rounds: { want: 1, opts: 1 } });
 

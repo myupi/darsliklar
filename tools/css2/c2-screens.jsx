@@ -15,6 +15,21 @@ const cssOk = (p, v) => {
   if (CSS_PROPS.indexOf(p) < 0 || !v) return false;
   try { return typeof CSS === 'undefined' || !CSS.supports ? true : CSS.supports(p, v); } catch (e) { return false; }
 };
+// Русские (кириллические) буквы вместо латинских (09.11.2026, проход «слабого ученика»): «рх», «р» выглядят как px, p —
+// своя причина раньше любой проверки, иначе ученик видит «верный» ответ и не понимает отказа.
+const CYR_MSG = L3("Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.",
+  'Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.',
+  'Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.');
+const cyrIn = (...vs) => (vs.some((x) => /[\u0400-\u04FF]/.test(String(x == null ? '' : x))) ? CYR_MSG : null);
+// Лишняя «;» в конце значения (ученик помнит, что правило кончается ею) — не ошибка: значение без неё.
+const noSemi = (s) => String(s || '').replace(/[“”«»„]/g, '"').trim().replace(/;+\s*$/, '').trim();
+// Образец на третьей ступени помощи (09.11.2026, проход «слабого ученика»): третья подсказка звучит словами — без
+// символов, а на экране под кодом печатью стоит готовый ответ; ученик переписывает его сам и жмёт «Проверить».
+const HELP_CODE = L3('Namuna', 'Образец', 'Example');
+function HelpCode({ code }) {
+  const pick = usePick();
+  return <div className="kz-helpcode" translate="no"><span>{pick(HELP_CODE)}</span><code>{code}</code></div>;
+}
 // Селектор: тег, .class или #id (ровно один простой селектор, как в уроке); иное — ничего не выбирает.
 function selOf(raw) {
   const s = String(raw || '').trim();
@@ -202,6 +217,15 @@ function S1({ p }) {
 // S2. АТРИБУТ class (показ) — в HTML важному абзацу добавляется class="muhim"; в CSS «p» → «.muhim»: красный
 // только он. Горят атрибут в HTML, потом точка с именем в CSS.
 // =============================================================================
+// Помощь на экране-объяснении (заказчик, 09.11.2026): ступени 1-2-3 по лампочке (useKzLadder) — 1 на что смотреть,
+// 2 что это значит, 3 пример из жизни. now — открытая ступень с номером «2/3» для панели, next — текст следующей
+// ступени без номера: его читает вслух лампочка.
+function useShowHelp(help) {
+  const lad = useKzLadder(!!(help && help.length));
+  const num = (k) => { const o = {}; LANGS.forEach((l) => { o[l] = k + '/' + help.length + ' · ' + (help[k - 1][l] !== undefined ? help[k - 1][l] : help[k - 1].ru); }); return o; };
+  if (!help || !help.length) return { now: null, next: null };
+  return { now: lad.lv > 0 ? num(Math.min(lad.lv, help.length)) : null, next: help[Math.min(lad.lv, help.length - 1)] };
+}
 function S2({ p }) {
   const pick = usePick();
   const c = C.s2;
@@ -222,10 +246,11 @@ function S2({ p }) {
   const lines = bothLines([{ k: 'r', text: rule, cls: n === 2 && live ? 'is-new is-read' : n === 2 ? 'is-new' : '', lit: n === 2 && live ? 'sel' : null }],
     els.map((el, i) => Object.assign({}, el, { lcls: i === 1 && n >= 1 ? (n === 1 && live ? 'is-new is-read' : 'is-new') : '', lit: i === 1 && n === 1 && live })));
   const askText = solved || demo.done ? c.askDone : n === 2 ? c.askCss : n === 1 ? c.askHtml : c.askStart;
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c2-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c2-s5 c2-pair">
           <div className="kz-col"><KzCode lines={lines} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={news(pick, { p2: n >= 1 ? 'muhim' : undefined, hl: n === 2 && live ? 'p2' : null })} rules={cssParse(rule)} /></Br></div>
@@ -260,7 +285,7 @@ function S3({ p }) {
     if (!canTap || okNow) return;
     st.current.tries += 1;
     const w = ty.val.trim();
-    const issue = !w ? c.msgs.empty : /^[.#]/.test(w) ? c.msgs.dot : w === 'yangi' ? null : w === 'muhim' ? c.msgs.other : c.msgs.none;
+    const issue = cyrIn(ty.val) || (!w ? c.msgs.empty : /^[.#]/.test(w) ? c.msgs.dot : w === 'yangi' ? null : w === 'muhim' ? c.msgs.other : c.msgs.none);
     if (!issue) {
       sfx('win', true); setMsg(null); setOkNow(true); put({ done: true });
       log({ screenId: 's3', type: 'write-class', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
@@ -366,10 +391,11 @@ function S5({ p }) {
   const css = [{ k: 'r0', text: '.muhim { color: red; }', cls: 'c2-dim' }].concat(n >= 2 ? [{ k: 'r', text: '#bosh { color: purple; }', cls: live ? 'is-new is-read' : 'is-new', lit: live ? 'sel' : null }] : []);
   const lines = bothLines(css, els.map((el, i) => Object.assign({}, el, { lcls: i === 0 && n >= 1 ? (n === 1 && live ? 'is-new is-read' : 'is-new') : '', lit: i === 0 && n === 1 && live })));
   const askText = solved || demo.done ? c.askDone : n === 2 ? c.askCss : n === 1 ? c.askHtml : c.askStart;
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c2-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c2-s5 c2-pair">
           <div className="kz-col"><KzCode lines={lines} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={els} rules={cssParse(css.map((r) => r.text).join(' '))} /></Br></div>
@@ -567,10 +593,11 @@ function K1({ p }) {
   const hl = !live ? null : n === 1 ? 'cls' : n === 2 ? 'id' : null;
   const els = kEls(pick, hl);
   const askText = solved || demo.done ? c.askDone : n === 2 ? c.askId : n === 1 ? c.askCls : c.askStart;
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c2-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c2-s5 c2-pair">
           <div className="kz-col"><KzCode lines={bothLines(n ? css : [{ k: 'r0', text: '', parts: [<span key="e" className="c2-raw"> </span>] }], els)} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={els} rules={cssParse(css.slice(0, n).map((r) => r.text).join(' '))} /></Br></div>
@@ -604,7 +631,7 @@ function K2({ p }) {
     if (!canTap || okNow) return;
     st.current.tries += 1;
     const w = ty.val.trim();
-    const issue = !w ? c.msgs.empty : w === '.sport' ? null : w === 'sport' ? c.msgs.noDot : w === '#sport' ? c.msgs.hash : w.toLowerCase() === 'p' ? c.msgs.tag : c.msgs.other;
+    const issue = cyrIn(ty.val) || (!w ? c.msgs.empty : /^[.#]\s/.test(w) ? c.msgs.space : w === '.sport' ? null : w === 'sport' ? c.msgs.noDot : w === '#sport' ? c.msgs.hash : w.toLowerCase() === 'p' ? c.msgs.tag : c.msgs.other);
     if (!issue) {
       sfx('win', true); setMsg(null); setOkNow(true); put({ done: true });
       log({ screenId: 'k2', type: 'write-selector', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
@@ -723,10 +750,11 @@ function S8({ p }) {
   const lines = bothLines([{ k: 'r', text: rule, cls: n && n < 3 ? 'is-read' : '', lit: n === 1 ? 'name' : n === 2 ? 'mark' : null }],
     els.map((el, i) => Object.assign({}, el, { lcls: i === 1 && n === 3 ? 'is-read' : '', lit: i === 1 && n === 3 })));
   const askText = solved || demo.done ? c.askDone : n === 3 ? c.askDotHtml : n === 2 ? c.askHash : n === 1 ? c.askTypo : c.askDone;
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c2-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c2-s5 c2-pair">
           <div className="kz-col"><KzCode lines={lines} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={els} rules={cssParse(rule)} /></Br></div>
@@ -760,7 +788,7 @@ function S9({ p }) {
     if (!canTap || okNow) return;
     st.current.tries += 1;
     const w = ty.val.replace(/\s+/g, '');
-    const issue = w === '.' ? null : !w ? c.msgs.empty : w === '#' ? c.msgs.hash : c.msgs.other;
+    const issue = cyrIn(ty.val) || (w === '.' ? null : !w ? c.msgs.empty : w === '#' ? c.msgs.hash : c.msgs.other);
     if (!issue) {
       sfx('win', true); setMsg(null); setOkNow(true); put({ done: true });
       log({ screenId: 's9', type: 'fix-dot', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
@@ -841,7 +869,7 @@ function S10({ p }) {
     k: 'l' + j + (found && j === R.bad ? 'f' : ''), d: 0, parts: cssTokens(r),
     cls: 'c2-cssline c2-hline' + (found && j === R.bad ? ' is-new' : '') + (off.indexOf(j) >= 0 ? ' is-off' : ''),
     onTap: found ? null : () => tap(j), disabled: !canTap || found || off.indexOf(j) >= 0,
-    led: !found && ((led && off.length === 0 && j === 0) || (lit && j === R.bad))
+    led: !found && ((led && off.length === 0) || (lit && j === R.bad))
   }));
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
@@ -902,7 +930,7 @@ function W1({ p }) {
   const check = () => {
     if (!canTap || okNow) return;
     st.current.tries += 1;
-    const issue = ruleIssue(ty.val, c.msgs);
+    const issue = cyrIn(ty.val) || (ruleIssue(ty.val, c.msgs));
     if (!issue) {
       sfx('win', true); setMsg(null); setOkNow(true); put({ done: true });
       log({ screenId: 'w1', type: 'write-rule', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
@@ -919,7 +947,7 @@ function W1({ p }) {
       <Sheet cls="c2-sheet">
         <KzAsk text={okNow ? c.ok : c.ask} hint={okNow ? null : (msg || hintAt(lad.lv, c.hints))} err={!!msg} />
         <div className="kz-scene c2-s5 c2-pair">
-          <div className="kz-col"><KzCode lines={bothLines([okNow ? { k: 'r', text: '#bosh { color: purple; }', cls: 'is-new' } : { k: 'r', parts: [<span key="g" className={'kz-gap c2-slot c2-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={40} /></span>], cls: 'is-hl' }], els)} cls="kz-code-sm" /></div>
+          <div className="kz-col"><KzCode lines={bothLines([okNow ? { k: 'r', text: '#bosh { color: purple; }', cls: 'is-new' } : { k: 'r', parts: [<span key="g" className={'kz-gap c2-slot c2-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={40} /></span>], cls: 'is-hl' }], els)} cls="kz-code-sm" />{!okNow && lad.lv >= 3 ? <HelpCode code={'#bosh { color: purple; }'} /> : null}</div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={els} rules={cssParse(css)} /></Br></div>
         </div>
         {!okNow ? <KeyRow keys={['#', '{', '}', ':', ';']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 4} /> : null}
@@ -952,7 +980,7 @@ function S11({ p }) {
   const ready = !!(va && vb);
   const confirm = () => {
     if (!canTap || !ready || solved) return;
-    const issue = /^\./.test(va) ? c.msgs.dot : !CLS_RE.test(va) || !CLS_RE.test(vb) ? c.msgs.bad : va !== vb ? fillL(c.msgs.mismatch, { a: va, b: vb }) : null;
+    const issue = cyrIn(va, vb) || (/^\./.test(va) ? c.msgs.dot : !CLS_RE.test(va) || !CLS_RE.test(vb) ? c.msgs.bad : va !== vb ? fillL(c.msgs.mismatch, { a: va, b: vb }) : null);
     if (issue) { sfx('soft', true); setMsg(issue); sayNow(issue, 'think'); if (lad.lv < 1) lad.bump(); return; }
     sfx('win', true); setMsg(null);
     store.set('myClass', va); put({ done: true });

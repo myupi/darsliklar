@@ -634,3 +634,37 @@
    прячется, пока панель открыта; после «Попробовать ещё» оно возвращается (как в уроке 2). */
 @media (max-width: 759px) and (max-height: 699px) { .b-stage.has-sheet .r28 .c3-sheet .kz-br.c3-br, .r28 .b-stage.has-sheet .c3-sheet .kz-br.c3-br, .b-stage.has-sheet.r28 .c3-sheet .kz-br.c3-br { display: none !important; } }
 @media (max-width: 759px) and (min-height: 700px) { .b-stage.has-sheet .r28 .c3-sheet .kz-br.c3-br, .r28 .b-stage.has-sheet .c3-sheet .kz-br.c3-br, .b-stage.has-sheet.r28 .c3-sheet .kz-br.c3-br { --brh: 13dvh !important; max-height: 13dvh !important; } }
+/* Упрощённый урок (09.11.2026). Палитра, как в программе для рисования: квадратик цвета, под ним — его код. */
+.r28 .c3-pal { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; align-self: stretch; padding: 8px 10px; border-radius: 10px; background: #fff; box-shadow: inset 0 0 0 1px var(--r-edge); }
+.r28 .c3-pal-i { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 6px; border-radius: 8px; transition: background-color .3s, box-shadow .3s; }
+.r28 .c3-pal-i i { display: block; width: 40px; height: 28px; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .15); }
+.r28 .c3-pal-i b { font: 600 12px var(--r-mono); color: var(--r-ink); letter-spacing: .02em; }
+.r28 .c3-pal-i.is-on { background: #FFF4F0; box-shadow: 0 0 0 2px var(--r-pri); }
+/* «#» и шесть знаков — две части hex-кода. */
+.r28 .c3-hexparts { display: inline-flex; align-self: center; align-items: stretch; gap: 6px; font: 700 18px var(--r-mono); }
+.r28 .c3-hexparts b, .r28 .c3-hexparts span { padding: 4px 10px; border-radius: 8px; }
+.r28 .c3-hexparts b { background: #FFE4DC; color: #C2410C; }
+.r28 .c3-hexparts span { background: #EEF2FF; color: #3730A3; }
+.r28 .c3-a-in { animation: c3In .35s ease-out both; }
+@keyframes c3In { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+/* Пятно цвета в выборе названия. */
+.r28 .c3-card.c3-swatch-card { align-self: center; width: min(100%, 320px); }
+.r28 .kz-btn.c3-opt.is-mono span { font-family: var(--r-mono); }
+.r28 .kz-pick.c3-opts:has(> :nth-child(2):last-child), .r28 .kz-pick.c3-opts:has(> :nth-child(4)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.r28 .kz-role.is-dim { opacity: .55; }
+@media (max-width: 640px) {
+  .r28 .kz-pick.c3-opts:has(> :nth-child(4)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .r28 .c3-pal { gap: 4px; padding: 6px; }
+  .r28 .c3-pal-i { padding: 3px 4px; }
+  .r28 .c3-pal-i i { width: 32px; height: 22px; }
+  .r28 .c3-pal-i b { font-size: 11px; }
+  .r28 .c3-swatch { height: clamp(56px, 11dvh, 100px); }
+}
+@media (prefers-reduced-motion: reduce) { .r28 .c3-a-in { animation: none; } }
+
+/* Образец на третьей ступени помощи (09.11.2026). */
+.r28 .kz-helpcode { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; align-self: stretch; padding: 6px 10px; border-radius: 10px; background: #FFF8E1; box-shadow: inset 0 0 0 1.5px #F5C451; animation: kzHelpIn .3s ease-out both; }
+.r28 .kz-helpcode span { font: 600 12px var(--r-font); color: #8A6100; }
+.r28 .kz-helpcode code { font: 600 14px var(--r-mono); color: var(--r-ink); white-space: pre-wrap; word-break: break-word; }
+@keyframes kzHelpIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .r28 .kz-helpcode { animation: none; } }

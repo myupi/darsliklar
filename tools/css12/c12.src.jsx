@@ -121,9 +121,12 @@ const C = {
   },
   s2: {
     eyebrow: L3("relative", 'relative', 'relative'),
-    say: L3("Bu yerda uchta quti bor. Ikkinchisiga position relative beramiz, ya'ni nisbiy degani: o'z joyidan siljiydi.",
-      'Здесь три коробки. Дадим второй position relative, то есть относительно: она сдвигается от своего места.',
-      'There are three boxes here. Let’s give the second one position relative, meaning relative: it moves from its own place.'),
+    help: [
+      L3("Ikkinchi qutiga qarang: u siljiydi, lekin uning eski joyi bo'sh qoladi, uchinchi quti esa joyidan qimirlamaydi.", 'Посмотри на вторую коробку: она сдвигается, но её прежнее место остаётся пустым, а третья коробка не двигается.', 'Look at the second box: it moves, but its old spot stays empty, and the third box doesn’t move.'),
+      L3("relative elementni o'z joyidan siljitadi. top yuqoridan chekinish beradi, shuning uchun quti pastga tushadi. left esa chapdan, shuning uchun o'ngga.", 'relative сдвигает элемент от его места. top — отступ сверху, поэтому коробка уходит вниз. left — отступ слева, поэтому вправо.', 'relative shifts an element from its own spot. top is a gap from the top, so the box goes down. left is a gap from the left, so it goes right.'),
+      L3("Sinfda partadan turib, bir qadam chetga chiqing: sizning joyingiz bo'sh qoladi va sizni kutadi. relative ham shunday.", 'Встань из-за парты и отойди на шаг: твоё место остаётся пустым и ждёт тебя. relative работает так же.', 'Get up from your desk and step aside: your seat stays empty and waits for you. relative works the same way.')
+    ],
+    say: L3("Bu yerda uchta quti bor. Odatda hamma elementlarda position static bo'ladi: ular navbat bilan turadi va siljishlarni eshitmaydi. Ikkinchi qutiga position relative beramiz, ya'ni nisbiy degani: u o'z joyidan siljiydi.", "Здесь три коробки. Обычно у всех элементов position static: они стоят по порядку и сдвиги не слушают. Дадим второй коробке position relative, то есть относительно: она сдвигается от своего места.", "There are three boxes here. Normally every element has position static: they stand in order and ignore offsets. Let’s give the second box position relative, meaning relative: it moves from its own place."),
     sayRel: L3("Qarang, hech narsa o'zgarmadi. relative ning o'zi joyidan qimirlamaydi, unga qayerga siljishni aytish kerak.", 'Смотри, ничего не изменилось. Сам по себе relative не двигает, ему нужно сказать, куда сдвинуться.', 'Look, nothing changed. relative alone doesn’t move anything; you have to tell it where to move.'),
     sayTop: L3("top yigirma piksel. Diqqat qiling: quti pastga tushdi! top tepadan masofa degani, shuning uchun quti tepasidan yigirma piksel uzoqlashdi. Uning eski joyi esa bo'sh qoldi.", 'top двадцать пикселей. Внимание: коробка опустилась вниз! top — это отступ сверху, поэтому коробка отодвинулась от верха на двадцать пикселей. А её прежнее место осталось пустым.', 'top twenty pixels. Watch: the box went down! top is the distance from the top, so the box moved twenty pixels away from the top. Its old place stayed empty.'),
     sayLeft: L3("left qirq piksel: chapdan uzoqlashdi, ya'ni o'ngga siljidi. Uchinchi quti esa joyidan qimirlamadi.", 'left сорок пикселей: отодвинулась от левого края, то есть вправо. А третья коробка осталась на месте.', 'left forty pixels: it moved away from the left, that is, to the right. The third box didn’t move.'),
@@ -187,12 +190,15 @@ const C = {
   },
   s5: {
     eyebrow: L3("absolute", 'absolute', 'absolute'),
-    say: L3("Endi absolute, ya'ni mutlaq degani. U elementni oddiy oqimdan butunlay olib chiqadi va istalgan joyga qo'yadi. Belgiga qarang.",
-      'Теперь absolute, то есть абсолютно. Он целиком вынимает элемент из обычного потока и ставит в любое место. Смотри на метку.',
-      'Now absolute, meaning absolute. It takes an element completely out of the normal flow and puts it anywhere. Watch the badge.'),
-    sayOut: L3("position absolute: belgi matndan chiqdi, matn esa uning joyini egalladi. Endi belgi hech kimga xalaqit bermaydi.", 'position absolute: метка вышла из текста, а текст занял её место. Теперь метка никому не мешает.', 'position absolute: the badge left the text, and the text took its place. Now the badge doesn’t get in anyone’s way.'),
-    sayCorner: L3("top nol, right nol: belgi burchakka uchdi. Lekin qarang, kartochka burchagiga emas, butun sahifa burchagiga! Chunki absolute ota-onalar orasidan position berilgan langarni qidiradi, topmasa, sahifaga yopishadi.", 'top ноль, right ноль: метка улетела в угол. Но смотри, не в угол карточки, а в угол всей страницы! Потому что absolute ищет среди родителей якорь — элемент с position, а не найдя, держится за страницу.', 'top zero, right zero: the badge flew to a corner. But look, not the card’s corner, the whole page’s corner! Because absolute looks among its parents for an anchor, an element with position, and if there is none, it holds on to the page.'),
-    sayParent: L3("Kartochkaga position relative beramiz. Endi kartochka langar bo'ldi va belgi aynan uning burchagiga keldi.", 'Дадим карточке position relative. Теперь карточка стала якорем, и метка встала точно в её угол.', 'Give the card position relative. Now the card is the anchor, and the badge landed right in its corner.'),
+    help: [
+      L3('Belgiga qarang: u avval matndan chiqadi, keyin sahifa burchagiga, oxirida esa kartochka burchagiga uchadi.', 'Посмотри на метку: сначала она выходит из текста, потом улетает в угол страницы, а в конце — в угол карточки.', 'Look at the badge: first it leaves the text, then flies to the page corner, and finally to the card corner.'),
+      L3("absolute elementni qatordan chiqarib, burchakka qo'yadi. Qaysi burchakka? Tashqaridagi, position berilgan qutining burchagiga. Shuning uchun kartochkaga relative yoziladi.", "absolute вынимает элемент из ряда и ставит в угол. В угол чего? Той коробки снаружи, у которой есть position. Поэтому карточке пишут relative.", "absolute takes an element out of the row and puts it in a corner. Which corner? The corner of the outer box that has position. That’s why the card gets relative."),
+      L3('Muzlatgichga magnit yopishtirasiz: u muzlatgich burchagida turadi, xona burchagida emas. Muzlatgich bu langar, magnit esa absolute.', 'Магнит на холодильнике держится в углу холодильника, а не в углу комнаты. Холодильник — якорь, магнит — absolute.', 'A magnet on a fridge sits in the fridge’s corner, not the room’s corner. The fridge is the anchor, the magnet is absolute.')
+    ],
+    say: L3("Endi absolute. U elementni umumiy qatordan olib chiqadi: qo'shnilar uni endi ko'rmaydi va uning joyini egallaydi. Elementning o'zini esa istalgan burchakka qo'yish mumkin. Belgiga qarang.", "Теперь absolute. Он вынимает элемент из общего ряда: соседи его больше не замечают и занимают его место. А сам элемент можно поставить в любой угол. Смотри на метку.", "Now absolute. It takes an element out of the shared row: the neighbors stop noticing it and take its place. And the element itself can go into any corner. Watch the badge."),
+    sayOut: L3("position absolute: belgi qatordan chiqdi, matn esa darhol uning joyini egalladi.", "position absolute: метка вышла из строки, и текст сразу занял её место.", "position absolute: the badge left the line, and the text took its place right away."),
+    sayCorner: L3("top nol, right nol: belgi burchakka uchdi. Lekin kartochka burchagiga emas, butun sahifa burchagiga! absolute o'zi yotgan va position berilgan qutini qidiradi. Kartochkada position yo'q, shuning uchun belgi sahifaga yopishdi.", "top ноль, right ноль: метка улетела в угол. Но не в угол карточки, а в угол всей страницы! absolute ищет коробку, в которой лежит и у которой есть position. У карточки position нет — и метка держится за страницу.", "top zero, right zero: the badge flew into a corner. But not the card’s corner, the whole page’s corner! absolute looks for a box it sits in that has position. The card has no position, so the badge holds on to the page."),
+    sayParent: L3("Kartochkaga position relative beramiz. Endi belgi kartochkaga yopishdi, kartochka uning langari bo'ldi, va belgi aynan uning burchagiga keldi.", "Дадим карточке position relative. Теперь метка держится за карточку — карточка стала её якорем. И метка встала точно в её угол.", "Give the card position relative. Now the badge holds on to the card, the card became its anchor, and the badge landed right in its corner."),
     done: L3("Demak, absolute oqimdan chiqadi va eng yaqin langar otaga nisbatan turadi. Langar bo'lishi uchun otaga relative yoziladi.", 'Значит, absolute выходит из потока и встаёт относительно ближайшего родителя-якоря. Чтобы родитель стал якорем, ему пишут relative.', 'So absolute leaves the flow and stands relative to the nearest anchor parent. To make the parent an anchor, you give it relative.'),
     askStart: L3("Qarang: belgi matnda", 'Смотри: метка в тексте', 'Watch: the badge is in the text'),
     askOut: L3("Qarang: absolute — oqimdan chiqdi", 'Смотри: absolute — вышла из потока', 'Watch: absolute leaves the flow'),
@@ -242,9 +248,12 @@ const C = {
   },
   s8: {
     eyebrow: L3("fixed", 'fixed', 'fixed'),
-    say: L3("Bu uzun sahifa, kundalik. Pastda Yuqoriga tugmasi bor. Unga absolute va burchak berdik: u birinchi ekranning pastki burchagida turibdi.",
-      'Это длинная страница, дневник. Внизу есть кнопка «Наверх». Мы дали ей absolute и угол: она стоит в нижнем углу первого экрана.',
-      'This is a long page, a diary. There’s a To top button. We gave it absolute and a corner: it stands in the bottom corner of the first screen.'),
+    help: [
+      L3('Sahifa aylantirilganda tugmaga qarang: avval u sahifa bilan birga ketadi, fixed dan keyin esa oyna burchagida qoladi.', 'Посмотри на кнопку, когда страница прокручивается: сначала она уезжает вместе со страницей, а после fixed стоит в углу окна.', 'Watch the button as the page scrolls: first it moves with the page, but after fixed it stays in the window’s corner.'),
+      L3('fixed elementni brauzer oynasiga yopishtiradi: sahifa aylantirilsa ham u joyida turadi. absolute esa sahifa bilan birga harakatlanadi.', 'fixed прилепляет элемент к окну браузера: он стоит на месте, даже когда страница прокручивается. А absolute едет вместе со страницей.', 'fixed sticks an element to the browser window: it stays put even when the page scrolls. absolute moves together with the page.'),
+      L3("Mashina oynasiga yopishtirilgan stiker yo'l o'tib ketsa ham joyida qoladi. fixed tugma ham sahifa o'tib ketsa, oynada qoladi.", 'Наклейка на окне машины остаётся на месте, хотя дорога проносится мимо. Кнопка с fixed так же остаётся в окне, пока страница едет.', 'A sticker on a car window stays put while the road rushes by. A fixed button stays in the window the same way while the page moves.')
+    ],
+    say: L3("Bu uzun sahifa, kundalik. Eng pastda Yuqoriga tugmasi bor. Unga absolute va burchak berdik: sahifa aylantirilmaganida, u o'ng pastki burchakda turadi.", "Это длинная страница, дневник. В самом низу есть кнопка «Наверх». Мы дали ей absolute и угол: пока страница не прокручена, она стоит в правом нижнем углу.", "This is a long page, a diary. At the very bottom there’s a To top button. We gave it absolute and a corner: while the page isn’t scrolled, it stands in the bottom right corner."),
     sayAway: L3("Sahifani pastga aylantiramiz. Qarang: tugma sahifa bilan birga tepaga ketib qoldi. absolute sahifaga yopishgan.", 'Прокрутим страницу вниз. Смотри: кнопка уехала вверх вместе со страницей. absolute держится за страницу.', 'Let’s scroll the page down. Look: the button went up with the page. absolute holds on to the page.'),
     sayFixed: L3("Endi position fixed, ya'ni mahkamlangan degani. Tugma brauzer oynasining burchagiga yopishdi va sahifa aylansa ham joyida turibdi.", 'Теперь position fixed, то есть закреплённый. Кнопка прилипла к углу окна браузера и стоит на месте, хоть страница и прокручена.', 'Now position fixed, meaning fixed in place. The button stuck to the browser window’s corner and stays put even though the page is scrolled.'),
     sayTop: L3("Yana tepaga qaytamiz: tugma baribir oyna burchagida. fixed sahifaga emas, oynaga yopishadi.", 'Вернёмся наверх: кнопка всё так же в углу окна. fixed держится не за страницу, а за окно.', 'Back to the top: the button is still in the window’s corner. fixed holds on to the window, not the page.'),
@@ -300,6 +309,11 @@ const C = {
   },
   s11: {
     eyebrow: L3("Qachon ishlamaydi", 'Когда не работает', 'When it doesn’t work'),
+    help: [
+      L3("Har safar kodga qarang: position bormi, so'z to'g'ri yozilganmi, son yonida px bormi? Keyin ikkinchi qutiga qarang.", 'Каждый раз смотри на код: есть ли position, верно ли написано слово, есть ли px у числа? Потом смотри на вторую коробку.', 'Each time, look at the code: is there position, is the word spelled right, does the number have px? Then look at the second box.'),
+      L3("top, left, right, bottom faqat position bilan ishlaydi. So'zlar aniq yoziladi, sonlarga esa px kerak.", 'top, left, right и bottom работают только вместе с position. Слова пишутся точно, а у чисел нужен px.', 'top, left, right and bottom only work together with position. Words must be exact, and numbers need px.'),
+      L3("Rulsiz velosiped haydab bo'lmaydi, pedalni qancha aylantirmang. Siljishlar ham position siz ishlamaydi.", 'Без руля на велосипеде не поедешь, сколько ни крути педали. Сдвиги так же не работают без position.', 'You can’t ride a bike without handlebars, however hard you pedal. Shifts don’t work without position either.')
+    ],
     say: L3("position da ham xatolar bo'ladi. Keling, uchtasini ko'ramiz. Hozir ikkinchi quti relative va yigirma piksel pastga siljigan.",
       'И в position бывают ошибки. Давай посмотрим на три. Сейчас вторая коробка relative и сдвинута на двадцать пикселей вниз.',
       'position has mistakes too. Let’s look at three. Right now the second box is relative and moved twenty pixels down.'),
@@ -320,11 +334,12 @@ const C = {
       'Oops, I wanted to move the second box, but it won’t budge! My value is in the field. Find the mistake and fix it.'),
     msgs: {
       empty: L3("Qiymatni yozing: bitta so'z.", 'Впиши значение: одно слово.', 'Type the value: one word.'),
-      bad: L3("Brauzer bu so'zni tanimadi. Oxirida bitta harf yetishmayapti.", 'Браузер не узнал это слово. В конце не хватает одной буквы.', 'The browser didn’t recognize that word. One letter is missing at the end.'),
+      bad: L3("Brauzer bu so'zni tanimadi. relative bilan harfma-harf solishtiring.", "Браузер не узнал это слово. Сравни с relative буква за буквой.", "The browser didn’t recognize that word. Compare it with relative letter by letter."),
       static: L3("static bilan quti qimirlamaydi. O'z joyidan siljish kerak.", 'Со static коробка не двигается. Нужен сдвиг от своего места.', 'With static the box doesn’t move. We need a move from its own place.'),
       absolute: L3("absolute bilan quti joyini tashlab ketdi. Joyi saqlansin.", 'С absolute коробка бросила своё место. Место должно сохраниться.', 'With absolute the box left its place. The place should be kept.'),
       fixed: L3("fixed oynaga yopishadi. O'z joyidan siljish kerak.", 'fixed прилипает к окну. Нужен сдвиг от своего места.', 'fixed sticks to the window. We need a move from its own place.'),
-      other: L3("Bu boshqa qiymat. Faqat harfni qo'shing.", 'Это другое значение. Просто допиши букву.', 'That’s a different value. Just add the letter.')
+      other: L3("Bu boshqa qiymat. Faqat harfni qo'shing.", 'Это другое значение. Просто допиши букву.', 'That’s a different value. Just add the letter.'),
+      short: L3("Brauzer bu so'zni tanimadi: oxirida bitta harf yetishmayapti.", "Браузер не узнал это слово: в конце не хватает буквы.", "The browser didn’t recognize that word: a letter is missing at the end.")
     },
     hints: [
       L3("So'zni harfma-harf o'qing.", 'Прочитай слово по буквам.', 'Read the word letter by letter.'),
@@ -371,12 +386,14 @@ const C = {
       notAbs: L3("Belgi burchakka faqat absolute bilan chiqadi.", 'В угол метка выходит только с absolute.', 'The badge only goes to a corner with absolute.'),
       side: L3("Burchak uchun ikkita siljish kerak: bottom va left.", 'Для угла нужны два сдвига: bottom и left.', 'A corner needs two offsets: bottom and left.'),
       other: L3("Burchak boshqa. Pastki chap burchak kerak: bottom nol va left nol.", 'Угол другой. Нужен левый нижний: bottom ноль и left ноль.', 'That’s a different corner. We need the bottom left: bottom zero and left zero.'),
-      bad: L3("Brauzer bu so'zni tanimadi. So'zlarni tekshiring.", 'Браузер не узнал это слово. Проверь слова.', 'The browser didn’t recognize that word. Check the words.')
+      bad: L3("Brauzer bu so'zni tanimadi. So'zlarni tekshiring.", 'Браузер не узнал это слово. Проверь слова.', 'The browser didn’t recognize that word. Check the words.'),
+      semi: L3("Xususiyatlar o'rtasida nuqtali vergul kerak: har bir qiymatdan keyin nuqtali vergul qo'ying.", "Между свойствами нужна точка с запятой: поставь её после каждого значения.", "Properties need a semicolon between them: put one after each value."),
+      space: L3("Son va px o'rtasida bo'sh joy bo'lmaydi: 0px qo'shib yoziladi.", "Между числом и px не нужен пробел: 0px пишется слитно.", "No space between the number and px: 0px is written together.")
     },
     hints: [
       L3("Uchta xususiyat: position va ikkita siljish.", 'Три свойства: position и два сдвига.', 'Three properties: position and two offsets.'),
       L3("position absolute, bottom nol piksel, left nol piksel.", 'position absolute, bottom ноль пикселей, left ноль пикселей.', 'position absolute, bottom zero pixels, left zero pixels.'),
-      L3("Shunday yozing: nuqta belgi, figurali qavs, position ikki nuqta absolute, bottom ikki nuqta nol piksel, left ikki nuqta nol piksel, har biridan keyin nuqtali vergul, yopuvchi qavs.", 'Напиши так: точка belgi, фигурная скобка, position двоеточие absolute, bottom двоеточие ноль пикселей, left двоеточие ноль пикселей, после каждого — точка с запятой, закрывающая скобка.', 'Write it like this: dot belgi, curly brace, position colon absolute, bottom colon zero pixels, left colon zero pixels, a semicolon after each, closing brace.')
+      L3("Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", "Образец появился под кодом. Перепиши его в поле и нажми «Проверить».", "An example appeared under the code. Copy it into the field and tap Check.")
     ],
     ok: L3("Ajoyib! Belgi chap pastki burchakda. Qoidani o'zingiz yozdingiz.", 'Отлично! Метка в левом нижнем углу. Правило написано тобой целиком.', 'Great! The badge is in the bottom-left corner. You wrote the whole rule yourself.'),
     ask: L3("Belgini chap pastki burchakka qo'ying", 'Поставь метку в левый нижний угол', 'Put the badge in the bottom-left corner')
@@ -411,7 +428,7 @@ const C = {
     items: [
       { t: L3("relative element siljiganda uning eski joyi bo'sh qoladi.", 'Когда relative-элемент сдвигается, его прежнее место остаётся пустым.', 'When a relative element moves, its old place stays empty.'), right: true,
         why: L3("To'g'ri: relative joyini saqlab qoladi.", 'Верно: relative сохраняет своё место.', 'Right: relative keeps its place.') },
-      { t: L3("Bu qoida belgini doim kartochka burchagiga qo'yadi.", 'Это правило всегда ставит метку в угол карточки.', 'This rule always puts the badge in the card’s corner.'), right: false, code: 'badge',
+      { t: L3("Kartochkada position yo'q. Bu qoida belgini kartochka burchagiga qo'yadi.", 'У карточки нет position. Это правило поставит метку в угол карточки.', 'The card has no position. This rule will put the badge in the card’s corner.'), right: false, code: 'badge',
         why: L3("Aslida kartochka langar bo'lmasa, belgi sahifa burchagiga uchadi.", 'На самом деле, если карточка не якорь, метка улетит в угол страницы.', 'Actually, if the card isn’t an anchor, the badge flies to the page’s corner.') },
       { t: L3("fixed tugma sahifa aylansa ham oynada qoladi.", 'Кнопка fixed остаётся в окне, даже когда страницу прокручивают.', 'A fixed button stays in the window even when the page scrolls.'), right: true,
         why: L3("To'g'ri: fixed oynaga yopishadi.", 'Верно: fixed прилипает к окну.', 'Right: fixed sticks to the window.') },
@@ -449,7 +466,7 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayRel: 1, sayTop: 1, sayLeft: 1, sayOut: 1,
+Object.assign(SPOKEN, { help: 1, hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayRel: 1, sayTop: 1, sayLeft: 1, sayOut: 1,
   sayCorner: 1, sayParent: 1, sayAway: 1, sayFixed: 1, sayNoPos: 1, sayTypo: 1, sayNoUnit: 1, miss: 1, say2: 1, fine: 1, found: 1, items: 1, right: 1,
   rounds: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1, css: 1, right: 1, tag: 1, dir: 1 }, rounds: { want: 1, opts: 1 } });

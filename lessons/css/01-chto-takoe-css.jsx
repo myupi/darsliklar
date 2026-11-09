@@ -6775,6 +6775,11 @@ const C = {
   },
   s2: {
     eyebrow: L3('CSS qayerda turadi', 'Где живёт CSS', 'Where CSS lives'),
+    help: [
+      L3("Kodga qarang: HTML teglari bor, keyin head ichida style tegi paydo bo'ladi. Brauzerga qarang: style ichida qoida paydo bo'lganda sarlavha bo'yaladi.", 'Посмотри на код: есть теги HTML, а потом внутри head появляется тег style. Посмотри в браузер: когда в style появляется правило, заголовок окрашивается.', 'Look at the code: there are HTML tags, then a style tag appears inside head. Look at the browser: when a rule appears in style, the heading gets colored.'),
+      L3("HTML sahifada nima borligini aytadi: sarlavha, matn, rasm. CSS esa ular qanday ko'rinishini aytadi. CSS head ichidagi style tegida yashaydi.", 'HTML говорит, что есть на странице: заголовок, текст, картинка. А CSS — как они выглядят. CSS живёт в теге style внутри head.', 'HTML says what’s on the page: a heading, text, a picture. CSS says how they look. CSS lives in the style tag inside head.'),
+      L3("Uy qurilganda avval devorlar quriladi, keyin ular bo'yaladi. HTML bu devorlar, CSS esa bo'yoq.", 'Когда строят дом, сначала ставят стены, потом их красят. HTML — это стены, а CSS — краска.', 'When a house is built, the walls go up first, then they get painted. HTML is the walls, CSS is the paint.')
+    ],
     say: L3("Keling, sirni ochamiz. HTML sahifada nima borligini aytadi: sarlavha, matn, rasm. CSS esa ular qanday ko'rinishini aytadi, ya'ni rangi, o'lchami va joyi degani. Qarang, CSS qayerga yoziladi.",
       'Давай раскроем секрет. HTML говорит, что есть на странице: заголовок, текст, картинка. А CSS говорит, как они выглядят, то есть их цвет, размер и место. Смотри, куда пишется CSS.',
       'Let’s reveal the secret. HTML says what’s on the page: a heading, text, a picture. CSS says how they look: their color, size and place. Watch where CSS is written.'),
@@ -6837,6 +6842,11 @@ const C = {
   },
   s5: {
     eyebrow: L3('Qoida nimadan iborat', 'Из чего правило', 'What a rule is made of'),
+    help: [
+      L3('Qoidaning qismlariga ketma-ket qarang: avval selektor, keyin figurali qavslar, ichida xususiyat, ikki nuqta va qiymat.', 'Посмотри на части правила по очереди: сначала селектор, потом фигурные скобки, внутри свойство, двоеточие и значение.', 'Look at the rule’s parts in order: first the selector, then the curly braces, inside them the property, a colon and the value.'),
+      L3("Selektor qaysi tegni bezashni aytadi. Xususiyat nimani o'zgartirishni, qiymat esa qanday o'zgartirishni aytadi. Figurali qavslar qoidaning boshi va oxiri.", 'Селектор говорит, какой тег оформляем. Свойство — что меняем, значение — как меняем. Фигурные скобки — начало и конец правила.', 'The selector says which tag to style. The property says what to change, the value says how. The curly braces are the start and end of the rule.'),
+      L3("Do'stingizga «Ali, futbolkangni qizil qil» desangiz: Ali bu selektor, futbolka xususiyat, qizil esa qiymat.", 'Скажи другу: «Али, сделай футболку красной». Али — это селектор, футболка — свойство, красная — значение.', 'Tell a friend: “Ali, make your T-shirt red.” Ali is the selector, the T-shirt is the property, red is the value.')
+    ],
     say: L3("Keling, bitta qoidani bo'laklarga ajratamiz. U kichkina bo'lsa ham, har bir belgisi o'z ishini qiladi.", 'Давай разберём одно правило по частям. Оно маленькое, но у каждого знака своя работа.', 'Let’s take one rule apart. It’s small, but every sign has its job.'),
     sayTag: L3("Boshida selektor turadi, ya'ni qaysi tegni bezashimizni aytadigan so'z degani. Bu yerda u p, demak abzaslar bo'yaladi.", 'В начале стоит селектор, то есть слово, которое говорит, какой тег мы оформляем. Здесь это p, значит, покрасятся абзацы.', 'First comes the selector: the word that says which tag we style. Here it’s p, so the paragraphs get colored.'),
     sayBrace: L3("Keyin jingalak qavslar keladi. Ular qoidaning boshi va oxirini ko'rsatadi, xuddi ochuvchi va yopuvchi teg kabi.", 'Дальше идут фигурные скобки. Они показывают начало и конец правила, как открывающий и закрывающий тег.', 'Next come the curly braces. They show where the rule starts and ends, like an opening and a closing tag.'),
@@ -6910,6 +6920,11 @@ const C = {
   },
   s8: {
     eyebrow: L3("Qoida nimani bo'yaydi", 'Что красит правило', 'What a rule colors'),
+    help: [
+      L3("Selektorga va sahifaga qarang: selektor o'zgarganda sahifaning boshqa qismi bo'yaladi.", 'Посмотри на селектор и на страницу: меняется селектор — красится другая часть страницы.', 'Look at the selector and the page: when the selector changes, a different part of the page gets colored.'),
+      L3("Selektorda qaysi teg yozilsa, qoida o'sha tegni bezaydi. body bu butun sahifa. Bir nechta qoida ketma-ket yoziladi.", 'Какой тег в селекторе, тот правило и оформляет. body — это вся страница. Несколько правил пишут одно за другим.', 'Whichever tag is in the selector, that’s what the rule styles. body is the whole page. Several rules are written one after another.'),
+      L3("Sinfda «qizlar, turinglar» desangiz, faqat qizlar turadi. Selektor ham shunday: faqat aytilgan teglar o'zgaradi.", 'Если в классе сказать «девочки, встаньте», встанут только девочки. Селектор так же: меняются только названные теги.', 'Say “girls, stand up” in class and only the girls stand. A selector works the same way: only the named tags change.')
+    ],
     say: L3("Selektor juda muhim: u qoida qaysi tegga ishlashini aytadi. Qarang, hozir selektor h1, shuning uchun faqat sarlavha to'q sariq.", 'Селектор очень важен: он говорит, к какому тегу относится правило. Смотри, сейчас селектор h1, поэтому оранжевый только заголовок.', 'The selector matters a lot: it says which tag the rule works on. Look, the selector is h1 now, so only the heading is orange.'),
     sayP: L3("Endi selektorni p ga almashtiramiz. Sarlavha qorayib qoldi, ikkala abzas esa to'q sariq bo'ldi.", 'Теперь заменим селектор на p. Заголовок снова чёрный, а оба абзаца стали оранжевыми.', 'Now we switch the selector to p. The heading is black again, and both paragraphs turned orange.'),
     sayBody: L3("Yana bitta qoida qo'shamiz: body uchun fon rangi. body butun sahifa, shuning uchun hamma joy och ko'k bo'ldi.", 'Добавим ещё одно правило: цвет фона для body. body — это вся страница, поэтому всё стало голубым.', 'Let’s add one more rule: a background color for body. body is the whole page, so everything turned light blue.'),
@@ -6966,6 +6981,11 @@ const C = {
   },
   s11: {
     eyebrow: L3('Qoida buzilsa', 'Когда правило ломается', 'When a rule breaks'),
+    help: [
+      L3('Har safar kodga qarang: ikki nuqta bormi, nuqtali vergul bormi, qoida style ichidami? Keyin sahifaga qarang.', 'Каждый раз смотри на код: есть ли двоеточие, точка с запятой, стоит ли правило внутри style? Потом на страницу.', 'Each time, look at the code: is there a colon, a semicolon, is the rule inside style? Then look at the page.'),
+      L3('Xususiyat va qiymat orasida ikki nuqta, xususiyatlar orasida nuqtali vergul turadi. CSS esa faqat style tegi ichida ishlaydi.', 'Между свойством и значением — двоеточие, между свойствами — точка с запятой. А CSS работает только внутри тега style.', 'A colon goes between the property and the value, a semicolon between properties. And CSS only works inside the style tag.'),
+      L3("Telefon raqamida bitta raqam xato bo'lsa, qo'ng'iroq bo'lmaydi. CSS da ham bitta belgi xato bo'lsa, qoida ishlamaydi.", 'Если в номере телефона ошибиться на одну цифру, звонок не пройдёт. В CSS так же: ошибка в одном знаке — правило не работает.', 'One wrong digit in a phone number and the call won’t go through. In CSS too: one wrong symbol and the rule won’t work.')
+    ],
     say: L3("CSS juda aniq tilni yaxshi ko'radi. Bitta belgi xato bo'lsa, brauzer qoidani tashlab yuboradi. Keling, uchta xatoni ko'ramiz.", 'CSS любит точность. Ошибся в одном знаке — и браузер просто пропускает правило. Посмотрим на три ошибки.', 'CSS loves precision. Get one sign wrong and the browser just skips the rule. Let’s look at three mistakes.'),
     sayEq: L3("Birinchisi: ikki nuqta o'rniga teng belgisi. Qarang, sarlavha bo'yalmadi. CSSda xususiyat va qiymat o'rtasida faqat ikki nuqta turadi.", 'Первая: знак «равно» вместо двоеточия. Смотри, заголовок не покрасился. В CSS между свойством и значением стоит только двоеточие.', 'The first: an equals sign instead of a colon. Look, the heading didn’t get colored. In CSS only a colon goes between the property and the value.'),
     saySemi: L3("Ikkinchisi: ikki xususiyat o'rtasida nuqtali vergul unutildi. Endi brauzer ikkalasini ham tushunmadi: rang ham, fon ham yo'q.", 'Вторая: между двумя свойствами забыли точку с запятой. Теперь браузер не понял ни одно: нет ни цвета, ни фона.', 'The second: the semicolon between two properties was forgotten. Now the browser understood neither: no color, no background.'),
@@ -6980,7 +7000,7 @@ const C = {
     eyebrow: L3('Belgini tuzating', 'Исправь знак', 'Fix the sign'),
     say: L3("Voy, men yana teng belgisini yozibman! Sarlavha bo'yalmayapti. Teng belgisini o'chirib, uning o'rniga to'g'ri belgini yozing.", 'Ой, я опять написал знак «равно»! Заголовок не красится. Сотри «равно» и напиши вместо него правильный знак.', 'Oops, I wrote the equals sign again! The heading won’t color. Erase the equals sign and type the right sign instead.'),
     msgs: {
-      eq: L3("Bu hali ham teng belgisi. CSS uni tushunmaydi.", 'Это всё ещё знак «равно». CSS его не понимает.', 'That’s still the equals sign. CSS doesn’t understand it.'),
+      eq: L3("Bu hali ham teng belgisi. Uni strelkali tugma bilan o'chiring, keyin ikki nuqta qo'ying.", 'Это всё ещё знак «равно». Сотри его кнопкой со стрелкой и поставь двоеточие.', 'That’s still the equals sign. Erase it with the arrow button and put a colon instead.'),
       semi: L3("Bu nuqtali vergul, u xususiyatni tugatadi. Xususiyat va qiymat o'rtasida esa ikki nuqta turadi.", 'Это точка с запятой, она заканчивает свойство. А между свойством и значением стоит двоеточие.', 'That’s a semicolon; it ends a property. Between the property and the value goes a colon.'),
       empty: L3("Bo'sh joyga bitta belgi yozing.", 'Впиши в пустое место один знак.', 'Type one sign in the empty spot.'),
       other: L3("Bu belgi to'g'ri emas. Xususiyat va qiymat o'rtasida ikki nuqta turadi.", 'Этот знак не подходит. Между свойством и значением стоит двоеточие.', 'That sign doesn’t fit. A colon goes between the property and the value.')
@@ -6988,7 +7008,7 @@ const C = {
     hints: [
       L3("Darsdagi to'g'ri qoida esingizdami: color va rang o'rtasida qaysi belgi turardi?", 'Вспомни правильное правило из урока: какой знак стоял между color и цветом?', 'Remember the correct rule: which sign sat between color and the color?'),
       L3("Bu ikkita nuqta bir-birining ustida turadigan belgi.", 'Это знак из двух точек одна над другой.', 'It’s the sign with two dots, one above the other.'),
-      L3("Pastdagi ikki nuqta tugmasini bosing va Tekshirishni bosing.", 'Нажми кнопку с двоеточием внизу, потом «Проверить».', 'Tap the colon button below, then Check.')
+      L3("Avval strelkali tugma bilan teng belgisini o'chiring. Keyin ikki nuqta tugmasini va Tekshirishni bosing.", 'Сначала сотри «равно» кнопкой со стрелкой. Потом нажми кнопку с двоеточием и «Проверить».', 'First erase the equals sign with the arrow button. Then tap the colon button and Check.')
     ],
     ok: L3("Ajoyib! Sarlavha to'q sariq bo'ldi. Endi qoida to'g'ri yozilgan.", 'Отлично! Заголовок стал оранжевым. Теперь правило написано верно.', 'Great! The heading turned orange. Now the rule is written correctly.'),
     ask: L3("Teng belgisi o'rniga to'g'ri belgini yozing", 'Напиши вместо «равно» правильный знак', 'Type the right sign instead of the equals sign')
@@ -7025,6 +7045,7 @@ const C = {
       braces: L3("Qoidaga jingalak qavslar kerak: ochuvchi va yopuvchi.", 'Правилу нужны фигурные скобки: открывающая и закрывающая.', 'The rule needs curly braces: an opening one and a closing one.'),
       eq: L3("Bu yerda teng belgisi turibdi. CSSda xususiyat va qiymat o'rtasida ikki nuqta turadi.", 'Здесь стоит знак «равно». В CSS между свойством и значением стоит двоеточие.', 'There’s an equals sign here. In CSS a colon goes between the property and the value.'),
       colon: L3("Xususiyat va qiymat o'rtasida ikki nuqta yo'q.", 'Между свойством и значением нет двоеточия.', 'There’s no colon between the property and the value.'),
+      noSel: L3("Qavsdan oldin selektor yo'q. Nimani bo'yashni yozing: abzas tegi p.", 'Перед скобкой нет селектора. Напиши, что красим: тег абзаца — p.', 'There’s no selector before the brace. Write what we color: the paragraph tag, p.'),
       sel: L3("Bu qoida boshqa narsani bo'yaydi. Bizga abzaslar kerak, ularning tegi p.", 'Это правило красит другое. Нам нужны абзацы, их тег — p.', 'This rule colors something else. We need the paragraphs; their tag is p.'),
       prop: L3("Matn rangini color xususiyati o'zgartiradi.", 'Цвет текста меняет свойство color.', 'The color property changes the text color.'),
       notColor: L3("Brauzer bunday rangni bilmaydi. Qizil inglizcha red bo'ladi.", 'Браузер не знает такого цвета. Красный по-английски — red.', 'The browser doesn’t know that color. Red is red in English.'),
@@ -7033,7 +7054,7 @@ const C = {
     hints: [
       L3("Qoida qanday tuzilardi, esingizdami? Oldin selektor, keyin jingalak qavslar.", 'Помнишь, как устроено правило? Сначала селектор, потом фигурные скобки.', 'Remember how a rule is built? First the selector, then the curly braces.'),
       L3("Abzas tegi p, matn rangi color, qizil esa red.", 'Тег абзаца — p, цвет текста — color, красный — red.', 'The paragraph tag is p, the text color is color, and red is red.'),
-      L3("Shunday yozing: p, ochuvchi jingalak qavs, color, ikki nuqta, red, nuqtali vergul va yopuvchi jingalak qavs.", 'Напиши так: p, открывающая фигурная скобка, color, двоеточие, red, точка с запятой и закрывающая фигурная скобка.', 'Write: p, an opening curly brace, color, a colon, red, a semicolon and a closing curly brace.')
+      L3("Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", "Образец появился под кодом. Перепиши его в поле и нажми «Проверить».", "An example appeared under the code. Copy it into the field and tap Check.")
     ],
     ok: L3("Ajoyib! Siz CSS qoidasini butunlay o'zingiz yozdingiz. Hamma abzaslar qizil.", 'Отлично! Ты написал правило CSS целиком сам. Все абзацы красные.', 'Great! You wrote a whole CSS rule yourself. All the paragraphs are red.'),
     ask: L3("Hamma abzaslarni qizil qiladigan qoidani yozing", 'Напиши правило, которое сделает все абзацы красными', 'Write a rule that makes all the paragraphs red')
@@ -7045,6 +7066,7 @@ const C = {
       'Now color your own page. Two rules are ready; only the colors are empty. Type one color for the heading and another for the page background. You can pick from the colors below. Then tap “Done”.'),
     msgs: {
       empty: L3("Ikkala rangni ham yozing: sarlavha uchun va fon uchun.", 'Впиши оба цвета: для заголовка и для фона.', 'Type both colors: for the heading and for the background.'),
+      space: L3("Rang nomida bo'sh joy bo'lmaydi: lightblue qo'shib yoziladi.", 'В названии цвета нет пробелов: lightblue пишут слитно.', 'Color names have no spaces: lightblue is one word.'),
       notColor: L3("Brauzer {w} degan rangni bilmaydi. Rang nomini inglizcha yozing, masalan pastdagilardan.", 'Браузер не знает цвета {w}. Напиши название по-английски, например из списка внизу.', 'The browser doesn’t know the color {w}. Type an English name, for example from the list below.'),
       same: L3("Sarlavha va fon bir xil rangda bo'lsa, sarlavha ko'rinmay qoladi. Boshqa-boshqa rang tanlang.", 'Если заголовок и фон одного цвета, заголовка не видно. Выбери разные цвета.', 'If the heading and the background are the same color, the heading disappears. Pick different colors.')
     },
@@ -7809,7 +7831,7 @@ function GoalCard({ goal, n, total, done, doneText }) {
 }
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayStyle: 1, sayRule: 1, sayTag: 1, sayBrace: 1, sayProp: 1,
+Object.assign(SPOKEN, { help: 1, hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayStyle: 1, sayRule: 1, sayTag: 1, sayBrace: 1, sayProp: 1,
   sayVal: 1, saySemi: 1, sayP: 1, sayBody: 1, sayEq: 1, sayNoStyle: 1, miss: 1, say2: 1, fine: 1, found: 1, items: 1, right: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1 } });
 
@@ -9311,6 +9333,21 @@ const cssOk = (p, v) => {
   if (CSS_PROPS.indexOf(p) < 0 || !v) return false;
   try { return typeof CSS === 'undefined' || !CSS.supports ? true : CSS.supports(p, v); } catch (e) { return false; }
 };
+// Русские (кириллические) буквы вместо латинских (09.11.2026, проход «слабого ученика»): «рх», «р» выглядят как px, p —
+// своя причина раньше любой проверки, иначе ученик видит «верный» ответ и не понимает отказа.
+const CYR_MSG = L3("Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.",
+  'Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.',
+  'Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.');
+const cyrIn = (...vs) => (vs.some((x) => /[\u0400-\u04FF]/.test(String(x == null ? '' : x))) ? CYR_MSG : null);
+// Лишняя «;» в конце значения (ученик помнит, что правило кончается ею) — не ошибка: значение без неё.
+const noSemi = (s) => String(s || '').trim().replace(/;+\s*$/, '').trim();
+// Образец на третьей ступени помощи (09.11.2026, проход «слабого ученика»): третья подсказка звучит словами — без
+// символов, а на экране под кодом печатью стоит готовый ответ; ученик переписывает его сам и жмёт «Проверить».
+const HELP_CODE = L3('Namuna', 'Образец', 'Example');
+function HelpCode({ code }) {
+  const pick = usePick();
+  return <div className="kz-helpcode" translate="no"><span>{pick(HELP_CODE)}</span><code>{code}</code></div>;
+}
 // Разбор таблицы стилей: «селектор { свойство: значение; … }». Объявление без «:», с неизвестным свойством или
 // неверным значением пропускается — как в браузере.
 function cssParse(text) {
@@ -9488,6 +9525,15 @@ function S1({ p }) {
 // S2. ГДЕ ЖИВЁТ CSS (показ) — документ: head и body. В head появляются style и /style (пусто — ничего не
 // меняется), потом правило «h1 { color: orange; }» — заголовок оранжевый, строки HTML те же.
 // =============================================================================
+// Помощь на экране-объяснении (заказчик, 09.11.2026): ступени 1-2-3 по лампочке (useKzLadder) — 1 на что смотреть,
+// 2 что это значит, 3 пример из жизни. now — открытая ступень с номером «2/3» для панели, next — текст следующей
+// ступени без номера: его читает вслух лампочка.
+function useShowHelp(help) {
+  const lad = useKzLadder(!!(help && help.length));
+  const num = (k) => { const o = {}; LANGS.forEach((l) => { o[l] = k + '/' + help.length + ' · ' + (help[k - 1][l] !== undefined ? help[k - 1][l] : help[k - 1].ru); }); return o; };
+  if (!help || !help.length) return { now: null, next: null };
+  return { now: lad.lv > 0 ? num(Math.min(lad.lv, help.length)) : null, next: help[Math.min(lad.lv, help.length - 1)] };
+}
 function S2({ p }) {
   const pick = usePick();
   const c = C.s2;
@@ -9505,10 +9551,11 @@ function S2({ p }) {
   const rule = 'h1 { color: orange; }';
   const lines = docLines(n === 2 ? [{ k: 'r', text: rule, cls: 'is-new is-read' }] : [], siteBody(pick), { style: n >= 1, styleCls: n === 1 ? 'is-new is-read' : n === 2 ? 'is-new' : '' });
   const askText = solved || demo.done ? c.askDone : n === 2 ? c.askRule : n === 1 ? c.askStyle : c.askStart;
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c1-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c1-s5 c1-pair">
           <div className="kz-col"><KzCode lines={lines} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage blocks={siteBlocks(pick, n === 2 && !demo.done && !solved ? 'h1' : null)} rules={n === 2 ? cssParse(rule) : []} /></Br></div>
@@ -9542,7 +9589,7 @@ function S3({ p }) {
     if (!canTap || okNow) return;
     st.current.tries += 1;
     const w = normT(ty.val).replace(/;+$/, '');
-    const issue = !w ? c.msgs.empty : !cssOk('color', w) ? c.msgs.notColor : w !== 'blue' ? c.msgs.other : null;
+    const issue = cyrIn(ty.val) || (!w ? c.msgs.empty : !cssOk('color', w) ? c.msgs.notColor : w !== 'blue' ? c.msgs.other : null);
     if (!issue) {
       sfx('win', true); setMsg(null); setOkNow(true); put({ done: true });
       log({ screenId: 's3', type: 'write-value', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
@@ -9670,10 +9717,11 @@ function S5({ p }) {
   const cur = solved || demo.done ? null : S5_PARTS[on - 1];
   const cls = (k) => 'c1-part c1-part-' + k + (S5_PARTS.indexOf(k) < on ? ' is-on' : '') + (cur === k ? ' is-cur' : '');
   const askText = solved || demo.done ? c.askDone : cur ? c.asks[cur] : c.askStart;
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c1-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c1-anat">
           <div className="c1-anat-code" translate="no">
             <span className={cls('sel')}><b className="c1-sel">p</b></span>{' '}
@@ -9876,10 +9924,11 @@ function S8({ p }) {
   const css = [{ k: 'r1', text: r1, cls: n === 1 && !demo.done && !solved ? 'is-new is-read' : '', lit: n === 1 && !demo.done ? 'sel' : null }]
     .concat(n >= 2 ? [{ k: 'r2', text: r2, cls: !demo.done && !solved ? 'is-new is-read' : 'is-new' }] : []);
   const askText = solved || demo.done ? c.askDone : n === 2 ? c.askBody : n === 1 ? c.askP : c.askStart;
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c1-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c1-s5 c1-pair">
           <div className="kz-col"><KzCode lines={[tagL('so', 0, 'style', false, { cls: 'c1-edge' })].concat(css.map((r) => cssL(r.k, 1, r.text, { cls: r.cls }, r.lit)), [tagL('sc', 0, 'style', true, { cls: 'c1-edge' })])} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage blocks={siteBlocks(pick)} rules={cssParse(r1 + (n >= 2 ? ' ' + r2 : ''))} /></Br></div>
@@ -9913,7 +9962,7 @@ function S9({ p }) {
     if (!canTap || okNow) return;
     st.current.tries += 1;
     const w = normT(ty.val);
-    const issue = !w ? c.msgs.empty : /[<>/]/.test(w) ? c.msgs.brackets : w === 'p' ? null : w === 'h1' ? c.msgs.h1 : w === 'body' ? c.msgs.body : c.msgs.other;
+    const issue = cyrIn(ty.val) || (!w ? c.msgs.empty : /[<>/]/.test(w) ? c.msgs.brackets : w === 'p' ? null : w === 'h1' ? c.msgs.h1 : w === 'body' ? c.msgs.body : c.msgs.other);
     if (!issue) {
       sfx('win', true); setMsg(null); setOkNow(true); put({ done: true });
       log({ screenId: 's9', type: 'write-selector', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
@@ -10025,10 +10074,11 @@ function S11({ p }) {
     : docLines([{ k: 'r', text: rule, cls: n ? 'is-read' : '' }], siteBody(pick).slice(0, 2));
   const blocks = (n === 3 ? [{ t: 'raw', text: rule, k: 'raw', hl: true }] : []).concat(siteBlocks(pick, n && n < 3 ? 'h1' : null).slice(0, 2));
   const askText = solved || demo.done ? c.askDone : n === 3 ? c.askNoStyle : n === 2 ? c.askSemi : n === 1 ? c.askEq : c.askDone;
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c1-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c1-s5 c1-pair">
           <div className="kz-col"><KzCode lines={lines} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage blocks={blocks} rules={n === 3 ? [] : cssParse(rule)} /></Br></div>
@@ -10064,7 +10114,7 @@ function S12({ p }) {
     if (!canTap || okNow) return;
     st.current.tries += 1;
     const w = ty.val.replace(/\s+/g, '');
-    const issue = w === ':' ? null : !w ? c.msgs.empty : w.indexOf('=') >= 0 ? c.msgs.eq : w === ';' ? c.msgs.semi : c.msgs.other;
+    const issue = cyrIn(ty.val) || (w === ':' ? null : !w ? c.msgs.empty : w.indexOf('=') >= 0 ? c.msgs.eq : w === ';' ? c.msgs.semi : c.msgs.other);
     if (!issue) {
       sfx('win', true); setMsg(null); setOkNow(true); put({ done: true });
       log({ screenId: 's12', type: 'fix-colon', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
@@ -10153,7 +10203,7 @@ function S13({ p }) {
               k: 'l' + j + (found && j === R.bad ? 'f' : ''), d: 0, parts: cssTokens(r),
               cls: 'c1-cssline c1-hline' + (found && j === R.bad ? ' is-new' : '') + (off.indexOf(j) >= 0 ? ' is-off' : ''),
               onTap: found ? null : () => tap(j), disabled: !canTap || found || off.indexOf(j) >= 0,
-              led: !found && ((led && off.length === 0 && j === 0) || (lit && j === R.bad))
+              led: !found && ((led && off.length === 0) || (lit && j === R.bad))
             }))} cls="kz-code-sm" />
           </div>
         </div>
@@ -10174,6 +10224,7 @@ function ruleIssue(t, want, msgs) {
   if (!m) return msgs.braces;
   const inner = m[2];
   if (inner.indexOf(':') < 0) return inner.indexOf('=') >= 0 ? msgs.eq : msgs.colon;
+  if (!m[1].trim()) return msgs.noSel;
   if (m[1].trim().toLowerCase() !== want.sel) return msgs.sel;
   const d = inner.split(';').map((x) => x.trim()).filter(Boolean)[0] || '';
   const i = d.indexOf(':');
@@ -10202,7 +10253,7 @@ function W1({ p }) {
   const check = () => {
     if (!canTap || okNow) return;
     st.current.tries += 1;
-    const issue = ruleIssue(ty.val, { sel: 'p', prop: 'color', val: 'red' }, c.msgs);
+    const issue = cyrIn(ty.val) || (ruleIssue(ty.val, { sel: 'p', prop: 'color', val: 'red' }, c.msgs));
     if (!issue) {
       sfx('win', true); setMsg(null); setOkNow(true); put({ done: true });
       log({ screenId: 'w1', type: 'write-rule', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
@@ -10222,7 +10273,7 @@ function W1({ p }) {
             <Br title={pick(C.site.title)} short><CssPage blocks={siteBlocks(pick, okNow ? null : 'p')} rules={cssParse(css)} /></Br>
             <KzCode lines={[tagL('so', 0, 'style', false, { cls: 'c1-edge' }),
               okNow ? cssL('r', 1, 'p { color: red; }', { cls: 'is-new' }) : codeLine('r', [<span key="g" className={'kz-gap c1-slot c1-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={40} /></span>], { d: 1, cls: 'c1-cssline is-hl' }),
-              tagL('sc', 0, 'style', true, { cls: 'c1-edge' })]} cls="kz-code-sm" />
+              tagL('sc', 0, 'style', true, { cls: 'c1-edge' })]} cls="kz-code-sm" />{!okNow && lad.lv >= 3 ? <HelpCode code={'p { color: red; }'} /> : null}
           </div>
         </div>
         {!okNow ? <KeyRow keys={['{', '}', ':', ';']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 4} /> : null}
@@ -10256,7 +10307,7 @@ function S14({ p }) {
   const confirm = () => {
     if (!canTap || !ready || solved) return;
     const bad = !cssOk('color', va) ? a.trim() : !cssOk('background-color', vb) ? b.trim() : null;
-    const issue = bad ? fillL(c.msgs.notColor, { w: bad }) : va === vb ? c.msgs.same : null;
+    const issue = cyrIn(va, vb) || (bad && /\s/.test(bad) ? c.msgs.space : bad ? fillL(c.msgs.notColor, { w: bad }) : va === vb ? c.msgs.same : null);
     if (issue) { sfx('soft', true); setMsg(issue); sayNow(issue, 'think'); return; }
     sfx('win', true); setMsg(null);
     store.set('myColor', va); store.set('myBg', vb); put({ done: true });
@@ -14055,4 +14106,11 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 /* Маленький телефон с открытой панелью: рядом с кодом своя помощь (палитра, полосы, круг цветов) — окно браузера
    прячется, пока панель открыта; после «Попробовать ещё» оно возвращается (как в уроке 2). */
 @media (max-width: 759px) and (max-height: 699px) { .b-stage.has-sheet .r28 .c1-sheet .kz-br.c1-br, .r28 .b-stage.has-sheet .c1-sheet .kz-br.c1-br, .b-stage.has-sheet.r28 .c1-sheet .kz-br.c1-br { display: none !important; } }
+
+/* Образец на третьей ступени помощи (09.11.2026). */
+.r28 .kz-helpcode { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; align-self: stretch; padding: 6px 10px; border-radius: 10px; background: #FFF8E1; box-shadow: inset 0 0 0 1.5px #F5C451; animation: kzHelpIn .3s ease-out both; }
+.r28 .kz-helpcode span { font: 600 12px var(--r-font); color: #8A6100; }
+.r28 .kz-helpcode code { font: 600 14px var(--r-mono); color: var(--r-ink); white-space: pre-wrap; word-break: break-word; }
+@keyframes kzHelpIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .r28 .kz-helpcode { animation: none; } }
 `;

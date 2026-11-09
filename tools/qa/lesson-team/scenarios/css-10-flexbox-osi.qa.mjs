@@ -37,7 +37,8 @@ const STEPS = [
     for (let r = 1; r <= 3; r += 1) {
       await qa.platform.ready(30000);
       await qa.waitFor(() => new RegExp(r + '/3').test(qa.text('.kz-ask-n')) && qa.q('.c10-html .kz-line.kz-tap:not(:disabled)'), 30000, 'раунд ' + r);
-      await qa.clickNth('.c10-html .kz-line.kz-tap', 0, 'строка родителя');
+      // В третьем раунде полка лежит в main: родитель карточек — вторая строка (09.11.2026).
+      await qa.clickNth('.c10-html .kz-line.kz-tap', r === 3 ? 1 : 0, 'строка родителя');
       await qa.waitFor(() => !qa.q('.c10-html .kz-line.kz-tap:not(:disabled)'), 5000, 'ответ принят');
     }
     await qa.waitFor(() => qa.platform.nextEnabled(), 30000, 'засчитано');

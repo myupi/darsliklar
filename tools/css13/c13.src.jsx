@@ -113,6 +113,11 @@ const C = {
   },
   s2: {
     eyebrow: L3(":hover", ':hover', ':hover'),
+    help: [
+      L3("Tugmaga va Inspektordagi hover belgisiga qarang: sichqoncha tugma ustiga kelgandagina tugma o'zgaradi.", 'Посмотри на кнопку и на метку hover в Инспекторе: кнопка меняется только тогда, когда мышка над ней.', 'Look at the button and the hover tag in the Inspector: the button changes only when the mouse is over it.'),
+      L3("Selektordan keyin hover yozilsa, qoida faqat sichqoncha element ustida bo'lganda ishlaydi. Telefonda esa tegilganda.", 'Если после селектора написать hover, правило работает только когда мышка над элементом. А на телефоне — при касании.', 'If you write hover after the selector, the rule works only while the mouse is over the element. On a phone, when you tap.'),
+      L3("O'yinlarda sichqonchani tugmaga olib borsangiz, u yorishadi. Bu hover: tugma «meni bosing» deyayotgandek.", 'В играх кнопка подсвечивается, когда наводишь на неё мышку. Это и есть hover: кнопка будто говорит «нажми меня».', 'In games a button lights up when you point the mouse at it. That’s hover: the button seems to say “press me”.')
+    ],
     say: L3("Selektordan keyin ikki nuqta va hover yozilsa, qoida faqat sichqoncha element ustida bo'lganda ishlaydi. Keling, ko'ramiz.",
       'Если после селектора написать двоеточие и hover, правило работает, только когда мышка над элементом. Давай посмотрим.',
       'If you write a colon and hover after the selector, the rule only works while the mouse is over the element. Let’s see.'),
@@ -128,9 +133,7 @@ const C = {
   },
   s3: {
     eyebrow: L3("Ustida — oltin", 'Под мышкой — золотая', 'Gold on hover'),
-    say: L3("Endi navbat sizga. Sichqoncha ustida bo'lganda tugma oltin rangga kirsin: gold yozing. Keyin tugmaga sichqonchani olib borib ko'ring, telefonda esa bosing.",
-      'Теперь твоя очередь. Пусть под мышкой кнопка становится золотой: впиши gold. Потом наведи мышку на кнопку, а на телефоне — коснись её.',
-      'Now it’s your turn. Make the button turn gold on hover: type gold. Then point the mouse at the button, or tap it on a phone.'),
+    say: L3("Endi navbat sizga. Sichqoncha ustida bo'lganda tugma oltin rangga kirsin: hover li qoidaga shu rangni yozing. Keyin tugmaga sichqonchani olib borib ko'ring, telefonda esa bosing.", "Теперь твоя очередь. Пусть под мышкой кнопка становится золотой — впиши этот цвет в правило с hover. Потом наведи мышку на кнопку, а на телефоне — коснись её.", "Now it’s your turn. Make the button turn gold on hover: type that color into the hover rule. Then point the mouse at the button, or tap it on a phone."),
     msgs: {
       empty: L3("Rang yozing.", 'Впиши цвет.', 'Type a color.'),
       bad: L3("Brauzer bu rangni tanimadi. Rang nomini inglizcha yozing.", 'Браузер не узнал этот цвет. Напиши название цвета по-английски.', 'The browser didn’t recognize that color. Write the color name in English.'),
@@ -167,12 +170,17 @@ const C = {
   },
   s5: {
     eyebrow: L3("transform", 'transform', 'transform'),
+    help: [
+      L3('Tugmaga qarang: u kattalashadi, buriladi va suriladi. Pastdagi abzas esa joyidan qimirlamaydi.', 'Посмотри на кнопку: она увеличивается, поворачивается и сдвигается. А абзац под ней не двигается.', 'Look at the button: it grows, turns and moves. The paragraph below it doesn’t move.'),
+      L3("transform elementni o'zgartiradi: scale kattalashtiradi, rotate buradi, translate suradi. Qo'shnilar esa joyida qoladi.", 'transform меняет элемент: scale увеличивает, rotate поворачивает, translate сдвигает. А соседи остаются на месте.', 'transform changes an element: scale makes it bigger, rotate turns it, translate moves it. The neighbors stay in place.'),
+      L3('Telefonda rasmni ikki barmoq bilan kattalashtirsangiz yoki bursangiz, atrofdagi narsalar joyida qoladi. transform ham shunday.', 'Когда на телефоне увеличиваешь или поворачиваешь фото двумя пальцами, всё вокруг остаётся на месте. transform работает так же.', 'When you zoom or turn a photo on a phone with two fingers, everything around it stays put. transform works the same way.')
+    ],
     say: L3("Endi transform, ya'ni o'zgartirish degani. U elementni kattalashtiradi, buradi yoki suradi. Qavs ichida qancha ekanini yozamiz.",
       'Теперь transform, то есть преобразование. Он увеличивает элемент, поворачивает или сдвигает. В скобках пишем, насколько.',
       'Now transform, meaning a change of shape. It makes an element bigger, turns it or moves it. In the brackets we write how much.'),
     sayScale: L3("scale bir yarim: tugma bir yarim barobar kattalashdi. Qarang, pastdagi abzas joyidan qimirlamadi.", 'scale полтора: кнопка стала в полтора раза больше. Смотри, абзац под ней не сдвинулся.', 'scale one and a half: the button got one and a half times bigger. Look, the paragraph below didn’t move.'),
     sayRotate: L3("rotate o'n besh deg: tugma o'n besh gradusga burildi. deg ya'ni gradus degani.", 'rotate пятнадцать deg: кнопка повернулась на пятнадцать градусов. deg — то есть градусы.', 'rotate fifteen deg: the button turned fifteen degrees. deg means degrees.'),
-    sayTranslate: L3("translate qirq va o'n piksel: tugma o'ngga va pastga surildi. Sonlar o'rtasida vergul bor. Qo'shnilar esa yana joyida.", 'translate сорок и десять пикселей: кнопка сдвинулась вправо и вниз. Между числами запятая. А соседи опять на месте.', 'translate forty and ten pixels: the button moved right and down. There’s a comma between the numbers. The neighbours stayed in place again.'),
+    sayTranslate: L3("translate qirq va o'n piksel: birinchi son o'ngga suradi, ikkinchisi pastga. Tugma o'ngga qirq va pastga o'n piksel surildi. Sonlar o'rtasida vergul bor. Qo'shnilar esa yana joyida.", "translate сорок и десять пикселей: первое число двигает вправо, второе — вниз. Кнопка уехала вправо на сорок и вниз на десять. Между числами запятая. А соседи опять на месте.", "translate forty and ten pixels: the first number moves right, the second moves down. The button moved forty right and ten down. There’s a comma between the numbers. The neighbours stayed in place again."),
     done: L3("Demak, transform elementni kattalashtiradi, buradi yoki suradi, qo'shnilar esa joyida qoladi.", 'Значит, transform увеличивает, поворачивает или сдвигает элемент, а соседи остаются на месте.', 'So transform scales, turns or moves an element, and the neighbours stay in place.'),
     askStart: L3("Qarang: oddiy tugma", 'Смотри: обычная кнопка', 'Watch: a plain button'),
     askScale: L3("Qarang: scale — kattalashtirish", 'Смотри: scale — увеличение', 'Watch: scale makes it bigger'),
@@ -191,7 +199,8 @@ const C = {
       bad: L3("Brauzer bu qiymatni tanimadi. Qavs ichiga faqat son yozing.", 'Браузер не узнал это значение. Напиши в скобках только число.', 'The browser didn’t recognize that value. Write just a number in the brackets.'),
       zero: L3("Nol bilan tugma butunlay yo'qoldi. Ikki barobar kerak.", 'С нулём кнопка совсем пропала. Нужно вдвое.', 'With zero the button vanished. We need twice as big.'),
       one: L3("Bir bilan tugma o'zgarmadi. Ikki barobar kerak.", 'С единицей кнопка не изменилась. Нужно вдвое.', 'With one the button didn’t change. We need twice as big.'),
-      other: L3("Bu boshqa o'lcham. Ikki barobar kerak.", 'Это другой размер. Нужно вдвое.', 'That’s a different size. We need twice as big.')
+      other: L3("Bu boshqa o'lcham. Ikki barobar kerak.", 'Это другой размер. Нужно вдвое.', 'That’s a different size. We need twice as big.'),
+      comma: L3("CSS da kasr vergul bilan emas, nuqta bilan yoziladi. Bu yerda esa butun son kerak: necha barobar.", "Дробь в CSS пишут через точку, а не через запятую. А здесь нужно целое число — во сколько раз.", "In CSS a decimal uses a dot, not a comma. And here you need a whole number: how many times.")
     },
     hints: [
       L3("scale ichidagi son necha barobar ekanini aytadi.", 'Число в scale говорит, во сколько раз.', 'The number in scale says how many times.'),
@@ -208,7 +217,7 @@ const C = {
       'Now check yourself. Look at the button and pick which transform made it look like that.'),
     ask: L3("Tugmani qaysi transform shunday qildi?", 'Какой transform сделал кнопку такой?', 'Which transform made the button like this?'),
     hint1: L3("Tugma kattalashganmi, burilganmi yoki surilganmi?", 'Кнопка увеличилась, повернулась или сдвинулась?', 'Did the button grow, turn or move?'),
-    hint2: L3("scale kattalashtiradi yoki kichraytiradi, rotate buradi, translate suradi.", 'scale увеличивает или уменьшает, rotate поворачивает, translate сдвигает.', 'scale makes it bigger or smaller, rotate turns it, translate moves it.'),
+    hint2: L3("scale kattalashtiradi yoki kichraytiradi, rotate buradi, translate suradi: birinchi son o'ngga, ikkinchisi pastga.", "scale увеличивает или уменьшает, rotate поворачивает, translate сдвигает: первое число — вправо, второе — вниз.", "scale makes it bigger or smaller, rotate turns it, translate moves it: the first number right, the second down."),
     rounds: [
       { want: 'rotate(20deg)', opts: ['scale(1.5)', 'rotate(20deg)', 'translate(40px, 0px)'],
         why: L3("Tugma qiyshaygan: rotate.", 'Кнопка наклонена: rotate.', 'The button is tilted: rotate.') },
@@ -222,6 +231,11 @@ const C = {
   },
   s8: {
     eyebrow: L3("hover va transform", 'hover и transform', 'hover and transform'),
+    help: [
+      L3("Tugma va ko'rsatkichga qarang: sichqoncha kelganda tugma kattalashadi, ko'rsatkich esa qo'lga aylanadi.", 'Посмотри на кнопку и указатель: когда приходит мышка, кнопка растёт, а указатель становится рукой.', 'Look at the button and the pointer: when the mouse arrives, the button grows and the pointer turns into a hand.'),
+      L3("hover va transform birga tugmani jonlantiradi. cursor pointer esa ko'rsatkichni qo'lga aylantirib, bu narsani bosish mumkinligini bildiradi.", 'hover и transform вместе оживляют кнопку. А cursor pointer превращает указатель в руку и показывает, что на это можно нажать.', 'hover and transform together bring the button to life. cursor pointer turns the pointer into a hand and shows it can be pressed.'),
+      L3("Saytlarda havolaga sichqoncha olib borsangiz, qo'l paydo bo'ladi. Bu cursor pointer: «buni bosish mumkin» degan belgi.", 'На сайтах над ссылкой появляется рука. Это cursor pointer — знак «сюда можно нажать».', 'On websites a hand appears over a link. That’s cursor pointer, a sign that says “you can press this”.')
+    ],
     say: L3("Endi ikkalasini birlashtiramiz: tugma faqat sichqoncha ustida kattalashsin. Va yana bitta xususiyat: cursor, ya'ni ko'rsatkich degani.",
       'Теперь соединим оба: пусть кнопка увеличивается только под мышкой. И ещё одно свойство: cursor, то есть указатель.',
       'Now let’s combine them: make the button grow only under the mouse. And one more property: cursor, meaning the pointer.'),
@@ -274,12 +288,17 @@ const C = {
   },
   s11: {
     eyebrow: L3("Qachon ishlamaydi", 'Когда не работает', 'When it doesn’t work'),
+    help: [
+      L3('Har safar kodga qarang: scale da birlik bormi, rotate da deg bormi, translate da vergul bormi? Keyin tugmaga qarang.', 'Каждый раз смотри на код: есть ли единица в scale, есть ли deg в rotate, есть ли запятая в translate? Потом смотри на кнопку.', 'Each time, look at the code: does scale have a unit, does rotate have deg, does translate have a comma? Then look at the button.'),
+      L3("scale ga birlik kerak emas, rotate ga deg kerak, translate da sonlar vergul bilan ajratiladi. Ikkita transform yozilsa, ikkinchisi birinchisini o'chiradi.", 'В scale единица не нужна, в rotate нужен deg, в translate числа разделяют запятой. Если написать два transform, второй сотрёт первый.', 'scale needs no unit, rotate needs deg, translate separates numbers with a comma. Write two transforms and the second erases the first.'),
+      L3("Retseptda grammni shtuk bilan adashtirsangiz, taom chiqmaydi. CSS da ham har bir funksiya o'z birligini xohlaydi.", 'Если в рецепте перепутать граммы и штуки, блюдо не получится. В CSS у каждой функции тоже своя единица.', 'Mix up grams and pieces in a recipe and the dish won’t work out. In CSS each function wants its own unit too.')
+    ],
     say: L3("transform da ham xatolar bo'ladi. Keling, to'rttasini ko'ramiz. Hozir tugma bir yarim barobar katta.",
       'И с transform бывают ошибки. Давай посмотрим на четыре. Сейчас кнопка в полтора раза больше.',
       'transform has mistakes too. Let’s look at four. Right now the button is one and a half times bigger.'),
     sayUnit: L3("Birinchisi: scale ichida px. scale ga birlik kerak emas, brauzer qoidani tashlab yubordi.", 'Первая: в scale написан px. Для scale единица не нужна, браузер выбросил правило.', 'The first: scale has px inside. scale needs no unit, so the browser threw the rule away.'),
     sayDeg: L3("Ikkinchisi: rotate ichida faqat son, deg yo'q. Brauzer qanchalik burishni tushunmadi.", 'Вторая: в rotate только число, без deg. Браузер не понял, на сколько поворачивать.', 'The second: rotate has just a number, no deg. The browser didn’t understand how much to turn.'),
-    sayComma: L3("Uchinchisi: translate sonlari o'rtasida vergul yo'q. Bu ham xato.", 'Третья: между числами translate нет запятой. Это тоже ошибка.', 'The third: there’s no comma between translate’s numbers. That’s a mistake too.'),
+    sayComma: L3("Uchinchisi: translate sonlari o'rtasida vergul yo'q. Brauzer qoidani tashlab yubordi, tugma surilmadi.", "Третья: между числами translate нет запятой. Браузер выбросил правило — кнопка не сдвинулась.", "The third: there’s no comma between translate’s numbers. The browser threw the rule away, so the button didn’t move."),
     sayTwice: L3("To'rtinchisi tuzoq: ikkita transform qoidasi. Ikkinchisi birinchisini o'chirdi, tugma faqat burildi, kattalashmadi. Ikkalasi kerak bo'lsa, bitta qatorga bo'sh joy bilan yoziladi.", 'Четвёртая — ловушка: два правила transform. Второе стёрло первое, кнопка только повернулась, но не выросла. Если нужны оба, их пишут в одной строке через пробел.', 'The fourth is a trap: two transform rules. The second erased the first, so the button only turned and didn’t grow. If you need both, you write them on one line with a space.'),
     done: L3("Demak, scale da birlik yo'q, rotate da deg bor, translate da vergul bor, transform esa bitta qatorda yoziladi.", 'Значит, в scale нет единицы, в rotate есть deg, в translate есть запятая, а transform пишут в одной строке.', 'So scale has no unit, rotate has deg, translate has a comma, and transform goes on one line.'),
     askStart: L3("Qarang: scale(1.5)", 'Смотри: scale(1.5)', 'Watch: scale(1.5)'),
@@ -351,7 +370,7 @@ const C = {
     hints: [
       L3("Selektorga hover qo'shing, xususiyat esa transform.", 'Добавь к селектору hover, а свойство — transform.', 'Add hover to the selector, and the property is transform.'),
       L3("Selektor nuqta tugma ikki nuqta hover, qiymat rotate o'n deg.", 'Селектор: точка tugma двоеточие hover, значение: rotate десять deg.', 'Selector: dot tugma colon hover; value: rotate ten deg.'),
-      L3("Shunday yozing: nuqta tugma ikki nuqta hover, figurali qavs, transform ikki nuqta rotate qavs o'n deg qavs, nuqtali vergul, yopuvchi qavs.", 'Напиши так: точка tugma двоеточие hover, фигурная скобка, transform двоеточие rotate скобка десять deg скобка, точка с запятой, закрывающая скобка.', 'Write it like this: dot tugma colon hover, curly brace, transform colon rotate bracket ten deg bracket, semicolon, closing brace.')
+      L3("Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", "Образец появился под кодом. Перепиши его в поле и нажми «Проверить».", "An example appeared under the code. Copy it into the field and tap Check.")
     ],
     ok: L3("Ajoyib! Sichqoncha ustida tugma qiyshayadi. Qoidani o'zingiz yozdingiz.", 'Отлично! Под мышкой кнопка наклоняется. Правило написано тобой целиком.', 'Great! The button tilts on hover. You wrote the whole rule yourself.'),
     ask: L3("Ustida tugma 10 gradusga burilsin", 'Поверни кнопку на 10 градусов при hover', 'Turn the button 10 degrees on hover')
@@ -363,13 +382,14 @@ const C = {
       'Now bring your own button to life. Type any values for the hover color, the transform and the pointer. Then tap “Done”.'),
     msgs: {
       color: L3("Brauzer {w} rangini tanimadi. Rang nomini yoki kodini yozing.", 'Браузер не узнал цвет {w}. Напиши название или код цвета.', 'The browser didn’t recognize the color {w}. Write a color name or code.'),
-      tf: L3("Brauzer {w} qiymatini tanimadi. Masalan, scale, rotate yoki translate yozing.", 'Браузер не узнал значение {w}. Впиши, например, scale, rotate или translate.', 'The browser didn’t recognize {w}. Type, for example, scale, rotate or translate.'),
+      tf: L3("Brauzer {w} qiymatini tanimadi. scale, rotate yoki translate dan keyin qavs ichida son kerak, masalan scale bir butun o'ndan bir.", "Браузер не узнал {w}. После scale, rotate или translate нужны скобки с числом внутри — например, scale и в скобках одна целая одна десятая.", "The browser didn’t recognize {w}. After scale, rotate or translate you need brackets with a number inside, for example scale with one point one in brackets."),
       deg: L3("rotate da son yonida deg yo'q.", 'В rotate рядом с числом нет deg.', 'In rotate there’s no deg next to the number.'),
-      cur: L3("Brauzer {w} ko'rsatkichini tanimadi. Masalan, pointer yozing.", 'Браузер не узнал указатель {w}. Впиши, например, pointer.', 'The browser didn’t recognize the pointer {w}. Type, for example, pointer.')
+      cur: L3("Brauzer {w} ko'rsatkichini tanimadi. Masalan, pointer yozing.", 'Браузер не узнал указатель {w}. Впиши, например, pointer.', 'The browser didn’t recognize the pointer {w}. Type, for example, pointer.'),
+      comma: L3("CSS da kasr vergul bilan emas, nuqta bilan yoziladi: bir nuqta bir.", "Дробь в CSS пишут через точку: одна точка одна, а не через запятую.", "In CSS a decimal uses a dot, not a comma: one point one.")
     },
     hints: [
       L3("Har bir maydonga bitta qiymat yozing.", 'В каждое поле — одно значение.', 'One value in each field.'),
-      L3("Rang uchun rang nomi, transform uchun scale, rotate yoki translate, cursor uchun pointer.", 'Для цвета — название цвета, для transform — scale, rotate или translate, для cursor — pointer.', 'For the color, a color name; for transform, scale, rotate or translate; for cursor, pointer.'),
+      L3("Rang uchun rang nomi, transform uchun qavsli va sonli scale, rotate yoki translate, cursor uchun pointer.", "Для цвета — название цвета, для transform — scale, rotate или translate со скобками и числом, для cursor — pointer.", "For the color, a color name; for transform, scale, rotate or translate with brackets and a number; for cursor, pointer."),
       L3("Masalan: gold, scale bir butun o'ndan bir va pointer. Keyin «Tayyor»ni bosing.", 'Например: gold, scale одна целая одна десятая и pointer. Потом нажми «Готово».', 'For example: gold, scale one point one and pointer. Then tap “Done”.')
     ],
     ok: L3("Voy, qanday chiroyli! Bu sizning jonli tugmangiz.", 'Ого, как красиво! Это твоя живая кнопка.', 'Wow, how pretty! This is your living button.'),
@@ -426,7 +446,7 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayRule: 1, sayHover: 1, sayColor: 1,
+Object.assign(SPOKEN, { help: 1, hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayRule: 1, sayHover: 1, sayColor: 1,
   sayScale: 1, sayRotate: 1, sayTranslate: 1, sayCursor: 1, sayUnit: 1, sayDeg: 1, sayComma: 1, sayTwice: 1, miss: 1, say2: 1, fine: 1, found: 1,
   items: 1, right: 1, rounds: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1, css: 1, right: 1, tag: 1, dir: 1 }, rounds: { want: 1, opts: 1 } });

@@ -16,6 +16,21 @@ const cssOk = (p, v) => {
   if (CSS_PROPS.indexOf(p) < 0 || !v) return false;
   try { return typeof CSS === 'undefined' || !CSS.supports ? true : CSS.supports(p, v); } catch (e) { return false; }
 };
+// Русские (кириллические) буквы вместо латинских (09.11.2026, проход «слабого ученика»): «рх», «р» выглядят как px, p —
+// своя причина раньше любой проверки, иначе ученик видит «верный» ответ и не понимает отказа.
+const CYR_MSG = L3("Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.",
+  'Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.',
+  'Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.');
+const cyrIn = (...vs) => (vs.some((x) => /[\u0400-\u04FF]/.test(String(x == null ? '' : x))) ? CYR_MSG : null);
+// Лишняя «;» в конце значения (ученик помнит, что правило кончается ею) — не ошибка: значение без неё.
+const noSemi = (s) => String(s || '').replace(/[“”«»„]/g, '"').trim().replace(/;+\s*$/, '').trim();
+// Образец на третьей ступени помощи (09.11.2026, проход «слабого ученика»): третья подсказка звучит словами — без
+// символов, а на экране под кодом печатью стоит готовый ответ; ученик переписывает его сам и жмёт «Проверить».
+const HELP_CODE = L3('Namuna', 'Образец', 'Example');
+function HelpCode({ code }) {
+  const pick = usePick();
+  return <div className="kz-helpcode" translate="no"><span>{pick(HELP_CODE)}</span><code>{code}</code></div>;
+}
 // Разбор таблицы стилей: «селектор { свойство: значение; … }». Объявление без «:», с неизвестным свойством или
 // неверным значением пропускается — как в браузере.
 function cssParse(text) {
@@ -193,6 +208,15 @@ function S1({ p }) {
 // S2. ГДЕ ЖИВЁТ CSS (показ) — документ: head и body. В head появляются style и /style (пусто — ничего не
 // меняется), потом правило «h1 { color: orange; }» — заголовок оранжевый, строки HTML те же.
 // =============================================================================
+// Помощь на экране-объяснении (заказчик, 09.11.2026): ступени 1-2-3 по лампочке (useKzLadder) — 1 на что смотреть,
+// 2 что это значит, 3 пример из жизни. now — открытая ступень с номером «2/3» для панели, next — текст следующей
+// ступени без номера: его читает вслух лампочка.
+function useShowHelp(help) {
+  const lad = useKzLadder(!!(help && help.length));
+  const num = (k) => { const o = {}; LANGS.forEach((l) => { o[l] = k + '/' + help.length + ' · ' + (help[k - 1][l] !== undefined ? help[k - 1][l] : help[k - 1].ru); }); return o; };
+  if (!help || !help.length) return { now: null, next: null };
+  return { now: lad.lv > 0 ? num(Math.min(lad.lv, help.length)) : null, next: help[Math.min(lad.lv, help.length - 1)] };
+}
 function S2({ p }) {
   const pick = usePick();
   const c = C.s2;
@@ -210,10 +234,11 @@ function S2({ p }) {
   const rule = 'h1 { color: orange; }';
   const lines = docLines(n === 2 ? [{ k: 'r', text: rule, cls: 'is-new is-read' }] : [], siteBody(pick), { style: n >= 1, styleCls: n === 1 ? 'is-new is-read' : n === 2 ? 'is-new' : '' });
   const askText = solved || demo.done ? c.askDone : n === 2 ? c.askRule : n === 1 ? c.askStyle : c.askStart;
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c1-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c1-s5 c1-pair">
           <div className="kz-col"><KzCode lines={lines} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage blocks={siteBlocks(pick, n === 2 && !demo.done && !solved ? 'h1' : null)} rules={n === 2 ? cssParse(rule) : []} /></Br></div>
@@ -247,7 +272,7 @@ function S3({ p }) {
     if (!canTap || okNow) return;
     st.current.tries += 1;
     const w = normT(ty.val).replace(/;+$/, '');
-    const issue = !w ? c.msgs.empty : !cssOk('color', w) ? c.msgs.notColor : w !== 'blue' ? c.msgs.other : null;
+    const issue = cyrIn(ty.val) || (!w ? c.msgs.empty : !cssOk('color', w) ? c.msgs.notColor : w !== 'blue' ? c.msgs.other : null);
     if (!issue) {
       sfx('win', true); setMsg(null); setOkNow(true); put({ done: true });
       log({ screenId: 's3', type: 'write-value', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
@@ -375,10 +400,11 @@ function S5({ p }) {
   const cur = solved || demo.done ? null : S5_PARTS[on - 1];
   const cls = (k) => 'c1-part c1-part-' + k + (S5_PARTS.indexOf(k) < on ? ' is-on' : '') + (cur === k ? ' is-cur' : '');
   const askText = solved || demo.done ? c.askDone : cur ? c.asks[cur] : c.askStart;
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c1-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c1-anat">
           <div className="c1-anat-code" translate="no">
             <span className={cls('sel')}><b className="c1-sel">p</b></span>{' '}
@@ -581,10 +607,11 @@ function S8({ p }) {
   const css = [{ k: 'r1', text: r1, cls: n === 1 && !demo.done && !solved ? 'is-new is-read' : '', lit: n === 1 && !demo.done ? 'sel' : null }]
     .concat(n >= 2 ? [{ k: 'r2', text: r2, cls: !demo.done && !solved ? 'is-new is-read' : 'is-new' }] : []);
   const askText = solved || demo.done ? c.askDone : n === 2 ? c.askBody : n === 1 ? c.askP : c.askStart;
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c1-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c1-s5 c1-pair">
           <div className="kz-col"><KzCode lines={[tagL('so', 0, 'style', false, { cls: 'c1-edge' })].concat(css.map((r) => cssL(r.k, 1, r.text, { cls: r.cls }, r.lit)), [tagL('sc', 0, 'style', true, { cls: 'c1-edge' })])} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage blocks={siteBlocks(pick)} rules={cssParse(r1 + (n >= 2 ? ' ' + r2 : ''))} /></Br></div>
@@ -618,7 +645,7 @@ function S9({ p }) {
     if (!canTap || okNow) return;
     st.current.tries += 1;
     const w = normT(ty.val);
-    const issue = !w ? c.msgs.empty : /[<>/]/.test(w) ? c.msgs.brackets : w === 'p' ? null : w === 'h1' ? c.msgs.h1 : w === 'body' ? c.msgs.body : c.msgs.other;
+    const issue = cyrIn(ty.val) || (!w ? c.msgs.empty : /[<>/]/.test(w) ? c.msgs.brackets : w === 'p' ? null : w === 'h1' ? c.msgs.h1 : w === 'body' ? c.msgs.body : c.msgs.other);
     if (!issue) {
       sfx('win', true); setMsg(null); setOkNow(true); put({ done: true });
       log({ screenId: 's9', type: 'write-selector', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
@@ -730,10 +757,11 @@ function S11({ p }) {
     : docLines([{ k: 'r', text: rule, cls: n ? 'is-read' : '' }], siteBody(pick).slice(0, 2));
   const blocks = (n === 3 ? [{ t: 'raw', text: rule, k: 'raw', hl: true }] : []).concat(siteBlocks(pick, n && n < 3 ? 'h1' : null).slice(0, 2));
   const askText = solved || demo.done ? c.askDone : n === 3 ? c.askNoStyle : n === 2 ? c.askSemi : n === 1 ? c.askEq : c.askDone;
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c1-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c1-s5 c1-pair">
           <div className="kz-col"><KzCode lines={lines} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage blocks={blocks} rules={n === 3 ? [] : cssParse(rule)} /></Br></div>
@@ -769,7 +797,7 @@ function S12({ p }) {
     if (!canTap || okNow) return;
     st.current.tries += 1;
     const w = ty.val.replace(/\s+/g, '');
-    const issue = w === ':' ? null : !w ? c.msgs.empty : w.indexOf('=') >= 0 ? c.msgs.eq : w === ';' ? c.msgs.semi : c.msgs.other;
+    const issue = cyrIn(ty.val) || (w === ':' ? null : !w ? c.msgs.empty : w.indexOf('=') >= 0 ? c.msgs.eq : w === ';' ? c.msgs.semi : c.msgs.other);
     if (!issue) {
       sfx('win', true); setMsg(null); setOkNow(true); put({ done: true });
       log({ screenId: 's12', type: 'fix-colon', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
@@ -858,7 +886,7 @@ function S13({ p }) {
               k: 'l' + j + (found && j === R.bad ? 'f' : ''), d: 0, parts: cssTokens(r),
               cls: 'c1-cssline c1-hline' + (found && j === R.bad ? ' is-new' : '') + (off.indexOf(j) >= 0 ? ' is-off' : ''),
               onTap: found ? null : () => tap(j), disabled: !canTap || found || off.indexOf(j) >= 0,
-              led: !found && ((led && off.length === 0 && j === 0) || (lit && j === R.bad))
+              led: !found && ((led && off.length === 0) || (lit && j === R.bad))
             }))} cls="kz-code-sm" />
           </div>
         </div>
@@ -879,6 +907,7 @@ function ruleIssue(t, want, msgs) {
   if (!m) return msgs.braces;
   const inner = m[2];
   if (inner.indexOf(':') < 0) return inner.indexOf('=') >= 0 ? msgs.eq : msgs.colon;
+  if (!m[1].trim()) return msgs.noSel;
   if (m[1].trim().toLowerCase() !== want.sel) return msgs.sel;
   const d = inner.split(';').map((x) => x.trim()).filter(Boolean)[0] || '';
   const i = d.indexOf(':');
@@ -907,7 +936,7 @@ function W1({ p }) {
   const check = () => {
     if (!canTap || okNow) return;
     st.current.tries += 1;
-    const issue = ruleIssue(ty.val, { sel: 'p', prop: 'color', val: 'red' }, c.msgs);
+    const issue = cyrIn(ty.val) || (ruleIssue(ty.val, { sel: 'p', prop: 'color', val: 'red' }, c.msgs));
     if (!issue) {
       sfx('win', true); setMsg(null); setOkNow(true); put({ done: true });
       log({ screenId: 'w1', type: 'write-rule', correct: true, firstTry: st.current.misses === 0 && lad.asked.current === 0, attempts: st.current.tries, hints: lad.asked.current, depth: lad.lv });
@@ -927,7 +956,7 @@ function W1({ p }) {
             <Br title={pick(C.site.title)} short><CssPage blocks={siteBlocks(pick, okNow ? null : 'p')} rules={cssParse(css)} /></Br>
             <KzCode lines={[tagL('so', 0, 'style', false, { cls: 'c1-edge' }),
               okNow ? cssL('r', 1, 'p { color: red; }', { cls: 'is-new' }) : codeLine('r', [<span key="g" className={'kz-gap c1-slot c1-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={40} /></span>], { d: 1, cls: 'c1-cssline is-hl' }),
-              tagL('sc', 0, 'style', true, { cls: 'c1-edge' })]} cls="kz-code-sm" />
+              tagL('sc', 0, 'style', true, { cls: 'c1-edge' })]} cls="kz-code-sm" />{!okNow && lad.lv >= 3 ? <HelpCode code={'p { color: red; }'} /> : null}
           </div>
         </div>
         {!okNow ? <KeyRow keys={['{', '}', ':', ';']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 4} /> : null}
@@ -961,7 +990,7 @@ function S14({ p }) {
   const confirm = () => {
     if (!canTap || !ready || solved) return;
     const bad = !cssOk('color', va) ? a.trim() : !cssOk('background-color', vb) ? b.trim() : null;
-    const issue = bad ? fillL(c.msgs.notColor, { w: bad }) : va === vb ? c.msgs.same : null;
+    const issue = cyrIn(va, vb) || (bad && /\s/.test(bad) ? c.msgs.space : bad ? fillL(c.msgs.notColor, { w: bad }) : va === vb ? c.msgs.same : null);
     if (issue) { sfx('soft', true); setMsg(issue); sayNow(issue, 'think'); return; }
     sfx('win', true); setMsg(null);
     store.set('myColor', va); store.set('myBg', vb); put({ done: true });

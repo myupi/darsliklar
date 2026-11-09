@@ -116,6 +116,11 @@ const C = {
   },
   s2: {
     eyebrow: L3('class atributi', 'Атрибут class', 'The class attribute'),
+    help: [
+      L3("Ikki joyga qarang: HTML ichida abzasga class qo'shiladi, CSS ichida esa nuqta va o'sha nom yoziladi. Qaysi abzas bo'yaladi?", 'Посмотри на два места: в HTML абзацу добавляют class, а в CSS пишут точку и то же имя. Какой абзац покрасится?', 'Look at two places: in HTML the paragraph gets a class, and in CSS you write a dot and the same name. Which paragraph gets colored?'),
+      L3("class elementga nom beradi. CSS ichida shu nomdan oldin nuqta qo'yiladi. Ikkala joyda nom harfma-harf bir xil bo'lishi kerak.", 'class даёт элементу имя. В CSS перед этим именем ставят точку. В обоих местах имя одинаковое, буква в букву.', 'class gives an element a name. In CSS a dot goes before that name. The name must match letter for letter in both places.'),
+      L3('Konferensiyada kiyimga ism yozilgan belgi taqasiz. Kim chaqirilsa, belgisiga qarab topiladi. class ham shunday belgi.', 'На мероприятии носят бейджик с именем: по нему тебя и находят. class — такой же бейджик.', 'At an event you wear a name badge, and people find you by it. class is that kind of badge.')
+    ],
     say: L3("Keling, muhim abzasni alohida tanlaymiz. Buning uchun ikki joyda yozamiz: HTML kodida va CSSda. Qarang.", 'Давай выберем важный абзац отдельно. Для этого пишем в двух местах: в HTML и в CSS. Смотри.', 'Let’s pick the important paragraph on its own. We write in two places for that: in HTML and in CSS. Watch.'),
     sayHtml: L3("Oldin HTML kodida kerakli abzasga class atributini qo'shamiz va unga nom beramiz: muhim. Bu xuddi kiyimga yopishtirilgan nomli nishon kabi.", 'Сначала в HTML добавляем нужному абзацу атрибут class и даём ему имя: muhim. Это как бейджик с именем на одежде.', 'First, in HTML we add a class attribute to the paragraph and give it a name: muhim. It’s like a name badge on clothes.'),
     sayCss: L3("Endi CSSda class nomining oldiga nuqta qo'yamiz. Nuqta brauzerga aytadi: bu teg emas, class nomi. Qarang, endi faqat muhim abzas qizil!", 'А теперь в CSS ставим перед именем класса точку. Точка говорит браузеру: это не тег, а имя класса. Смотри, теперь красный только важный абзац!', 'Now in CSS we put a dot before the class name. The dot tells the browser: this isn’t a tag, it’s a class name. Look, only the important paragraph is red now!'),
@@ -127,7 +132,7 @@ const C = {
   },
   s3: {
     eyebrow: L3('class nomini yozing', 'Впиши имя класса', 'Type the class name'),
-    say: L3("Endi navbat sizga. Uchinchi abzasning classi yangi. Uni yashil qilamiz. CSSda nuqta tayyor, uning yoniga class nomini yozing.", 'Теперь твоя очередь. У третьего абзаца класс yangi. Сделаем его зелёным. В CSS точка уже стоит, впиши рядом имя класса.', 'Now it’s your turn. The third paragraph’s class is yangi. Let’s make it green. The dot is ready in CSS; type the class name next to it.'),
+    say: L3("Endi navbat sizga. Uchinchi abzasni yashil qilamiz. HTML kodidan uning class nomini toping va CSSdagi nuqtadan keyin yozing.", "Теперь твоя очередь. Сделаем зелёным третий абзац. Найди в HTML-коде имя его класса и впиши в CSS после точки.", "Now it’s your turn. Let’s make the third paragraph green. Find its class name in the HTML code and type it after the dot in CSS."),
     msgs: {
       empty: L3("Nuqtadan keyin class nomini yozing.", 'Впиши имя класса после точки.', 'Type the class name after the dot.'),
       dot: L3("Nuqta allaqachon turibdi. Faqat class nomini yozing.", 'Точка уже стоит. Впиши только имя класса.', 'The dot is already there. Type only the class name.'),
@@ -140,7 +145,7 @@ const C = {
       L3("Uchinchi abzasning classi yangi. Nuqtadan keyin yangi deb yozing.", 'Класс третьего абзаца — yangi. Впиши yangi после точки.', 'The third paragraph’s class is yangi. Type yangi after the dot.')
     ],
     ok: L3("Zo'r! Faqat yangi classli abzas yashil bo'ldi.", 'Огонь! Зелёным стал только абзац с классом yangi.', 'Awesome! Only the paragraph with the class yangi turned green.'),
-    ask: L3("Nuqtadan keyin class nomini yozing", 'Впиши после точки имя класса', 'Type the class name after the dot')
+    ask: L3("Uchinchi abzasni yashil qiling: nuqtadan keyin uning classi", "Сделай третий абзац зелёным: после точки — его класс", "Make the third paragraph green: its class after the dot")
   },
   s4: {
     eyebrow: L3("Qaysilari bo'yaladi?", 'Какие покрасятся?', 'Which will be colored?'),
@@ -158,6 +163,11 @@ const C = {
   },
   s5: {
     eyebrow: L3('id atributi', 'Атрибут id', 'The id attribute'),
+    help: [
+      L3("HTML ichida sarlavhaga id qo'shilishiga, CSS ichida esa nomdan oldin panjara belgisiga qarang.", 'Посмотри, как в HTML заголовку добавляют id, а в CSS перед именем ставят решётку.', 'Watch how in HTML the heading gets an id, and in CSS a hash sign goes before the name.'),
+      L3("id faqat bitta elementga beriladi. CSS ichida id nomidan oldin panjara, class nomidan oldin esa nuqta qo'yiladi.", 'id дают только одному элементу. В CSS перед именем id ставят решётку, а перед именем класса — точку.', 'id is given to just one element. In CSS a hash sign goes before an id name, and a dot before a class name.'),
+      L3('Bir jamoadagilar bir xil forma kiyadi, bu class. Pasport raqami esa har kimda bitta, bu id.', 'У игроков одной команды одинаковая форма — это class. А номер паспорта у каждого свой — это id.', 'Players on one team wear the same uniform: that’s class. A passport number is unique to each person: that’s id.')
+    ],
     say: L3("class bir nechta elementga berilishi mumkin, xuddi jamoaning bir xil formasi kabi. id esa faqat bitta elementga beriladi, xuddi pasport raqami kabi. Qarang.", 'Класс можно дать нескольким элементам, как одинаковую форму команды. А id дают только одному элементу, как номер паспорта. Смотри.', 'A class can go on several elements, like a team’s matching uniform. An id goes on only one element, like a passport number. Watch.'),
     sayHtml: L3("HTML kodida sarlavhaga id atributini qo'shamiz va unga nom beramiz: bosh. Sahifada boshqa hech bir elementning id si bosh bo'lmaydi.", 'В HTML добавляем заголовку атрибут id с именем bosh. Ни у одного другого элемента на странице id bosh не будет.', 'In HTML we add an id attribute to the heading named bosh. No other element on the page will have the id bosh.'),
     sayCss: L3("CSSda id nomining oldiga panjara belgisi qo'yiladi. Qarang, sarlavha binafsha bo'ldi.", 'В CSS перед именем id ставят решётку. Смотри, заголовок стал фиолетовым.', 'In CSS a hash sign goes before the id name. Look, the heading turned purple.'),
@@ -214,6 +224,11 @@ const C = {
   // ТРОЙКА «class или id?» (заказчик, 05.11.2026: в уроке минимум 17 экранов).
   k1: {
     eyebrow: L3('class yoki id?', 'class или id?', 'class or id?'),
+    help: [
+      L3("Sport yangiliklariga va sarlavhaga qarang: bitta class uchala yangilikni bo'yaydi, id esa faqat bitta sarlavhani.", 'Посмотри на спортивные новости и заголовок: один class красит все три новости, а id — только один заголовок.', 'Look at the sports news and the heading: one class colors all three news items, while id colors just the one heading.'),
+      L3("Bir xil narsalar ko'p bo'lsa, class olinadi. Narsa sahifada bitta bo'lsa, id olinadi.", 'Если одинаковых вещей много — берут class. Если вещь на странице одна — берут id.', 'If there are many of the same thing, use class. If something is the only one on the page, use id.'),
+      L3("Maktabda hamma o'quvchilarga bitta qo'ng'iroq chalinadi, bu class. Direktor esa bitta, uni ismi bilan chaqirishadi, bu id.", 'В школе звонок звенит всем ученикам — это class. А директор один, его зовут по имени — это id.', 'At school the bell rings for all students: that’s class. There’s only one principal, called by name: that’s id.')
+    ],
     say: L3("Qachon class, qachon id olinadi? Oddiy qoida bor. Bir xil narsalar ko'p bo'lsa, class olinadi. Sahifada yagona narsa bo'lsa, id olinadi. Qarang.", 'Когда брать class, а когда id? Есть простое правило. Если одинаковых вещей много — берут class. Если вещь на странице одна — берут id. Смотри.', 'When do you use a class, and when an id? There’s a simple rule. If there are many of the same thing, use a class. If something is the only one on the page, use an id. Watch.'),
     sayCls: L3("Sport yangiliklari uchta. Ularning hammasiga bir xil sport classi berilgan, shuning uchun bitta qoida uchalasini ham ko'k qildi.", 'Спортивных новостей три. Всем им дан один класс sport, поэтому одно правило покрасило синим все три.', 'There are three sports news items. They all have the same class sport, so one rule made all three blue.'),
     sayId: L3("Sayt sarlavhasi esa bitta. Unga logo degan id berilgan, va qoida faqat uni to'q sariq qildi.", 'А заголовок сайта один. Ему дан id logo, и правило сделало оранжевым только его.', 'The site heading is the only one. It has the id logo, and the rule made only it orange.'),
@@ -231,7 +246,8 @@ const C = {
       noDot: L3("Nuqta yo'q. Nuqtasiz brauzer sport degan tegni qidiradi. class nomi oldiga nuqta qo'ying.", 'Нет точки. Без неё браузер ищет тег sport. Поставь точку перед именем класса.', 'No dot. Without it the browser looks for a tag called sport. Put a dot before the class name.'),
       hash: L3("Panjara belgisi id uchun. Sport yangiliklarida esa class bor, unga nuqta kerak.", 'Решётка — для id. А у новостей sport класс, ему нужна точка.', 'A hash sign is for an id. The sport news items have a class, which needs a dot.'),
       tag: L3("p hamma abzaslarni bo'yadi, sport bo'lmaganini ham. Bizga faqat sport classi kerak.", 'p покрасил все абзацы, и не спортивные тоже. Нам нужен только класс sport.', 'p colored every paragraph, not just the sports ones. We need only the class sport.'),
-      other: L3("Bu selektor sport yangiliklarini tanlamadi. HTML kodidagi class nomiga qarang.", 'Этот селектор не выбрал новости sport. Посмотри на имя класса в HTML-коде.', 'This selector didn’t pick the sports news. Look at the class name in the HTML code.')
+      other: L3("Bu selektor sport yangiliklarini tanlamadi. HTML kodidagi class nomiga qarang.", 'Этот селектор не выбрал новости sport. Посмотри на имя класса в HTML-коде.', 'This selector didn’t pick the sports news. Look at the class name in the HTML code.'),
+      space: L3("Belgi va nom o'rtasida bo'sh joy bo'lmaydi: qo'shib yozing.", "Между знаком и именем не нужен пробел: пиши слитно.", "No space between the sign and the name: write them together.")
     },
     hints: [
       L3("HTML kodiga qarang: sport yangiliklarida class bormi yoki id?", 'Посмотри в HTML-код: у новостей sport class или id?', 'Look at the HTML code: do the sports news items have a class or an id?'),
@@ -239,7 +255,7 @@ const C = {
       L3("Nuqta qo'ying va sport deb yozing.", 'Поставь точку и напиши sport.', 'Put a dot and type sport.')
     ],
     ok: L3("Zo'r! Uchala sport yangiligi yashil bo'ldi.", 'Огонь! Все три спортивные новости стали зелёными.', 'Awesome! All three sports news items turned green.'),
-    ask: L3("Qavsdan oldin selektorni to'liq yozing", 'Впиши перед скобкой селектор целиком', 'Type the whole selector before the brace')
+    ask: L3("Sport yangiliklarini yashil qiling: qavsdan oldin selektor", "Сделай новости sport зелёными: селектор перед скобкой", "Make the sport news green: the selector before the brace")
   },
   k3: {
     eyebrow: L3('class yoki id?', 'class или id?', 'class or id?'),
@@ -283,13 +299,18 @@ const C = {
     hints: [
       L3("Sarlavhada class bormi yoki id? Belgi shunga qarab tanlanadi.", 'У заголовка class или id? От этого зависит знак.', 'Does the heading have a class or an id? The sign depends on that.'),
       L3("id selektori panjara belgisi va id nomidan iborat. Keyin jingalak qavslar ichida color va purple.", 'Селектор id — это решётка и имя id. Потом в фигурных скобках color и purple.', 'An id selector is a hash sign and the id name. Then color and purple in curly braces.'),
-      L3("Shunday yozing: panjara belgisi, bosh, ochuvchi jingalak qavs, color, ikki nuqta, purple, nuqtali vergul va yopuvchi jingalak qavs.", 'Напиши так: решётка, bosh, открывающая фигурная скобка, color, двоеточие, purple, точка с запятой и закрывающая фигурная скобка.', 'Write: a hash sign, bosh, an opening curly brace, color, a colon, purple, a semicolon and a closing curly brace.')
+      L3("Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", "Образец появился под кодом. Перепиши его в поле и нажми «Проверить».", "An example appeared under the code. Copy it into the field and tap Check.")
     ],
     ok: L3("Ajoyib! Siz id bo'yicha qoidani butunlay o'zingiz yozdingiz.", 'Отлично! Ты сам написал целое правило по id.', 'Great! You wrote a whole id rule yourself.'),
-    ask: L3("Sarlavhani binafsha qiladigan qoidani yozing", 'Напиши правило, которое сделает заголовок фиолетовым', 'Write a rule that makes the heading purple')
+    ask: L3("bosh id li sarlavhani binafsha qiling: qoidani to'liq yozing", "Сделай заголовок с id bosh фиолетовым: напиши правило целиком", "Make the heading with id bosh purple: write the whole rule")
   },
   s8: {
     eyebrow: L3('Tanlov buzilsa', 'Когда выбор ломается', 'When picking breaks'),
+    help: [
+      L3("Har safar ikki joydagi nomni solishtiring: HTML va CSS ichida harflar bir xilmi, CSS ichida nuqta yoki panjara to'g'rimi?", 'Каждый раз сравни имя в двух местах: совпадают ли буквы в HTML и CSS, верный ли знак в CSS — точка или решётка?', 'Each time, compare the name in both places: do the letters match in HTML and CSS, and is the CSS sign right, dot or hash?'),
+      L3("Nom ikki joyda harfma-harf bir xil yoziladi. class uchun nuqta, id uchun panjara qo'yiladi, HTML ichida esa faqat nomning o'zi.", 'Имя в двух местах пишется буква в букву. Для класса — точка, для id — решётка, а в HTML — только само имя.', 'The name is written letter for letter in both places. A dot for class, a hash for id, and in HTML only the name itself.'),
+      L3("Pochtachi xatni uy raqamiga qarab topadi. Raqam bitta xato bo'lsa, xat boshqa uyga ketadi. Brauzer ham elementni nomiga qarab topadi.", 'Почтальон находит дом по номеру. Ошибка в одной цифре — письмо уйдёт не туда. Браузер так же находит элемент по имени.', 'A mail carrier finds a house by its number. One wrong digit and the letter goes elsewhere. The browser finds an element by its name the same way.')
+    ],
     say: L3("class va id juda aniqlikni yaxshi ko'radi. Bitta belgi yoki harf xato bo'lsa, brauzer elementni topa olmaydi. Keling, uchta xatoni ko'ramiz.", 'class и id любят точность. Ошибся в одном знаке или букве — и браузер не находит элемент. Посмотрим на три ошибки.', 'class and id love precision. One wrong sign or letter and the browser can’t find the element. Let’s look at three mistakes.'),
     sayTypo: L3("Birinchisi: CSSdagi nomda bitta harf boshqacha. HTML kodida muhim, CSSda esa muhum. Brauzer bunday classni topmadi va hech narsa bo'yalmadi.", 'Первая: в имени в CSS одна буква другая. В HTML — muhim, а в CSS — muhum. Браузер не нашёл такой класс, и ничего не покрасилось.', 'The first: one letter in the CSS name is different. HTML says muhim, CSS says muhum. The browser found no such class, so nothing got colored.'),
     sayHash: L3("Ikkinchisi: class uchun nuqta o'rniga panjara belgisi yozildi. Brauzer endi muhim degan id ni qidiradi, u esa yo'q.", 'Вторая: для класса вместо точки написали решётку. Теперь браузер ищет id muhim, а такого нет.', 'The second: a hash sign was written instead of a dot for a class. Now the browser looks for an id muhim, and there isn’t one.'),
@@ -323,7 +344,7 @@ const C = {
     ask: L3('Ishlamayotgan qoidani bosing', 'Нажми правило, которое не работает', 'Tap the rule that doesn’t work'),
     fine: L3("Bu qoida ishlayapti: uning rangi sahifada ko'rinib turibdi. Qaysi narsa bo'yalmadi?", 'Это правило работает: его цвет виден на странице. Что не покрасилось?', 'This rule works: its color shows on the page. What didn’t get colored?'),
     found: {
-      case: L3("Topdingiz! HTML kodida class sport kichik harf bilan, CSSda esa katta harf bilan yozilgan. class nomida harflarning katta-kichikligi ham farq qiladi.", 'Нашёл! В HTML класс sport с маленькой буквы, а в CSS — с большой. В имени класса важен и регистр букв.', 'Found it! In HTML the class sport is lowercase, but in CSS it starts with a capital. Letter case matters in a class name too.'),
+      case: L3("Topdingiz! HTML kodida class sport kichik harf bilan, CSSda esa katta harf bilan yozilgan. class nomida harflarning katta-kichikligi ham farq qiladi.", 'Есть! В HTML класс sport с маленькой буквы, а в CSS — с большой. Для браузера большая и маленькая буквы — разные буквы.', 'Found it! In HTML the class sport is lowercase, but in CSS it starts with a capital. Letter case matters in a class name too.'),
       sign: L3("Topdingiz! Sarlavhada class logo bor, CSSda esa id belgisi yozilgan. class uchun nuqta kerak.", 'Нашёл! У заголовка класс logo, а в CSS стоит знак id. Для класса нужна точка.', 'Found it! The heading has the class logo, but CSS uses the id sign. A class needs a dot.')
     },
     hint1: L3("Sahifaga qarang: nima bo'yalmay qoldi?", 'Посмотри на страницу: что осталось не покрашенным?', 'Look at the page: what stayed uncolored?'),
@@ -404,7 +425,7 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { sayCls: 1, sayId: 1, hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayHtml: 1, sayCss: 1, sayTypo: 1, sayHash: 1,
+Object.assign(SPOKEN, { help: 1, sayCls: 1, sayId: 1, hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayHtml: 1, sayCss: 1, sayTypo: 1, sayHash: 1,
   sayDotHtml: 1, miss: 1, say2: 1, fine: 1, found: 1, got: 1, items: 1, right: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1 } });
 

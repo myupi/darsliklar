@@ -112,6 +112,11 @@ const C = {
   },
   s2: {
     eyebrow: L3("@keyframes va animation", '@keyframes и animation', '@keyframes and animation'),
+    help: [
+      L3("Kodga qarang: avval keyframes rejasi paydo bo'ladi, keyin animation qatori. Kubik qachon harakatlana boshlaydi?", 'Посмотри на код: сначала появляется план keyframes, потом строка animation. Когда кубик начинает двигаться?', 'Look at the code: first the keyframes plan appears, then the animation line. When does the cube start moving?'),
+      L3("keyframes harakat rejasini yozadi: from boshi, to oxiri. animation esa shu rejani nomi bilan ishga tushiradi va vaqtini aytadi. infinite bo'lsa, to'xtamaydi.", 'keyframes записывает план движения: from — начало, to — конец. animation запускает этот план по имени и задаёт время. С infinite он не останавливается.', 'keyframes writes the movement plan: from is the start, to is the end. animation starts that plan by name and sets the time. With infinite it never stops.'),
+      L3("Raqs harakatlari yozilgan qog'oz o'zi raqsga tushmaydi, kimdir uni ijro etishi kerak. keyframes qog'oz, animation esa raqqos.", 'Листок с движениями танца сам не танцует, его должен кто-то исполнить. keyframes — листок, animation — танцор.', 'A sheet with dance moves doesn’t dance by itself; someone has to perform it. keyframes is the sheet, animation is the dancer.')
+    ],
     say: L3("Animatsiya ikki qismdan iborat: harakat rejasi va uni ishga tushiradigan qoida. Keling, bittadan qo'shamiz.",
       'Анимация состоит из двух частей: плана движения и правила, которое его запускает. Давай добавим по одной.',
       'An animation has two parts: a movement plan and a rule that starts it. Let’s add them one at a time.'),
@@ -164,6 +169,11 @@ const C = {
   },
   s5: {
     eyebrow: L3("Foizli kadrlar", 'Кадры в процентах', 'Frames in percent'),
+    help: [
+      L3('Kubikning pastga tushishiga qarang: avval birdaniga, keyin silliq. Oxirida necha marta sakraydi?', 'Посмотри, как кубик опускается: сначала рывком, потом плавно. А в конце — сколько раз он прыгает?', 'Watch how the cube comes down: first with a jerk, then smoothly. And at the end, how many times does it jump?'),
+      L3("Kadrlarni foizda yozish mumkin: nol foiz boshi, ellik foiz o'rtasi, yuz foiz oxiri. infinite o'rniga son yozilsa, animatsiya shuncha marta bo'ladi.", 'Кадры можно писать в процентах: ноль — начало, пятьдесят — середина, сто — конец. Вместо infinite можно написать число — столько раз и будет.', 'Frames can be written in percent: zero is the start, fifty the middle, a hundred the end. Instead of infinite you can write a number: that many times.'),
+      L3("Multfilm chizganda boshlang'ich, o'rtadagi va oxirgi kadrni chizasiz. keyframes ham kalit kadrlarni shunday belgilaydi.", 'Когда рисуют мультфильм, рисуют первый, средний и последний кадр. keyframes отмечает ключевые кадры так же.', 'When you draw a cartoon, you draw the first, middle and last frame. keyframes marks the key frames the same way.')
+    ],
     say: L3("Qarang, kubik sakraydi, lekin yuqoridan pastga birdaniga tushadi. Nega shunday? Keling, tuzatamiz.",
       'Смотри, кубик прыгает, но сверху вниз падает рывком. Почему так? Давай исправим.',
       'Look, the cube jumps, but it drops from the top all at once. Why? Let’s fix it.'),
@@ -191,7 +201,7 @@ const C = {
     hints: [
       L3("Boshi nol foiz, oxiri yuz foiz. O'rtasi-chi?", 'Начало — ноль процентов, конец — сто. А середина?', 'The start is zero percent, the end is a hundred. And the middle?'),
       L3("O'rtasi ellik foiz.", 'Середина — пятьдесят процентов.', 'The middle is fifty percent.'),
-      L3("Ellik va foiz belgisini yozing, keyin Tekshirishni bosing.", 'Впиши пятьдесят и знак процента, потом нажми «Проверить».', 'Type fifty and the percent sign, then tap Check.')
+      L3("Ellik deb yozing, keyin pastdagi foiz belgisi tugmasini va Tekshirishni bosing.", "Впиши пятьдесят, потом нажми внизу кнопку со знаком процента и «Проверить».", "Type fifty, then tap the percent sign button below and Check.")
     ],
     ok: L3("Barakalla! Kubik silliq ko'tarilib, silliq tushyapti.", 'Молодец! Кубик плавно поднимается и плавно опускается.', 'Well done! The cube rises and falls smoothly.'),
     ask: L3("O'rtadagi kadr: necha foiz?", 'Кадр посередине: сколько процентов?', 'The middle frame: what percent?')
@@ -219,6 +229,11 @@ const C = {
   },
   s8: {
     eyebrow: L3("Tezlik va yo'nalish", 'Скорость и направление', 'Speed and direction'),
+    help: [
+      L3("Kubikka qarang: aylanishda u to'xtab qolyaptimi? O'ngga yurganda boshiga sakrayaptimi yoki qaytib keladimi?", 'Посмотри на кубик: при вращении он притормаживает? Когда едет вправо — прыгает в начало или возвращается?', 'Look at the cube: does it slow down while spinning? When it moves right, does it jump back to the start or come back?'),
+      L3('linear tezlikni tekis qiladi. alternate esa animatsiyani borib-qaytadigan qiladi: bir safar oldinga, bir safar orqaga.', 'linear делает скорость ровной. А alternate делает анимацию «туда и обратно»: раз вперёд, раз назад.', 'linear makes the speed even. alternate makes the animation go there and back: once forward, once back.'),
+      L3('Soat strelkasi tekis aylanadi, bu linear. Belanchak esa borib-qaytadi, bu alternate.', 'Стрелка часов крутится ровно — это linear. Качели ходят туда и обратно — это alternate.', 'A clock hand turns evenly: that’s linear. A swing goes back and forth: that’s alternate.')
+    ],
     say: L3("Animatsiyada ham tezlikni va yo'nalishni tanlash mumkin. Hozir kubik ikki soniyada bir marta aylanadi. Har aylanishda u biroz to'xtab qolayotganini ko'ryapsizmi?",
       'В анимации тоже можно выбрать скорость и направление. Сейчас кубик делает оборот за две секунды. Видишь, на каждом обороте он будто притормаживает?',
       'You can choose speed and direction in an animation too. Right now the cube spins once every two seconds. See how it seems to slow down on every turn?'),
@@ -271,6 +286,11 @@ const C = {
   },
   s11: {
     eyebrow: L3("Qachon ishlamaydi", 'Когда не работает', 'When it doesn’t work'),
+    help: [
+      L3('Har safar kodga va chiziqqa qarang: nom kulrangmi, vaqt bormi, kadrda foiz belgisi bormi?', 'Каждый раз смотри на код и на полосу: имя серое, есть ли время, есть ли знак процента у кадра?', 'Each time, look at the code and the bar: is the name grey, is there a time, does the frame have a percent sign?'),
+      L3("Nom ikki joyda harfma-harf bir xil bo'lishi kerak, vaqt yozilishi kerak, kadrlarda esa foiz belgisi turishi kerak.", 'Имя в двух местах должно совпадать буква в букву, время должно быть написано, а у кадров нужен знак процента.', 'The name must match letter for letter in both places, the time must be written, and frames need a percent sign.'),
+      L3("Do'stingizni noto'g'ri ism bilan chaqirsangiz, u kelmaydi. Brauzer ham rejani faqat aniq nomi bilan topadi.", 'Если позвать друга не тем именем, он не придёт. Браузер тоже находит план только по точному имени.', 'Call a friend by the wrong name and they won’t come. The browser also finds a plan only by its exact name.')
+    ],
     say: L3("Animatsiyada ham xatolar bo'ladi. Keling, uchtasini ko'ramiz. Hozir hammasi to'g'ri: kubik sakrayapti.",
       'И в анимации бывают ошибки. Давай посмотрим на три. Сейчас всё правильно: кубик прыгает.',
       'Animations have mistakes too. Let’s look at three. Right now everything is correct: the cube is jumping.'),
@@ -329,7 +349,8 @@ const C = {
       name: L3("Xato ikkinchi qoidada: aylna. O'sha qatorni bosing.", 'Ошибка во втором правиле: aylna. Нажми эту строку.', 'The bug is in the second rule: aylna. Tap that line.'),
       time: L3("Xato oxirgi qoidada: vaqt yo'q. O'sha qatorni bosing.", 'Ошибка в последнем правиле: нет времени. Нажми эту строку.', 'The bug is in the last rule: no time. Tap that line.')
     },
-    ok: L3("Super! Ikkalasi ham topildi. Siz animatsiyalarni haqiqiy dasturchi kabi tekshiryapsiz.", 'Супер! Обе найдены. Ты проверяешь анимации как настоящий разработчик.', 'Super! Both found. You check animations like a real developer.')
+    ok: L3("Super! Ikkalasi ham topildi. Siz animatsiyalarni haqiqiy dasturchi kabi tekshiryapsiz.", 'Супер! Обе найдены. Ты проверяешь анимации как настоящий разработчик.', 'Super! Both found. You check animations like a real developer.'),
+    fineKf: L3("Reja joyida: u faqat harakatni tasvirlaydi. Uni ishga tushiradigan animation qatoriga qarang.", "План в порядке: он только описывает движение. Посмотри на строку animation, которая его запускает.", "The plan is fine: it only describes the motion. Look at the animation line that starts it.")
   },
   w1: {
     eyebrow: L3("Qoidani o'zingiz yozing", 'Напиши правило целиком', 'Write the rule yourself'),
@@ -355,10 +376,10 @@ const C = {
     hints: [
       L3("Selektor kubik klassi, xususiyat animation, qiymatda esa nom, vaqt, tezlik va cheksiz.", 'Селектор — класс кубика, свойство — animation, а в значении — имя, время, скорость и «без конца».', 'The selector is the cube’s class, the property is animation, and the value has the name, time, speed and endlessly.'),
       L3("Qiymat: aylan, ikki s, linear, infinite.", 'Значение: aylan, 2s, linear, infinite.', 'The value: aylan, 2s, linear, infinite.'),
-      L3("Shunday yozing: nuqta kub, figurali qavs, animation ikki nuqta aylan ikki s linear infinite, nuqtali vergul, yopuvchi qavs.", 'Напиши так: точка kub, фигурная скобка, animation двоеточие aylan 2s linear infinite, точка с запятой, закрывающая скобка.', 'Write it like this: dot kub, curly brace, animation colon aylan 2s linear infinite, semicolon, closing brace.')
+      L3("Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", "Образец появился под кодом. Перепиши его в поле и нажми «Проверить».", "An example appeared under the code. Copy it into the field and tap Check.")
     ],
     ok: L3("Ajoyib! Kubik g'ildirakdek aylanyapti. Qoidani o'zingiz yozdingiz.", 'Отлично! Кубик крутится как колесо. Правило написано тобой целиком.', 'Great! The cube spins like a wheel. You wrote the whole rule yourself.'),
-    ask: L3("aylan · 2s · linear · infinite", 'aylan · 2s · linear · infinite', 'aylan · 2s · linear · infinite')
+    ask: L3("Kubik aylan rejasi bo'yicha aylansin: tekis, cheksiz, bir aylanish ikki soniyada", "Кубик крутится по плану aylan: ровно, без конца, оборот за две секунды", "The cube spins by the aylan plan: evenly, endlessly, one turn in two seconds")
   },
   s14: {
     eyebrow: L3("O'z animatsiyangiz", 'Своя анимация', 'Your own animation'),
@@ -366,7 +387,7 @@ const C = {
       'Теперь сделай свою анимацию. Сам выбери, каким кубик станет в конце, сколько это длится и сколько раз повторится. Потом нажми «Готово».',
       'Now make your own animation. Choose what the cube becomes at the end, how long it takes and how many times it repeats. Then tap “Done”.'),
     msgs: {
-      tf: L3("Brauzer {w} qiymatini tanimadi. Masalan, scale, rotate yoki translate yozing.", 'Браузер не узнал значение {w}. Впиши, например, scale, rotate или translate.', 'The browser didn’t recognize {w}. Type, for example, scale, rotate or translate.'),
+      tf: L3("Brauzer {w} qiymatini tanimadi. scale, rotate yoki translate dan keyin qavs ichida son kerak, masalan rotate va qavs ichida qirq besh deg.", "Браузер не узнал {w}. Нужно слово и число в скобках — например, rotate и в скобках сорок пять deg.", "The browser didn’t recognize {w}. You need a word and a number in brackets, for example rotate with forty-five deg in brackets."),
       comma: L3("Vaqtda vergul bor. Kasr nuqta bilan yoziladi.", 'Во времени запятая. Дробь пишут через точку.', 'There’s a comma in the time. Decimals use a dot.'),
       unit: L3("Vaqtga s yoki ms kerak.", 'Времени нужны s или ms.', 'The time needs s or ms.'),
       time: L3("Brauzer {w} vaqtini tanimadi. Son va s yozing.", 'Браузер не узнал время {w}. Напиши число и s.', 'The browser didn’t recognize the time {w}. Write a number and s.'),
@@ -376,8 +397,8 @@ const C = {
     },
     hints: [
       L3("Har bir maydonga bitta qiymat yozing.", 'В каждое поле — одно значение.', 'One value in each field.'),
-      L3("Birinchisiga scale, rotate yoki translate, ikkinchisiga vaqt, uchinchisiga infinite yoki son.", 'В первое — scale, rotate или translate, во второе — время, в третье — infinite или число.', 'In the first, scale, rotate or translate; in the second, a time; in the third, infinite or a number.'),
-      L3("Masalan: rotate qirq besh deg, bir s va infinite. Keyin «Tayyor»ni bosing.", 'Например: rotate сорок пять deg, 1s и infinite. Потом нажми «Готово».', 'For example: rotate forty-five deg, 1s and infinite. Then tap “Done”.')
+      L3("Birinchisiga qavsli va sonli scale, rotate yoki translate, ikkinchisiga vaqt, uchinchisiga infinite yoki son.", "В первое — scale, rotate или translate со скобками и числом, во второе — время, в третье — infinite или число.", "In the first, scale, rotate or translate with brackets and a number; in the second, a time; in the third, infinite or a number."),
+      L3("Masalan: rotate va qavs ichida qirq besh deg, keyin bir s va infinite. Keyin «Tayyor»ni bosing.", "Например: rotate и в скобках сорок пять deg, потом 1s и infinite. Потом нажми «Готово».", "For example: rotate with forty-five deg in brackets, then 1s and infinite. Then tap “Done”.")
     ],
     ok: L3("Voy, kubik jonlandi! Bu sizning o'z animatsiyangiz.", 'Ого, кубик ожил! Это твоя собственная анимация.', 'Wow, the cube came alive! This is your very own animation.'),
     ask: L3("Uchta qiymatni yozing, «Tayyor»ni bosing", 'Впиши три значения и нажми «Готово»', 'Type three values, tap “Done”')
@@ -391,7 +412,7 @@ const C = {
     no: L3("Noto'g'ri", 'Неверно', 'False'),
     right: L3('Barakalla!', 'Точно!', 'Exactly!'),
     hint1: L3("Gap nima haqida: reja, ishga tushirish yoki nom?", 'О чём фраза: о плане, о запуске или об имени?', 'What’s the sentence about: the plan, starting it or the name?'),
-    hint2: L3("Esingizdami: keyframes faqat reja, animation uni ishga tushiradi, infinite cheksiz degani, nom aynan bir xil bo'lishi kerak.", 'Вспомни: keyframes — только план, animation его запускает, infinite — без конца, а имя должно совпадать точно.', 'Remember: keyframes is only a plan, animation starts it, infinite is endless, and the name must match exactly.'),
+    hint2: L3("Esingizdami: keyframes faqat reja, animation uni ishga tushiradi, infinite cheksiz degani, nom esa harfma-harf bir xil bo'lishi kerak, katta va kichik harflar ham.", "Вспомни: keyframes — только план, animation его запускает, infinite — без конца, а имя должно совпадать буква в букву, даже большие и маленькие буквы.", "Remember: keyframes is only a plan, animation starts it, infinite is endless, and the name must match letter for letter, even capital and small letters."),
     items: [
       { t: L3("Faqat keyframes ning o'zi kubikni harakatlantiradi.", 'Один только keyframes двигает кубик.', 'keyframes alone moves the cube.'), right: false, code: 'kfOnly',
         why: L3("Aslida keyframes faqat reja. Uni animation ishga tushiradi.", 'На самом деле keyframes — только план. Запускает его animation.', 'Actually keyframes is only a plan. animation starts it.') },
@@ -400,7 +421,7 @@ const C = {
       { t: L3("Animatsiya sichqonchasiz ham ishlaydi.", 'Анимация работает и без мышки.', 'An animation works without the mouse too.'), right: true,
         why: L3("To'g'ri: animation o'zi ishlaydi, transition dan farqli.", 'Верно: animation работает сама, в отличие от transition.', 'Right: animation runs by itself, unlike transition.') },
       { t: L3("Bu kubik sakraydi.", 'Этот кубик будет прыгать.', 'This cube will jump.'), right: false, code: 'caps',
-        why: L3("Aslida nom boshqacha yozilgan: katta harf bilan. Nega bu muhim, hozir ko'ramiz.", 'На самом деле имя написано по-другому: с большой буквы. Почему это важно — сейчас увидим.', 'Actually the name is written differently: with a capital letter. We’ll see why it matters in a moment.') }
+        why: L3("Aslida CSS uchun Sakra va sakra har xil nomlar, ikkinchi darsdagi class nomlari kabi. Brauzer rejani topmaydi va kubik joyida turadi.", 'На самом деле для CSS Sakra и sakra — разные имена, как имена классов во втором уроке. Браузер не найдёт план, и кубик будет стоять.', 'Actually, to CSS Sakra and sakra are different names, like the class names in lesson two. The browser won’t find the plan, and the cube will stand still.') }
     ],
     ok: L3("Hammasi to'g'ri! Siz animatsiyalarni yaxshi bilasiz.", 'Всё верно! Ты отлично разбираешься в анимациях.', 'All correct! You know animations really well.')
   },
@@ -433,7 +454,7 @@ const C = {
 /*@L2_HELPERS@*/
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayKf: 1, sayAnim: 1, sayInf: 1,
+Object.assign(SPOKEN, { help: 1, fineKf: 1, hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayKf: 1, sayAnim: 1, sayInf: 1,
   sayJerk: 1, sayPct: 1, sayThree: 1, sayLinear: 1, sayBack: 1, sayAlt: 1, sayName: 1, sayTime: 1, miss: 1, say2: 1, fine: 1, found: 1,
   items: 1, right: 1, rounds: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1, css: 1, right: 1, tag: 1, dir: 1 }, rounds: { want: 1, opts: 1, hover: 1 } });

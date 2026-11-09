@@ -709,3 +709,15 @@
 .r28 .kz-br.c5-br .kz-br-page { overflow-y: auto !important; scrollbar-width: thin; }
 /* Страница — обычная толщина букв, как в браузере (иначе ссылка наследовала 600 от рамки окна). */
 .r28 .c5-doc { font-weight: 400; }
+
+/* Образец на третьей ступени помощи (09.11.2026). */
+.r28 .kz-helpcode { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; align-self: stretch; padding: 6px 10px; border-radius: 10px; background: #FFF8E1; box-shadow: inset 0 0 0 1.5px #F5C451; animation: kzHelpIn .3s ease-out both; }
+.r28 .kz-helpcode span { font: 600 12px var(--r-font); color: #8A6100; }
+.r28 .kz-helpcode code { font: 600 14px var(--r-mono); color: var(--r-ink); white-space: pre-wrap; word-break: break-word; }
+@keyframes kzHelpIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .r28 .kz-helpcode { animation: none; } }
+
+/* s10 — «До» и «После»: есть с чем сравнить (09.11.2026). */
+.r28 .c5-ba { display: flex; align-items: baseline; gap: 10px; }
+.r28 .c5-ba > i { flex: none; width: 4.2em; font: 600 12px var(--r-font); font-style: normal; color: var(--r-mute, #64748B); }
+.r28 .c5-eff-sm { font-size: clamp(18px, 3dvh, 24px); color: #64748B; }

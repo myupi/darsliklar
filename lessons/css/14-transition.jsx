@@ -6769,12 +6769,17 @@ const C = {
   },
   s2: {
     eyebrow: L3("transition", 'transition', 'transition'),
+    help: [
+      L3("Tugmaga va pastdagi chiziqqa qarang: chiziq o'zgarish necha soniya davom etganini ko'rsatadi.", 'Посмотри на кнопку и на полосу внизу: полоса показывает, сколько секунд длится изменение.', 'Look at the button and the bar below: the bar shows how many seconds the change takes.'),
+      L3("transition o'zgarishni silliq qiladi. Unda ikki narsa yoziladi: qaysi xususiyat va necha soniya. Vaqt kam bo'lsa, tez.", 'transition делает изменение плавным. В нём пишут две вещи: какое свойство и сколько секунд. Меньше время — быстрее.', 'transition makes a change smooth. It says two things: which property and how many seconds. Less time means faster.'),
+      L3('Xonadagi chiroqni birdan yoqish va asta-sekin yoritishni solishtiring. transition chiroqni asta yoqqandek ishlaydi.', 'Сравни: свет в комнате включается сразу или разгорается постепенно. transition — как свет, который разгорается.', 'Compare a room light snapping on with one that fades up slowly. transition is like the light that fades up.')
+    ],
     say: L3("transition qoidasida ikki narsa yoziladi: qaysi xususiyat silliq o'zgaradi va bu necha soniya davom etadi. Keling, ko'ramiz.",
       'В правиле transition пишут две вещи: какое свойство меняется плавно и сколько секунд это длится. Давай посмотрим.',
       'A transition rule says two things: which property changes smoothly and how many seconds it takes. Let’s see.'),
     sayJump: L3("Hozir transition yo'q. Tugma birdaniga sakraydi, chiziqda esa nol soniya: o'zgarish bir zumda bo'ldi.", 'Сейчас transition нет. Кнопка прыгает сразу, а на полосе ноль секунд: изменение случилось мгновенно.', 'Right now there’s no transition. The button jumps at once, and the bar shows zero seconds: the change was instant.'),
     saySlow: L3("transform bir soniya: o'sish endi bir soniya davom etadi. Sekin va silliq. s harfi soniya degani.", 'transform одна секунда: рост теперь длится одну секунду. Медленно и плавно. Буква s — это секунды.', 'transform one second: growing now takes one second. Slow and smooth. The letter s means seconds.'),
-    sayFast: L3("Nol butun o'ndan uch soniya: tez, lekin baribir silliq. Odatda tugmalar uchun shunday qisqa vaqt tanlanadi.", 'Ноль целых три десятых секунды: быстро, но всё равно плавно. Обычно для кнопок выбирают такое короткое время.', 'Zero point three seconds: fast, but still smooth. Buttons usually get a short time like this.'),
+    sayFast: L3("Nol butun o'ndan uch soniya: tez, lekin baribir silliq. Odatda tugmalar uchun shunday qisqa vaqt tanlanadi. Yarim soniya esa nol butun o'ndan besh va s harfi bilan yoziladi.", "Ноль целых три десятых секунды: быстро, но всё равно плавно. Обычно для кнопок выбирают такое короткое время. А полсекунды пишут как ноль целых пять десятых с буквой s.", "Zero point three seconds: fast, but still smooth. Buttons usually get a short time like this. And half a second is written as zero point five with the letter s."),
     done: L3("Demak, transition o'zgarishni silliq qiladi: oldin xususiyat, keyin vaqt yoziladi.", 'Значит, transition делает изменение плавным: сначала пишут свойство, потом время.', 'So transition makes a change smooth: first you write the property, then the time.'),
     askStart: L3("Qarang: tugma sakraydi", 'Смотри: кнопка прыгает', 'Watch: the button jumps'),
     askJump: L3("Qarang: transition yo'q — 0s", 'Смотри: нет transition — 0s', 'Watch: no transition — 0s'),
@@ -6800,7 +6805,7 @@ const C = {
       L3("Nol, nuqta, besh va s deb yozing, keyin Tekshirishni bosing.", 'Впиши ноль, точка, пять и s, потом нажми «Проверить».', 'Type zero, dot, five and s, then tap Check.')
     ],
     ok: L3("Zo'r! Tugma yarim soniyada silliq o'sadi. Chiziqqa qarang.", 'Огонь! Кнопка плавно растёт за полсекунды. Посмотри на полосу.', 'Awesome! The button grows smoothly in half a second. Look at the bar.'),
-    ask: L3("Yarim soniya: 0.5s", 'Полсекунды: 0.5s', 'Half a second: 0.5s')
+    ask: L3("Tugma yarim soniyada kattalashsin", "Пусть кнопка растёт за полсекунды", "Make the button grow in half a second")
   },
   s4: {
     eyebrow: L3("Qanday o'zgaradi?", 'Как изменится?', 'How will it change?'),
@@ -6826,6 +6831,11 @@ const C = {
   },
   s5: {
     eyebrow: L3("Qaysi xususiyat?", 'Какое свойство?', 'Which property?'),
+    help: [
+      L3("Tugmaning o'lchami va rangiga qarang: qaysi biri silliq, qaysi biri birdaniga o'zgaryapti?", 'Посмотри на размер и цвет кнопки: что меняется плавно, а что сразу?', 'Look at the button’s size and color: which changes smoothly, and which changes at once?'),
+      L3("transition faqat siz yozgan xususiyatni silliq qiladi. Hammasi kerak bo'lsa, all yoziladi.", 'transition делает плавным только то свойство, которое написано. Если нужно всё — пишут all.', 'transition only smooths the property you write. If you need everything, you write all.'),
+      L3("Pultda faqat ovozni sekin o'zgartirsangiz, kanal baribir birdaniga almashadi. transition da ham faqat aytilgan narsa silliq bo'ladi.", 'Если на пульте плавно менять только громкость, канал всё равно переключится сразу. В transition так же плавно только то, что названо.', 'If you smoothly change only the volume on a remote, the channel still switches at once. In transition, only what you name is smooth.')
+    ],
     say: L3("Sichqoncha ustida tugmada ikki narsa o'zgaradi: o'lchami va rangi. transition faqat siz yozgan xususiyatni silliq qiladi. Keling, ko'ramiz.",
       'Под мышкой у кнопки меняются две вещи: размер и цвет. transition делает плавным только то свойство, которое ты написал. Давай посмотрим.',
       'Under the mouse, two things change on the button: its size and its color. transition only smooths the property you write. Let’s see.'),
@@ -6846,7 +6856,7 @@ const C = {
       'Your turn. Under the mouse, the button’s background changes. Make the background color change smoothly: type that property’s name.'),
     msgs: {
       empty: L3("Xususiyat nomini yozing.", 'Впиши имя свойства.', 'Type the property name.'),
-      all: L3("all ham ishlaydi, lekin bu yerda aynan fon rangi xususiyatining nomi kerak.", 'all тоже сработает, но здесь нужно именно имя свойства цвета фона.', 'all would work too, but here we need the exact name of the background color property.'),
+      all: L3("all ham fon rangini silliq qiladi, boshqa hamma narsa bilan birga. Bu yerda esa faqat fon rangi xususiyatining nomini yozing: hover li qoidaga qarang.", "all тоже сделает цвет плавным — вместе со всем остальным. А здесь впиши только имя свойства цвета фона: посмотри на правило с hover.", "all would make the color smooth too, along with everything else. Here, type just the name of the background color property: look at the hover rule."),
       color: L3("color bu matn rangi. O'zgarayotgani esa fon.", 'color — это цвет текста. А меняется фон.', 'color is the text color. What’s changing is the background.'),
       tf: L3("transform bu yerda o'zgarmayapti. Hover qoidasiga qarang.", 'transform здесь не меняется. Посмотри на правило с hover.', 'transform isn’t changing here. Look at the hover rule.'),
       value: L3("orange bu qiymat. Bu yerga xususiyat nomi kerak.", 'orange — это значение. А нужно имя свойства.', 'orange is a value. We need the property name.'),
@@ -6882,6 +6892,11 @@ const C = {
   },
   s8: {
     eyebrow: L3("Vaqt va tezlik", 'Время и скорость', 'Time and speed'),
+    help: [
+      L3("Chiziqqa qarang: u bir xil tezlikda to'lyaptimi yoki avval sekin, keyin tez?", 'Посмотри на полосу: она заполняется с одинаковой скоростью или сначала медленно, потом быстро?', 'Look at the bar: does it fill at the same speed, or slow first and then fast?'),
+      L3('Vaqt soniyada yoki millisoniyada yoziladi: ming millisoniya bu bir soniya. linear tekis tezlik beradi, ease esa boshida va oxirida sekin.', 'Время пишут в секундах или миллисекундах: тысяча миллисекунд — одна секунда. linear даёт ровную скорость, ease — медленно в начале и в конце.', 'Time is written in seconds or milliseconds: a thousand milliseconds is one second. linear gives an even speed, ease is slow at the start and end.'),
+      L3("Mashina joyidan sekin qo'zg'aladi, keyin tezlashadi va to'xtashdan oldin sekinlashadi. Bu ease. Eskalator esa bir xil yuradi, bu linear.", 'Машина трогается медленно, разгоняется и тормозит перед остановкой — это ease. А эскалатор едет ровно — это linear.', 'A car starts slowly, speeds up and slows before stopping. That’s ease. An escalator moves evenly. That’s linear.')
+    ],
     say: L3("Vaqtni boshqacha ham yozish mumkin, tezlikni ham tanlash mumkin. Keling, ko'ramiz. Hozir yarim soniya.",
       'Время можно записать и по-другому, а ещё можно выбрать скорость. Давай посмотрим. Сейчас полсекунды.',
       'You can write the time another way, and you can pick the speed too. Let’s see. Right now it’s half a second.'),
@@ -6935,6 +6950,11 @@ const C = {
   },
   s11: {
     eyebrow: L3("Qachon ishlamaydi", 'Когда не работает', 'When it doesn’t work'),
+    help: [
+      L3("Har safar kodga qarang: vaqtda s bormi, nuqta yoki vergulmi, xususiyat nomi to'g'rimi? Keyin chiziqqa qarang: nol soniyami?", 'Каждый раз смотри на код: есть ли s у времени, точка или запятая, верно ли имя свойства? Потом на полосу: там ноль секунд?', 'Each time, look at the code: does the time have s, a dot or a comma, is the property name right? Then the bar: is it zero seconds?'),
+      L3("Vaqtga s yoki ms kerak, kasr nuqta bilan yoziladi, xususiyat nomi esa harfma-harf to'g'ri bo'lishi kerak.", 'Времени нужны s или ms, дробь пишут через точку, а имя свойства — буква в букву.', 'Time needs s or ms, decimals use a dot, and the property name must be right letter for letter.'),
+      L3('Taymerga «besh» deb aytsangiz, u besh soniyami yoki besh daqiqami bilmaydi. CSS ga ham birlikni aniq aytish kerak.', 'Если сказать таймеру просто «пять», он не поймёт: пять секунд или минут. CSS тоже надо точно назвать единицу.', 'Tell a timer just “five” and it won’t know if that’s seconds or minutes. CSS also needs the unit spelled out.')
+    ],
     say: L3("transition da ham xatolar bo'ladi. Keling, uchtasini ko'ramiz. Hozir hammasi to'g'ri: yarim soniya, silliq.",
       'И в transition бывают ошибки. Давай посмотрим на три. Сейчас всё правильно: полсекунды, плавно.',
       'transition has mistakes too. Let’s look at three. Right now everything is correct: half a second, smooth.'),
@@ -7009,12 +7029,13 @@ const C = {
       which: L3("Hover da transform o'zgaradi, demak transition da ham transform.", 'Под hover меняется transform, значит, и в transition — transform.', 'transform changes on hover, so transition needs transform too.'),
       unit: L3("Vaqtga s harfi kerak.", 'Времени нужна буква s.', 'The time needs the letter s.'),
       bad: L3("Brauzer bu qiymatni tanimadi. Xususiyat va vaqtni tekshiring.", 'Браузер не узнал это значение. Проверь свойство и время.', 'The browser didn’t recognize that value. Check the property and the time.'),
-      other: L3("Vaqt boshqa. Nol butun o'ndan uch soniya kerak.", 'Время другое. Нужно ноль целых три десятых секунды.', 'The time is different. We need zero point three seconds.')
+      other: L3("Vaqt boshqa. Nol butun o'ndan uch soniya kerak.", 'Время другое. Нужно ноль целых три десятых секунды.', 'The time is different. We need zero point three seconds.'),
+      all: L3("all ham ishlaydi, lekin bu yerda aynan transform so'ralgan: uni yozing.", "all тоже сработает, но здесь просили именно transform — напиши его.", "all would work too, but here we asked for transform: write it.")
     },
     hints: [
       L3("Selektor tugma klassi, xususiyat transition, qiymat esa transform va vaqt.", 'Селектор — класс кнопки, свойство — transition, значение — transform и время.', 'The selector is the button’s class, the property is transition, the value is transform and the time.'),
       L3("Selektor nuqta tugma, qiymat transform, bo'sh joy, nol nuqta uch s.", 'Селектор: точка tugma, значение: transform, пробел, ноль точка три s.', 'Selector: dot tugma; value: transform, space, zero point three s.'),
-      L3("Shunday yozing: nuqta tugma, figurali qavs, transition ikki nuqta transform, nol nuqta uch s, nuqtali vergul, yopuvchi qavs.", 'Напиши так: точка tugma, фигурная скобка, transition двоеточие transform, ноль точка три s, точка с запятой, закрывающая скобка.', 'Write it like this: dot tugma, curly brace, transition colon transform, zero point three s, semicolon, closing brace.')
+      L3("Namuna kod ostida paydo bo'ldi. Uni maydonga ko'chirib yozing va Tekshirishni bosing.", "Образец появился под кодом. Перепиши его в поле и нажми «Проверить».", "An example appeared under the code. Copy it into the field and tap Check.")
     ],
     ok: L3("Ajoyib! Tugma endi silliq o'sadi va silliq qaytadi. Qoidani o'zingiz yozdingiz.", 'Отлично! Кнопка плавно растёт и плавно возвращается. Правило написано тобой целиком.', 'Great! The button grows and goes back smoothly. You wrote the whole rule yourself.'),
     ask: L3("transform 0.3s da silliq bo'lsin", 'Сделай transform плавным за 0.3s', 'Make transform smooth in 0.3s')
@@ -7025,17 +7046,18 @@ const C = {
       'Теперь сделай свою кнопку. Сам выбери, что меняется под мышкой, сколько это длится и какая скорость. Потом нажми «Готово».',
       'Now make your own button. Choose what changes under the mouse, how long it takes and the speed. Then tap “Done”.'),
     msgs: {
-      tf: L3("Brauzer {w} qiymatini tanimadi. Masalan, scale, rotate yoki translate yozing.", 'Браузер не узнал значение {w}. Впиши, например, scale, rotate или translate.', 'The browser didn’t recognize {w}. Type, for example, scale, rotate or translate.'),
+      tf: L3("Brauzer {w} qiymatini tanimadi. scale, rotate yoki translate dan keyin qavs ichida son kerak, masalan scale bir butun o'ndan uch.", "Браузер не узнал {w}. После scale, rotate или translate нужны скобки с числом внутри — например, scale и в скобках одна целая три десятых.", "The browser didn’t recognize {w}. After scale, rotate or translate you need brackets with a number inside, for example scale with one point three in brackets."),
       comma: L3("Vaqtda vergul bor. Kasr nuqta bilan yoziladi.", 'Во времени запятая. Дробь пишут через точку.', 'There’s a comma in the time. Decimals use a dot.'),
       unit: L3("Vaqtga s yoki ms kerak.", 'Времени нужны s или ms.', 'The time needs s or ms.'),
       time: L3("Brauzer {w} vaqtini tanimadi. Son va s yoki ms yozing.", 'Браузер не узнал время {w}. Напиши число и s или ms.', 'The browser didn’t recognize the time {w}. Write a number and s or ms.'),
       zero: L3("Nol soniyada o'zgarish birdaniga bo'ladi. Noldan katta vaqt yozing.", 'За ноль секунд изменение будет сразу. Напиши время больше нуля.', 'With zero seconds the change is instant. Write a time greater than zero.'),
       long: L3("Bu juda uzoq: tugmani kutib charchab qolasiz. Besh soniyadan kam yozing.", 'Это слишком долго: устанешь ждать кнопку. Напиши меньше пяти секунд.', 'That’s too long: you’d get tired waiting for the button. Write less than five seconds.'),
-      fn: L3("Brauzer {w} tezligini tanimadi. linear yoki ease yozing.", 'Браузер не узнал скорость {w}. Впиши linear или ease.', 'The browser didn’t recognize the speed {w}. Type linear or ease.')
+      fn: L3("Brauzer {w} tezligini tanimadi. linear yoki ease yozing.", 'Браузер не узнал скорость {w}. Впиши linear или ease.', 'The browser didn’t recognize the speed {w}. Type linear or ease.'),
+      tfComma: L3("CSS da kasr vergul bilan emas, nuqta bilan yoziladi: bir nuqta uch.", "Дробь в CSS пишут через точку: одна точка три, а не через запятую.", "In CSS a decimal uses a dot, not a comma: one point three.")
     },
     hints: [
       L3("Har bir maydonga bitta qiymat yozing.", 'В каждое поле — одно значение.', 'One value in each field.'),
-      L3("Birinchisiga scale, rotate yoki translate, ikkinchisiga vaqt, uchinchisiga linear yoki ease.", 'В первое — scale, rotate или translate, во второе — время, в третье — linear или ease.', 'In the first, scale, rotate or translate; in the second, a time; in the third, linear or ease.'),
+      L3("Birinchisiga qavsli va sonli scale, rotate yoki translate, ikkinchisiga vaqt s yoki ms bilan, uchinchisiga linear yoki ease.", "В первое — scale, rotate или translate со скобками и числом, во второе — время с s или ms, в третье — linear или ease.", "In the first, scale, rotate or translate with brackets and a number; in the second, a time with s or ms; in the third, linear or ease."),
       L3("Masalan: scale bir butun o'ndan uch, nol butun o'ndan to'rt soniya va ease. Keyin «Tayyor»ni bosing.", 'Например: scale одна целая три десятых, ноль целых четыре десятых секунды и ease. Потом нажми «Готово».', 'For example: scale one point three, zero point four seconds and ease. Then tap “Done”.')
     ],
     ok: L3("Voy, qanday silliq! Bu sizning o'z tugmangiz.", 'Ого, как плавно! Это твоя собственная кнопка.', 'Wow, how smooth! This is your very own button.'),
@@ -7058,8 +7080,8 @@ const C = {
         why: L3("To'g'ri: soniyada ming millisoniya.", 'Верно: в секунде тысяча миллисекунд.', 'Right: a second has a thousand milliseconds.') },
       { t: L3("Bu qoida ishlaydi.", 'Это правило сработает.', 'This rule works.'), right: false, code: 'comma',
         why: L3("Aslida vergul tufayli brauzer qoidani tashlab yuboradi.", 'На самом деле из-за запятой браузер выбросит правило.', 'Actually the browser throws the rule away because of the comma.') },
-      { t: L3("Bunday yozilsa, tugma ikki tomonga ham silliq o'zgaradi.", 'Если написать так, кнопка будет плавной в обе стороны.', 'Written like this, the button is smooth both ways.'), right: false, code: 'inHover',
-        why: L3("Aslida tugma faqat bir tomonga silliq bo'ladi. Nega, hozir ko'ramiz.", 'На самом деле плавно будет только в одну сторону. Почему — сейчас увидим.', 'Actually it’s smooth only one way. We’ll see why in a moment.') }
+      { t: L3("Bu qoida tugmaning kattalashishini silliq qiladi.", 'Это правило сделает рост кнопки плавным.', 'This rule makes the button’s growth smooth.'), right: false, code: 'typo',
+        why: L3("Aslida transfrom bu xato yozuv: bunday xususiyat yo'q, shuning uchun hech narsa silliq bo'lmaydi. To'g'risi transform.", 'На самом деле transfrom — опечатка: такого свойства нет, и плавным не станет ничего. Правильно — transform.', 'Actually transfrom is a typo: there’s no such property, so nothing becomes smooth. It should be transform.') }
     ],
     ok: L3("Hammasi to'g'ri! Siz transition ni yaxshi bilasiz.", 'Всё верно! Ты отлично знаешь transition.', 'All correct! You know transition really well.')
   },
@@ -7795,7 +7817,7 @@ function GoalCard({ goal, n, total, done, doneText }) {
 }
 
 // Ключи реплик урока — для прогрева озвучки (heroLines).
-Object.assign(SPOKEN, { hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayJump: 1, saySlow: 1, sayFast: 1,
+Object.assign(SPOKEN, { help: 1, hint1: 1, hint2: 1, hint3: 1, why: 1, magic: 1, magicP: 1, msgs: 1, sayJump: 1, saySlow: 1, sayFast: 1,
   sayTf: 1, sayBg: 1, sayAll: 1, sayMs: 1, sayLinear: 1, sayEase: 1, sayUnit: 1, sayComma: 1, sayTypo: 1, miss: 1, say2: 1, fine: 1, found: 1,
   items: 1, right: 1, rounds: 1, pairOk: 1 });
 Object.assign(NOT_SPOKEN_IN, { items: { code: 1, css: 1, right: 1, tag: 1, dir: 1 }, rounds: { want: 1, opts: 1, hover: 1 } });
@@ -9297,6 +9319,21 @@ const cssOk = (p, v) => {
   if (CSS_PROPS.indexOf(p) < 0 || !v) return false;
   try { return typeof CSS === 'undefined' || !CSS.supports ? true : CSS.supports(p, v); } catch (e) { return false; }
 };
+// Русские (кириллические) буквы вместо латинских (09.11.2026, проход «слабого ученика»): «рх», «р» выглядят как px, p —
+// своя причина раньше любой проверки, иначе ученик видит «верный» ответ и не понимает отказа.
+const CYR_MSG = L3("Harflar kirillchada yozilganga o'xshaydi. CSS lotin harflarida yoziladi: klaviaturani EN ga almashtiring va qaytadan yozing.",
+  'Похоже, буквы набраны по-русски. В CSS пишут английскими буквами: переключи клавиатуру на EN и набери ещё раз.',
+  'Looks like some letters are Cyrillic. CSS uses English letters: switch your keyboard to EN and type again.');
+const cyrIn = (...vs) => (vs.some((x) => /[\u0400-\u04FF]/.test(String(x == null ? '' : x))) ? CYR_MSG : null);
+// Лишняя «;» в конце значения (ученик помнит, что правило кончается ею) — не ошибка: значение без неё.
+const noSemi = (s) => String(s || '').replace(/[“”«»„]/g, '"').trim().replace(/;+\s*$/, '').trim();
+// Образец на третьей ступени помощи (09.11.2026, проход «слабого ученика»): третья подсказка звучит словами — без
+// символов, а на экране под кодом печатью стоит готовый ответ; ученик переписывает его сам и жмёт «Проверить».
+const HELP_CODE = L3('Namuna', 'Образец', 'Example');
+function HelpCode({ code }) {
+  const pick = usePick();
+  return <div className="kz-helpcode" translate="no"><span>{pick(HELP_CODE)}</span><code>{code}</code></div>;
+}
 // Селектор: тег, .class или #id (ровно один простой селектор, как в уроке); иное — ничего не выбирает.
 // Селектор: тег, .class или #id (ровно один простой селектор, как в уроке), с :hover на конце или без.
 // «.tugma :hover» (с пробелом) — уже другой селектор: «то, над чем мышь, внутри .tugma»; у кнопки внутри ничего нет.
@@ -9701,7 +9738,7 @@ function useFill(id, c, issueOf, pose) {
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const issue = issueOf(ty.val.trim());
+    const issue = cyrIn(ty.val) || issueOf(noSemi(ty.val));
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: id, type: 'write-value', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -9722,7 +9759,7 @@ const withBase = (list, page) => cssParse((BASES[page] || BASES.btn).concat(list
 // Экран «впиши значение»: правило sel { prop: [pre] ▢ [post]; } (и готовые правила given), страница честно.
 function FillScreen({ p, c, F, sel, prop, want, given, hl, pre, post, propSlot, fixed, page, scroll, hoverOk, pulseOk }) {
   const pick = usePick();
-  const v = F.T.okNow ? want : F.ty.val.trim();
+  const v = F.T.okNow ? want : noSemi(F.ty.val);
   const full = [pre, v, post].filter(Boolean).join(' ');
   // Пустое поле — правила ещё нет (иначе «transition: 0.5s» уже сработал бы: без свойства это all).
   const rules = (given || []).concat(v ? [ruleTxt(sel, [propSlot ? [v, fixed] : [prop, full]])] : []);
@@ -9735,7 +9772,7 @@ function FillScreen({ p, c, F, sel, prop, want, given, hl, pre, post, propSlot, 
       <Sheet cls="c14-sheet">
         <KzAsk text={F.T.okNow ? c.ok : c.ask} hint={F.T.okNow ? null : (F.T.msg || hintAt(F.T.lad.lv, c.hints))} err={!!F.T.msg} />
         <div className="kz-scene c14-s5 c14-pair">
-          <div className="kz-col"><KzCode lines={styleWrap(baseL(page).concat((given || []).map((r, i) => cssL('g' + i, 1, r, { cls: 'c14-dim' })), [ruleLine('r', partsOf(), F.T.okNow ? 'is-new' : 'is-hl')]))} cls="kz-code-sm" /></div>
+          <div className="kz-col"><KzCode lines={styleWrap(baseL(page).concat((given || []).map((r, i) => cssL('g' + i, 1, r, { cls: 'c14-dim' })), [ruleLine('r', partsOf(), F.T.okNow ? 'is-new' : 'is-hl')]))} cls="kz-code-sm" />{!F.T.okNow && F.T.lad.lv >= 3 ? <HelpCode code={want} /> : null}</div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { hl: hl, page })} rules={withBase(rules, page)} scroll={scroll == null ? null : scroll} hover={hoverOk && F.T.okNow ? hoverOk : null} pulse={pulseOk && F.T.okNow ? HV : null} mouse={!!((hoverOk || pulseOk) && F.T.okNow)} timer /></Br></div>
         </div>
         {!F.T.okNow ? <KeyRow keys={[]} ty={F.ty} canTap={F.canTap} onCheck={F.check} ready={F.ty.val.trim().length > 1} /> : null}
@@ -9744,6 +9781,15 @@ function FillScreen({ p, c, F, sel, prop, want, given, hl, pre, post, propSlot, 
   );
 }
 // Экран-показ: шаги правил по очереди; steps[n] — список правил, hl[n] — подсвеченный элемент.
+// Помощь на экране-объяснении (заказчик, 09.11.2026): ступени 1-2-3 по лампочке (useKzLadder) — 1 на что смотреть,
+// 2 что это значит, 3 пример из жизни. now — открытая ступень с номером «2/3» для панели, next — текст следующей
+// ступени без номера: его читает вслух лампочка.
+function useShowHelp(help) {
+  const lad = useKzLadder(!!(help && help.length));
+  const num = (k) => { const o = {}; LANGS.forEach((l) => { o[l] = k + '/' + help.length + ' · ' + (help[k - 1][l] !== undefined ? help[k - 1][l] : help[k - 1].ru); }); return o; };
+  if (!help || !help.length) return { now: null, next: null };
+  return { now: lad.lv > 0 ? num(Math.min(lad.lv, help.length)) : null, next: help[Math.min(lad.lv, help.length - 1)] };
+}
 function ShowScreen({ p, c, id, steps, says, asks, pose, hl, page, scrolls, hovers, pulse }) {
   const pick = usePick();
   const [rec, put] = useRec(id);
@@ -9758,10 +9804,11 @@ function ShowScreen({ p, c, id, steps, says, asks, pose, hl, page, scrolls, hove
   const rules = steps[n];
   const askText = solved || demo.done ? asks.done : asks.list[n];
   const prev = n > 0 ? steps[n - 1] : [];
+  const help = useShowHelp(c.help);
   return (
-    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={askText} nav={navOf(p, canGo)}>
+    <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
       <Sheet cls="c14-sheet">
-        <KzAsk text={askText} />
+        <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene c14-s5 c14-pair">
           <div className="kz-col"><KzCode lines={styleWrap(baseL(page).concat(rules.map((r, i) => cssL('r' + i + r, 1, r, { cls: live && prev.indexOf(r) < 0 ? 'is-new is-read' : '' }))))} cls="kz-code-sm" /></div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { hl: hl ? hl[Math.min(n, hl.length - 1)] : null, page })} rules={withBase(rules, page)} scroll={scrolls ? scrolls[n] : null} hover={hovers ? hovers[Math.min(n, hovers.length - 1)] : null} pulse={pulse ? HV : null} mouse={!!(hovers || pulse)} timer /></Br></div>
@@ -10054,6 +10101,7 @@ function S12({ p }) {
     if (!v) return c.msgs.empty;
     if (hasComma(v)) return c.msgs.comma;
     const parts = v.split(' ');
+    if (parts.length === 2 && timeOf(parts[0]) != null && timeOf(parts[1]) == null) parts.reverse();
     if (parts[0] !== 'transform') return KNOWN_P.indexOf(parts[0]) < 0 ? c.msgs.typo : c.msgs.other;
     if (parts.length < 2 || noUnit(parts[1])) return c.msgs.unit;
     const t = timeOf(parts[1]);
@@ -10112,7 +10160,7 @@ function S13({ p }) {
     k: 'l' + ri + j + (found && j === R.bad ? 'f' : ''), d: 0, parts: cssTokens(r),
     cls: 'c14-cssline c14-hline' + (found && j === R.bad ? ' is-new' : '') + (off.indexOf(j) >= 0 ? ' is-off' : ''),
     onTap: found ? null : () => tap(j), disabled: !canTap || found || off.indexOf(j) >= 0,
-    led: !found && ((led && off.length === 0 && j === 0) || (lit && j === R.bad))
+    led: !found && ((led && off.length === 0) || (lit && j === R.bad))
   }));
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
@@ -10144,6 +10192,9 @@ function ruleIssue(t, msgs) {
   if (prop !== 'transition') return msgs.prop;
   if (hasComma(val)) return msgs.comma;
   const parts = val.split(' ');
+  // Время первым («0.3s transform») — тоже верная запись CSS (09.11.2026): переставляем для проверки.
+  if (parts.length === 2 && timeOf(parts[0]) != null && timeOf(parts[1]) == null) parts.reverse();
+  if (parts[0] === 'all') return msgs.all;
   if (parts[0] !== 'transform') return KNOWN_P.indexOf(parts[0]) < 0 && !timeOf(parts[0]) ? msgs.typo : msgs.which;
   if (parts.length < 2 || noUnit(parts[1])) return msgs.unit;
   const tt = timeOf(parts[1]);
@@ -10167,7 +10218,7 @@ function W1({ p }) {
   const check = () => {
     if (!canTap || T.okNow) return;
     T.st.current.tries += 1;
-    const issue = ruleIssue(ty.val, c.msgs);
+    const issue = cyrIn(ty.val) || (ruleIssue(ty.val, c.msgs));
     if (!issue) {
       sfx('win', true); T.setMsg(null); T.setOkNow(true); put({ done: true });
       log({ screenId: 'w1', type: 'write-rule', correct: true, firstTry: T.st.current.misses === 0 && T.lad.asked.current === 0, attempts: T.st.current.tries, hints: T.lad.asked.current, depth: T.lad.lv });
@@ -10183,7 +10234,7 @@ function W1({ p }) {
       <Sheet cls="c14-sheet c14-w1">
         <KzAsk text={T.okNow ? c.ok : c.ask} hint={T.okNow ? null : (T.msg || hintAt(T.lad.lv, c.hints))} err={!!T.msg} />
         <div className="kz-scene c14-s5 c14-pair">
-          <div className="kz-col"><KzCode lines={styleWrap(baseL().concat([cssL('h', 1, H_TF, { cls: 'c14-dim' }), T.okNow ? cssL('r', 1, css, { cls: 'is-new' }) : ruleLine('r', [<span key="g" className={'kz-gap c14-slot c14-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={64} /></span>], 'is-hl')]))} cls="kz-code-sm" /></div>
+          <div className="kz-col"><KzCode lines={styleWrap(baseL().concat([cssL('h', 1, H_TF, { cls: 'c14-dim' }), T.okNow ? cssL('r', 1, css, { cls: 'is-new' }) : ruleLine('r', [<span key="g" className={'kz-gap c14-slot c14-slot-rule' + (led ? ' kz-gap-led' : '')}><InlineInput value={ty.val} onChange={(x) => { ty.setVal(x); T.setMsg(null); }} inputRef={ty.inputRef} onEnter={check} placeholder={L3('…', '…', '…')} label={c.ask} max={64} /></span>], 'is-hl')]))} cls="kz-code-sm" />{!T.okNow && T.lad.lv >= 3 ? <HelpCode code={TR('transform 0.3s')} /> : null}</div>
           <div className="kz-col"><Br title={pick(C.site.title)} short><CssPage els={site(pick, { hl: 'tugma' })} rules={withBase([H_TF, css])} pulse={T.okNow ? HV : null} mouse={T.okNow} timer /></Br></div>
         </div>
         {!T.okNow ? <KeyRow keys={['{', '}', ':', ';', '.']} ty={ty} canTap={canTap} onCheck={check} ready={ty.val.trim().length > 8} /> : null}
@@ -10213,6 +10264,7 @@ function S14({ p }) {
   const v = vals.map((x) => x.trim());
   const ready = v.every(Boolean);
   const issueOf = () => {
+    if (/^scale\(\s*\d+,\d+\s*\)$/.test(norm(v[0]))) return c.msgs.tfComma;
     if (!cssOk('transform', norm(v[0]))) return fillL(c.msgs.tf, { w: v[0] });
     if (hasComma(v[1])) return c.msgs.comma;
     if (noUnit(v[1])) return c.msgs.unit;
@@ -10225,7 +10277,7 @@ function S14({ p }) {
   };
   const confirm = () => {
     if (!canTap || !ready || solved) return;
-    const issue = issueOf();
+    const issue = cyrIn([].concat(v).join(" ")) || issueOf();
     if (issue) { sfx('soft', true); setMsg(issue); sayNow(issue, 'think'); if (lad.lv < 1) lad.bump(); return; }
     sfx('win', true); setMsg(null);
     OWN.forEach((o, i) => store.set(o.k, i === 2 ? nows(v[i]) : norm(v[i]))); put({ done: true });
@@ -10302,7 +10354,7 @@ function Q1({ p }) {
       {pick(v ? c.yes : c.no)}<Led on={led && !ok && off === null} />
     </button>
   );
-  const codes = { comma: [cssL('c', 0, TR('transform 0,5s'))], inHover: [cssL('c', 0, '.tugma:hover { transition: transform 0.5s; }')] };
+  const codes = { comma: [cssL('c', 0, TR('transform 0,5s'))], inHover: [cssL('c', 0, '.tugma:hover { transition: transform 0.5s; }')], typo: [cssL('c', 0, TR('transfrom 0.5s'))] };
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={ch.next(hints) || c.ask} nav={navOf(p, canGo)}>
       <Sheet cls="c14-sheet">
@@ -14479,4 +14531,11 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
   .r28 .c14-sheet:not(.c14-own) .kz-br.c14-br.is-short { --brh: 28dvh; }
   .r28 .c14-sheet.c14-w1 .kz-br.c14-br.is-short { --brh: 23dvh; }
 }
+
+/* Образец на третьей ступени помощи (09.11.2026). */
+.r28 .kz-helpcode { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; align-self: stretch; padding: 6px 10px; border-radius: 10px; background: #FFF8E1; box-shadow: inset 0 0 0 1.5px #F5C451; animation: kzHelpIn .3s ease-out both; }
+.r28 .kz-helpcode span { font: 600 12px var(--r-font); color: #8A6100; }
+.r28 .kz-helpcode code { font: 600 14px var(--r-mono); color: var(--r-ink); white-space: pre-wrap; word-break: break-word; }
+@keyframes kzHelpIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .r28 .kz-helpcode { animation: none; } }
 `;

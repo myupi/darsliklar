@@ -187,7 +187,7 @@ export default {
     { name: 's3: «inline block» → причина', start: 2, langs: ['ru'], steps: [{ name: 'inline block', run: async (qa) => {
       await qa.platform.ready();
       qa.type('.c9-slot textarea', 'inline block', 'ввод'); await qa.click('.key-go', 'Проверить');
-      await qa.waitFor(() => !!qa.q('.b-sheet.is-hint') && /чёрточку/.test(qa.text('.b-sheet.is-hint')), 3000, 'причина про чёрточку');
+      await qa.waitFor(() => !!qa.q('.b-sheet.is-hint') && /inline-block/.test(qa.text('.b-sheet.is-hint')), 3000, 'причина: inline-block оставит рядом');
       qa.expect(!qa.platform.nextEnabled(), '«Дальше» закрыта');
     } }] },
     { name: 's3: inline → причина', start: 2, langs: ['ru'], steps: [{ name: 'inline', run: async (qa) => {
