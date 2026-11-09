@@ -279,3 +279,8 @@
 @media (max-width: 759px) and (max-height: 699px) { .r28 .a8-t1 .a8-br.is-short { aspect-ratio: 16 / 6.3; } .r28 .a8-fin .a8-br { aspect-ratio: 16 / 6.4; } }
 /* Телефон: в задании 3 над редактором части раздела в два ряда — окно браузера не выше 16 : 7,5 и на высоком телефоне. */
 @media (max-width: 759px) and (min-height: 800px) { .r28 .a8-sheet.a8-t3 .a8-br.is-short { aspect-ratio: 16 / 7.5; } }
+
+/* Поле ввода — тем же моноширинным шрифтом, что и подсветка под ним (09.11.2026): общее правило облика
+   «.r28 .kz-sheet textarea» давало полю обычный шрифт, курсор отставал от текста, стирание казалось сломанным. */
+.r28 .a8-ed .a8-ta { font-family: var(--r-mono) !important; font-weight: inherit; letter-spacing: normal; font-variant-ligatures: none; }
+.r28 .a8-ed .a8-hl { font-variant-ligatures: none; }

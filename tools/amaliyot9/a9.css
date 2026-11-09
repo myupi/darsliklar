@@ -367,3 +367,8 @@
   .r28 .a9-t6 .a9-files-l { display: none; }
 }
 @media (min-width: 760px) and (orientation: portrait) { .r28 .a9-t6 .a9-files-l { display: none; } .r28 .a9-t6 .a9-slots { padding: 5px; gap: 4px; } }
+
+/* Поле ввода — тем же моноширинным шрифтом, что и подсветка под ним (09.11.2026): общее правило облика
+   «.r28 .kz-sheet textarea» давало полю обычный шрифт, курсор отставал от текста, стирание казалось сломанным. */
+.r28 .a9-ed .a9-ta { font-family: var(--r-mono) !important; font-weight: inherit; letter-spacing: normal; font-variant-ligatures: none; }
+.r28 .a9-ed .a9-hl { font-variant-ligatures: none; }

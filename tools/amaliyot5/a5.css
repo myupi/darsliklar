@@ -226,3 +226,8 @@
 /* Задание 1 на телефоне: длинная строка без поля переносится как текст, номер строки — у первой строки (не посередине). */
 .r28 .a5-kz .kz-line:not(:has(.kz-gap)) { display: block; }
 .r28 .a5-kz .kz-line::before { top: 1px; }
+
+/* Поле ввода — тем же моноширинным шрифтом, что и подсветка под ним (09.11.2026): общее правило облика
+   «.r28 .kz-sheet textarea» давало полю обычный шрифт, курсор отставал от текста, стирание казалось сломанным. */
+.r28 .a5-ed .a5-ta { font-family: var(--r-mono) !important; font-weight: inherit; letter-spacing: normal; font-variant-ligatures: none; }
+.r28 .a5-ed .a5-hl { font-variant-ligatures: none; }

@@ -160,3 +160,8 @@
 @media (min-width: 760px) and (orientation: portrait) and (max-width: 999px) {
   .r28 .a1-fin .a1-br { aspect-ratio: 16 / 7.5; }
 }
+
+/* Поле ввода — тем же моноширинным шрифтом, что и подсветка под ним (09.11.2026): общее правило облика
+   «.r28 .kz-sheet textarea» давало полю обычный шрифт, курсор отставал от текста, стирание казалось сломанным. */
+.r28 .a1-ed .a1-ta { font-family: var(--r-mono) !important; font-weight: inherit; letter-spacing: normal; font-variant-ligatures: none; }
+.r28 .a1-ed .a1-hl { font-variant-ligatures: none; }

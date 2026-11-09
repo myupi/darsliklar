@@ -218,3 +218,8 @@
   .r28 .a4-t5 .a4-files { padding: 2px 6px; }
   .r28 .a4-t5 .a4-work, .r28 .a4-t5 .a4-side, .r28 .a4-t5 .a4-main { gap: 4px; }
 }
+
+/* Поле ввода — тем же моноширинным шрифтом, что и подсветка под ним (09.11.2026): общее правило облика
+   «.r28 .kz-sheet textarea» давало полю обычный шрифт, курсор отставал от текста, стирание казалось сломанным. */
+.r28 .a4-ed .a4-ta { font-family: var(--r-mono) !important; font-weight: inherit; letter-spacing: normal; font-variant-ligatures: none; }
+.r28 .a4-ed .a4-hl { font-variant-ligatures: none; }
