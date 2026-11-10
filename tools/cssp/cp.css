@@ -1,0 +1,456 @@
+/* ── ПРАКТИКИ КУРСА CSS (каркас cssp, 09.11.2026) — облик «Редактор» поверх .r28 (рамка B, стол, Chrome) ──
+   Свои классы — с префиксом cp-. Бумаги нет: плоские панели, цвета облика (var(--r-…)). */
+
+/* Рабочая область: на телефоне в столбик (браузер сверху, редактор — главный), на широком — в ряд. */
+.r28 .cp-sheet .kz-sheet-body { gap: 10px; }
+.r28 .cp-work { display: flex; flex-direction: column; gap: 10px; width: 100%; min-width: 0; }
+.r28 .cp-side, .r28 .cp-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+@media (min-width: 760px) and (orientation: landscape), (min-width: 1000px) {
+  .r28 .cp-work { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); align-items: start; gap: 16px; }
+  .r28 .cp-work.is-big { grid-template-columns: minmax(0, .9fr) minmax(0, 1.3fr); }
+}
+
+/* ── БРАУЗЕР С ПЯТЬЮ ВКЛАДКАМИ (карта) ── */
+.r28 .kz-br.cp-br { align-self: stretch; width: 100%; max-width: 100%; }
+.r28 .cp-br.is-short { aspect-ratio: 16 / 7; }
+.r28 .cp-s1 .cp-br, .r28 .cp-fin .cp-br { aspect-ratio: 16 / 9; }
+.r28 .cp-bar { gap: 2px; padding-right: 4px; }
+.r28 .cp-tab { min-width: 0; }
+.r28 .cp-br .kz-br-tab.cp-tab.is-cur { flex: 0 1 auto; min-width: 96px; max-width: 56%; gap: 6px; }
+.r28 .cp-tab.is-side { position: relative; display: flex; align-items: center; gap: 6px; flex: 0 0 auto; width: 28px; justify-content: center; height: 76%; padding: 0;
+  color: #5F6368; font: 500 12px/1 var(--chr-font, var(--r-font)); white-space: nowrap; }
+.r28 .cp-tab.is-side + .cp-tab.is-side::before { content: ''; position: absolute; left: -1px; top: 22%; bottom: 22%; width: 1px; background: #B9BEC4; }
+.r28 .cp-tab-t { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.r28 .cp-tab.is-side .cp-tab-t { display: none; }
+.r28 .cp-tab.is-off .cp-tab-t { color: #9AA0A6; }
+.r28 .cp-fav { flex: none; display: block; width: 14px; height: 14px; color: var(--fc); background: none !important; rotate: 0deg; }
+.r28 .cp-fav.is-off { opacity: .9; }
+.r28 .cp-br .kz-br-fav { display: none; }
+.r28 .cp-br .kz-br-win { margin-left: auto; flex: none; }
+.r28 .cp-page { padding: 10px 14px; color: #202124; font: 400 clamp(14px, 2dvh, 17px)/1.4 var(--chr-font, var(--r-font)); text-align: left; overflow-wrap: anywhere; }
+.r28 .cp-pop { animation: cpPop .45s cubic-bezier(.2, .7, .2, 1) both; }
+.r28 .cp-in { animation: cpIn .35s ease-out both; }
+@keyframes cpPop { 0% { transform: translateY(3px) scale(.96); background: #FFE3D9; } 60% { transform: none; background: #FFE3D9; } 100% { transform: none; } }
+@keyframes cpIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+/* Сбой в крючке — коротко дёргается и выцветает. */
+.r28 .cp-glitch { animation: cpGlitch .6s steps(1, end) both; }
+@keyframes cpGlitch {
+  0% { transform: translate(0, 0); filter: none; }
+  15% { transform: translate(-4px, 1px); filter: hue-rotate(80deg) saturate(2); clip-path: inset(10% 0 40% 0); }
+  30% { transform: translate(3px, -2px); filter: contrast(1.6); clip-path: inset(50% 0 5% 0); }
+  45% { transform: translate(-2px, 2px); filter: hue-rotate(-60deg); clip-path: inset(0 0 70% 0); }
+  60% { transform: translate(2px, 0); filter: grayscale(1); clip-path: none; }
+  100% { transform: none; filter: none; clip-path: none; }
+}
+@media (max-width: 759px) {
+  /* На телефоне боковые вкладки — только значок, как в Chrome при многих вкладках. */
+  .r28 .cp-br .kz-br-tab.cp-tab.is-cur { max-width: 58%; }
+  .r28 .cp-br .kz-br-win { display: none; }
+}
+
+/* ── РЕДАКТОР: рамка .kz-code урока, свои строки (номер слева), прозрачная textarea сверху ── */
+.r28 .cp-ed { display: block; position: relative; font: 500 16px/1.45 var(--r-mono); text-align: left; overflow: auto; overscroll-behavior: contain;
+  max-height: 52dvh; -webkit-overflow-scrolling: touch; }
+.r28 .cp-ed.cp-static { overflow: hidden; max-height: none; }
+.r28 .cp-ln { position: relative; display: block; min-height: 1.45em; padding: 0 12px 0 3.1em; color: var(--r-ed-tx);
+  white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; tab-size: 2; }
+.r28 .cp-ln::before { content: attr(data-n); position: absolute; left: 0; width: 2.2em; text-align: right; color: var(--r-ed-ln); pointer-events: none; }
+.r28 .cp-ln.is-mark { background: #262626; box-shadow: inset 2px 0 0 #FA4F28; }
+.r28 .cp-b { color: var(--r-ed-br); }
+.r28 .cp-n { color: var(--r-ed-tag); }
+.r28 .cp-a { color: #9CDCFE; }
+.r28 .cp-t { color: var(--r-ed-tx); }
+.r28 .cp-edit { position: relative; background: #262626; box-shadow: inset 0 0 0 1px #333; cursor: text; }
+.r28 .cp-edit:focus-within { background: #2A2A2A; box-shadow: inset 0 0 0 1px #3A3A3A, inset 2px 0 0 #FA4F28; }
+.r28 .cp-edit.is-led { animation: r28LineBreath 1.4s ease-in-out infinite; }
+.r28 .cp-hl { pointer-events: none; }
+.r28 .cp-ta { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; border: 0; outline: 0; border-radius: 0; resize: none; overflow: hidden;
+  background: transparent; color: transparent; -webkit-text-fill-color: transparent; caret-color: #E8E8E8;
+  font: inherit; line-height: inherit; letter-spacing: inherit; padding: 0 12px 0 3.1em; white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; tab-size: 2;
+  -webkit-appearance: none; appearance: none; box-shadow: none; }
+.r28 .cp-ta::selection { background: rgba(38, 79, 120, .85); -webkit-text-fill-color: transparent; }
+.r28 .cp-ed:not(.is-single):not(.is-big) .cp-edit { min-height: 4.35em; }
+.r28 .cp-ed.is-big { max-height: none; }
+.r28 .cp-ed.is-big .cp-edit { min-height: 10.2em; }
+/* Строки, которые можно нажать (Т4). */
+.r28 .cp-ed .cp-tap { display: block; width: 100%; border: 0; border-radius: 0; background: none; font: inherit; font-family: var(--r-mono) !important; letter-spacing: normal; text-align: left; cursor: pointer; color: var(--r-ed-tx); margin: 0; box-shadow: none; }
+.r28 .cp-tap:hover { background: #2A2D2E; }
+.r28 .cp-tap:focus-visible { outline: 2px solid #FA4F28; outline-offset: -2px; }
+.r28 .cp-tap.is-led { animation: r28LineBreath 1.4s ease-in-out infinite; }
+.r28 .cp-shake { animation: cpShake .4s ease both; }
+@keyframes cpShake { 0%, 100% { transform: none; } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
+
+/* Т1: поле в строке — кодом урока (KzCode), шрифт поля 16 px. */
+.r28 .cp-kz .tk-input { font-size: 16px; }
+
+/* Ряд кнопок: символы и «Tekshirish». */
+.r28 .cp-keys { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.r28 .cp-keys .key-b { min-width: 46px; height: 44px; font-size: 18px; }
+.r28 .cp-keys .key-b.key-go { display: inline-flex; align-items: center; gap: 6px; padding: 0 18px; font-size: 16px; font-weight: 600; margin-left: auto; }
+.r28 .cp-row { justify-content: center; }
+.r28 .cp-refresh { display: inline-flex; align-items: center; gap: 8px; position: relative; }
+
+/* ── НАГЛЯДНАЯ ПОМОЩЬ ── */
+.r28 .cp-slots { display: flex; gap: 6px; flex-wrap: wrap; padding: 8px; background: #fff; border: 1px solid var(--r-line); border-radius: 10px; }
+.r28 .cp-slots.is-rows { flex-direction: column; }
+.r28 .cp-slot { display: inline-flex; align-items: center; gap: 7px; padding: 4px 9px 4px 4px; border-radius: 8px; background: #F8FAFC; border: 1px solid var(--r-line);
+  font: 500 14px/1.2 var(--r-font); color: var(--r-ink2); }
+.r28 .cp-slot b { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--r-ink); color: #fff; font-size: 12px; }
+.r28 .cp-slot code { font: 600 14px var(--r-mono); color: var(--pc); }
+.r28 .cp-slot em { font-style: normal; font-weight: 600; color: var(--r-ink); }
+.r28 .cp-tree { padding: 8px 12px; background: #fff; border: 1px solid var(--r-line); border-radius: 10px; font: 500 14px/1.6 var(--r-mono); color: var(--r-ink2); }
+.r28 .cp-tree-r { display: flex; align-items: center; gap: 4px; white-space: pre; }
+.r28 .cp-tree-pre { color: #94A3B8; }
+.r28 .cp-tree code { font: 700 14px var(--r-mono); color: var(--pc); }
+.r28 .cp-tree-note { font-family: var(--r-font); color: var(--r-muted); white-space: normal; }
+.r28 .cp-tree-ok { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--b-ok, #16A34A); color: #fff; margin-left: 4px; }
+.r28 .cp-sample { display: flex; flex-direction: column; gap: 4px; }
+.r28 .cp-sample-l { display: inline-flex; align-items: center; gap: 6px; font: 600 13px var(--r-font); color: var(--b-tip-text, #92400E); }
+.r28 .cp-sample-code { font-size: 14px; }
+.r28 .cp-sample-code::before { content: 'namuna.html'; }
+
+/* ── ВЫВОД ── */
+.r28 .cp-ready { align-self: center; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--b-ok-soft, #F0FDF4);
+  color: var(--b-ok-text, #15803D); font: 600 14px var(--r-font); border: 1px solid #BBF7D0; }
+.r28 .cp-roles { display: flex; flex-wrap: wrap; gap: 6px; }
+.r28 .cp-fin .cp-ed { font-size: 14px; }
+@media (max-width: 759px) { .r28 .cp-fin .cp-ed, .r28 .cp-fin .cp-ready { display: none; } }
+
+/* ── ТЕЛЕФОН: компактнее ── */
+@media (max-width: 759px) {
+  .r28 .cp-ed { max-height: 34dvh; }
+  .r28 .cp-ed.is-big { max-height: 40dvh; }
+  .r28 .cp-ed.is-big .cp-edit { min-height: 7.25em; }
+  .r28 .cp-ed .cp-ln.is-static, .r28 .cp-ed.cp-static { font-size: 14px; }
+  .r28 .cp-ln::before { font-size: 13px; }
+  .r28 .cp-br.is-short { aspect-ratio: 16 / 6; }
+  .r28 .cp-slots { padding: 5px; gap: 4px; }
+  .r28 .cp-slots.is-rows { flex-direction: row; }
+  .r28 .cp-slot { font-size: 13px; padding: 3px 7px 3px 3px; }
+  .r28 .cp-tree { font-size: 13px; line-height: 1.45; padding: 6px 10px; }
+  .r28 .cp-tree code { font-size: 13px; }
+  .r28 .cp-keys .key-b { height: 42px; }
+}
+@media (max-width: 759px) and (max-height: 799px) {
+  .r28 .cp-br.is-short { aspect-ratio: 16 / 5; }
+  .r28 .cp-s1 .cp-br, .r28 .cp-fin .cp-br { aspect-ratio: 16 / 7.5; }
+  .r28 .cp-ed.cp-static, .r28 .cp-ed .cp-ln.is-static { font-size: 13px; line-height: 1.35; }
+  .r28 .cp-ed { max-height: 22dvh; }
+  .r28 .cp-ed.is-big { max-height: 21dvh; }
+  .r28 .cp-ed.is-big .cp-edit { min-height: 4.35em; }
+  .r28 .cp-tree { font-size: 12px; line-height: 1.25; padding: 4px 10px; }
+  .r28 .cp-tree code { font-size: 12px; }
+  .r28 .cp-sheet .kz-sheet-body, .r28 .cp-work, .r28 .cp-side, .r28 .cp-main { gap: 6px; }
+  .r28 .cp-keys .key-b { height: 40px; }
+}
+/* Открытая клавиатура телефона: остаются вкладка с окном (узкой полосой), поле и кнопки. */
+.is-kbd .r28 .cp-slots, .is-kbd .r28 .cp-tree, .is-kbd .r28 .cp-sample { display: none; }
+/* Клавиатура открыта: видны задание, код с полем и «Проверить»; браузер вернётся, когда клавиатура закроется. */
+.is-kbd .r28 .cp-side { display: none; }
+.is-kbd .r28 .cp-ed, .is-kbd .r28 .cp-ed.is-big, .is-kbd .r28 .cp-ed.cp-static, .is-kbd .r28 .cp-kz { max-height: 86px; overflow: auto; }
+.is-kbd .r28 .cp-keys .key-b { height: 36px; }
+.is-kbd .r28 .cp-ed.is-big .cp-edit { min-height: 2.9em; }
+.is-kbd .r28 .cp-sheet .kz-sheet-body, .is-kbd .r28 .cp-work, .is-kbd .r28 .cp-side, .is-kbd .r28 .cp-main { gap: 4px; }
+.is-kbd .r28 .cp-ed::before, .is-kbd .r28 .cp-ed::after { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .r28 .cp-glitch, .r28 .cp-pop, .r28 .cp-in, .r28 .cp-shake, .r28 .cp-edit.is-led, .r28 .cp-tap.is-led { animation: none !important; }
+}
+.r28 .cp-roles .kz-role i { background: var(--c) !important; }
+/* Планшет стоя: вывод — окно браузера ниже, чтобы «Следующий урок» не уходил под низ. */
+@media (min-width: 760px) and (orientation: portrait) and (max-width: 999px) {
+  .r28 .cp-fin .cp-br { aspect-ratio: 16 / 7.5; }
+}
+
+/* Поле ввода — тем же моноширинным шрифтом, что и подсветка под ним (09.11.2026): общее правило облика
+   «.r28 .kz-sheet textarea» давало полю обычный шрифт, курсор отставал от текста, стирание казалось сломанным. */
+.r28 .cp-ed .cp-ta { font-family: var(--r-mono) !important; font-weight: inherit; letter-spacing: normal; font-variant-ligatures: none; }
+.r28 .cp-ed .cp-hl { font-variant-ligatures: none; }
+
+/* ── CSS-ПРАКТИКИ: окно страницы — настоящая страница в рамке (iframe), стили ученика применяет браузер ── */
+.r28 .cp-br { aspect-ratio: 16 / 9 !important; }
+.r28 .cp-brpage { padding: 0 !important; overflow: hidden; display: flex; }
+.r28 .cp-pagebox { position: relative; flex: 1 1 auto; width: 100%; height: 100%; min-height: 0; overflow: hidden; background: #fff; }
+.r28 .cp-frame { display: block; width: 100%; height: 100%; border: 0; background: #fff; }
+.r28 .cp-vw { position: absolute; top: 3px; right: 5px; padding: 1px 6px; border-radius: 6px; background: rgba(15, 23, 42, .72); color: #fff; font: 600 11px var(--r-mono); pointer-events: none; }
+.r28 .cp-vw.is-phone { background: #FA4F28; }
+.r28 .cp-tab.is-side { width: 26px; }
+/* Подсветка CSS — как в редакторе урока (VS Code). */
+.r28 .cp-se { color: #D7BA7D; }
+.r28 .cp-pr { color: #9CDCFE; }
+.r28 .cp-va { color: #CE9178; }
+.r28 .cp-nu { color: #B5CEA8; }
+.r28 .cp-pu { color: #D4D4D4; }
+.r28 .cp-at { color: #C586C0; }
+.r28 .cp-mq { color: #D4D4D4; }
+.r28 .cp-t { color: var(--r-ed-tx); }
+.r28 .cp-tb { color: var(--r-ed-br); }
+.r28 .cp-tn { color: var(--r-ed-tag); }
+.r28 .cp-ha { color: #9CDCFE; }
+.r28 .cp-hv { color: #CE9178; }
+.r28 .cp-ln.is-static { opacity: .78; }
+/* HTML страницы — справка под браузером. */
+.r28 .cp-html { display: flex; flex-direction: column; gap: 4px; }
+.r28 .cp-html-l { display: inline-flex; align-items: center; gap: 6px; font: 600 12px var(--r-font); color: var(--r-muted, #64748B); }
+.r28 .cp-html-code { font-size: 13px !important; line-height: 1.4; }
+.r28 .cp-html-code::before { content: 'index.html'; }
+.r28 .cp-sample-code::before { content: 'namuna.css'; }
+/* Поле ввода — тем же моноширинным шрифтом, что и подсветка (иначе курсор отстаёт от текста). */
+.r28 .cp-ed .cp-ta { font-family: var(--r-mono) !important; font-weight: inherit; letter-spacing: normal; font-variant-ligatures: none; }
+.r28 .cp-ed .cp-hl { font-variant-ligatures: none; }
+@media (max-width: 759px) {
+  .r28 .cp-br { aspect-ratio: 16 / 8.5 !important; }
+  .r28 .cp-html-code { font-size: 12px !important; }
+}
+@media (max-width: 759px) and (max-height: 799px) {
+  .r28 .cp-br { aspect-ratio: 16 / 7 !important; }
+  .r28 .cp-html { display: none; }
+}
+.is-kbd .r28 .cp-html { display: none; }
+/* Условия «готово» своей работы — загораются по живой странице. */
+.r28 .cp-list { display: flex; flex-wrap: wrap; gap: 6px; padding: 7px; background: #fff; border: 1px solid var(--r-line); border-radius: 10px; }
+.r28 .cp-li { display: inline-flex; align-items: center; gap: 7px; padding: 4px 9px 4px 4px; border-radius: 8px; background: #F8FAFC; border: 1px solid var(--r-line);
+  font: 500 13.5px/1.2 var(--r-font); color: var(--r-ink2); transition: background-color .25s, border-color .25s; }
+.r28 .cp-li b { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #CBD5E1; color: #fff; font-size: 12px; }
+.r28 .cp-li.is-ok { background: #F0FDF4; border-color: #BBF7D0; color: #15803D; }
+.r28 .cp-li.is-ok b { background: #16A34A; }
+@media (max-width: 759px) { .r28 .cp-list { padding: 5px; gap: 4px; } .r28 .cp-li { font-size: 12.5px; padding: 3px 7px 3px 3px; } }
+.is-kbd .r28 .cp-list { display: none; }
+/* Телефон: пока открыта панель подсказки или ошибки (has-sheet), окно браузера прячется — видны код, кнопки и
+   образец третьей ступени; после «Понятно» / «Попробовать ещё» браузер возвращается (как в уроках CSS). */
+@media (max-width: 759px) {
+  .b-stage.has-sheet:not(:has(.b-sheet.is-ok)) .r28 .cp-sheet:not(.cp-s1):not(.cp-fin) .cp-side, .b-stage.has-sheet.r28:not(:has(.b-sheet.is-ok)) .cp-sheet:not(.cp-s1):not(.cp-fin) .cp-side,
+  .r28 .b-stage.has-sheet:not(:has(.b-sheet.is-ok)) .cp-sheet:not(.cp-s1):not(.cp-fin) .cp-side { display: none; }
+}
+/* Невысокий телефон: условия «готово» плотнее, большой редактор ниже; с открытой панелью — ещё ниже. */
+@media (max-width: 759px) and (max-height: 799px) {
+  .r28 .cp-list { padding: 4px; gap: 3px; }
+  .r28 .cp-li { padding: 2px 6px 2px 2px; font-size: 12px; }
+  .r28 .cp-li b { width: 18px; height: 18px; font-size: 11px; }
+}
+@media (max-width: 759px) {
+  .b-stage.has-sheet .r28 .cp-ed.is-big .cp-edit, .b-stage.has-sheet.r28 .cp-ed.is-big .cp-edit, .r28 .b-stage.has-sheet .cp-ed.is-big .cp-edit { min-height: 2.9em; }
+  .b-stage.has-sheet .r28 .cp-ed.is-big, .b-stage.has-sheet.r28 .cp-ed.is-big, .r28 .b-stage.has-sheet .cp-ed.is-big { max-height: 22dvh; }
+}
+/* Телефон: символы и «Проверить» — одним рядом, когда символов немного. */
+@media (max-width: 759px) {
+  .r28 .cp-keys { gap: 6px; }
+  .r28 .cp-keys .key-b { min-width: 38px; padding: 0 6px; }
+  .r28 .cp-keys .key-b.key-go { padding: 0 12px; }
+}
+/* Символы — одной полосой (при нехватке места прокручивается вбок), «Проверить» всегда в том же ряду. */
+.r28 .cp-keys { flex-wrap: nowrap; align-items: center; }
+.r28 .cp-syms { display: flex; gap: 8px; flex: 0 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; padding: 2px; margin: -2px; }
+.r28 .cp-syms::-webkit-scrollbar { display: none; }
+.r28 .cp-syms .key-b { flex: none; }
+.r28 .cp-keys .key-b.key-go { flex: none; }
+@media (max-width: 759px) {
+  .r28 .cp-syms { gap: 5px; }
+  .r28 .cp-syms .key-b { min-width: 34px; padding: 0 5px; }
+}
+/* Планшет стоя: у своей страницы окно браузера ниже, редактор чуть ниже — всё влезает вместе с условиями. */
+@media (min-width: 760px) and (max-width: 999px) and (orientation: portrait) {
+  .r28 .cp-sheet.is-big .cp-br { aspect-ratio: 16 / 7 !important; }
+  .r28 .cp-ed.is-big .cp-edit { min-height: 7.25em; }
+}
+/* Крючок на телефоне: длинный готовый код — с прокруткой, кнопка «Обновить» всегда видна. */
+@media (max-width: 759px) {
+  .r28 .cp-s1 .cp-ed.cp-static { max-height: 30dvh; overflow: auto; }
+}
+@media (max-width: 759px) and (max-height: 799px) {
+  .r28 .cp-s1 .cp-ed.cp-static { max-height: 24dvh; }
+}
+/* Планшет стоя (сцена в столбик): окно браузера ниже на всех экранах практики — задание, код и кнопки влезают. */
+@media (min-width: 760px) and (max-width: 999px) and (orientation: portrait) {
+  .r28 .cp-br, .r28 .cp-sheet.is-big .cp-br { aspect-ratio: 16 / 7 !important; }
+  .r28 .cp-fin .cp-br, .r28 .cp-s1 .cp-br { aspect-ratio: 16 / 6.5 !important; }
+}
+/* Невысокий телефон: большой редактор своей страницы ниже. */
+@media (max-width: 759px) and (max-height: 799px) {
+  .r28 .cp-ed.is-big .cp-edit { min-height: 2.9em; }
+  .r28 .cp-ed.is-big { max-height: 20dvh; }
+}
+
+/* ── ЧТО И КУДА ПИСАТЬ (10.11.2026, проход «слабого ученика» на узбекском) ──
+   Рамка в строке (задания 1–2): правило готово, писать — только в рамку; её место видно сразу (светлее строки,
+   серая черта снизу; без оранжевого свечения — как просил заказчик для полей в редакторе). */
+.r28 .cp-slotln { background: #262626; box-shadow: inset 0 0 0 1px #333; }
+.r28 .cp-slotln.is-led { animation: r28LineBreath 1.4s ease-in-out infinite; }
+.r28 .cp-sed { cursor: text; }
+.r28 .cp-gap { display: inline; }
+.r28 .cp-ed .cp-gap .tk-input { display: inline-block; vertical-align: top; width: auto; min-width: 4ch; max-width: calc(100% - .5em); flex: none;
+  margin: 0 1px; padding: 0 5px; height: 1.45em; min-height: 1.45em; box-sizing: border-box;
+  font: 500 16px/1.45 var(--r-mono) !important; letter-spacing: normal; font-variant-ligatures: none;
+  color: #CE9178; caret-color: #E8E8E8; background: rgba(255, 255, 255, .08); border: none; border-radius: 4px 4px 0 0;
+  box-shadow: inset 0 -2px 0 #8A8A8A; outline: none; }
+.r28 .cp-ed .cp-gap .tk-input:focus { background: rgba(255, 255, 255, .12); box-shadow: inset 0 -2px 0 #E8E8E8; }
+.r28 .cp-ed .cp-gap-sel .tk-input { color: #D7BA7D; }
+.r28 .cp-ed .cp-gap-decl .tk-input { color: #9CDCFE; }
+.r28 .cp-ed .cp-gap .tk-input::placeholder { color: #8A8A8A; font: italic 500 15px var(--r-mono); }
+.r28 .cp-ed .cp-gap .tk-input::selection { background: rgba(38, 79, 120, .95); }
+/* Пустой редактор: где писать. */
+.r28 .cp-ghost { color: #8A8A8A; font-style: italic; }
+/* Строка, где причина (после «Проверить»), — пока её не исправили. */
+.r28 .cp-edit .cp-ln.is-mark { background: rgba(245, 158, 11, .2); box-shadow: inset 3px 0 0 #F59E0B; }
+/* Форма правила и слова задания с переводом — цветом места в правиле, как подсветка редактора. */
+.r28 .cp-aid { display: flex; flex-direction: column; gap: 5px; }
+.r28 .cp-aid-r { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.r28 .cp-aid-l { font: 600 12.5px/1.2 var(--r-font); color: var(--r-muted, #64748B); margin-right: 2px; }
+.r28 .cp-shape { display: inline-block; padding: 3px 9px; border-radius: 7px; background: #1E1E1E; font: 500 14px/1.35 var(--r-mono); color: #D4D4D4; white-space: normal; }
+.r28 .cp-shape .cp-pu { color: #D4D4D4; white-space: pre; }
+.r28 .cp-role { font-style: italic; }
+.r28 .cp-r-sel { color: #D7BA7D; }
+.r28 .cp-r-prop { color: #9CDCFE; }
+.r28 .cp-r-val { color: #CE9178; }
+.r28 .cp-r-at { color: #C586C0; }
+.r28 .cp-r-cond { color: #B5CEA8; }
+.r28 .cp-w { display: inline-flex; align-items: baseline; gap: 6px; padding: 3px 9px; border-radius: 7px; background: #1E1E1E; }
+.r28 .cp-w code { font: 600 14px/1.3 var(--r-mono); color: inherit; }
+.r28 .cp-w-g { font: 500 13px/1.3 var(--r-font); color: #C8C8C8; }
+@media (max-width: 759px) {
+  .r28 .cp-aid { gap: 4px; }
+  .r28 .cp-aid-r { gap: 4px; }
+  .r28 .cp-aid-l { font-size: 12px; }
+  .r28 .cp-shape { font-size: 13px; padding: 2px 8px; }
+  .r28 .cp-w { padding: 2px 7px; gap: 5px; }
+  .r28 .cp-w code { font-size: 13px; }
+  .r28 .cp-w-g { font-size: 12px; }
+}
+/* Открытая клавиатура: слова остаются (их и набирают) — одной полосой с прокруткой вбок; форма и подписи прячутся. */
+.is-kbd .r28 .cp-aid-r:has(.cp-shape), .is-kbd .r28 .cp-aid-l { display: none; }
+.is-kbd .r28 .cp-aid-r { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.is-kbd .r28 .cp-aid-r::-webkit-scrollbar { display: none; }
+.is-kbd .r28 .cp-w { flex: none; }
+@media (prefers-reduced-motion: reduce) { .r28 .cp-slotln.is-led { animation: none !important; } }
+/* Телефон: полоса слов плотнее; когда она есть (правило с нуля, своя страница), окно браузера ниже и
+   большой редактор начинается с трёх строк — всё влезает без прокрутки. */
+@media (max-width: 759px) {
+  .r28 .cp-aid-l { font-size: 11.5px; }
+  .r28 .cp-shape { font-size: 12.5px; padding: 2px 7px; }
+  .r28 .cp-w { padding: 2px 6px; gap: 4px; border-radius: 6px; }
+  .r28 .cp-w code { font-size: 12.5px; }
+  .r28 .cp-w-g { font-size: 11.5px; }
+  .r28 .cp-work.has-aid .cp-br { aspect-ratio: 16 / 7 !important; }
+  .r28 .cp-work.has-aid .cp-ed.is-big .cp-edit { min-height: 4.35em; }
+}
+@media (max-width: 759px) and (max-height: 799px) {
+  .r28 .cp-work.has-aid .cp-br { aspect-ratio: 16 / 5.5 !important; }
+}
+@media (max-width: 759px) {
+  .r28 .cp-work.has-aid, .r28 .cp-work.has-aid .cp-side, .r28 .cp-work.has-aid .cp-main { gap: 6px; }
+  .r28 .cp-work.has-aid .cp-ed:not(.is-single):not(.is-big) .cp-edit { min-height: 2.9em; }
+  .r28 .cp-work.has-aid .cp-html { gap: 2px; }
+}
+/* Невысокий телефон (360 × 640): HTML страницы виден и здесь — без него не узнать имя класса (раньше прятался);
+   компактно, длинный — с прокруткой. Форма правила прячется (ученик видит её на больших экранах и в образце),
+   у своей страницы слова — без перевода (их уже переводили в заданиях 1–4), окно браузера ниже. */
+@media (max-width: 759px) and (max-height: 799px) {
+  .r28 .cp-html { display: flex; gap: 2px; }
+  .r28 .cp-html-l { display: none; }
+  .r28 .cp-html-code { font-size: 11px !important; line-height: 1.3; max-height: 4.1em; overflow: auto !important; }
+  .r28 .cp-html-code::before { display: none; }
+  .r28 .cp-aid-r:has(.cp-shape) { display: none; }
+  .r28 .cp-work.is-big .cp-w-g { display: none; }
+  .r28 .cp-work.has-aid .cp-br { aspect-ratio: 16 / 4.8 !important; }
+  .r28 .cp-work.has-aid, .r28 .cp-work.has-aid .cp-side, .r28 .cp-work.has-aid .cp-main { gap: 5px; }
+  .r28 .cp-work.has-aid .cp-ed:not(.is-single):not(.is-big) .cp-edit { min-height: 1.45em; }
+}
+.is-kbd .r28 .cp-html { display: none; }
+@media (max-width: 759px) and (max-height: 799px) {
+  .r28 .cp-work.has-html .cp-br, .r28 .cp-work.has-aid .cp-br { aspect-ratio: 16 / 5 !important; }
+  .r28 .cp-work.has-html, .r28 .cp-work.has-html .cp-side, .r28 .cp-work.has-html .cp-main { gap: 5px; }
+}
+@media (max-width: 759px) and (max-height: 799px) {
+  .r28 .cp-aid-l { display: none; }
+  .r28 .cp-work.has-aid .cp-html-code { max-height: 2.7em; }
+}
+@media (max-width: 759px) and (max-height: 799px) {
+  .r28 .cp-work.is-big.has-aid .cp-br { aspect-ratio: 16 / 4.5 !important; }
+}
+/* Пустые скобки заготовки «{  }» — рамкой: сюда писать. */
+.r28 .cp-hole { outline: 1.5px dashed #8A8A8A; outline-offset: -2px; border-radius: 3px; background: rgba(255, 255, 255, .07); }
+/* Строки редактора — с одного отступа: готовые строки на телефоне мельче (14 px), а отступ в em сдвигал
+   строки заготовки вправо. Отступ и колонка номеров — в пикселях, у поля ввода — тот же отступ. */
+.r28 .cp-ed:not(.cp-static) .cp-ln { padding-left: 50px; }
+.r28 .cp-ed:not(.cp-static) .cp-ln::before { width: 35px; }
+.r28 .cp-ed .cp-ta { padding-left: 50px; }
+/* Телефон: пока открыта панель подсказки или ошибки, полоса слов прячется вместе с браузером — место образцу. */
+@media (max-width: 759px) {
+  .b-stage.has-sheet:not(:has(.b-sheet.is-ok)) .r28 .cp-sheet:not(.cp-s1):not(.cp-fin) .cp-aid, .b-stage.has-sheet.r28:not(:has(.b-sheet.is-ok)) .cp-sheet:not(.cp-s1):not(.cp-fin) .cp-aid,
+  .r28 .b-stage.has-sheet:not(:has(.b-sheet.is-ok)) .cp-sheet:not(.cp-s1):not(.cp-fin) .cp-aid { display: none; }
+}
+.r28 .cp-r-unit { color: #B5CEA8; }
+/* Длинная форма (@media) переносится по пробелам, а не уходит за край. */
+.r28 .cp-shape { max-width: 100%; min-width: 0; box-sizing: border-box; }
+.r28 .cp-shape .cp-pu { white-space: pre-wrap; }
+/* Телефон: и HTML страницы, и полоса слов (11p т3) — окно браузера чуть ниже. */
+@media (max-width: 759px) and (min-height: 800px) {
+  .r28 .cp-work.has-aid.has-html .cp-br { aspect-ratio: 16 / 6.2 !important; }
+}
+@media (max-width: 759px) and (max-height: 799px) {
+  .r28 .cp-work.is-big.has-aid .cp-br { aspect-ratio: 16 / 4.3 !important; }
+}
+/* Средняя высота телефона (700–799 px: 375 × 740, 360 × 780): места больше, чем на 360 × 640 — форма правила,
+   подписи и переводы слов своей страницы снова видны, окно браузера чуть выше. */
+@media (max-width: 759px) and (min-height: 700px) and (max-height: 799px) {
+  .r28 .cp-aid-r:has(.cp-shape) { display: flex; }
+  .r28 .cp-aid-l { display: inline; }
+  .r28 .cp-work.is-big .cp-w-g { display: inline; }
+  .r28 .cp-work.has-html .cp-br, .r28 .cp-work.has-aid .cp-br { aspect-ratio: 16 / 5.6 !important; }
+  .r28 .cp-work.is-big.has-aid .cp-br { aspect-ratio: 16 / 5 !important; }
+}
+@media (max-width: 759px) and (min-height: 700px) and (max-height: 799px) {
+  .r28 .cp-work.is-big .cp-aid.is-many .cp-w-g { display: none; }
+}
+/* Своя страница на телефоне: пустой большой редактор начинается с двух строк (на 360 × 640 — с одной) и растёт
+   по мере набора — условия, слова и кнопки влезают на всех языках. */
+@media (max-width: 759px) { .r28 .cp-work.has-aid .cp-ed.is-big .cp-edit { min-height: 2.9em; } }
+@media (max-width: 759px) and (max-height: 699px) { .r28 .cp-work.has-aid .cp-ed.is-big .cp-edit { min-height: 1.45em; } }
+/* Планшет и узкий ноутбук (760–1199 px): круг Коди стоит внизу справа поверх содержания и закрывал
+   «Tekshirish», когда ряд кнопок опускался к низу (задания 3 и 5). Ряд кнопок оставляет справа место под круг. */
+@media (min-width: 760px) and (max-width: 1199px) {
+  .r28 .cp-keys { padding-right: calc(var(--av, 84px) + 10px); }
+}
+/* Планшет стоя: с полосой слов пустой редактор правила начинается с двух строк (растёт по мере набора). */
+@media (min-width: 760px) and (max-width: 999px) and (orientation: portrait) {
+  .r28 .cp-work.has-aid .cp-ed:not(.is-single):not(.is-big) .cp-edit { min-height: 2.9em; }
+}
+
+/* Образец третьей ступени (10.11.2026, отзыв ученика: «после ошибки образец не видно — страница не прокручивается,
+   пришлось уменьшать масштаб до 80 %»). Большой редактор оставлял под собой мало места, образец уходил за низ окна
+   и под панель подсказки. Пока образец открыт, редактор и образец делят высоту окна: пустой большой редактор —
+   две строки, длинный код и длинный образец прокручиваются в своих рамках. */
+@media (min-width: 760px) {
+  .r28 .cp-main:has(.cp-sample) .cp-ed.is-big .cp-edit { min-height: 2.9em; }
+  .r28 .cp-main:has(.cp-sample) .cp-ed:not(.cp-sample-code) { max-height: 30dvh; overflow: auto; }
+  .r28 .cp-main:has(.cp-sample) .cp-sample-code { max-height: 26dvh; overflow: auto !important; }
+}
+@media (min-width: 760px) {
+  .r28 .cp-main:has(.cp-sample) .cp-ed.is-big { max-height: 26dvh; }
+  .r28 .cp-main:has(.cp-sample) .cp-ed.is-single, .r28 .cp-main:has(.cp-sample) .cp-sed { max-height: 26dvh; }
+}
+@media (min-width: 760px) { .r28 .cp-main:has(.cp-sample) .cp-ed:not(.cp-sample-code) { max-height: 26dvh; } }
+
+/* Образец третьей ступени (10.11.2026): пока он открыт, рабочая часть экрана прокручивается (в столбик —
+   на телефоне и планшете стоя — окно, код и образец не помещаются), а под открытой панелью подсказки есть
+   запас прокрутки — образец поднимается над панелью (useRevealSample). */
+.stage-content:has(.cp-sample) { overflow-y: auto; overscroll-behavior: contain; }
+.b-stage.has-sheet:not(:has(.b-sheet.is-ok)) .stage-content:has(.cp-sample)::after,
+.b-stage.has-sheet:not(:has(.b-sheet.is-ok)) .stage-content:has(.cp-sample) > :last-child::after { content: ''; display: block; flex: none; height: 32vh; }
+/* Переключатель «Kod / Natija» на телефоне (заказчик, 10.11.2026): где кода больше — окно браузера и код по
+   очереди. «Kod» — код, помощь и кнопки без окна; «Natija» — окно крупнее, условия «готово» и «Tekshirish». */
+.r28 .vt-row { display: none; }
+@media (max-width: 759px) {
+  .r28 .vt-row { display: flex; justify-content: center; }
+  .r28 .vt-row .seg2 { display: inline-flex; background: #E9ECF1; padding: 3px; border-radius: 99px; gap: 2px; }
+  .r28 .vt-row .seg2-b { min-height: 34px; padding: 0 20px; border: 0; border-radius: 99px; background: transparent; font: 600 14px var(--r-font); color: #475569; cursor: pointer; }
+  .r28 .vt-row .seg2-b.is-on { background: #fff; color: #FA4F28; box-shadow: 0 1px 4px rgba(15, 23, 42, .16); }
+  .r28 .cp-work.has-vt.is-v-code .cp-side > .kz-br { display: none; }
+  .r28 .cp-work.has-vt.is-v-result .cp-side > :not(.kz-br):not(.cp-list) { display: none; }
+  .r28 .cp-work.has-vt.is-v-result .cp-main > :not(.keys) { display: none; }
+  .r28 .cp-work.has-vt.is-v-result .keys .key-b:not(.key-go), .r28 .cp-work.has-vt.is-v-result .cp-syms { display: none; }
+  .r28 .cp-work.has-vt.is-v-result .cp-side > .kz-br { aspect-ratio: 4 / 3.3 !important; }
+}
+.is-kbd .r28 .vt-row { display: none; }
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .cp-work.has-vt.is-v-result .cp-side > .kz-br { aspect-ratio: 4 / 2.8 !important; }
+}
