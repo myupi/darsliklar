@@ -168,7 +168,9 @@
 .is-kbd .r28 .a8-slots, .is-kbd .r28 .a8-tree, .is-kbd .r28 .a8-sample { display: none; }
 /* Клавиатура открыта: видны задание, код с полем и «Проверить»; браузер вернётся, когда клавиатура закроется. */
 .is-kbd .r28 .a8-side { display: none; }
-.is-kbd .r28 .a8-ed, .is-kbd .r28 .a8-ed.is-big, .is-kbd .r28 .a8-ed.a8-static, .is-kbd .r28 .a8-kz { max-height: 86px; overflow: auto; }
+/* Открытая клавиатура: редактор берёт всё место над клавиатурой (видимая высота --vvh минус шапка, задание и
+   кнопки), прокручивается только то, что не влезает (заказчик, 10.11.2026: было 86 px и много пустого места). */
+.is-kbd .r28 .a8-ed, .is-kbd .r28 .a8-ed.is-big, .is-kbd .r28 .a8-ed.a8-static, .is-kbd .r28 .a8-kz { max-height: max(70px, calc(var(--vvh, 330px) - 222px)); overflow: auto; }
 .is-kbd .r28 .a8-keys .key-b { height: 36px; }
 .is-kbd .r28 .a8-ed.is-big .a8-edit { min-height: 2.9em; }
 .is-kbd .r28 .a8-sheet .kz-sheet-body, .is-kbd .r28 .a8-work, .is-kbd .r28 .a8-side, .is-kbd .r28 .a8-main { gap: 4px; }
@@ -319,4 +321,18 @@
 .is-kbd .r28 .vt-row { display: none; }
 @media (max-width: 759px) and (max-height: 699px) {
   .r28 .a8-work.has-vt.is-v-result .a8-side > .kz-br { aspect-ratio: 4 / 2.8 !important; }
+}
+
+/* Открытая клавиатура на телефоне (заказчик, 10.11.2026: «много пустого не использованного пространства»):
+   код и кнопки — у клавиатуры, окно браузера — сверху и берёт оставшуюся высоту (результат виден при наборе);
+   если остаётся меньше 70 px (маленький телефон, длинный код), окна нет. */
+@media (max-width: 759px) {
+  .is-kbd .r28 .a8-work { flex: 1 1 auto; min-height: 0; }
+  .is-kbd .r28 .a8-side { display: flex !important; flex: 1 1 0; min-height: 0; container-type: size; }
+  .is-kbd .r28 .a8-side > :not(.kz-br) { display: none !important; }
+  .is-kbd .r28 .a8-side > .kz-br { display: flex !important; flex: 1 1 0; min-height: 0; height: 100%; width: 100%; max-width: 100%; aspect-ratio: auto !important; }
+  .is-kbd .r28 .a8-main { flex: 0 0 auto; }
+}
+@container (max-height: 70px) {
+  .is-kbd .r28 .a8-side > .kz-br.kz-br { display: none !important; }
 }
