@@ -431,3 +431,11 @@
 }
 /* 09p: над работой — ряд из девяти шагов; при открытой клавиатуре он ужимается, редактору — меньше высоты. */
 .is-kbd .r28 .a9-sheet .a9-ed:not(.a9-static), .is-kbd .r28 .a9-sheet .a9-ed.is-big, .is-kbd .r28 .a9-sheet .a9-ed.a9-static, .is-kbd .r28 .a9-sheet .a9-kz { max-height: max(60px, calc(var(--vvh, 330px) - 222px)); overflow: auto; }
+
+/* Вывод практики на ноутбуке и планшете лёжа (заказчик, 10.11.2026: окно браузера было маленьким при высокой правой
+   колонке): окно тянется на высоту ряда, под ним — «Работа готова». */
+@media (min-width: 760px) and (orientation: landscape), (min-width: 1000px) {
+  .r28 .a9-fin .a9-work { align-items: stretch; }
+  .r28 .a9-fin .a9-side { align-self: stretch; }
+  .r28 .a9-fin .a9-side > .kz-br { flex: 1 1 auto; height: auto; min-height: 220px; max-height: none; aspect-ratio: auto !important; max-width: 100%; width: 100%; }
+}

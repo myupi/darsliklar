@@ -283,3 +283,11 @@
 @container (max-height: 70px) {
   .is-kbd .r28 .a5-side > .kz-br.kz-br { display: none !important; }
 }
+
+/* Вывод практики на ноутбуке и планшете лёжа (заказчик, 10.11.2026: окно браузера было маленьким при высокой правой
+   колонке): окно тянется на высоту ряда, под ним — «Работа готова». */
+@media (min-width: 760px) and (orientation: landscape), (min-width: 1000px) {
+  .r28 .a5-fin .a5-work { align-items: stretch; }
+  .r28 .a5-fin .a5-side { align-self: stretch; }
+  .r28 .a5-fin .a5-side > .kz-br { flex: 1 1 auto; height: auto; min-height: 220px; max-height: none; aspect-ratio: auto !important; max-width: 100%; width: 100%; }
+}

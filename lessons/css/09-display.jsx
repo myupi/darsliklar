@@ -13336,6 +13336,15 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 
 /* Перетаскивание строки (урок 1, s13): строка, куда встанет полоска, подсвечена, пока её несут. */
 .r28 .kz-line.is-drop { background: rgba(250, 79, 40, .18) !important; box-shadow: inset 3px 0 0 var(--r-pri); }
+/* Итоговый экран урока на ноутбуке и планшете лёжа (заказчик, 10.11.2026, снимок: «снова эта проблема» —
+   окно браузера маленькое и висит посередине, а справа высокая колонка с кодом, умениями и «Следующим уроком»):
+   колонка окна тянется на высоту правой колонки, окно заполняет её — страница крупнее и видна целиком. */
+@media (min-width: 760px) and (orientation: landscape), (min-width: 1000px) {
+  /* Ряд — по высоте самой высокой колонки (не на весь лист), посередине листа; окно не ниже своих пропорций. */
+  .r28 .kz-scene.kz-s15:has(.kz-s15-left > .kz-br) { align-items: stretch; flex: 0 1 auto; margin-block: auto; }
+  .r28 .kz-s15 .kz-s15-left:has(> .kz-br) { display: flex; flex-direction: column; justify-content: center; align-self: stretch; }
+  .r28 .kz-s15 .kz-s15-left > .kz-br { flex: 1 0 auto; height: auto; max-height: none; aspect-ratio: 16 / 9.5; max-width: 100%; width: 100%; }
+}
 /* ── УРОК 4 «Ссылки и атрибуты» — свои части в облике «Редактор» (классы c9-*) ─────────────
    Весь CSS урока — здесь (основа — CSS уроков 2–3), поверх r28.css эталона. Бумаги нет нигде.
    Страница в Chrome — как браузер по умолчанию: шрифт с засечками, ссылка — синяя с подчёркиванием
