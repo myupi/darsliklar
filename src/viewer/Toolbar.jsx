@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  ExternalLink, Laptop, Maximize2, Menu, PanelRightClose, PanelRightOpen, RotateCcw, RotateCw, Smartphone, Tablet,
+  ExternalLink, Keyboard, Laptop, Maximize2, Menu, PanelRightClose, PanelRightOpen, RotateCcw, RotateCw, Smartphone, Tablet,
 } from 'lucide-react';
 import { pad2 } from '../shared/catalog.js';
 import CopyButton from './CopyButton.jsx';
@@ -13,6 +13,7 @@ const LANGS = [
 
 const DEVICES = [
   { v: 'phone', label: 'Телефон', Icon: Smartphone },
+  { v: 'phoneKbd', label: 'Телефон с открытой клавиатурой', Icon: Keyboard },
   { v: 'tablet', label: 'Планшет', Icon: Tablet },
   { v: 'laptop', label: 'Ноутбук', Icon: Laptop },
   { v: 'fill', label: 'Во всю область', Icon: Maximize2 },
