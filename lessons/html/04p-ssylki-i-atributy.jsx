@@ -9758,10 +9758,29 @@ function A4Tree({ done }) {
   );
 }
 // Образец третьей ступени — под редактором, с другим содержимым.
+// Образец третьей ступени сам подъезжает в видимую часть экрана — над панелью подсказки (10.11.2026: на ноутбуке
+// и в столбик образец уходил за низ окна, страница не прокручивалась, ученик уменьшал масштаб до 80 %).
+function useRevealSample(ref) {
+  useEffect(() => {
+    const go = () => {
+      const el = ref.current;
+      const sc = el && el.closest('.stage-content');
+      if (!sc) return;
+      const sh = document.querySelector('.b-sheet:not(.is-ok)');
+      const lim = sh ? Math.min(sh.getBoundingClientRect().top, window.innerHeight) : window.innerHeight;
+      const r = el.getBoundingClientRect(), top0 = sc.getBoundingClientRect().top;
+      if (r.bottom > lim - 8) sc.scrollTop += Math.max(0, Math.min(r.bottom - lim + 12, r.top - top0 - 8));
+    };
+    const t1 = setTimeout(go, 150), t2 = setTimeout(go, 550);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+}
 const A4Sample = ({ lines }) => {
   const pick = usePick();
+  const ref = useRef(null);
+  useRevealSample(ref);
   return (
-    <div className="a4-sample">
+    <div ref={ref} className="a4-sample">
       <span className="a4-sample-l"><Icon name="bulb" size={14} />{pick(UI.sample)}</span>
       <A4Code lines={lines} cls="a4-sample-code" />
     </div>
@@ -9884,6 +9903,23 @@ function a4Shown(nav, own, pick) {
   return { title: pick(UI.nf), blocks: a4Page('<h1>' + pick(UI.nf) + '</h1><p>' + pick(UI.nfText) + '</p>').blocks, url: nav.file || '?', nf: true };
 }
 
+// ПЕРЕКЛЮЧАТЕЛЬ «Kod / Natija» НА ТЕЛЕФОНЕ (заказчик, 10.11.2026: «где чуть больше кода — toggle кода и результата,
+// чтобы результат и код друг другу не мешали»). Где кода больше, окно
+// браузера и код — по очереди. Переключатель появляется, когда в редакторе от 7 строк (и уже не исчезает).
+// Верный ответ показывает результат; ошибка, подсказка, дополнительная задача — код.
+// На ноутбуке и планшете видно то и другое — переключателя нет (CSS).
+const VT_OPTS = [{ v: 'code', label: L3("Kod", 'Код', 'Code') }, { v: 'result', label: L3("Natija", 'Результат', 'Result') }];
+function useViewToggle(num, workRef, lineSel, done, drilling, msg, lv) {
+  const [many, setMany] = useState(false);
+  const [view, setView] = useState(done ? 'result' : 'code');
+  useLayoutEffect(() => { const el = workRef.current; if (!many && el && el.querySelectorAll(lineSel).length >= 7) setMany(true); });
+  const first = useRef(true);
+  useEffect(() => { if (first.current) { first.current = false; return; } setView(done ? 'result' : 'code'); }, [done, drilling]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (msg || lv > 0) setView('code'); }, [msg, lv]);
+  return { many, view, setView };
+}
+const ViewToggle = ({ vt }) => (vt.many ? <div className="vt-row"><SegToggle value={vt.view} onChange={vt.setView} options={VT_OPTS} /></div> : null);
+
 function A4TaskScreen({ p, cfg }) {
   const pick = usePick();
   const t = useA4Task(cfg);
@@ -9903,12 +9939,15 @@ function A4TaskScreen({ p, cfg }) {
   const shown = a4Shown(nav, { title: v.title, blocks: v.blocks, url: file }, pick);
   const ask = rec.done ? cfg.C.ok : drilling ? fillL(L3('{a}: {b}', '{a}: {b}', '{a}: {b}'), { a: UI.drill, b: cfg.C.drill }) : (v.ask || cfg.C.ask);
   const hint = t.msg || (!rec.solved && lv > 0 ? cfg.C.hints[lv - 1] : null);
+  const workRef = useRef(null);
+  const vt = useViewToggle(cfg.num, workRef, '.a4-main .a4-ln', rec.done, drilling, t.msg, lv);
   return (
     <StageB voiceTop eyebrow={cfg.C.eyebrow} screen={p.screen} total={p.total} speaker={t.speaker} done={t.canGo}
       hint={cfg.C.hints[Math.min(3, lv + 1) - 1] || cfg.C.ask} nav={navOf(p, t.canGo)}>
       <Sheet cls={'a4-sheet a4-' + cfg.id + (v.big ? ' is-big' : '')}>
         <KzAsk text={ask} hint={rec.done ? null : hint} err={!!t.msg} />
-        <div className={'a4-work' + (v.big ? ' is-big' : '')}>
+        <ViewToggle vt={vt} />
+        <div ref={workRef} className={'a4-work' + (v.big ? ' is-big' : '') + (vt.many ? ' has-vt is-v-' + vt.view : '')}>
           <div className="a4-side">
             <A4Browser tabs={tabs} cur={cfg.num - 1} title={shown.title} flash={t.flash} short pageHl={!rec.solved && !nav.away && !!v.pageHl} tabHl={!rec.solved && !!v.tabHl}
               url={shown.url} onBack={nav.back} cls={shown.nf ? 'is-nf' : ''}>
@@ -10072,7 +10111,7 @@ function a4ParaView() {
     const after = ['</body>'];
     return {
       title: x.pick(pg.title), blocks: a4Page(before.concat([st.code], after).join('\n')).blocks, pageHl: true,
-      aid: <A4Parts parts={[{ code: '<p>' }, { word: NEXT_CITY }, { code: '<a href="…">…</a>' }, { code: '</p>' }]} />,
+      aid: <><A4Parts parts={[{ code: '<p>' }, { word: NEXT_CITY }, { code: '<a href="…">…</a>' }, { code: '</p>' }]} /><A4Files /></>,
       editor: <A4Editor before={before} after={after} value={st.code} inputRef={x.inRef} led={x.led} onChange={(c) => x.set({ code: c })} />
     };
   };
@@ -10112,14 +10151,15 @@ function a4FixView(data, C4) {
     };
     if (st.at == null) {
       return {
-        title, blocks: a4Page(lines.join('\n')).blocks, pageHl: true, keys: false, ask: C4.ask,
+        title, blocks: a4Page(lines.join('\n')).blocks, pageHl: true, keys: false, ask: C4.ask, aid: <A4Files />,
         editor: <A4Code lines={lines} onTap={pickLine} led={x.lv >= 2 ? BAD : null} miss={st.miss} />
       };
     }
     const before = lines.slice(0, BAD);
     const after = lines.slice(BAD + 1);
     return {
-      title, blocks: a4Page(before.concat([st.code], after).join('\n')).blocks, ask: C4.ask2,
+      // Файлы сайта — как на своей странице (заказчик, 10.11.2026: ученик писал bukhara.html, khiva.html — «нет такого файла»).
+      title, blocks: a4Page(before.concat([st.code], after).join('\n')).blocks, ask: C4.ask2, aid: <A4Files />,
       editor: <A4Editor before={before} after={after} value={st.code} single onEnter={x.check} inputRef={x.inRef} led={x.led} mark={BAD}
         onChange={(c) => x.set(Object.assign({}, st, { code: c }))} />
     };
@@ -13713,4 +13753,51 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
    «.r28 .kz-sheet textarea» давало полю обычный шрифт, курсор отставал от текста, стирание казалось сломанным. */
 .r28 .a4-ed .a4-ta { font-family: var(--r-mono) !important; font-weight: inherit; letter-spacing: normal; font-variant-ligatures: none; }
 .r28 .a4-ed .a4-hl { font-variant-ligatures: none; }
+/* Задание 3 на телефоне: под окном и схемой — ещё «Файлы сайта» (10.11.2026); пустое место в редакторе — одна строка,
+   поле растёт по мере набора. */
+@media (max-width: 759px) {
+  .r28 .a4-t3 .a4-ed:not(.is-single):not(.is-big) .a4-edit { min-height: 1.45em; }
+}
+/* 360 × 640: задание 3 со «Схемой» и «Файлами сайта» — окно браузера ниже, помощь плотнее. */
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .a4-t3 .a4-br.is-short { aspect-ratio: 16 / 4.6; }
+  .r28 .a4-t3 .a4-work, .r28 .a4-t3 .a4-side, .r28 .a4-t3 .a4-main { gap: 4px; }
+  .r28 .a4-t3 .a4-files { padding: 2px 6px; }
+}
+
+/* Образец третьей ступени (10.11.2026, отзыв ученика: «после ошибки образец не видно — страница не прокручивается,
+   пришлось уменьшать масштаб до 80 %»). Большой редактор оставлял под собой мало места, образец уходил за низ окна
+   и под панель подсказки. Пока образец открыт, редактор и образец делят высоту окна: пустой большой редактор —
+   две строки, длинный код и длинный образец прокручиваются в своих рамках. */
+@media (min-width: 760px) {
+  .r28 .a4-main:has(.a4-sample) .a4-ed.is-big .a4-edit { min-height: 2.9em; }
+  .r28 .a4-main:has(.a4-sample) .a4-ed:not(.a4-sample-code) { max-height: 30dvh; overflow: auto; }
+  .r28 .a4-main:has(.a4-sample) .a4-sample-code { max-height: 26dvh; overflow: auto !important; }
+}
+
+/* Образец третьей ступени (10.11.2026): пока он открыт, рабочая часть экрана прокручивается (в столбик —
+   на телефоне и планшете стоя — окно, код и образец не помещаются), а под открытой панелью подсказки есть
+   запас прокрутки — образец поднимается над панелью (useRevealSample). */
+.stage-content:has(.a4-sample) { overflow-y: auto; overscroll-behavior: contain; }
+.b-stage.has-sheet:not(:has(.b-sheet.is-ok)) .stage-content:has(.a4-sample)::after,
+.b-stage.has-sheet:not(:has(.b-sheet.is-ok)) .stage-content:has(.a4-sample) > :last-child::after { content: ''; display: block; flex: none; height: 32vh; }
+
+/* Переключатель «Kod / Natija» на телефоне (заказчик, 10.11.2026): где кода больше — окно браузера и код по
+   очереди. «Kod» — код, помощь и кнопки без окна; «Natija» — окно крупнее, условия «готово» и «Tekshirish». */
+.r28 .vt-row { display: none; }
+@media (max-width: 759px) {
+  .r28 .vt-row { display: flex; justify-content: center; }
+  .r28 .vt-row .seg2 { display: inline-flex; background: #E9ECF1; padding: 3px; border-radius: 99px; gap: 2px; }
+  .r28 .vt-row .seg2-b { min-height: 34px; padding: 0 20px; border: 0; border-radius: 99px; background: transparent; font: 600 14px var(--r-font); color: #475569; cursor: pointer; }
+  .r28 .vt-row .seg2-b.is-on { background: #fff; color: #FA4F28; box-shadow: 0 1px 4px rgba(15, 23, 42, .16); }
+  .r28 .a4-work.has-vt.is-v-code .a4-side > .kz-br { display: none; }
+  .r28 .a4-work.has-vt.is-v-result .a4-side > :not(.kz-br):not(.cp-list) { display: none; }
+  .r28 .a4-work.has-vt.is-v-result .a4-main > :not(.keys) { display: none; }
+  .r28 .a4-work.has-vt.is-v-result .keys .key-b:not(.key-go), .r28 .a4-work.has-vt.is-v-result .cp-syms { display: none; }
+  .r28 .a4-work.has-vt.is-v-result .a4-side > .kz-br { aspect-ratio: 4 / 3.3 !important; }
+}
+.is-kbd .r28 .vt-row { display: none; }
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .a4-work.has-vt.is-v-result .a4-side > .kz-br { aspect-ratio: 4 / 2.8 !important; }
+}
 `;

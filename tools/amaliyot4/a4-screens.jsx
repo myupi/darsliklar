@@ -620,10 +620,29 @@ function A4Tree({ done }) {
   );
 }
 // Образец третьей ступени — под редактором, с другим содержимым.
+// Образец третьей ступени сам подъезжает в видимую часть экрана — над панелью подсказки (10.11.2026: на ноутбуке
+// и в столбик образец уходил за низ окна, страница не прокручивалась, ученик уменьшал масштаб до 80 %).
+function useRevealSample(ref) {
+  useEffect(() => {
+    const go = () => {
+      const el = ref.current;
+      const sc = el && el.closest('.stage-content');
+      if (!sc) return;
+      const sh = document.querySelector('.b-sheet:not(.is-ok)');
+      const lim = sh ? Math.min(sh.getBoundingClientRect().top, window.innerHeight) : window.innerHeight;
+      const r = el.getBoundingClientRect(), top0 = sc.getBoundingClientRect().top;
+      if (r.bottom > lim - 8) sc.scrollTop += Math.max(0, Math.min(r.bottom - lim + 12, r.top - top0 - 8));
+    };
+    const t1 = setTimeout(go, 150), t2 = setTimeout(go, 550);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+}
 const A4Sample = ({ lines }) => {
   const pick = usePick();
+  const ref = useRef(null);
+  useRevealSample(ref);
   return (
-    <div className="a4-sample">
+    <div ref={ref} className="a4-sample">
       <span className="a4-sample-l"><Icon name="bulb" size={14} />{pick(UI.sample)}</span>
       <A4Code lines={lines} cls="a4-sample-code" />
     </div>
@@ -746,6 +765,23 @@ function a4Shown(nav, own, pick) {
   return { title: pick(UI.nf), blocks: a4Page('<h1>' + pick(UI.nf) + '</h1><p>' + pick(UI.nfText) + '</p>').blocks, url: nav.file || '?', nf: true };
 }
 
+// ПЕРЕКЛЮЧАТЕЛЬ «Kod / Natija» НА ТЕЛЕФОНЕ (заказчик, 10.11.2026: «где чуть больше кода — toggle кода и результата,
+// чтобы результат и код друг другу не мешали»). Где кода больше, окно
+// браузера и код — по очереди. Переключатель появляется, когда в редакторе от 7 строк (и уже не исчезает).
+// Верный ответ показывает результат; ошибка, подсказка, дополнительная задача — код.
+// На ноутбуке и планшете видно то и другое — переключателя нет (CSS).
+const VT_OPTS = [{ v: 'code', label: L3("Kod", 'Код', 'Code') }, { v: 'result', label: L3("Natija", 'Результат', 'Result') }];
+function useViewToggle(num, workRef, lineSel, done, drilling, msg, lv) {
+  const [many, setMany] = useState(false);
+  const [view, setView] = useState(done ? 'result' : 'code');
+  useLayoutEffect(() => { const el = workRef.current; if (!many && el && el.querySelectorAll(lineSel).length >= 7) setMany(true); });
+  const first = useRef(true);
+  useEffect(() => { if (first.current) { first.current = false; return; } setView(done ? 'result' : 'code'); }, [done, drilling]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (msg || lv > 0) setView('code'); }, [msg, lv]);
+  return { many, view, setView };
+}
+const ViewToggle = ({ vt }) => (vt.many ? <div className="vt-row"><SegToggle value={vt.view} onChange={vt.setView} options={VT_OPTS} /></div> : null);
+
 function A4TaskScreen({ p, cfg }) {
   const pick = usePick();
   const t = useA4Task(cfg);
@@ -765,12 +801,15 @@ function A4TaskScreen({ p, cfg }) {
   const shown = a4Shown(nav, { title: v.title, blocks: v.blocks, url: file }, pick);
   const ask = rec.done ? cfg.C.ok : drilling ? fillL(L3('{a}: {b}', '{a}: {b}', '{a}: {b}'), { a: UI.drill, b: cfg.C.drill }) : (v.ask || cfg.C.ask);
   const hint = t.msg || (!rec.solved && lv > 0 ? cfg.C.hints[lv - 1] : null);
+  const workRef = useRef(null);
+  const vt = useViewToggle(cfg.num, workRef, '.a4-main .a4-ln', rec.done, drilling, t.msg, lv);
   return (
     <StageB voiceTop eyebrow={cfg.C.eyebrow} screen={p.screen} total={p.total} speaker={t.speaker} done={t.canGo}
       hint={cfg.C.hints[Math.min(3, lv + 1) - 1] || cfg.C.ask} nav={navOf(p, t.canGo)}>
       <Sheet cls={'a4-sheet a4-' + cfg.id + (v.big ? ' is-big' : '')}>
         <KzAsk text={ask} hint={rec.done ? null : hint} err={!!t.msg} />
-        <div className={'a4-work' + (v.big ? ' is-big' : '')}>
+        <ViewToggle vt={vt} />
+        <div ref={workRef} className={'a4-work' + (v.big ? ' is-big' : '') + (vt.many ? ' has-vt is-v-' + vt.view : '')}>
           <div className="a4-side">
             <A4Browser tabs={tabs} cur={cfg.num - 1} title={shown.title} flash={t.flash} short pageHl={!rec.solved && !nav.away && !!v.pageHl} tabHl={!rec.solved && !!v.tabHl}
               url={shown.url} onBack={nav.back} cls={shown.nf ? 'is-nf' : ''}>
@@ -934,7 +973,7 @@ function a4ParaView() {
     const after = ['</body>'];
     return {
       title: x.pick(pg.title), blocks: a4Page(before.concat([st.code], after).join('\n')).blocks, pageHl: true,
-      aid: <A4Parts parts={[{ code: '<p>' }, { word: NEXT_CITY }, { code: '<a href="…">…</a>' }, { code: '</p>' }]} />,
+      aid: <><A4Parts parts={[{ code: '<p>' }, { word: NEXT_CITY }, { code: '<a href="…">…</a>' }, { code: '</p>' }]} /><A4Files /></>,
       editor: <A4Editor before={before} after={after} value={st.code} inputRef={x.inRef} led={x.led} onChange={(c) => x.set({ code: c })} />
     };
   };
@@ -974,14 +1013,15 @@ function a4FixView(data, C4) {
     };
     if (st.at == null) {
       return {
-        title, blocks: a4Page(lines.join('\n')).blocks, pageHl: true, keys: false, ask: C4.ask,
+        title, blocks: a4Page(lines.join('\n')).blocks, pageHl: true, keys: false, ask: C4.ask, aid: <A4Files />,
         editor: <A4Code lines={lines} onTap={pickLine} led={x.lv >= 2 ? BAD : null} miss={st.miss} />
       };
     }
     const before = lines.slice(0, BAD);
     const after = lines.slice(BAD + 1);
     return {
-      title, blocks: a4Page(before.concat([st.code], after).join('\n')).blocks, ask: C4.ask2,
+      // Файлы сайта — как на своей странице (заказчик, 10.11.2026: ученик писал bukhara.html, khiva.html — «нет такого файла»).
+      title, blocks: a4Page(before.concat([st.code], after).join('\n')).blocks, ask: C4.ask2, aid: <A4Files />,
       editor: <A4Editor before={before} after={after} value={st.code} single onEnter={x.check} inputRef={x.inRef} led={x.led} mark={BAD}
         onChange={(c) => x.set(Object.assign({}, st, { code: c }))} />
     };

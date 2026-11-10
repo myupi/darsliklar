@@ -186,3 +186,39 @@
    «.r28 .kz-sheet textarea» давало полю обычный шрифт, курсор отставал от текста, стирание казалось сломанным. */
 .r28 .a2-ed .a2-ta { font-family: var(--r-mono) !important; font-weight: inherit; letter-spacing: normal; font-variant-ligatures: none; }
 .r28 .a2-ed .a2-hl { font-variant-ligatures: none; }
+
+/* Образец третьей ступени (10.11.2026, отзыв ученика: «после ошибки образец не видно — страница не прокручивается,
+   пришлось уменьшать масштаб до 80 %»). Большой редактор оставлял под собой мало места, образец уходил за низ окна
+   и под панель подсказки. Пока образец открыт, редактор и образец делят высоту окна: пустой большой редактор —
+   две строки, длинный код и длинный образец прокручиваются в своих рамках. */
+@media (min-width: 760px) {
+  .r28 .a2-main:has(.a2-sample) .a2-ed.is-big .a2-edit { min-height: 2.9em; }
+  .r28 .a2-main:has(.a2-sample) .a2-ed:not(.a2-sample-code) { max-height: 30dvh; overflow: auto; }
+  .r28 .a2-main:has(.a2-sample) .a2-sample-code { max-height: 26dvh; overflow: auto !important; }
+}
+
+/* Образец третьей ступени (10.11.2026): пока он открыт, рабочая часть экрана прокручивается (в столбик —
+   на телефоне и планшете стоя — окно, код и образец не помещаются), а под открытой панелью подсказки есть
+   запас прокрутки — образец поднимается над панелью (useRevealSample). */
+.stage-content:has(.a2-sample) { overflow-y: auto; overscroll-behavior: contain; }
+.b-stage.has-sheet:not(:has(.b-sheet.is-ok)) .stage-content:has(.a2-sample)::after,
+.b-stage.has-sheet:not(:has(.b-sheet.is-ok)) .stage-content:has(.a2-sample) > :last-child::after { content: ''; display: block; flex: none; height: 32vh; }
+
+/* Переключатель «Kod / Natija» на телефоне (заказчик, 10.11.2026): где кода больше — окно браузера и код по
+   очереди. «Kod» — код, помощь и кнопки без окна; «Natija» — окно крупнее, условия «готово» и «Tekshirish». */
+.r28 .vt-row { display: none; }
+@media (max-width: 759px) {
+  .r28 .vt-row { display: flex; justify-content: center; }
+  .r28 .vt-row .seg2 { display: inline-flex; background: #E9ECF1; padding: 3px; border-radius: 99px; gap: 2px; }
+  .r28 .vt-row .seg2-b { min-height: 34px; padding: 0 20px; border: 0; border-radius: 99px; background: transparent; font: 600 14px var(--r-font); color: #475569; cursor: pointer; }
+  .r28 .vt-row .seg2-b.is-on { background: #fff; color: #FA4F28; box-shadow: 0 1px 4px rgba(15, 23, 42, .16); }
+  .r28 .a2-work.has-vt.is-v-code .a2-side > .kz-br { display: none; }
+  .r28 .a2-work.has-vt.is-v-result .a2-side > :not(.kz-br):not(.cp-list) { display: none; }
+  .r28 .a2-work.has-vt.is-v-result .a2-main > :not(.keys) { display: none; }
+  .r28 .a2-work.has-vt.is-v-result .keys .key-b:not(.key-go), .r28 .a2-work.has-vt.is-v-result .cp-syms { display: none; }
+  .r28 .a2-work.has-vt.is-v-result .a2-side > .kz-br { aspect-ratio: 4 / 3.3 !important; }
+}
+.is-kbd .r28 .vt-row { display: none; }
+@media (max-width: 759px) and (max-height: 699px) {
+  .r28 .a2-work.has-vt.is-v-result .a2-side > .kz-br { aspect-ratio: 4 / 2.8 !important; }
+}

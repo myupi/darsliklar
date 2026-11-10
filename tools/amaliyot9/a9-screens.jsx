@@ -643,10 +643,29 @@ function A9Files({ lit }) {
   );
 }
 // Образец третьей ступени — под редактором, с другим содержимым.
+// Образец третьей ступени сам подъезжает в видимую часть экрана — над панелью подсказки (10.11.2026: на ноутбуке
+// и в столбик образец уходил за низ окна, страница не прокручивалась, ученик уменьшал масштаб до 80 %).
+function useRevealSample(ref) {
+  useEffect(() => {
+    const go = () => {
+      const el = ref.current;
+      const sc = el && el.closest('.stage-content');
+      if (!sc) return;
+      const sh = document.querySelector('.b-sheet:not(.is-ok)');
+      const lim = sh ? Math.min(sh.getBoundingClientRect().top, window.innerHeight) : window.innerHeight;
+      const r = el.getBoundingClientRect(), top0 = sc.getBoundingClientRect().top;
+      if (r.bottom > lim - 8) sc.scrollTop += Math.max(0, Math.min(r.bottom - lim + 12, r.top - top0 - 8));
+    };
+    const t1 = setTimeout(go, 150), t2 = setTimeout(go, 550);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+}
 const A9Sample = ({ lines }) => {
   const pick = usePick();
+  const ref = useRef(null);
+  useRevealSample(ref);
   return (
-    <div className="a9-sample">
+    <div ref={ref} className="a9-sample">
       <span className="a9-sample-l"><Icon name="bulb" size={14} />{pick(UI.sample)}</span>
       <A9Code lines={lines} cls="a9-sample-code" />
     </div>
@@ -739,6 +758,23 @@ function useA9Task(cfg) {
 
 // Экран задания: строка задания (KzAsk → панели рамки), браузер с вкладками, помощь,
 // редактор, ряд кнопок. Вид — от cfg.view(st, ctx) → { title, blocks, editor, aid, keys }.
+// ПЕРЕКЛЮЧАТЕЛЬ «Kod / Natija» НА ТЕЛЕФОНЕ (заказчик, 10.11.2026: «где чуть больше кода — toggle кода и результата,
+// чтобы результат и код друг другу не мешали»). Где кода больше, окно
+// браузера и код — по очереди. Переключатель появляется, когда в редакторе от 7 строк (и уже не исчезает).
+// Верный ответ показывает результат; ошибка, подсказка, дополнительная задача — код.
+// На ноутбуке и планшете видно то и другое — переключателя нет (CSS).
+const VT_OPTS = [{ v: 'code', label: L3("Kod", 'Код', 'Code') }, { v: 'result', label: L3("Natija", 'Результат', 'Result') }];
+function useViewToggle(num, workRef, lineSel, done, drilling, msg, lv) {
+  const [many, setMany] = useState(false);
+  const [view, setView] = useState(done ? 'result' : 'code');
+  useLayoutEffect(() => { const el = workRef.current; if (!many && el && el.querySelectorAll(lineSel).length >= 7) setMany(true); });
+  const first = useRef(true);
+  useEffect(() => { if (first.current) { first.current = false; return; } setView(done ? 'result' : 'code'); }, [done, drilling]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (msg || lv > 0) setView('code'); }, [msg, lv]);
+  return { many, view, setView };
+}
+const ViewToggle = ({ vt }) => (vt.many ? <div className="vt-row"><SegToggle value={vt.view} onChange={vt.setView} options={VT_OPTS} /></div> : null);
+
 function A9TaskScreen({ p, cfg }) {
   const pick = usePick();
   const t = useA9Task(cfg);
@@ -755,13 +791,16 @@ function A9TaskScreen({ p, cfg }) {
   });
   const ask = rec.done ? cfg.C.ok : drilling ? fillL(L3('{a}: {b}', '{a}: {b}', '{a}: {b}'), { a: UI.drill, b: cfg.C.drill }) : (v.ask || cfg.C.ask);
   const hint = t.msg || (!rec.solved && lv > 0 ? cfg.C.hints[lv - 1] : null);
+  const workRef = useRef(null);
+  const vt = useViewToggle(cfg.num, workRef, '.a9-main .a9-ln', rec.done, drilling, t.msg, lv);
   return (
     <StageB voiceTop eyebrow={cfg.C.eyebrow} screen={p.screen} total={p.total} speaker={t.speaker} done={t.canGo}
       hint={cfg.C.hints[Math.min(3, lv + 1) - 1] || cfg.C.ask} nav={navOf(p, t.canGo)}>
       <Sheet cls={'a9-sheet a9-' + cfg.id + (v.big ? ' is-big' : '')}>
         <A9Plan cur={cfg.num - 1} />
         <KzAsk text={ask} hint={rec.done ? null : hint} err={!!t.msg} />
-        <div className={'a9-work' + (v.big ? ' is-big' : '')}>
+        <ViewToggle vt={vt} />
+        <div ref={workRef} className={'a9-work' + (v.big ? ' is-big' : '') + (vt.many ? ' has-vt is-v-' + vt.view : '')}>
           <div className="a9-side">
             <A9Browser tabs={[{ st: 'ok', ico: 'star', c: '#FA4F28' }]} cur={0} title={v.title} flash={t.flash} short pageHl={!rec.solved && !!v.pageHl} tabHl={!rec.solved && !!v.tabHl}
               url="index.html">
