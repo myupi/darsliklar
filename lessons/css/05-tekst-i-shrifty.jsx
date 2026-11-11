@@ -14112,4 +14112,13 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .r28 .c5-ba { display: flex; align-items: baseline; gap: 10px; }
 .r28 .c5-ba > i { flex: none; width: 4.2em; font: 600 12px var(--r-font); font-style: normal; color: var(--r-mute, #64748B); }
 .r28 .c5-eff-sm { font-size: clamp(18px, 3dvh, 24px); color: #64748B; }
+
+/* Открытая клавиатура телефона (11.11.2026, заказчик: «нет ли пустых пространств, как тогда с клавиатурой» →
+   «исправь во всех уроках css»): место над клавиатурой не пустует — сцена тянется на всю высоту, сверху задание
+   и код, окно браузера берёт остаток до кнопок (было: окно 26–34 px по центру, сверху и снизу пусто). */
+.is-kbd .r28 .c5-sheet .kz-scene { flex: 1 1 auto; min-height: 0; justify-content: flex-start; align-items: stretch; gap: 6px; }
+.is-kbd .r28 .c5-sheet .kz-scene > .kz-col { justify-content: flex-start; flex: 0 0 auto; min-height: 0; }
+.is-kbd .r28 .c5-sheet .kz-scene > .kz-col:has(> .kz-br) { flex: 1 1 auto; display: flex; flex-direction: column; }
+.is-kbd .r28 .c5-sheet .kz-scene .kz-br.c5-br { flex: 1 1 auto; min-height: 0; height: auto; max-height: none; display: flex; flex-direction: column; }
+.is-kbd .r28 .c5-sheet .kz-scene .kz-br.c5-br .kz-br-body { flex: 1 1 auto; height: auto; min-height: 34px; }
 `;
