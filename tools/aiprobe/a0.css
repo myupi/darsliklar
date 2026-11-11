@@ -1,0 +1,83 @@
+/* ══ ПРОБНЫЙ ЭКРАН МОДУЛЯ «ИИ» (11.11.2026) — «промпт в редакторе»: тёмный редактор курса (вкладки prompt.txt и
+   index.html), строки промпта с метками вопросов формулы, рядом Chrome. Цвета — как у редактора r28 (VS Code). */
+.r28 .a1-sheet { --a1-ai: #A78BFA; }
+.r28 .kz-scene.a1-scene { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(10px, 2vw, 22px); align-items: stretch; flex: 1 1 auto; min-height: 0; width: 100%; }
+.r28 .a1-left { display: flex; flex-direction: column; gap: 10px; min-height: 0; justify-content: center; }
+.r28 .a1-right { display: flex; flex-direction: column; min-height: 0; justify-content: stretch; }
+.r28 .kz-sheet .kz-scene.a1-scene .kz-br.c17-br { aspect-ratio: auto !important; flex: 1 1 auto; height: auto; max-height: none; min-height: 200px; --brh: none; }
+/* Редактор. */
+.r28 .a1-ed { display: flex; flex-direction: column; min-height: 0; border-radius: 10px; overflow: hidden; background: var(--r-ed); color: var(--r-ed-tx);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .12), 0 8px 24px rgba(15, 23, 42, .12); font: 500 clamp(13.5px, 1.9dvh, 16px)/1.5 var(--r-mono); }
+.r28 .a1-tabs { display: flex; flex: none; background: var(--r-ed2); box-shadow: inset 0 -1px 0 #333; }
+.r28 .a1-tab { position: relative; display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border: 0; background: transparent; color: #8B8B8B; font: 500 12px/18px var(--r-font); cursor: pointer; }
+.r28 .a1-tab i { width: 10px; height: 10px; border-radius: 2px; background: #6B7280; }
+.r28 .a1-tab.is-txt i { background: #E5E7EB; }
+.r28 .a1-tab.is-html i { background: var(--r-html); }
+.r28 .a1-tab.is-on { background: var(--r-ed); color: #E5E5E5; box-shadow: inset 0 2px 0 var(--r-pri); }
+.r28 .a1-tab:disabled { opacity: .45; cursor: default; }
+.r28 .a1-tab em { font-style: normal; font-size: 10.5px; padding: 0 6px; border-radius: 999px; background: rgba(167, 139, 250, .18); color: var(--a1-ai); }
+.r28 .a1-tab.is-new::after { content: ''; position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--r-pri); animation: c17Pulse 1.4s ease-in-out infinite; }
+.r28 .a1-lines { display: flex; flex-direction: column; padding: 6px 0 10px; overflow-y: auto; min-height: 0; }
+.r28 .a1-line { position: relative; display: grid; grid-template-columns: 2.4em minmax(0, 1fr) auto; align-items: start; gap: 0 10px; padding: 3px 12px 3px 0; }
+.r28 .a1-ln { color: #6E7681; text-align: right; user-select: none; }
+.r28 .a1-txt { min-width: 0; overflow-wrap: anywhere; }
+.r28 .a1-cmt { color: #6A9955; font-style: italic; }
+.r28 .a1-val { color: #CE9178; }
+.r28 .a1-line.is-old .a1-cmt { text-decoration: line-through; opacity: .6; }
+.r28 .a1-line.is-task { background: rgba(250, 79, 40, .08); box-shadow: inset 2px 0 0 var(--r-pri); }
+.r28 .a1-line.is-later { opacity: .45; }
+/* Метка вопроса формулы справа от строки. */
+.r28 .a1-q { align-self: center; padding: 1px 8px; border-radius: 999px; font: 600 11px/1.6 var(--r-font); color: #9CA3AF; box-shadow: inset 0 0 0 1px #3F3F46; white-space: nowrap; }
+.r28 .a1-q.is-on { color: #fff; background: var(--r-pri); box-shadow: none; }
+/* Поле ввода прямо в строке — прозрачное, шрифт кода. */
+.r28 .a1-slot { display: block; }
+.r28 .a1-slot .tk-input { width: 100% !important; background: transparent; border: 0; box-shadow: none !important; padding: 0; color: #CE9178; resize: none;
+  font: inherit !important; font-family: var(--r-mono) !important; caret-color: #fff; }
+.r28 .a1-slot .tk-input::placeholder { color: #6E7681; font-style: italic; }
+.r28 .a1-slot.is-led .tk-input::placeholder { color: #F5A08A; }
+/* Код от ИИ (вкладка index.html). */
+.r28 .a1-code { margin: 0; padding: 6px 12px 10px 0; overflow: auto; min-height: 0; max-height: 46dvh; font: inherit; font-size: .86em; color: #D4D4D4; white-space: pre; }
+.r28 .a1-cl { display: grid; grid-template-columns: 2.4em auto; gap: 10px; }
+/* Кнопка «Yuborish» — как «Tekshirish» в уроках. */
+.r28 .keys.a1-keys { justify-content: center; }
+/* ИИ пишет сайт: окно браузера притухает, сверху — плашка. */
+.r28 .a1-busy .kz-br-page > *:not(.a1-gen) { opacity: .35; filter: blur(1px); transition: opacity .3s, filter .3s; }
+.r28 .a1-gen { position: absolute; inset: auto 12px 12px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 12px; border-radius: 10px;
+  background: #fff; box-shadow: 0 0 0 1px #DDD6FE, 0 4px 14px rgba(124, 58, 237, .15); font: 600 13px var(--r-font); color: #5B21B6; }
+.r28 .a1-gen .a0-aidot { font-style: normal; color: #7C3AED; }
+.r28 .a0-typing { display: inline-flex; gap: 4px; }
+.r28 .a0-typing i { width: 6px; height: 6px; border-radius: 50%; background: #A78BFA; animation: a0Dot 1s ease-in-out infinite; }
+.r28 .a0-typing i:nth-child(2) { animation-delay: .15s; } .r28 .a0-typing i:nth-child(3) { animation-delay: .3s; }
+@keyframes a0Dot { 50% { translate: 0 -3px; opacity: .5; } }
+/* Домашка. */
+.r28 .a1-hw { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; padding: 10px 12px; border-radius: 12px; background: #F5F3FF; box-shadow: inset 0 0 0 1.5px #DDD6FE; }
+.r28 .a1-hw-h { font: 700 11px var(--r-font); letter-spacing: .06em; text-transform: uppercase; color: #7C3AED; width: 100%; }
+.r28 .a1-hw-t { flex: 1 1 200px; font: 500 13.5px/1.4 var(--r-font); color: var(--r-ink); }
+.r28 .a1-copy { min-height: 36px; padding: 6px 14px; }
+/* Телефон: редактор, кнопка, потом браузер — столбиком. */
+@media (max-width: 759px) {
+  .r28 .kz-scene.a1-scene { display: flex; flex-direction: column; gap: 8px; }
+  .r28 .a1-left { flex: none; gap: 6px; }
+  .r28 .a1-ed { font-size: 13.5px; }
+  .r28 .a1-line { padding-top: 2px; padding-bottom: 2px; gap: 0 6px; grid-template-columns: 2em minmax(0, 1fr) auto; }
+  .r28 .a1-q { font-size: 10.5px; padding: 0 6px; }
+  .r28 .a1-slot .tk-input { font-size: 16px !important; }
+  .r28 .a1-line.is-later { display: none; }
+  .r28 .a1-code { max-height: 30dvh; }
+  .r28 .a1-right { flex: 1 1 auto; min-height: 130px; }
+  .r28 .kz-sheet .kz-scene.a1-scene .kz-br.c17-br { min-height: 130px; }
+  .r28 .a1-hw { padding: 8px 10px; }
+  .r28 .a1-hw-t { font-size: 12.5px; }
+}
+@media (prefers-reduced-motion: reduce) { .r28 .a0-typing i, .r28 .a1-tab.is-new::after { animation: none; } }
+/* Без кода (заказчик, 11.11.2026): промпт — обычный текст. */
+.r28 .a1-kodi { color: #9CA3AF; }
+.r28 .a1-kodi b { color: #F5A08A; font-weight: 600; }
+.r28 .a1-line.is-old .a1-kodi { text-decoration: line-through; opacity: .6; }
+.r28 .a1-later { color: #6E7681; }
+.r28 .a1-slot .tk-input, .r28 .a1-val { color: #F3F4F6 !important; }
+/* Откуда что: метки вопросов у частей сайта. */
+.r28 .a1-pins { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; z-index: 3; }
+.r28 .a1-pin { position: absolute; transform: translate(0, -50%); padding: 1px 8px; border-radius: 999px; background: var(--r-pri); color: #fff;
+  font: 700 11px/1.6 var(--r-font); font-style: normal; white-space: nowrap; box-shadow: 0 2px 6px rgba(250, 79, 40, .35); }
+.r28 .a1-pin::after { content: ''; position: absolute; left: -3px; top: 50%; width: 7px; height: 7px; background: inherit; transform: translateY(-50%) rotate(45deg); z-index: -1; }
