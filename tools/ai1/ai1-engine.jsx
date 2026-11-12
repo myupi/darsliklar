@@ -17,7 +17,15 @@ const normT = (s) => String(s || '').replace(/\s+/g, '').toLowerCase();
 const CSS_PROPS = ['color', 'background-color', 'font-size', 'font-family', 'font-weight', 'text-align', 'text-decoration', 'width', 'height', 'padding', 'margin', 'border', 'box-sizing', 'border-radius', 'box-shadow', 'border-top', 'border-right', 'border-bottom', 'border-left', 'display', 'flex-direction', 'justify-content', 'align-items', 'gap', 'flex-wrap', 'position', 'top', 'right', 'bottom', 'left', 'transform', 'cursor', 'transition', 'animation',
   'background-image', 'background-repeat', 'background-size', 'align-self',
   // Модуль «ИИ» (11.11.2026): сайты, которые «делает» ИИ, — современные лендинги.
-  'flex', 'line-height', 'opacity', 'letter-spacing', 'margin-bottom', 'margin-top', 'max-width'];
+  'flex', 'line-height', 'opacity', 'letter-spacing', 'margin-bottom', 'margin-top', 'max-width',
+  // Урок 2 модуля «ИИ»: облик под аудиторию.
+  'text-transform',
+  // Урок 4: неон и «пиксельные» тени.
+  'text-shadow',
+  // Урок 5: поведение сайта — появление по очереди, точка вращения.
+  'animation-delay', 'transform-origin',
+  // Урок 5: широкий блок (вопросы, контакты) — на всю строку.
+  'flex-basis'];
 const cssOk = (p, v) => {
   if (CSS_PROPS.indexOf(p) < 0 || !v) return false;
   try { return typeof CSS === 'undefined' || !CSS.supports ? true : CSS.supports(p, v); } catch (e) { return false; }
@@ -191,8 +199,8 @@ const pxN = (v) => Math.round(parseFloat(v) || 0);
 // под страницей (ярлыки над тегами налезали бы на соседей). Меряет сам браузер (getBoundingClientRect), так видно,
 // что строчный элемент не берёт width.
 // Курсор мыши показа (как в уроках 4–5 курса HTML): стрелка, над элементом с cursor: pointer — рука.
-const MouseCur = ({ at }) => (
-  <span className={'c17-mouse' + (at.hand ? ' is-hand' : '')} style={{ left: at.x + 'px', top: at.y + 'px' }} aria-hidden="true">
+const MouseCur = ({ at, press }) => (
+  <span className={'c17-mouse' + (at.hand ? ' is-hand' : '') + (press ? ' is-press' : '')} style={{ left: at.x + 'px', top: at.y + 'px' }} aria-hidden="true">
     {at.hand
       ? <svg viewBox="0 0 24 24" width="24" height="24"><path d="M9 2.5c-.9 0-1.6.7-1.6 1.6v8.6l-1.3-1.4c-.6-.7-1.7-.7-2.3-.1-.6.6-.6 1.5-.1 2.1l4.2 5.6c.8 1.1 2.1 1.7 3.4 1.7h3.6c2.2 0 4-1.8 4-4v-5.1c0-.9-.7-1.6-1.6-1.6-.4 0-.7.1-1 .4v-.3c0-.9-.7-1.6-1.6-1.6-.5 0-.9.2-1.2.5-.2-.7-.8-1.2-1.5-1.2-.4 0-.8.1-1.1.4V4.1c0-.9-.7-1.6-1.6-1.6z" fill="#fff" stroke="#111" strokeWidth="1.3" strokeLinejoin="round" /></svg>
       : <svg viewBox="0 0 24 24" width="24" height="24"><path d="M5 2.5 L5 19.5 L9.4 15.4 L12.3 21.6 L15.2 20.3 L12.4 14.3 L18.4 14.1 Z" fill="#fff" stroke="#111" strokeWidth="1.5" strokeLinejoin="round" /></svg>}
@@ -281,7 +289,8 @@ function useAnimNum(target, ms) {
 }
 // Подходит ли условие @media ширине окна.
 const mqHolds = (mq, w) => (mq.kind === 'max' ? w <= mq.px : w >= mq.px);
-function CssPage({ els, rules, insp = false, scroll = null, hover: hover0 = null, mouse = false, pulse = null, timer = false, vw = null }) {
+// Модуль «ИИ», урок 5: rest — к какому элементу курсор едет и возле какого ждёт (их на странице несколько); press — щелчок.
+function CssPage({ els, rules, insp = false, scroll = null, hover: hover0 = null, mouse = false, pulse = null, timer = false, vw = null, rest = null, press = false }) {
   const R0 = rules || [];
   const vwA = useAnimNum(vw);
   // Правила внутри @media — только когда условие подходит ширине окна (как в браузере); порядок — как в коде.
@@ -359,7 +368,7 @@ function CssPage({ els, rules, insp = false, scroll = null, hover: hover0 = null
   const doc = Object.assign({}, styleFor(R, { t: 'body' }));
   const [boxes, setBoxes] = useState([]);
   const [ph, setPh] = useState(0);
-  const key = JSON.stringify([els, R.map((r) => [r.sel, r.decls]), hv, hk, aim, mouse]);
+  const key = JSON.stringify([els, R.map((r) => [r.sel, r.decls]), hv, hk, aim, mouse, rest]);
   // Страница — обычный поток (static), как body: «absolute» без родителя-якоря считается от страницы окна.
   // Координаты «Инспектора» — от страницы окна с её прокруткой.
   useLayoutEffect(() => {
@@ -367,15 +376,21 @@ function CssPage({ els, rules, insp = false, scroll = null, hover: hover0 = null
     const page = d && d.closest('.kz-br-page');
     if (!d || !page) return undefined;
     const measure = () => {
-      setPh((old) => (old === page.clientHeight ? old : page.clientHeight));
+      // Страница уменьшена (окно своей ширины) — слой fixed в её пикселях выше во столько же раз.
+      const kd = d.offsetWidth ? d.getBoundingClientRect().width / d.offsetWidth : 1;
+      const phk = Math.round(page.clientHeight / (kd || 1));
+      setPh((old) => (old === phk ? old : phk));
       setPw((old) => (old === page.clientWidth ? old : page.clientWidth));
       if (mouse) {
         // Где курсор: на элементе (чуть правее середины) или в стороне от него. Рука — если браузер дал элементу cursor: pointer.
-        const o0 = page.getBoundingClientRect();
-        const e = d.querySelector('[data-hk]');
+        // Курсор стоит внутри страницы (.c17-doc), а она бывает уменьшена (окно своей ширины, урок 5 модуля «ИИ»):
+        // координаты — от страницы и в её собственных пикселях (делим на масштаб).
+        const dr = d.getBoundingClientRect(), ks = d.offsetWidth ? dr.width / d.offsetWidth : 1;
+        const tk = aim || rest;
+        const e = (tk && d.querySelector('[data-hk="' + tk + '"]')) || d.querySelector('[data-hk]');
         if (e) {
           const r = e.getBoundingClientRect(), w = e.offsetWidth, hh = e.offsetHeight;
-          const cx = r.left + r.width / 2 - o0.left + page.scrollLeft, cy = r.top + r.height / 2 - o0.top + page.scrollTop;
+          const cx = (r.left + r.width / 2 - dr.left) / ks, cy = (r.top + r.height / 2 - dr.top) / ks;
           const on = aim && aim === e.getAttribute('data-hk');
           const np = on ? { x: Math.round(cx + w * 0.16), y: Math.round(cy + hh * 0.05), hand: hv === aim && getComputedStyle(e).cursor === 'pointer' }
             : { x: Math.round(cx + w / 2 + 44), y: Math.round(cy - 6), hand: false };
@@ -488,7 +503,7 @@ function CssPage({ els, rules, insp = false, scroll = null, hover: hover0 = null
       {timer && trs.length ? <TimeBar rows={trs} /> : insp && boxes.some((b) => b.hl) ? (
         <div className="c17-ilist" aria-hidden="true" translate="no">{boxes.filter((b) => b.hl).map((b, i) => <i key={i}>{b.t}{b.hv ? ':hover' : ''} {b.w}×{b.h}</i>)}</div>
       ) : null}
-      {mouse && mpos ? <MouseCur at={mpos} /> : null}
+      {mouse && mpos ? <MouseCur at={mpos} press={press} /> : null}
     </div></VwFrame>
   );
 }

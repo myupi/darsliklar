@@ -249,3 +249,74 @@
   .r28 .kz-scene.a1-scene > .a1-right { flex: 1 1 auto; min-height: 0; justify-content: flex-start; }
   .r28 .kz-sheet .kz-scene.a1-scene .kz-br.c17-br.a1-site.is-fit { min-height: min(40dvh, calc(var(--a1-fit) + 60px)); }
 }
+/* Третий вопрос «Kim uchun?» (урок 2) — бирюзовый: метка строки, подсветка текста, поле, метки на сайте. */
+.r28 .a1-sheet { --a1-q2: #0D9488; --a1-q2-bg: #E6FAF6; --a1-q2-ink: #0F766E; }
+.r28 .is-q2 .a1-q.is-on { background: var(--a1-q2); }
+.r28 .is-q2 .a1-val { background: var(--a1-q2-bg); color: var(--a1-q2-ink); box-shadow: inset 0 -2px 0 rgba(13, 148, 136, .32); }
+.r28 .is-q2 .a1-slot .tk-input { background: var(--a1-q2-bg); border-bottom-color: var(--a1-q2); }
+.r28 .is-q2 .a1-slot .tk-input::placeholder { color: rgba(15, 118, 110, .55); }
+.r28 .a1-pin.is-who { background: #0D9488; box-shadow: 0 2px 6px rgba(13, 148, 136, .35); }
+.r28 .a1-pr-l + .a1-pr-l + .a1-pr-l em { background: #0D9488; }
+/* Вывод: точки ролей — цветом вопросов формулы (Nima? оранжевый, Nega? фиолетовый, Kim uchun? бирюзовый). */
+.r28 .a1-fin .kz-roles .kz-role i { background: var(--r-pri) !important; }
+.r28 .a1-fin .kz-roles .kz-role:nth-child(2) i { background: #7C3AED !important; }
+.r28 .a1-fin .kz-roles .kz-role:nth-child(3) i { background: #0D9488 !important; }
+/* Четвёртый вопрос «Ichida nima?» (урок 3) — розовый: метка строки, подсветка текста, поле, метки блоков на сайте. */
+.r28 .a1-sheet { --a1-q3: #DB2777; --a1-q3-bg: #FDEEF6; --a1-q3-ink: #9D174D; }
+.r28 .is-q3 .a1-q.is-on { background: var(--a1-q3); }
+.r28 .is-q3 .a1-val { background: var(--a1-q3-bg); color: var(--a1-q3-ink); box-shadow: inset 0 -2px 0 rgba(219, 39, 119, .3); }
+.r28 .is-q3 .a1-slot .tk-input { background: var(--a1-q3-bg); border-bottom-color: var(--a1-q3); }
+.r28 .is-q3 .a1-slot .tk-input::placeholder { color: rgba(157, 23, 77, .5); }
+.r28 .a1-pin.is-in { background: #DB2777; box-shadow: 0 2px 6px rgba(219, 39, 119, .35); }
+.r28 .a1-fin .kz-roles .kz-role:nth-child(4) i { background: #DB2777 !important; }
+/* Открытая клавиатура на маленьком телефоне (урок 3: четыре строки промпта): готовые строки — в одну строчку,
+   длинное поле прокручивается внутри, отступы меньше — поле и «Yuborish» видны целиком. */
+@media (max-height: 700px) {
+  .is-kbd .r28 .a1-sheet .a1-lines { gap: 3px; }
+  .is-kbd .r28 .a1-sheet .a1-line:not(:has(.a1-slot)) .a1-txt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .is-kbd .r28 .a1-sheet .a1-q { font-size: 10px; padding: 0 6px; }
+  .is-kbd .r28 .a1-sheet .a1-slot .tk-input { padding: 2px 7px; max-height: 4.4em; overflow-y: auto !important; }
+  .is-kbd .r28 .a1-sheet .a1-ed { gap: 3px; padding: 5px 8px; }
+  .is-kbd .r28 .a1-sheet .a1-send { height: 32px; }
+  .is-kbd .r28 .a1-sheet .a1-bar { padding-top: 3px; }
+}
+@media (max-height: 700px) {
+  .is-kbd .r28 .a1-sheet .a1-line:not(:has(.a1-slot)) .a1-val { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .is-kbd .r28 .a1-sheet .a1-slot .tk-input { max-height: 3.3em; }
+}
+/* Пятый вопрос «Ko'rinishi?» (урок 4) — зелёный: метка строки, подсветка текста, поле, метки на сайте. */
+.r28 .a1-sheet { --a1-q4: #65A30D; --a1-q4-bg: #F1F8E6; --a1-q4-ink: #3F6212; }
+.r28 .is-q4 .a1-q.is-on { background: var(--a1-q4); }
+.r28 .is-q4 .a1-val { background: var(--a1-q4-bg); color: var(--a1-q4-ink); box-shadow: inset 0 -2px 0 rgba(101, 163, 13, .32); }
+.r28 .is-q4 .a1-slot .tk-input { background: var(--a1-q4-bg); border-bottom-color: var(--a1-q4); }
+.r28 .is-q4 .a1-slot .tk-input::placeholder { color: rgba(63, 98, 18, .55); }
+.r28 .a1-pin.is-look { background: #65A30D; box-shadow: 0 2px 6px rgba(101, 163, 13, .35); }
+.r28 .a1-fin .kz-roles .kz-role:nth-child(5) i { background: #65A30D !important; }
+/* Шестой вопрос «Qanday ishlaydi?» (урок 5) — янтарный: метка строки, подсветка текста, поле, метки на сайте. */
+.r28 .a1-sheet { --a1-q5: #B45309; --a1-q5-bg: #FEF5E2; --a1-q5-ink: #78350F; }
+.r28 .is-q5 .a1-q.is-on { background: var(--a1-q5); }
+.r28 .is-q5 .a1-val { background: var(--a1-q5-bg); color: var(--a1-q5-ink); box-shadow: inset 0 -2px 0 rgba(180, 83, 9, .32); }
+.r28 .is-q5 .a1-slot .tk-input { background: var(--a1-q5-bg); border-bottom-color: var(--a1-q5); }
+.r28 .is-q5 .a1-slot .tk-input::placeholder { color: rgba(120, 53, 15, .55); }
+.r28 .a1-pin.is-beh { background: #B45309; box-shadow: 0 2px 6px rgba(180, 83, 9, .35); }
+.r28 .a1-fin .kz-roles .kz-role:nth-child(6) i { background: #B45309 !important; }
+/* Курсор показа (урок 5): щелчок — кольцо под кончиком стрелки. */
+.r28 .c17-mouse.is-press::before { content: ''; position: absolute; left: 0; top: 0; width: 34px; height: 34px; margin: -14px 0 0 -12px; border-radius: 50%;
+  border: 3px solid #FA4F28; animation: a1Click .45s ease-out both; }
+@keyframes a1Click { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.1); opacity: 0; } }
+/* Узкая страница (телефон) в широком окне — посередине. */
+.r28 .a1-site .c17-vscale { margin: 0 auto; }
+/* Метка над карточкой (урок 5): хвостик — слева, у самой карточки. */
+.r28 .a1-pin.is-top::after { left: 14px; transform: rotate(45deg); }
+/* Метка под элементом (урок 5: ☰ у самого верха окна) — хвостик сверху. */
+.r28 .a1-pin.is-below { transform: none; }
+.r28 .a1-pin.is-below::after { left: 50%; top: -3px; bottom: auto; transform: translateX(-50%) rotate(45deg); }
+.r28 .a1-pin.is-below.is-top::after { left: 14px; transform: rotate(45deg); }
+/* Седьмой вопрос «Qoidalar?» (урок 6) — малиновый: метка строки, подсветка текста, поле, метки на сайте. */
+.r28 .a1-sheet { --a1-q6: #BE123C; --a1-q6-bg: #FFF1F3; --a1-q6-ink: #881337; }
+.r28 .is-q6 .a1-q.is-on { background: var(--a1-q6); }
+.r28 .is-q6 .a1-val { background: var(--a1-q6-bg); color: var(--a1-q6-ink); box-shadow: inset 0 -2px 0 rgba(190, 18, 60, .3); }
+.r28 .is-q6 .a1-slot .tk-input { background: var(--a1-q6-bg); border-bottom-color: var(--a1-q6); }
+.r28 .is-q6 .a1-slot .tk-input::placeholder { color: rgba(136, 19, 55, .5); }
+.r28 .a1-pin.is-rule { background: #BE123C; box-shadow: 0 2px 6px rgba(190, 18, 60, .35); }
+.r28 .a1-fin .kz-roles .kz-role:nth-child(7) i { background: #BE123C !important; }

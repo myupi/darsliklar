@@ -505,6 +505,8 @@ Object.assign(NOT_SPOKEN_IN, { items: { a: 1, b: 1, c: 1, site: 1, pr: 1, want: 
 
 /*@FILE:ai1-kit.jsx@*/
 
+/*@FILE:ai-common.jsx@*/
+
 /*@FILE:ai1-screens.jsx@*/
 
 const LESSON_CSS = CANON_SCREEN_CSS + `
