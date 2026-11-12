@@ -5,6 +5,9 @@
 // Практика идёт в плане сразу после своего урока, если в _course.js стоит
 // practice: true (финальному проекту — final: true — практика только со своим practiceTitle).
 // Название практики — practiceTitle в строке урока, иначе просто «Практика».
+//   lessons/<курс>/<NN>t-<slug>.jsx — тест к уроку NN (буква t после номера; модуль «ИИ» — тесты вместо практики,
+//   заказчик 12.11.2026). Тест идёт в плане сразу после урока (и его практики), если в _course.js стоит tests: true
+//   (финальному проекту — только со своим testTitle). Название — testTitle в строке урока, иначе «Тест».
 // Файл без пары в плане тоже попадает в каталог — с пометкой «вне плана».
 
 const COURSE_DEFS = import.meta.glob('/lessons/*/_course.js', { eager: true, import: 'default' });
@@ -35,6 +38,21 @@ const practiceOf = (id, l) => ({
   expected: `lessons/${id}/${pad2(l.n)}p-${l.slug || 'urok'}.jsx`,
 });
 
+const testOf = (id, l) => ({
+  key: `${id}/#${l.n}t`,
+  n: l.n,
+  kind: 'test',
+  slug: l.slug,
+  course: id,
+  title: l.testTitle || 'Тест',
+  testTitle: l.testTitle || null,
+  lessonTitle: l.title,
+  topics: l.topics || [],
+  file: null,
+  status: 'planned',
+  expected: `lessons/${id}/${pad2(l.n)}t-${l.slug || 'urok'}.jsx`,
+});
+
 function normalizeCourse(id, def) {
   const d = def || {};
   const plan = [];
@@ -50,6 +68,7 @@ function normalizeCourse(id, def) {
       expected: `lessons/${id}/${pad2(l.n)}-${l.slug || 'urok'}.jsx`,
     });
     if (d.practice && (!l.final || l.practiceTitle)) plan.push(practiceOf(id, l));   // финальному — только если задана своя практика
+    if (d.tests && (!l.final || l.testTitle)) plan.push(testOf(id, l));   // тест — так же
   });
   return {
     id,
@@ -76,9 +95,9 @@ export function buildCatalog() {
     const [, cid, base] = m;
     if (!courses.has(cid)) courses.set(cid, normalizeCourse(cid, null));
     const course = courses.get(cid);
-    const num = /^(\d+)(p)?(?=[-_]|$)/i.exec(base);
+    const num = /^(\d+)(p|t)?(?=[-_]|$)/i.exec(base);
     const n = num ? Number(num[1]) : null;
-    const kind = num && num[2] ? 'practice' : 'lesson';
+    const kind = num && num[2] ? (num[2].toLowerCase() === 't' ? 'test' : 'practice') : 'lesson';
     const fileId = `${cid}/${base}`;
     const slot = n != null ? course.lessons.find((l) => l.n === n && l.kind === kind && l.status === 'planned') : null;
     if (slot) {
@@ -86,7 +105,7 @@ export function buildCatalog() {
       slot.status = 'ready';
     } else {
       course.lessons.push({
-        key: fileId, n, kind, course: cid, title: kind === 'practice' ? 'Практика' : prettify(base), topics: [],
+        key: fileId, n, kind, course: cid, title: kind === 'practice' ? 'Практика' : kind === 'test' ? 'Тест' : prettify(base), topics: [],
         file: fileId, status: course.sandbox ? 'ready' : 'extra', expected: `lessons/${fileId}.jsx`,
       });
     }
@@ -94,11 +113,14 @@ export function buildCatalog() {
 
   const list = [...courses.values()];
   list.forEach((c) => {
-    // Практика стоит сразу после своего урока.
-    const pos = (l) => (l.n ?? 1e9) + (l.kind === 'practice' ? 0.5 : 0);
+    // Практика стоит сразу после своего урока, тест — за ней.
+    const pos = (l) => (l.n ?? 1e9) + (l.kind === 'practice' ? 0.5 : l.kind === 'test' ? 0.7 : 0);
     c.lessons.sort((a, b) => pos(a) - pos(b) || String(a.key).localeCompare(String(b.key)));
-    // Счётчики курса — по урокам; практика считается отдельно.
-    const lessons = c.lessons.filter((l) => l.kind !== 'practice');
+    // Счётчики курса — по урокам; практика и тесты считаются отдельно.
+    const lessons = c.lessons.filter((l) => l.kind !== 'practice' && l.kind !== 'test');
+    const tests = c.lessons.filter((l) => l.kind === 'test');
+    c.testReady = tests.filter((l) => l.status !== 'planned').length;
+    c.testPlanned = tests.filter((l) => l.status !== 'extra').length;
     const practices = c.lessons.filter((l) => l.kind === 'practice');
     c.ready = lessons.filter((l) => l.status !== 'planned').length;
     c.planned = c.sandbox ? lessons.length : lessons.filter((l) => l.status !== 'extra').length;
