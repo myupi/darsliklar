@@ -188,14 +188,14 @@ function Det({ p }) {
   const pick = usePick();
   const c = C.det;
   const prRows = (pr) => [pr.what ? txtRow(pick(pr.what), 0) : { q: FORMULA[0], t: MISS, cls: 'is-miss', body: <span className="a1-later">…</span> }, pr.why ? txtRow(pick(pr.why), 1) : { q: FORMULA[1], t: MISS, cls: 'is-miss', body: <span className="a1-later">…</span> }];
-  return <RoundsScreen p={p} c={c} id="det" keyOf={(it) => it.right}
+  return <RoundsScreen pickCards={(it) => it.type === 'which'} p={p} c={c} id="det" keyOf={(it) => it.right}
     ansOf={(it) => (it.type === 'which' ? it.right.toUpperCase() : pick(FORMULA[it.right === 'what' ? 0 : 1]))}
     opts={(it) => (it.type === 'which' ? ['a', 'b', 'c'] : ['what', 'why'])}
     optLabel={(v, it) => (it.type === 'which' ? v.toUpperCase() : pick(FORMULA[v === 'what' ? 0 : 1]))}
-    body={(it) => (it.type === 'which' ? (
+    body={(it, R) => (it.type === 'which' ? (
       <div className="a1-which">
         <div className="a1-which-site"><AiBrowser site={aiSite(pick, { what: pick(it.site.what), why: pick(it.site.why) })} small /></div>
-        <div className="a1-which-list"><span className="a1-qh">{pick(c.qWhich)}</span>{['a', 'b', 'c'].map((v) => <div key={v} className="a1-pr"><b>{v.toUpperCase()}</b><span><span className="a1-pr-l"><em>{pick(FORMULA[0])}</em>{pick(it[v].what)}</span><span className="a1-pr-l"><em>{pick(FORMULA[1])}</em>{pick(it[v].why)}</span></span></div>)}</div>
+        <div className="a1-which-list"><span className="a1-qh">{pick(c.qWhich)}</span>{['a', 'b', 'c'].map((v) => <PickCard key={v} R={R} v={v} cls="a1-pr"><b>{v.toUpperCase()}</b><span><span className="a1-pr-l"><em>{pick(FORMULA[0])}</em>{pick(it[v].what)}</span><span className="a1-pr-l"><em>{pick(FORMULA[1])}</em>{pick(it[v].why)}</span></span></PickCard>)}</div>
       </div>
     ) : (
       <div className="a1-which">

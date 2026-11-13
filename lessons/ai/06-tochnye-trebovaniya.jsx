@@ -10518,6 +10518,13 @@ function insOf(inside) {
 }
 const INS_TXT = {
   menu: [Q3("🍕 Margarita · 45 000 so'm", '🍕 Маргарита · 45 000 сум', '🍕 Margherita · 45,000 sum'), Q3("🍔 Burger · 35 000 so'm", '🍔 Бургер · 35 000 сум', '🍔 Burger · 35,000 sum'), Q3("🥤 Sharbat · 10 000 so'm", '🥤 Сок · 10 000 сум', '🥤 Juice · 10,000 sum')],
+  // Меню по теме сайта (13.11.2026: пицца в книжном магазине и у сладостей сбивала с толку).
+  menus: [
+    { re: /shirinlik|tort|novvoy|pishiriq|сладост|торт|пекар|кондитер|выпечк|sweet|cake|bak/, items: [Q3("🎂 Tort · 120 000 so'm", '🎂 Торт · 120 000 сум', '🎂 Cake · 120,000 sum'), Q3("🧁 Keks · 15 000 so'm", '🧁 Кекс · 15 000 сум', '🧁 Cupcake · 15,000 sum'), Q3("🍪 Pechene · 8 000 so'm", '🍪 Печенье · 8 000 сум', '🍪 Cookies · 8,000 sum')] },
+    { re: /muzqaymoq|морожен|ice cream/, items: [Q3("🍦 Vanilli · 12 000 so'm", '🍦 Ванильное · 12 000 сум', '🍦 Vanilla · 12,000 sum'), Q3("🍫 Shokoladli · 14 000 so'm", '🍫 Шоколадное · 14 000 сум', '🍫 Chocolate · 14,000 sum'), Q3("🍓 Qulupnayli · 14 000 so'm", '🍓 Клубничное · 14 000 сум', '🍓 Strawberry · 14,000 sum')] },
+    { re: /kitob|книг|book/, items: [Q3("📖 Sarguzasht kitobi · 45 000 so'm", '📖 Приключения · 45 000 сум', '📖 Adventure book · 45,000 sum'), Q3("📘 Ensiklopediya · 90 000 so'm", '📘 Энциклопедия · 90 000 сум', '📘 Encyclopedia · 90,000 sum'), Q3("📗 Ertaklar · 30 000 so'm", '📗 Сказки · 30 000 сум', '📗 Fairy tales · 30,000 sum')] },
+    { re: /oshxona|milliy|choyxona|столов|национ|чайхан|canteen|national/, items: [Q3("🍚 Osh · 30 000 so'm", '🍚 Плов · 30 000 сум', '🍚 Plov · 30,000 sum'), Q3("🍜 Lag'mon · 28 000 so'm", '🍜 Лагман · 28 000 сум', '🍜 Lagman · 28,000 sum'), Q3("🍵 Choy · 5 000 so'm", '🍵 Чай · 5 000 сум', '🍵 Tea · 5,000 sum')] }
+  ],
   plan: [Q3('Asosiy', 'Базовый', 'Basic'), Q3('Standart', 'Стандарт', 'Standard'), Q3('Premium', 'Премиум', 'Premium')],
   planP: ["50 000", "90 000", "150 000"],
   sum: Q3("so'm", 'сум', 'sum'),
@@ -10534,11 +10541,11 @@ const INS_TXT = {
   about: Q3("Biz 2015-yildan beri ishlaymiz va har bir mehmonni xursand qilishga harakat qilamiz.", 'Мы работаем с 2015 года и стараемся порадовать каждого гостя.', 'We’ve been working since 2015 and try to make every visitor happy.')
 };
 // Блок страницы из «Ichida nima?»: заголовок (bh0, bh1 … — для меток) и содержимое.
-function blockEl(pick, b, i, ins, tp) {
+function blockEl(pick, b, i, ins, tp, topic) {
   const kids = [];
   const it = (x, k, cls) => ({ t: 'div', cls: cls || 'it', k, text: x });
   const n = (d) => b.n || d;
-  if (b.k === 'menu') INS_TXT.menu.slice(0, Math.min(3, n(3))).forEach((x, j) => kids.push(it(pick(x), 'm' + j)));
+  if (b.k === 'menu') { const mm = INS_TXT.menus.find((m) => has(topic || '', m.re)); (mm ? mm.items : INS_TXT.menu).slice(0, Math.min(3, n(3))).forEach((x, j) => kids.push(it(pick(x), 'm' + j))); }
   if (b.k === 'gallery') for (let j = 0; j < Math.min(6, n(3)); j += 1) kids.push(it(tp.em, 'g' + j, 'ph'));
   if (b.k === 'prices') {
     if (ins.price) kids.push({ t: 'div', cls: 'it', k: 'p0', kids: [{ t: 'p', cls: 'cp', k: 'p0a', text: pick(INS_TXT.priceH) }, { t: 'p', cls: 'pr', k: 'p0b', text: '💳 ' + ins.price }] });
@@ -11034,10 +11041,13 @@ function aiSite(pick, pr, st) {
   ];
   // Разделы цели: основной и ещё один (например, «рассказать» и «прийти»).
   const goalsList = ['join', 'order', 'call', 'come', 'tell'].filter((x) => g[x]).slice(0, 2);
+  // Заказ: строки — из меню по теме сайта (торты, мороженое, книги, плов), иначе — по виду сайта.
+  const tm = INS_TXT.menus.find((m) => has(what + ' ' + why, m.re));
+  const topicMenu = tm ? tm.items : null;
   goalsList.forEach((x, gi) => {
     const kids = [];
     if (x === 'join') kids.push({ t: 'h2', cls: 'gh', text: pick(AI_TXT.gJoin) }, { t: 'div', cls: 'inp', text: pick(AI_TXT.inName) }, { t: 'div', cls: 'inp', text: pick(AI_TXT.inClass) }, { t: 'button', cls: 'btn2', text: pick(AI_TXT.send) });
-    if (x === 'order') { kids.push({ t: 'h2', cls: 'gh', text: pick(AI_TXT.gOrder) }); (base.rows || BLANK.rows).forEach((r, ri) => kids.push({ t: 'div', cls: 'row', k: 'row' + ri, kids: [{ t: 'span', text: pick(r) }, { t: 'button', cls: 'btn2', text: pick(AI_TXT.orderBtn) }] })); }
+    if (x === 'order') { kids.push({ t: 'h2', cls: 'gh', text: pick(AI_TXT.gOrder) }); (topicMenu || base.rows || BLANK.rows).forEach((r, ri) => kids.push({ t: 'div', cls: 'row', k: 'row' + ri, kids: [{ t: 'span', text: pick(r) }, { t: 'button', cls: 'btn2', text: pick(AI_TXT.orderBtn) }] })); }
     if (x === 'call') kids.push({ t: 'h2', cls: 'gh', text: pick(AI_TXT.gCall) }, l6 ? { t: 'p', cls: rl && rl.must.phone && rl.must.phone.v ? 'gp' : 'gp gsR', text: '📞 ' + (rl && rl.must.phone && rl.must.phone.v ? rl.must.phone.v : INS_TXT.phone) } : { t: 'p', cls: 'gp', text: pick(AI_TXT.phone) }, { t: 'p', cls: 'gp', text: pick(AI_TXT.hours) }, { t: 'button', cls: 'btn2', text: pick(AI_TXT.call) });
     if (x === 'tell') kids.push({ t: 'h2', cls: 'gh', text: pick(AI_TXT.gTell) }, { t: 'p', cls: 'gp', text: pick(AI_TXT.date) }, { t: 'p', cls: 'gp', text: pick(AI_TXT.place) });
     if (x === 'come') kids.push({ t: 'h2', cls: 'gh', text: pick(AI_TXT.gCome) }, { t: 'p', cls: 'gp', text: pick(AI_TXT.addr) }, { t: 'button', cls: 'btn2', text: pick(AI_TXT.map) });
@@ -11051,7 +11061,7 @@ function aiSite(pick, pr, st) {
   if (hasTel) audEls.push({ t: 'div', cls: 'par', k: 'tel', kids: [{ t: 'h2', cls: 'gh2', k: 'telh', text: pick(AUD_TXT.telH) }, { t: 'p', cls: 'gp', k: 'tel0', text: pick(AUD_TXT.tel) }] });
   if (hasPar) audEls.push({ t: 'div', cls: 'par', k: 'par', kids: [{ t: 'h2', cls: 'gh2', k: 'parh', text: pick(AUD_TXT.parH) }].concat(AUD_TXT.par.map((x, i) => ({ t: 'p', cls: 'gp', k: 'par' + i, text: pick(x) }))) });
   // «Ichida nima?»: вместо карточек-заглушек — блоки, ровно в написанном порядке.
-  if (ins && ins.blocks.length) els.splice(2, 1, ...ins.blocks.slice(0, rl && rl.max ? rl.max : 99).map((b, i) => blockEl(pick, b, i, ins, tp)));
+  if (ins && ins.blocks.length) els.splice(2, 1, ...ins.blocks.slice(0, rl && rl.max ? rl.max : 99).map((b, i) => blockEl(pick, b, i, ins, tp, what + ' ' + why)));
   els.splice(2, 0, ...audEls);
   els.push({ t: 'div', cls: 'foot', k: 'foot', text: pick(fillL(AI_TXT.foot, { t: title })) });
   // Урок 5: «Qanday ishlaydi?» — поведение (у уроков 1–4 строки нет, страница прежняя).
@@ -11083,7 +11093,7 @@ function aiSite(pick, pr, st) {
     '.gp { margin: 0 0 8px; font-size: 16px; }',
     '.inp { background-color: white; border: 1px solid #CBD5E1; border-radius: 10px; padding: 11px 14px; color: #94A3B8; margin: 0 0 10px; font-size: 15px; }',
     '.btn2 { background-color: ' + C1 + '; color: white; padding: 12px 22px; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; }',
-    '.row { display: flex; justify-content: space-between; align-items: center; background-color: white; padding: 10px 14px; border-radius: 12px; margin: 0 0 8px; font-size: 15px; }',
+    '.row { display: flex; justify-content: space-between; align-items: center; gap: 10px; background-color: white; padding: 10px 14px; border-radius: 12px; margin: 0 0 8px; font-size: 15px; }',
     '.foot { padding: 24px 32px; color: #64748B; font-size: 13px; text-align: center; }',
     '.par { margin: 20px 32px 8px; padding: 22px; border-radius: 18px; background-color: white; box-shadow: 0 0 0 1px #E2E8F0; }',
     '.gh2 { margin: 0 0 12px; font-size: 22px; font-weight: 800; color: ' + C2 + '; }',
@@ -11092,7 +11102,7 @@ function aiSite(pick, pr, st) {
     '.it { flex: 1; background-color: white; border-radius: 14px; padding: 14px 16px; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.07); font-size: 15px; font-weight: 600; }',
     '.wide { flex-basis: 100%; }', '.ph { flex: 1; height: 92px; border-radius: 14px; background-image: linear-gradient(135deg, ' + tp.bg + ', ' + C1 + '); font-size: 36px; display: flex; align-items: center; justify-content: center; }',
     '.pr { margin: 4px 0 0; font-size: 20px; font-weight: 800; color: ' + C2 + '; }', '.star { margin: 0 0 4px; color: #F59E0B; letter-spacing: 2px; }',
-    '@media (max-width: 600px) { .links { display: none; } .nav { padding: 12px 18px; } .hero { padding: 38px 20px; } .title { font-size: 32px; } .cards { flex-direction: column; padding: 20px; } .goal { margin: 16px 20px 8px; } .par { margin: 16px 20px 8px; } .blk { margin: 16px 20px 6px; } .row3 { flex-direction: column; } .ph { height: 70px; } }'
+    '@media (max-width: 600px) { .btn2 { white-space: nowrap; } .pr { white-space: nowrap; } .links { display: none; } .nav { padding: 12px 18px; } .hero { padding: 38px 20px; } .title { font-size: 32px; } .cards { flex-direction: column; padding: 20px; } .goal { margin: 16px 20px 8px; } .par { margin: 16px 20px 8px; } .blk { margin: 16px 20px 6px; } .row3 { flex-direction: column; } .ph { height: 70px; } }'
   ].concat(aud && !hasLook ? audCss(aud.key, C1, C2, tp.bg) : [], hasLook ? lookCss(lk, C1, C2, tp.bg, lp && lp.acc) : [], l5 ? behCss(bh || BEH_NONE, C1, C2) : [], l6 ? ruleCss(rl, C1, C2) : []);
   return { title, els: els5, css, goals: g, btn, kind: !!kind, what: !!what, aud, likes: likeCards.length, par: hasPar, tel: hasTel,
     rules: l6 ? (rl || { must: {}, no: {}, yes: {}, none: true, n: 0 }) : null, beh: bh, demos: l5 ? behDemos(bh || BEH_NONE, els5) : null, at: l5 ? (s2) => aiSite(pick, pr, s2) : null,
@@ -11145,8 +11155,14 @@ function TypeSwap({ from, to, done, children }) {
   if (st.end) return children;
   return <span className="a1-val a1-typev">{st.s}<i className="a1-caret" aria-hidden="true" /></span>;
 }
+// Телефон (13.11.2026, заказчик: «многовато информации на телефонах»): готовые строки сворачиваются в одну полосу
+// цветных меток («Nima? ✓ Nega? ✓ …»), развёрнута только рабочая строка — поле, строка Коди с ошибкой, строка, которая
+// сейчас меняется или менялась последней (иначе — последняя строка с текстом). Нажатие на полосу раскрывает всё.
 function PromptEditor({ rows, later, send }) {
   const pick = usePick();
+  const narrow = useNarrow();
+  const [open, setOpen] = useState(false);
+  const lastChg = useRef(-1);
   const prev = useRef(null);
   const anim = useRef({});          // строка i → { from, to, n }: идёт печать
   const flash = useRef(0);
@@ -11161,17 +11177,30 @@ function PromptEditor({ rows, later, send }) {
     }
   });
   if (any) flash.current += 1;
+  now.forEach((k, i) => { if (anim.current[i] && anim.current[i].to === k) lastChg.current = i; });
+  const hasText = (r) => r.t != null && r.t !== MISS;
+  const work = rows.map((r, i) => r.t == null || (r.t === MISS && r.on) || /is-hl/.test(r.cls || '') || i === lastChg.current || !!(anim.current[i] && anim.current[i].to === now[i]));
+  if (!work.some(Boolean)) { let k = -1; rows.forEach((r, i) => { if (hasText(r)) k = i; }); if (k >= 0) work[k] = true; }
+  const foldable = rows.map((r, i) => !work[i] && !!r.q);
+  const fold = narrow && !open && foldable.filter(Boolean).length >= 3;
   useEffect(() => { prev.current = now; });
   const fin = (i, k) => () => { if (anim.current[i] && anim.current[i].to === k) { delete anim.current[i]; tick((x) => x + 1); } };
   return (
     <div className="a1-ed" translate="no">
       {flash.current ? <i key={flash.current} className="a1-ed-flash" aria-hidden="true" /> : null}
       <div className="a1-lines">
+        {fold ? (
+          <button type="button" className="a1-fold" onClick={() => setOpen(true)}>
+            {rows.map((r, i) => (foldable[i] ? <span key={i} className={'a1-fold-q' + (FORMULA.indexOf(r.q) >= 0 ? ' is-q' + FORMULA.indexOf(r.q) : '')}><span className={'a1-q' + (hasText(r) ? ' is-on' : '')}>{pick(r.q)}{hasText(r) ? ' ✓' : ''}</span></span> : null))}
+            <span className="a1-fold-more" aria-hidden="true">▾</span>
+          </button>
+        ) : narrow && open && foldable.filter(Boolean).length >= 3 ? <button type="button" className="a1-fold is-open" onClick={() => setOpen(false)}><span className="a1-fold-more" aria-hidden="true">▴</span></button> : null}
         {rows.map((r, i) => {
+          if (fold && foldable[i]) return null;
           const qi = r.q ? FORMULA.indexOf(r.q) : -1;
           const a = anim.current[i] && anim.current[i].to === now[i] ? anim.current[i] : null;
           return (
-            <div key={i} className={'a1-line' + (qi >= 0 ? ' is-q' + qi : '') + (r.cls ? ' ' + r.cls : '') + (a ? ' a1-chg' : '')}>
+            <div key={i} className={'a1-line' + (qi >= 0 ? ' is-q' + qi : '') + (r.cls ? ' ' + r.cls : '') + (a ? ' a1-chg' : '') + (fold && work[i] ? ' is-work' : '')}>
               {r.q ? <span className={'a1-q' + (r.on ? ' is-on' : '')}>{pick(r.q)}</span> : null}
               <span className="a1-txt">{a ? <TypeSwap key={a.n + ':' + a.to} from={a.from} to={a.to} done={fin(i, a.to)}>{r.body}</TypeSwap> : r.body}</span>
             </div>
@@ -11201,7 +11230,7 @@ function Pins({ pins, stamp }) {
     if (!host) return undefined;
     const put = () => {
       const o = host.getBoundingClientRect();
-      const next = pins.map((p0) => {
+      const next0 = pins.map((p0) => {
         const e = host.querySelector('.c17-doc ' + p0.sel);
         if (!e || !e.getClientRects().length) return null;   // спрятан (☰ на широкой странице)
         let r = e.getBoundingClientRect();
@@ -11216,7 +11245,11 @@ function Pins({ pins, stamp }) {
         if (p0.top) return { x: Math.round(Math.min(r.left - o.left + host.scrollLeft + 4, W - pw - 4)), y: low ? yB : yTop, q: p0.q, cls: (p0.cls || '') + (low ? ' is-below is-top' : ' is-above is-top') };
         if (x0 + (p0.cls && /is-beh|is-guess/.test(p0.cls) ? pw : 74) > W) return { x: Math.max(4, Math.round(Math.min(r.left - o.left + host.scrollLeft + r.width / 2 - pw / 2, W - pw - 4))), y: low ? yB : yTop, q: p0.q, cls: (p0.cls || '') + (low ? ' is-below' : ' is-above') };
         return { x: x0, y: Math.round(r.top + r.height / 2 - o.top + host.scrollTop), q: p0.q, cls: p0.cls };
-      }).filter(Boolean).reduce((out, q) => {
+      }).filter(Boolean);
+      // Узкое окно (телефон): не больше двух меток, сначала те, что встают сбоку от вещи, а не над ней.
+      const W0 = host.clientWidth;
+      const list = W0 < 460 ? next0.filter((q) => !/is-above|is-below/.test(q.cls || '')).concat(next0.filter((q) => /is-above|is-below/.test(q.cls || ''))).slice(0, 2) : next0;
+      const next = list.reduce((out, q) => {
         // Метки не налезают друг на друга: сверху — сдвиг влево, сбоку — вниз.
         const w = (t) => 16 + 6.6 * String(pick(t.q)).length;
         const hit = (a) => out.some((b) => Math.abs(a.y - b.y) < 20 && a.x < b.x + w(b) + 4 && b.x < a.x + w(a) + 4);
@@ -11499,6 +11532,7 @@ function TaskScreen({ p, c, T, rows, later, extra, before, pinOpts, after, demo,
   const pick = usePick();
   const site = aiSite(pick, T.sent || null);
   const shown = T.sent ? site : aiSite(pick, before || null);
+  const pins = T.sent ? pinsOf.apply(null, [site].concat(pinOpts || [])) : null;
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={T.speaker} done={T.canGo} hint={hintAt(Math.min(3, T.lad.lv + 1), c.hints) || c.ask} nav={navOf(p, T.canGo)}>
       <Sheet cls="a1-sheet">
@@ -11511,7 +11545,7 @@ function TaskScreen({ p, c, T, rows, later, extra, before, pinOpts, after, demo,
             {!T.solved && T.lad.lv >= 3 && c.sample ? <HelpCode code={pick(c.sample)} /> : null}
             {extra || null}
           </div>
-          <div className="kz-col a1-right"><AiBrowser site={shown} pins={T.sent ? pinsOf.apply(null, [site].concat(pinOpts || [])) : null} busy={T.busy} demo={demo && (T.sent ? true : !!demoBefore)} /></div>
+          <div className="kz-col a1-right"><AiBrowser site={shown} pins={pins} busy={T.busy} demo={demo && (T.sent ? true : !!demoBefore)} focus={pins && !demo ? pinFocus(pins) : null} /></div>
         </div>
       </Sheet>
     </StageB>
@@ -11520,7 +11554,9 @@ function TaskScreen({ p, c, T, rows, later, extra, before, pinOpts, after, demo,
 // Заказ: что хочет «заказчик» (Коди, кружок, кафе) — карточка над редактором.
 function TaskCard({ c }) {
   const pick = usePick();
-  return <div className="a1-card"><span className="a1-card-h">{pick(c.card.h)}</span><span className="a1-card-t">{pick(c.card.t)}</span></div>;
+  const t = String(pick(c.card.t));
+  const parts = t.split(new RegExp('(' + RE_PHONE.source + ')'));
+  return <div className="a1-card"><span className="a1-card-h">{pick(c.card.h)}</span><span className="a1-card-t">{parts.map((x, i) => (i % 2 ? <span key={i} className="a1-nowrap">{x}</span> : x))}</span></div>;
 }
 
 // ── ПОКАЗ: шаги промптов, сайт меняется сам под речь Коди; помощь 1-2-3 по лампочке ──
@@ -11550,6 +11586,8 @@ function AiShow({ p, c, id, steps }) {
   const help = useShowHelp(c.help);
   const s = steps[n];
   const site = aiSite(pick, s.pr);
+  const pins = s.pins === false || !s.pr ? null : pinsOf(site, s.pinWhat, s.pinWhy, s.pinWho, s.pinIn, s.pinLook, s.pinBeh);
+  const demoOn = s.demo === undefined ? !!site.demos : s.demo;
   const askText = solved || demo.done ? c.askDone : c.asks[n];
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
@@ -11557,7 +11595,7 @@ function AiShow({ p, c, id, steps }) {
         <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene a1-scene">
           <div className="kz-col a1-left">{c.card ? <TaskCard c={c} /> : null}<PromptEditor rows={steps[pn].rows(pick)} /></div>
-          <div className="kz-col a1-right"><AiBrowser site={site} pins={s.pins === false || !s.pr ? null : pinsOf(site, s.pinWhat, s.pinWhy, s.pinWho, s.pinIn, s.pinLook, s.pinBeh)} busy={busy} demo={s.demo === undefined ? !!site.demos : s.demo} vw={s.vw} /></div>
+          <div className="kz-col a1-right"><AiBrowser site={site} pins={pins} busy={busy} demo={demoOn} vw={s.vw} focus={pins && !demoOn ? pinFocus(pins) : null} /></div>
         </div>
       </Sheet>
     </StageB>
@@ -11565,9 +11603,12 @@ function AiShow({ p, c, id, steps }) {
 }
 
 // ── ВЫБОР ПО РАУНДАМ (engine useRounds): карточка + варианты ──
-function RoundsScreen({ p, c, id, keyOf, ansOf, body, opts, optLabel }) {
+// pickCards — варианты нажимаются прямо в теле (карточки PickCard детектива), ряд кнопок под ним не ставится.
+function RoundsScreen({ p, c, id, keyOf, ansOf, body, opts, optLabel, pickCards }) {
   const pick = usePick();
-  const R = useRounds(id, c, c.items, keyOf, (it) => it.why, ansOf);
+  const R0 = useRounds(id, c, c.items, keyOf, (it) => it.why, ansOf);
+  const R = Object.assign({}, R0, { key: keyOf(R0.it) });
+  const cards = typeof pickCards === 'function' ? pickCards(R.it) : !!pickCards;
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={R.speaker} done={R.canGo} hint={R.ch.next(R.hints) || c.ask} nav={navOf(p, R.canGo)}>
       <Sheet cls="a1-sheet">
@@ -11575,20 +11616,32 @@ function RoundsScreen({ p, c, id, keyOf, ansOf, body, opts, optLabel }) {
         <div className="kz-scene kz-scene-col a1-rounds a1-in" key={'i' + R.ii}>
           <div className="kz-col">
             {body(R.it, R)}
-            <div className={'kz-pick a1-opts a1-opts-' + opts(R.it).length}>
+            {cards ? null : <div className={'kz-pick a1-opts a1-opts-' + opts(R.it).length}>
               {opts(R.it).map((v) => (
                 <button key={v} type="button" data-v={v} disabled={!R.canTap || R.ok || R.off.indexOf(v) >= 0} onClick={() => R.choose(v)}
                   className={'kz-btn a1-opt ' + (R.ok && v === keyOf(R.it) ? 'is-ok' : R.off.indexOf(v) >= 0 ? 'is-off' : 'is-ghost') + (R.ch.lad.lv >= 3 && v === keyOf(R.it) && !R.ok ? ' is-led' : '')}>
                   <span>{optLabel(v, R.it)}</span><Led on={R.led && !R.ok && R.off.length === 0} />
                 </button>
               ))}
-            </div>
+            </div>}
           </div>
         </div>
       </Sheet>
     </StageB>
   );
 }
+// Вариант-карточка детектива: нажимается сама (без отдельного ряда кнопок A/B/C).
+function PickCard({ R, v, cls, children }) {
+  const off = R.off.indexOf(v) >= 0;
+  return (
+    <button type="button" data-v={v} disabled={!R.canTap || R.ok || off} onClick={() => R.choose(v)}
+      className={'a1-opt a1-pickc ' + (cls || '') + (R.ok && v === R.key ? ' is-ok' : off ? ' is-off' : '') + (R.ch.lad.lv >= 3 && v === R.key && !R.ok ? ' is-led' : '')}>
+      {children}<Led on={R.led && !R.ok && R.off.length === 0 && v === 'a'} />
+    </button>
+  );
+}
+// Куда прокрутить окно сайта: к первой метке; название, плашка и кнопка — в баннере, тогда к верху сайта.
+const pinFocus = (pins) => { const s = pins && pins[0] ? pins[0].sel : null; return !s ? null : /^\.(title|badge|cta|sub|logo|ch)$/.test(s) ? '.nav' : s; };
 
 // =============================================================================
 // ЭКРАНЫ УРОКА 6 МОДУЛЯ «ИИ» «Как дать ИИ точные требования?» (12.11.2026). Общие экраны модуля — tools/ai1/ai-common.jsx,
@@ -11783,14 +11836,14 @@ function Det({ p }) {
   const c = C.det;
   const base = C.s2;
   const siteOf = (rules) => aiSite(pick, prOf(pick, base, pick(rules)));
-  return <RoundsScreen p={p} c={c} id="det" keyOf={(it) => it.right} ansOf={(it) => it.right.toUpperCase()}
+  return <RoundsScreen pickCards p={p} c={c} id="det" keyOf={(it) => it.right} ansOf={(it) => it.right.toUpperCase()}
     opts={() => ['a', 'b', 'c']} optLabel={(v) => v.toUpperCase()}
-    body={(it) => (
+    body={(it, R) => (
       <div className="a1-which">
         <div className="a1-which-site"><AiBrowser site={siteOf(it.rules)} small /></div>
         <div className="a1-which-list">
           <span className="a1-qh">{pick(c.qWhich)}</span>
-          {['a', 'b', 'c'].map((v) => <div key={v} className="a1-pr a6-pr-rule"><b>{v.toUpperCase()}</b><span><span className="a1-pr-l"><em>{pick(FORMULA[6])}</em>{pick(it[v])}</span></span></div>)}
+          {['a', 'b', 'c'].map((v) => <PickCard key={v} R={R} v={v} cls="a1-pr a6-pr-rule"><b>{v.toUpperCase()}</b><span><span className="a1-pr-l"><em>{pick(FORMULA[6])}</em>{pick(it[v])}</span></span></PickCard>)}
         </div>
       </div>
     )} />;
@@ -16526,6 +16579,38 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 .r28 .is-q6 .a1-slot .tk-input::placeholder { color: rgba(136, 19, 55, .5); }
 .r28 .a1-pin.is-rule { background: #BE123C; box-shadow: 0 2px 6px rgba(190, 18, 60, .35); }
 .r28 .a1-fin .kz-roles .kz-role:nth-child(7) i { background: #BE123C !important; }
+/* ══ ТЕЛЕФОН: меньше информации на экране (13.11.2026, заказчик: «многовато информации на телефонах»). */
+/* Готовые строки промпта свёрнуты в полосу цветных меток; нажатие раскрывает все строки. */
+.r28 .a1-fold { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; width: 100%; padding: 2px 0; border: 0; background: none; cursor: pointer; text-align: left; }
+.r28 .a1-fold .a1-q { margin-top: 0; font-size: 10.5px; padding: 0 7px; }
+.r28 .a1-fold-more { margin-left: auto; padding: 0 6px; color: #64748B; font: 700 13px/1 var(--r-font); }
+.r28 .a1-fold.is-open { justify-content: flex-end; }
+/* Рабочая строка при свёрнутых — целиком, без многоточия. */
+.r28 .a1-sheet .a1-line.is-work .a1-val { display: inline !important; white-space: normal !important; overflow: visible !important; }
+.is-kbd .r28 .a1-sheet .a1-fold { display: none; }
+/* Номер телефона в заказе не рвётся переносом. */
+.r28 .a1-nowrap { white-space: nowrap; }
+/* Детектив: варианты — сами кнопки. */
+.r28 .a1-pr.a1-pickc { position: relative; width: 100%; border: 0; text-align: left; cursor: pointer; transition: box-shadow .2s, background .2s, opacity .2s; }
+.r28 .a1-pr.a1-pickc:not(:disabled):hover { box-shadow: 0 0 0 2px var(--r-pri); }
+.r28 .a1-pr.a1-pickc:disabled { cursor: default; }
+.r28 .a1-pr.a1-pickc.is-ok { background: #DCFCE7; box-shadow: 0 0 0 2px #86EFAC; }
+.r28 .a1-pr.a1-pickc.is-off { opacity: .45; text-decoration: line-through; }
+.r28 .a1-pr.a1-pickc.is-led { box-shadow: 0 0 0 2px #FACC15; }
+/* Окно сайта на телефоне: без адресной строки и кнопок окна — остаётся вкладка, сайт выше. */
+@media (max-width: 759px) {
+  .r28 .a1-site .kz-br-tool { display: none; }
+  .r28 .a1-site .kz-br-win { display: none; }
+}
+/* Маленький телефон: заказ целиком, но плотнее. */
+@media (max-width: 759px) and (max-height: 700px) {
+  .r28 .a1-sheet .a1-card { padding-top: 5px; padding-bottom: 5px; }
+  .r28 .a1-sheet .a1-card-t { font-size: 12.5px; line-height: 1.3; }
+}
+/* Вывод на планшете стоя: окно сайта не выше 30 % экрана (иначе вывод урока 3 выходил за край), сайт в нём листается. */
+@media (min-width: 760px) and (orientation: portrait) {
+  .r28 .kz-sheet.a1-fin .kz-scene.a1-scene .kz-br.c17-br { min-height: 19dvh !important; max-height: 30dvh !important; }
+}
 /* ══ УРОК 4 МОДУЛЯ «ИИ» «Как должен выглядеть сайт?» — свои части (общий облик — ../ai1/ai1.css). */
 /* Детектив «какой это стиль»: вопрос и окно сайта столбиком. */
 .r28 .a4-mood { display: flex; flex-direction: column; gap: 8px; align-items: stretch; width: min(100%, 680px); align-self: center; }
@@ -16542,11 +16627,10 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 }
 @media (max-width: 759px) and (max-height: 700px) { .r28 .a1-fin .kz-roles { display: none; } }
 @media (min-width: 760px) and (max-height: 760px) { .r28 .a1-fin .kz-role { padding-top: 4px; padding-bottom: 4px; font-size: 13px; } }
-/* Пять строк промпта — самое высокое поле модуля. Маленький телефон: готовые строки в одну строчку, заказ — две строки. */
+/* Пять строк промпта — самое высокое поле модуля. Маленький телефон: готовые строки в одну строчку (заказ — целиком: это условие задания, 13.11.2026). */
 @media (max-width: 759px) and (max-height: 700px) {
   .r28 .a1-sheet .a1-lines { gap: 3px; }
   .r28 .a1-sheet .a1-line:not(:has(.a1-slot)) .a1-val { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .r28 .a1-sheet .a1-card-t { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .r28 .a1-sheet .a1-ed { gap: 4px; padding: 7px 9px 6px; }
 }
 /* Открытая клавиатура на маленьком телефоне: видна только строка, которую пишет ученик, и «Yuborish». */
@@ -16581,11 +16665,10 @@ html:has(.b-stage), body:has(.b-stage) { background: #FFFFFF; }
 }
 /* Шесть строк промпта. Планшет стоя: окно сайта чуть ниже, чтобы поле с заказом влезло. */
 @media (min-width: 760px) and (orientation: portrait) { .r28 .kz-sheet .kz-scene.a1-scene .kz-br.c17-br, .r28 .kz-sheet .kz-scene.a1-scene .kz-br.c17-br.a1-site.is-fit { min-height: 34dvh; } }
-/* Телефон до 760 px высоты: готовые строки — в одну строчку, заказ — в две, метки строк мельче. */
+/* Телефон до 760 px высоты: готовые строки — в одну строчку, метки строк мельче (заказ — целиком: это условие задания, 13.11.2026). */
 @media (max-width: 759px) and (max-height: 760px) {
   .r28 .a1-sheet .a1-lines { gap: 3px; }
   .r28 .a1-sheet .a1-line:not(:has(.a1-slot)) .a1-val { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .r28 .a1-sheet .a1-card-t { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .r28 .a1-sheet .a1-ed { gap: 4px; padding: 7px 9px 6px; }
   .r28 .a1-sheet .a1-q { padding: 0 7px; font-size: 10.5px; }
 }

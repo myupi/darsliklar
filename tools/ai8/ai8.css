@@ -16,11 +16,10 @@
   .r28 .a8-opts { gap: 4px; }
   .r28 .kz-btn.a8-opt { min-height: 36px; padding: 5px 10px; font-size: 13.5px; }
 }
-/* Станции выбора на телефоне и планшете стоя: готовые строки — в одну строчку, заказ — в две, варианты ниже. */
+/* Станции выбора на телефоне и планшете стоя: готовые строки — в одну строчку, варианты ниже (заказ — целиком). */
 @media (max-width: 759px), (min-width: 760px) and (orientation: portrait) {
   .r28 .a8-pick .a1-line:not(:has(.a1-slot)) .a1-val { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .r28 .a8-pick .a1-lines { gap: 3px; }
-  .r28 .a8-pick .a1-card-t { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .r28 .a8-pick .kz-btn.a8-opt { min-height: 34px; padding-top: 4px; padding-bottom: 4px; }
 }
 @media (min-width: 760px) and (orientation: portrait) { .r28 .a8-pick .kz-sheet .kz-scene.a1-scene .kz-br.c17-br, .r28 .kz-sheet.a8-pick .kz-scene.a1-scene .kz-br.c17-br.a1-site.is-fit { min-height: 28dvh; } }

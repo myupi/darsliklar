@@ -66,6 +66,7 @@ function TaskScreen({ p, c, T, rows, later, extra, before, pinOpts, after, demo,
   const pick = usePick();
   const site = aiSite(pick, T.sent || null);
   const shown = T.sent ? site : aiSite(pick, before || null);
+  const pins = T.sent ? pinsOf.apply(null, [site].concat(pinOpts || [])) : null;
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={T.speaker} done={T.canGo} hint={hintAt(Math.min(3, T.lad.lv + 1), c.hints) || c.ask} nav={navOf(p, T.canGo)}>
       <Sheet cls="a1-sheet">
@@ -78,7 +79,7 @@ function TaskScreen({ p, c, T, rows, later, extra, before, pinOpts, after, demo,
             {!T.solved && T.lad.lv >= 3 && c.sample ? <HelpCode code={pick(c.sample)} /> : null}
             {extra || null}
           </div>
-          <div className="kz-col a1-right"><AiBrowser site={shown} pins={T.sent ? pinsOf.apply(null, [site].concat(pinOpts || [])) : null} busy={T.busy} demo={demo && (T.sent ? true : !!demoBefore)} /></div>
+          <div className="kz-col a1-right"><AiBrowser site={shown} pins={pins} busy={T.busy} demo={demo && (T.sent ? true : !!demoBefore)} focus={pins && !demo ? pinFocus(pins) : null} /></div>
         </div>
       </Sheet>
     </StageB>
@@ -87,7 +88,9 @@ function TaskScreen({ p, c, T, rows, later, extra, before, pinOpts, after, demo,
 // Заказ: что хочет «заказчик» (Коди, кружок, кафе) — карточка над редактором.
 function TaskCard({ c }) {
   const pick = usePick();
-  return <div className="a1-card"><span className="a1-card-h">{pick(c.card.h)}</span><span className="a1-card-t">{pick(c.card.t)}</span></div>;
+  const t = String(pick(c.card.t));
+  const parts = t.split(new RegExp('(' + RE_PHONE.source + ')'));
+  return <div className="a1-card"><span className="a1-card-h">{pick(c.card.h)}</span><span className="a1-card-t">{parts.map((x, i) => (i % 2 ? <span key={i} className="a1-nowrap">{x}</span> : x))}</span></div>;
 }
 
 // ── ПОКАЗ: шаги промптов, сайт меняется сам под речь Коди; помощь 1-2-3 по лампочке ──
@@ -117,6 +120,8 @@ function AiShow({ p, c, id, steps }) {
   const help = useShowHelp(c.help);
   const s = steps[n];
   const site = aiSite(pick, s.pr);
+  const pins = s.pins === false || !s.pr ? null : pinsOf(site, s.pinWhat, s.pinWhy, s.pinWho, s.pinIn, s.pinLook, s.pinBeh);
+  const demoOn = s.demo === undefined ? !!site.demos : s.demo;
   const askText = solved || demo.done ? c.askDone : c.asks[n];
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={speaker} done={canGo} hint={help.next || askText} nav={navOf(p, canGo)}>
@@ -124,7 +129,7 @@ function AiShow({ p, c, id, steps }) {
         <KzAsk text={askText} hint={help.now} />
         <div className="kz-scene a1-scene">
           <div className="kz-col a1-left">{c.card ? <TaskCard c={c} /> : null}<PromptEditor rows={steps[pn].rows(pick)} /></div>
-          <div className="kz-col a1-right"><AiBrowser site={site} pins={s.pins === false || !s.pr ? null : pinsOf(site, s.pinWhat, s.pinWhy, s.pinWho, s.pinIn, s.pinLook, s.pinBeh)} busy={busy} demo={s.demo === undefined ? !!site.demos : s.demo} vw={s.vw} /></div>
+          <div className="kz-col a1-right"><AiBrowser site={site} pins={pins} busy={busy} demo={demoOn} vw={s.vw} focus={pins && !demoOn ? pinFocus(pins) : null} /></div>
         </div>
       </Sheet>
     </StageB>
@@ -132,9 +137,12 @@ function AiShow({ p, c, id, steps }) {
 }
 
 // ── ВЫБОР ПО РАУНДАМ (engine useRounds): карточка + варианты ──
-function RoundsScreen({ p, c, id, keyOf, ansOf, body, opts, optLabel }) {
+// pickCards — варианты нажимаются прямо в теле (карточки PickCard детектива), ряд кнопок под ним не ставится.
+function RoundsScreen({ p, c, id, keyOf, ansOf, body, opts, optLabel, pickCards }) {
   const pick = usePick();
-  const R = useRounds(id, c, c.items, keyOf, (it) => it.why, ansOf);
+  const R0 = useRounds(id, c, c.items, keyOf, (it) => it.why, ansOf);
+  const R = Object.assign({}, R0, { key: keyOf(R0.it) });
+  const cards = typeof pickCards === 'function' ? pickCards(R.it) : !!pickCards;
   return (
     <StageB voiceTop eyebrow={c.eyebrow} screen={p.screen} total={p.total} speaker={R.speaker} done={R.canGo} hint={R.ch.next(R.hints) || c.ask} nav={navOf(p, R.canGo)}>
       <Sheet cls="a1-sheet">
@@ -142,18 +150,30 @@ function RoundsScreen({ p, c, id, keyOf, ansOf, body, opts, optLabel }) {
         <div className="kz-scene kz-scene-col a1-rounds a1-in" key={'i' + R.ii}>
           <div className="kz-col">
             {body(R.it, R)}
-            <div className={'kz-pick a1-opts a1-opts-' + opts(R.it).length}>
+            {cards ? null : <div className={'kz-pick a1-opts a1-opts-' + opts(R.it).length}>
               {opts(R.it).map((v) => (
                 <button key={v} type="button" data-v={v} disabled={!R.canTap || R.ok || R.off.indexOf(v) >= 0} onClick={() => R.choose(v)}
                   className={'kz-btn a1-opt ' + (R.ok && v === keyOf(R.it) ? 'is-ok' : R.off.indexOf(v) >= 0 ? 'is-off' : 'is-ghost') + (R.ch.lad.lv >= 3 && v === keyOf(R.it) && !R.ok ? ' is-led' : '')}>
                   <span>{optLabel(v, R.it)}</span><Led on={R.led && !R.ok && R.off.length === 0} />
                 </button>
               ))}
-            </div>
+            </div>}
           </div>
         </div>
       </Sheet>
     </StageB>
   );
 }
+// Вариант-карточка детектива: нажимается сама (без отдельного ряда кнопок A/B/C).
+function PickCard({ R, v, cls, children }) {
+  const off = R.off.indexOf(v) >= 0;
+  return (
+    <button type="button" data-v={v} disabled={!R.canTap || R.ok || off} onClick={() => R.choose(v)}
+      className={'a1-opt a1-pickc ' + (cls || '') + (R.ok && v === R.key ? ' is-ok' : off ? ' is-off' : '') + (R.ch.lad.lv >= 3 && v === R.key && !R.ok ? ' is-led' : '')}>
+      {children}<Led on={R.led && !R.ok && R.off.length === 0 && v === 'a'} />
+    </button>
+  );
+}
+// Куда прокрутить окно сайта: к первой метке; название, плашка и кнопка — в баннере, тогда к верху сайта.
+const pinFocus = (pins) => { const s = pins && pins[0] ? pins[0].sel : null; return !s ? null : /^\.(title|badge|cta|sub|logo|ch)$/.test(s) ? '.nav' : s; };
 

@@ -191,14 +191,14 @@ function Det({ p }) {
   const c = C.det;
   const base = C.s2;
   const siteOf = (rules) => aiSite(pick, prOf(pick, base, pick(rules)));
-  return <RoundsScreen p={p} c={c} id="det" keyOf={(it) => it.right} ansOf={(it) => it.right.toUpperCase()}
+  return <RoundsScreen pickCards p={p} c={c} id="det" keyOf={(it) => it.right} ansOf={(it) => it.right.toUpperCase()}
     opts={() => ['a', 'b', 'c']} optLabel={(v) => v.toUpperCase()}
-    body={(it) => (
+    body={(it, R) => (
       <div className="a1-which">
         <div className="a1-which-site"><AiBrowser site={siteOf(it.rules)} small /></div>
         <div className="a1-which-list">
           <span className="a1-qh">{pick(c.qWhich)}</span>
-          {['a', 'b', 'c'].map((v) => <div key={v} className="a1-pr a6-pr-rule"><b>{v.toUpperCase()}</b><span><span className="a1-pr-l"><em>{pick(FORMULA[6])}</em>{pick(it[v])}</span></span></div>)}
+          {['a', 'b', 'c'].map((v) => <PickCard key={v} R={R} v={v} cls="a1-pr a6-pr-rule"><b>{v.toUpperCase()}</b><span><span className="a1-pr-l"><em>{pick(FORMULA[6])}</em>{pick(it[v])}</span></span></PickCard>)}
         </div>
       </div>
     )} />;

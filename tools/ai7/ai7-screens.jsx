@@ -298,9 +298,9 @@ function Det({ p }) {
   const pick = usePick();
   const c = C.det;
   const P = prL(pick, PR.foot);
-  return <RoundsScreen p={p} c={c} id="det" keyOf={(it) => it.right} ansOf={(it) => it.right.toUpperCase()}
+  return <RoundsScreen pickCards p={p} c={c} id="det" keyOf={(it) => it.right} ansOf={(it) => it.right.toUpperCase()}
     opts={() => ['a', 'b', 'c']} optLabel={(v) => v.toUpperCase()}
-    body={(it) => {
+    body={(it, R) => {
       const site = fixSite(pick, P, [pick(it.fix)]);
       return (
         <div className="a1-which">
@@ -308,7 +308,7 @@ function Det({ p }) {
           <div className="a1-which-list">
             <span className="a1-qh">{pick(c.qWhich)}</span>
             <span className="a7-before">{pick(c.before)}</span>
-            {['a', 'b', 'c'].map((v) => <div key={v} className="a1-pr a7-pr"><b>{v.toUpperCase()}</b><span><span className="a1-pr-l"><em>{pick(P_LBL(2))}</em>{pick(it[v])}</span></span></div>)}
+            {['a', 'b', 'c'].map((v) => <PickCard key={v} R={R} v={v} cls="a1-pr a7-pr"><b>{v.toUpperCase()}</b><span><span className="a1-pr-l"><em>{pick(P_LBL(2))}</em>{pick(it[v])}</span></span></PickCard>)}
           </div>
         </div>
       );
